@@ -77,6 +77,17 @@ const healthMonitorRouter = {
   },
   children: [
     {
+      // 工作台日历（每日健康均值 + 预警日历视图）
+      path: 'workbench',
+      name: 'Workbench',
+      component: () => import('@/views/health-monitor/workbench/index.vue'),
+      meta: {
+        title: '工作台日历',
+        icon: 'Calendar',
+        permCode: 'health:workbench'
+      }
+    },
+    {
       // 统一管控页面（数据总览）
       path: 'dashboard',             // 完整路径：/health-monitor/dashboard
       name: 'HealthDashboard',
