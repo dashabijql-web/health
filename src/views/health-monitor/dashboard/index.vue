@@ -376,7 +376,7 @@
         </div>
 
         <!-- 健康小贴士 -->
-        <health-tips :count="4" class="dm-right-tips" />
+        <health-tips :count="5" class="dm-right-tips" />
 
         <!-- 指标预警率分析 -->
         <div class="dm-panel dm-right-warnrate">
