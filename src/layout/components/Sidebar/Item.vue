@@ -20,7 +20,7 @@ const EP_ICONS = [
   'ChatDotSquare','Notification','InfoFilled','SuccessFilled','WarningFilled',
   'CircleCheck','CircleClose','QuestionFilled','StarFilled','Location','Phone',
   'Message','Timer','Calendar','Histogram','PieChart','TrendCharts','DataLine',
-  'Key',
+  'Key','Cpu','Pointer',
   'OfficeBuilding','SetUp','Stamp','Clock','FirstAidKit','List','Suitcase',
   'Ship','Orange','Apple','Cherry','Watermelon','Grape','Pear','Strawberry'
 ]

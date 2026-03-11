@@ -153,6 +153,64 @@
           </div>
         </div>
 
+        <!-- 血氧区间分布统计 -->
+        <div class="bo-panel bo-panel-dist-stat">
+          <div class="bo-ph">
+            <span class="bo-ph-bar"></span>
+            <span class="bo-ph-title">当前在线人员血氧分布</span>
+            <span class="bo-ds-total">共 <em>{{ realtimeList.length }}</em> 人在线</span>
+          </div>
+          <div class="bo-ds-body">
+            <div class="bo-ds-zone" :class="z.cls" v-for="z in boZones" :key="z.key">
+              <div class="bo-ds-icon" :style="{color: z.color}">{{ z.icon }}</div>
+              <div class="bo-ds-count" :style="{color: z.color}">{{ z.count }}</div>
+              <div class="bo-ds-pct" :style="{color: z.color}">{{ z.pct }}%</div>
+              <div class="bo-ds-label">{{ z.label }}</div>
+              <div class="bo-ds-range">{{ z.range }}</div>
+            </div>
+          </div>
+          <div class="bo-ds-bar-row">
+            <div class="bo-ds-seg" v-for="z in boZones" :key="z.key"
+              :style="{width: z.pct + '%', background: z.color}"
+              :title="z.label + ': ' + z.count + '人'"></div>
+          </div>
+        </div>
+
+        <!-- 当前异常血氧明细 -->
+        <div class="bo-panel bo-panel-anomaly">
+          <div class="bo-ph">
+            <span class="bo-ph-bar"></span>
+            <span class="bo-ph-title">当前异常血氧明细</span>
+            <span class="bo-anomaly-count" v-if="boAnomalyList.length">
+              共 <em>{{ boAnomalyList.length }}</em> 人异常
+            </span>
+          </div>
+          <div v-if="!boAnomalyList.length" class="bo-anomaly-empty">
+            <span class="bo-anomaly-ok">✓</span> 当前无异常血氧人员
+          </div>
+          <div v-else class="bo-anomaly-body">
+            <div class="bo-anomaly-hd">
+              <span>姓名</span><span>部门</span><span>血氧</span><span>类型</span><span>时间</span>
+            </div>
+            <div class="bo-anomaly-list">
+              <div
+                class="bo-anomaly-row"
+                v-for="(item, i) in boAnomalyList"
+                :key="i"
+                :class="item.bloodOxygen < 90 ? 'anom-danger' : 'anom-low'"
+                @click="showDetail(item)"
+                style="cursor:pointer"
+              >
+                <span class="ba-name">{{ item.userName }}</span>
+                <span class="ba-dept">{{ item.deptName || item.dept_name || '--' }}</span>
+                <span class="ba-val">{{ item.bloodOxygen }}%</span>
+                <span class="ba-type">{{ item.bloodOxygen < 90 ? '危险↓↓' : '偏低↓' }}</span>
+                <span class="ba-time">{{ fmtTime(item.recordTime) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </main>
 
       <!-- ─ 右侧：实时列表 ─ -->
@@ -319,6 +377,24 @@ export default {
       let list = this.realtimeList
       if (this.filterDept) list = list.filter(x => (x.deptName || x.dept_name) === this.filterDept)
       return Math.max(1, Math.ceil(list.length / this.pageSize))
+    },
+    boZones() {
+      const list = this.realtimeList
+      const total = list.length || 1
+      const danger   = list.filter(x => x.bloodOxygen < 90).length
+      const low      = list.filter(x => x.bloodOxygen >= 90 && x.bloodOxygen < 95).length
+      const normal   = list.filter(x => x.bloodOxygen >= 95 && x.bloodOxygen < 99).length
+      const excellent = list.filter(x => x.bloodOxygen >= 99).length
+      const pct = n => list.length > 0 ? Math.round(n / total * 100) : 0
+      return [
+        { key: 'danger',    label: '危险', range: '< 90%',    count: danger,    pct: pct(danger),    color: '#ff5252', icon: '↓', cls: 'zone-danger'    },
+        { key: 'low',       label: '偏低', range: '90–94%',   count: low,       pct: pct(low),       color: '#FFB84D', icon: '↓', cls: 'zone-low'       },
+        { key: 'normal',    label: '正常', range: '95–98%',   count: normal,    pct: pct(normal),    color: '#52c41a', icon: '✓', cls: 'zone-normal'    },
+        { key: 'excellent', label: '优秀', range: '≥ 99%',    count: excellent, pct: pct(excellent), color: '#4FC3F7', icon: '↑', cls: 'zone-excellent' }
+      ]
+    },
+    boAnomalyList() {
+      return this.realtimeList.filter(x => x.bloodOxygen < 95)
     }
   },
   mounted() {
@@ -757,14 +833,14 @@ export default {
 
     setScale() {
       const el = this.$el; if (!el) return
-      const menuWidth = 155
-      const vw = (el.parentElement ? el.parentElement.clientWidth : window.innerWidth) - menuWidth
-      const vh = window.innerHeight - 50
-      const scale = Math.max(0.4, Math.min(2, Math.min(vw / 1920, vh / 1030)))
+      const bcr = el.getBoundingClientRect()
+      const vw = window.innerWidth - bcr.left
+      const vh = window.innerHeight - bcr.top
+      const scale = Math.max(0.4, Math.min(1, Math.min(vw / 1920, vh / 1030)))
       el.style.transformOrigin = 'top left'
       el.style.transform = `scale(${scale})`
-      el.style.width  = `${(1 / scale) * 100}%`
-      el.style.height = `${(1 / scale) * vh}px`
+      if (scale < 1) { el.style.width = `${(1/scale)*100}%`; el.style.height = `${(1/scale)*vh}px` }
+      else { el.style.width = '1920px'; el.style.height = '1030px' }
     },
     handleResize() {
       clearTimeout(this.resizeTimer)
@@ -1002,4 +1078,69 @@ $white:  #e8f4ff;
   &:disabled { opacity: 0.28; cursor: not-allowed; }
 }
 .bo-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; }
+
+// ── 血氧分布统计面板 ──
+.bo-panel-dist-stat { flex-shrink: 0; }
+.bo-ds-total {
+  margin-left: auto; font-size: 12px; color: $dim;
+  em { color: #93c5fd; font-style: normal; font-weight: 700; }
+}
+.bo-ds-body {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; padding: 6px 0 8px;
+}
+.bo-ds-zone {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 10px 8px 8px;
+  text-align: center; transition: background 0.15s;
+  &:hover { background: rgba(255,255,255,0.07); }
+  &.zone-danger    { border-color: rgba(255,82,82,0.2);   }
+  &.zone-low       { border-color: rgba(255,184,77,0.2);  }
+  &.zone-normal    { border-color: rgba(82,196,26,0.2);   }
+  &.zone-excellent { border-color: rgba(79,195,247,0.2);  }
+}
+.bo-ds-icon  { font-size: 16px; margin-bottom: 4px; }
+.bo-ds-count { font-size: 24px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
+.bo-ds-pct   { font-size: 11px; margin-top: 1px; }
+.bo-ds-label { font-size: 13px; font-weight: 600; color: $white; margin-top: 4px; }
+.bo-ds-range { font-size: 10px; color: $dim; margin-top: 2px; }
+.bo-ds-bar-row {
+  display: flex; height: 6px; border-radius: 3px; overflow: hidden;
+  background: rgba(255,255,255,0.05); margin-bottom: 2px;
+}
+.bo-ds-seg { transition: width 0.4s ease; min-width: 0; }
+
+// ── 异常血氧明细面板 ──
+.bo-panel-anomaly { flex-shrink: 0; }
+.bo-anomaly-count {
+  margin-left: auto; font-size: 12px; color: $dim;
+  em { color: #ff8a80; font-style: normal; font-weight: 700; }
+}
+.bo-anomaly-empty {
+  text-align: center; padding: 14px 0; font-size: 13px; color: $dim;
+}
+.bo-anomaly-ok { color: #52c41a; font-size: 15px; margin-right: 4px; }
+.bo-anomaly-body { display: flex; flex-direction: column; }
+.bo-anomaly-hd {
+  display: grid; grid-template-columns: 1.2fr 1.5fr 0.9fr 0.9fr 1.4fr;
+  padding: 4px 8px; font-size: 11px; color: $dim;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.bo-anomaly-list { max-height: 120px; overflow-y: auto; }
+.bo-anomaly-row {
+  display: grid; grid-template-columns: 1.2fr 1.5fr 0.9fr 0.9fr 1.4fr;
+  padding: 5px 8px; font-size: 12px; border-radius: 4px;
+  transition: background 0.15s;
+  &:hover { background: rgba(255,255,255,0.05); }
+  &.anom-danger { background: rgba(255,82,82,0.06); }
+  &.anom-low    { background: rgba(255,184,77,0.06); }
+}
+.ba-name { color: $white; font-weight: 500; }
+.ba-dept { color: $dim; }
+.ba-val  { color: #00d4ff; font-family: Consolas; font-weight: 700; }
+.ba-type { }
+.anom-danger .ba-type { color: #ff5252; font-weight: 600; }
+.anom-low    .ba-type { color: #FFB84D; font-weight: 600; }
+.ba-time { font-size: 10px; color: $dim; }
 </style>

@@ -558,18 +558,20 @@ export default {
     setScale() {
       const el = this.$el
       if (!el) return
-      const menuWidth = 155
-      const container = el.parentElement || el
-      const vw = (container.clientWidth || window.innerWidth) - menuWidth
-      const vh = window.innerHeight - 50
-      const scale = Math.max(0.4, Math.min(2, Math.min(vw / 1920, vh / 1030)))
+      // 用 BCR 直接读取元素实际位置：transform-origin:top-left 保证 left/top 在缩放前后稳定
+      const bcr = el.getBoundingClientRect()
+      const vw = window.innerWidth - bcr.left
+      const vh = window.innerHeight - bcr.top
+      const scale = Math.max(0.4, Math.min(1, Math.min(vw / 1920, vh / 1030)))
       el.style.transformOrigin = 'top left'
       el.style.transform = `scale(${scale})`
-      el.style.width  = `${(1 / scale) * 100}%`
-      const designH = (1 / scale) * vh
-      el.style.height = `${designH}px`
-      // rt-hd=60, rt-ph≈44, rt-pg≈46
-      this.tableHeight = Math.max(200, Math.floor(designH - 60 - 44 - 46))
+      if (scale < 1) { el.style.width = `${(1/scale)*100}%`; el.style.height = `${(1/scale)*vh}px` }
+      else { el.style.width = '1920px'; el.style.height = '1030px' }
+      // 读取 tbl-wrap 实际渲染高度（flex:1 自动撑满，无需估算 ph/pg 高度）
+      this.$nextTick(() => {
+        const wrap = this.$refs.tableWrapper
+        if (wrap) this.tableHeight = wrap.clientHeight
+      })
     },
 
     handleResize() {

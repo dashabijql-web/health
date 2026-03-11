@@ -710,14 +710,14 @@ export default {
 
     setScale() {
       const el = this.$el; if (!el) return
-      const menuWidth = 155
-      const vw = (el.parentElement ? el.parentElement.clientWidth : window.innerWidth) - menuWidth
-      const vh = window.innerHeight - 50
-      const scale = Math.max(0.4, Math.min(2, Math.min(vw / 1920, vh / 1030)))
+      const bcr = el.getBoundingClientRect()
+      const vw = window.innerWidth - bcr.left
+      const vh = window.innerHeight - bcr.top
+      const scale = Math.max(0.4, Math.min(1, Math.min(vw / 1920, vh / 1030)))
       el.style.transformOrigin = 'top left'
       el.style.transform = `scale(${scale})`
-      el.style.width  = `${(1/scale)*100}%`
-      el.style.height = `${(1/scale)*vh}px`
+      if (scale < 1) { el.style.width = `${(1/scale)*100}%`; el.style.height = `${(1/scale)*vh}px` }
+      else { el.style.width = '1920px'; el.style.height = '1030px' }
     },
     handleResize() {
       clearTimeout(this.resizeTimer)

@@ -144,7 +144,7 @@
           </div>
         </div>
 
-        <!-- 趋势：占剩余全部高度 -->
+        <!-- 趋势：固定高度 -->
         <div class="hr-panel hr-panel-trend">
           <div class="hr-ph">
             <span class="hr-ph-bar"></span>
@@ -157,6 +157,64 @@
           </div>
           <div class="hr-pc">
             <div ref="trendRef" style="width:100%;height:100%"></div>
+          </div>
+        </div>
+
+        <!-- 心率区间分布统计 -->
+        <div class="hr-panel hr-panel-dist-stat">
+          <div class="hr-ph">
+            <span class="hr-ph-bar"></span>
+            <span class="hr-ph-title">当前在线人员心率分布</span>
+            <span class="hr-ds-total">共 <em>{{ realtimeList.length }}</em> 人在线</span>
+          </div>
+          <div class="hr-ds-body">
+            <div class="hr-ds-zone" :class="z.cls" v-for="z in hrZones" :key="z.key">
+              <div class="hr-ds-icon" :style="{color: z.color}">{{ z.icon }}</div>
+              <div class="hr-ds-count" :style="{color: z.color}">{{ z.count }}</div>
+              <div class="hr-ds-pct" :style="{color: z.color}">{{ z.pct }}%</div>
+              <div class="hr-ds-label">{{ z.label }}</div>
+              <div class="hr-ds-range">{{ z.range }}</div>
+            </div>
+          </div>
+          <div class="hr-ds-bar-row">
+            <div class="hr-ds-seg" v-for="z in hrZones" :key="z.key"
+              :style="{width: z.pct + '%', background: z.color}"
+              :title="z.label + ': ' + z.count + '人'"></div>
+          </div>
+        </div>
+
+        <!-- 当前异常心率明细：高度跟内容走，不拉伸 -->
+        <div class="hr-panel hr-panel-anomaly">
+          <div class="hr-ph">
+            <span class="hr-ph-bar"></span>
+            <span class="hr-ph-title">当前异常心率明细</span>
+            <span class="hr-anomaly-count" v-if="anomalyList.length">
+              共 <em>{{ anomalyList.length }}</em> 人异常
+            </span>
+          </div>
+          <div v-if="!anomalyList.length" class="hr-anomaly-empty">
+            <span class="hr-anomaly-ok">✓</span> 当前无异常心率人员
+          </div>
+          <div v-else class="hr-anomaly-body">
+            <div class="hr-anomaly-hd">
+              <span>姓名</span><span>部门</span><span>心率</span><span>类型</span><span>时间</span>
+            </div>
+            <div class="hr-anomaly-list">
+              <div
+                class="hr-anomaly-row"
+                v-for="(item, i) in anomalyList"
+                :key="i"
+                :class="item.heartRate > 120 ? 'anom-high' : 'anom-low'"
+                @click="showDetail(item)"
+                style="cursor:pointer"
+              >
+                <span class="ha-name">{{ item.userName }}</span>
+                <span class="ha-dept">{{ item.deptName || item.dept_name || '--' }}</span>
+                <span class="ha-val">{{ item.heartRate }} bpm</span>
+                <span class="ha-type">{{ item.heartRate > 120 ? '偏高↑' : '偏低↓' }}</span>
+                <span class="ha-time">{{ fmtTime(item.recordTime) }}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -335,6 +393,29 @@ export default {
       let list = this.realtimeList
       if (this.filterDept) list = list.filter(x => (x.deptName || x.dept_name) === this.filterDept)
       return Math.max(1, Math.ceil(list.length / this.pageSize))
+    },
+    anomalyList() {
+      return this.realtimeList.filter(x => x.heartRate > 120 || x.heartRate < 55)
+    },
+    anomalyPanelH() {
+      const PH = 36, HD = 26, ROW = 27, PAD = 10
+      if (!this.anomalyList.length) return PH + 46
+      return PH + HD + Math.min(this.anomalyList.length, 12) * ROW + PAD
+    },
+    hrZones() {
+      const list = this.realtimeList
+      const total = list.length || 1
+      const low      = list.filter(x => x.heartRate < 55).length
+      const danger   = list.filter(x => x.heartRate > 150).length
+      const elevated = list.filter(x => x.heartRate > 120 && x.heartRate <= 150).length
+      const normal   = total - low - danger - elevated
+      const pct = n => list.length > 0 ? Math.round(n / total * 100) : 0
+      return [
+        { key: 'low',      label: '偏低', range: '< 55 bpm',     count: low,      pct: pct(low),      color: '#4FC3F7', icon: '↓', cls: 'zone-low'      },
+        { key: 'normal',   label: '正常', range: '55–120 bpm',   count: normal,   pct: pct(normal),   color: '#52c41a', icon: '✓', cls: 'zone-normal'   },
+        { key: 'elevated', label: '偏高', range: '121–150 bpm',  count: elevated, pct: pct(elevated), color: '#FFB84D', icon: '↑', cls: 'zone-elevated' },
+        { key: 'danger',   label: '危险', range: '> 150 bpm',    count: danger,   pct: pct(danger),   color: '#ff5252', icon: '⚠', cls: 'zone-danger'   }
+      ]
     }
   },
   mounted() {
@@ -766,14 +847,30 @@ export default {
 
     setScale() {
       const el = this.$el; if (!el) return
-      const menuWidth = 155
-      const vw = (el.parentElement ? el.parentElement.clientWidth : window.innerWidth) - menuWidth
-      const vh = window.innerHeight - 50
-      const scale = Math.max(0.4, Math.min(2, Math.min(vw / 1920, vh / 1030)))
+      // 用 BCR 直接读取元素实际位置：transform-origin:top-left 保证 left/top 在缩放前后稳定
+      const bcr = el.getBoundingClientRect()
+      const vw = window.innerWidth - bcr.left   // 可用宽度 = 窗口宽 - 侧边栏实际宽
+      const vh = window.innerHeight - bcr.top   // 可用高度 = 窗口高 - 顶栏实际高
+      const scale = Math.max(0.4, Math.min(1, Math.min(vw / 1920, vh / 1030)))
       el.style.transformOrigin = 'top left'
       el.style.transform = `scale(${scale})`
-      el.style.width  = `${(1 / scale) * 100}%`
-      el.style.height = `${(1 / scale) * vh}px`
+      if (scale < 1) {
+        el.style.width  = `${(1 / scale) * 100}%`
+        el.style.height = `${(1 / scale) * vh}px`
+      } else {
+        el.style.width  = '1920px'
+        el.style.height = '1030px'
+      }
+      this.$nextTick(() => this.setPageSize())
+    },
+    setPageSize() {
+      const el = this.$refs.listRef; if (!el) return
+      const ROW_H = 27  // hr-rt-row: 6+6 padding + ~14px line + 1px margin
+      const n = Math.max(10, Math.floor(el.clientHeight / ROW_H))
+      if (n !== this.pageSize) {
+        this.pageSize = n
+        this.currentPage = 1
+      }
     },
     handleResize() {
       clearTimeout(this.resizeTimer)
@@ -923,7 +1020,7 @@ $white:  #e8f4ff;
 .hr-panel-age      { flex: 0 0 340px; }
 .hr-panel-hourly   { flex: 1; }
 .hr-panel-dist     { flex: 0 0 258px; }
-.hr-panel-trend    { flex: 1; min-height: 0; }
+.hr-panel-trend    { flex: 1; min-height: 160px; max-height: 300px; }
 
 // ── Right list ──
 .hr-rtlist { width: 272px; flex-shrink: 0; }
@@ -1087,4 +1184,83 @@ $white:  #e8f4ff;
   &:disabled { opacity: 0.28; cursor: not-allowed; }
 }
 .hr-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; }
+
+// ── 异常明细面板 ──
+.hr-panel-anomaly { flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+.hr-anomaly-count {
+  margin-left: auto; font-size: 12px; color: #FFB84D;
+  em { font-style: normal; font-weight: 700; }
+}
+.hr-anomaly-empty {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: rgba(82,196,26,0.8);
+  .hr-anomaly-ok { font-size: 16px; margin-right: 6px; }
+}
+.hr-anomaly-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.hr-anomaly-hd {
+  display: grid; grid-template-columns: 64px 1fr 72px 52px 88px;
+  gap: 6px; padding: 4px 10px; flex-shrink: 0;
+  background: rgba(255,184,77,0.06);
+  span { font-size: 11px; color: $dim; font-weight: 600; }
+}
+.hr-anomaly-list {
+  flex: 1; overflow-y: auto; padding: 3px 6px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,184,77,0.2); border-radius: 2px; }
+}
+.hr-anomaly-row {
+  display: grid; grid-template-columns: 64px 1fr 72px 52px 88px;
+  gap: 6px; padding: 5px 4px; margin-bottom: 1px;
+  border-radius: 4px; align-items: center;
+  border-left: 2px solid transparent;
+  transition: background 0.15s;
+  &:hover { background: rgba(255,255,255,0.04); }
+  &.anom-high { border-left-color: rgba(255,184,77,0.6); background: rgba(255,184,77,0.04); }
+  &.anom-low  { border-left-color: rgba(79,195,247,0.6); background: rgba(79,195,247,0.04); }
+}
+.ha-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ha-dept { font-size: 11px; color: $dim; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ha-val  {
+  font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace;
+  .anom-high & { color: #FFB84D; }
+  .anom-low  & { color: #4FC3F7; }
+}
+.ha-type {
+  font-size: 11px; padding: 1px 5px; border-radius: 3px; text-align: center;
+  .anom-high & { color: #FFB84D; background: rgba(255,184,77,0.12); border: 1px solid rgba(255,184,77,0.25); }
+  .anom-low  & { color: #4FC3F7; background: rgba(79,195,247,0.12); border: 1px solid rgba(79,195,247,0.25); }
+}
+.ha-time { font-size: 10px; color: $dim; }
+
+// ── 心率分布统计面板 ──
+.hr-panel-dist-stat { flex-shrink: 0; }
+.hr-ds-total {
+  margin-left: auto; font-size: 12px; color: $dim;
+  em { color: #93c5fd; font-style: normal; font-weight: 700; }
+}
+.hr-ds-body {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; padding: 6px 0 8px;
+}
+.hr-ds-zone {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 10px 8px 8px;
+  text-align: center; transition: background 0.15s;
+  &:hover { background: rgba(255,255,255,0.07); }
+  &.zone-low     { border-color: rgba(79,195,247,0.2);  }
+  &.zone-normal  { border-color: rgba(82,196,26,0.2);   }
+  &.zone-elevated{ border-color: rgba(255,184,77,0.2);  }
+  &.zone-danger  { border-color: rgba(255,82,82,0.2);   }
+}
+.hr-ds-icon  { font-size: 16px; margin-bottom: 4px; }
+.hr-ds-count { font-size: 24px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
+.hr-ds-pct   { font-size: 11px; margin-top: 1px; }
+.hr-ds-label { font-size: 13px; font-weight: 600; color: $white; margin-top: 4px; }
+.hr-ds-range { font-size: 10px; color: $dim; margin-top: 2px; }
+.hr-ds-bar-row {
+  display: flex; height: 6px; border-radius: 3px; overflow: hidden;
+  background: rgba(255,255,255,0.05); margin-bottom: 2px;
+}
+.hr-ds-seg { transition: width 0.4s ease; min-width: 0; }
 </style>
