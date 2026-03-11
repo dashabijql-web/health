@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <el-breadcrumb class="app-breadcrumb" separator="/">
     <transition-group name="breadcrumb">
       <el-breadcrumb-item v-for="(item,index) in levelList" :key="item.path">
@@ -10,7 +10,7 @@
 </template>
 
 <script>
-import pathToRegexp from 'path-to-regexp'
+import { pathToRegexp } from 'path-to-regexp'
 
 export default {
   data() {
@@ -33,7 +33,7 @@ export default {
       const first = matched[0]
 
       if (!this.isDashboard(first)) {
-        matched = [{ path: '/dashboard', meta: { title: 'Dashboard' }}].concat(matched)
+        matched = [{ path: '/health-monitor/dashboard', meta: { title: '健康监测' }}].concat(matched)
       }
 
       this.levelList = matched.filter(item => item.meta && item.meta.title && item.meta.breadcrumb !== false)
@@ -43,7 +43,7 @@ export default {
       if (!name) {
         return false
       }
-      return name.trim().toLocaleLowerCase() === 'Dashboard'.toLocaleLowerCase()
+      return name.trim().toLocaleLowerCase() === 'HealthMonitor'.toLocaleLowerCase()
     },
     pathCompile(path) {
       // To solve this problem https://github.com/PanJiaChen/vue-element-admin/issues/561
@@ -69,10 +69,17 @@ export default {
   font-size: 14px;
   line-height: 50px;
   margin-left: 8px;
-
   .no-redirect {
     color: #97a8be;
     cursor: text;
+  }
+  a {
+    color: #00d4ff;
+    transition: color 0.3s ease;
+    &:hover { color: #00ffff; }
+  }
+  :deep(.el-breadcrumb__separator) {
+    color: #5a7ba6;
   }
 }
 </style>

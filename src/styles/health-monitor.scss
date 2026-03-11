@@ -1,0 +1,442 @@
+// 深蓝色科技风主题样式
+// src/styles/health-monitor.scss
+
+// ============ 主题色定义 ============
+$primary-bg: #0a1e3d;
+$secondary-bg: #0d2847;
+$card-bg: rgba(13, 40, 71, 0.8);
+$border-color: #1a4d8f;
+$border-glow: #00d4ff;
+$text-primary: #ffffff;
+$text-secondary: #8ba6c8;
+$text-muted: #5a7ba6;
+$accent-blue: #00d4ff;
+$accent-cyan: #00ffff;
+$warning-color: #ff9800;
+$danger-color: #f44336;
+$success-color: #4caf50;
+$gradient-blue: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+
+// ============ 全局容器样式 ============
+.health-monitor-container {
+  position: relative;
+  min-height: 100vh;
+  background: $primary-bg;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(42, 82, 152, 0.15) 0%, transparent 50%);
+  padding: 20px;
+  overflow-x: hidden;
+  
+  // 网格背景
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      linear-gradient(rgba(26, 77, 143, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26, 77, 143, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+// ============ 头部标题 ============
+.health-monitor-header {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin-bottom: 30px;
+  
+  .main-title {
+    font-size: 36px;
+    font-weight: bold;
+    color: $text-primary;
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    letter-spacing: 4px;
+    margin: 0;
+    padding: 20px 0;
+    background: linear-gradient(to right, transparent, $card-bg, transparent);
+    border-top: 2px solid $border-glow;
+    border-bottom: 2px solid $border-glow;
+    
+    &::before,
+    &::after {
+      content: '';
+      display: inline-block;
+      width: 40px;
+      height: 2px;
+      background: $accent-blue;
+      vertical-align: middle;
+      margin: 0 20px;
+    }
+  }
+  
+  .sub-title {
+    color: $text-secondary;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+  
+  .header-time {
+    position: absolute;
+    top: 50%;
+    right: 30px;
+    transform: translateY(-50%);
+    color: $accent-blue;
+    font-size: 18px;
+    font-weight: bold;
+    font-family: 'Consolas', monospace;
+  }
+}
+
+// ============ 卡片样式 ============
+.tech-card {
+  background: $card-bg;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, $accent-blue, transparent);
+  }
+  
+  &:hover {
+    border-color: $border-glow;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    transform: translateY(-2px);
+  }
+  
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(26, 77, 143, 0.5);
+    
+    .card-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: $text-primary;
+      display: flex;
+      align-items: center;
+      
+      &::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 18px;
+        background: $accent-blue;
+        margin-right: 10px;
+      }
+    }
+    
+    .card-extra {
+      color: $text-secondary;
+      font-size: 14px;
+    }
+  }
+  
+  .card-body {
+    color: $text-primary;
+  }
+}
+
+// ============ 数据卡片 ============
+.data-card {
+  background: $card-bg;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    bottom: -50%;
+    left: -50%;
+    background: linear-gradient(to bottom, transparent, rgba(0, 212, 255, 0.1), transparent);
+    transform: rotate(45deg);
+    transition: all 0.5s ease;
+  }
+  
+  &:hover {
+    border-color: $accent-blue;
+    box-shadow: 0 0 25px rgba(0, 212, 255, 0.4);
+    transform: translateY(-5px);
+    
+    &::after {
+      animation: shine 1.5s ease infinite;
+    }
+  }
+  
+  .data-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    background: $gradient-blue;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .data-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: $accent-blue;
+    margin-bottom: 10px;
+    font-family: 'Consolas', monospace;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+  }
+  
+  .data-label {
+    font-size: 14px;
+    color: $text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  
+  .data-trend {
+    margin-top: 10px;
+    font-size: 12px;
+    
+    &.up {
+      color: $success-color;
+      
+      &::before {
+        content: '↑';
+        margin-right: 5px;
+      }
+    }
+    
+    &.down {
+      color: $danger-color;
+      
+      &::before {
+        content: '↓';
+        margin-right: 5px;
+      }
+    }
+  }
+}
+
+// ============ 进度条样式 ============
+.tech-progress {
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: $text-secondary;
+    font-size: 14px;
+  }
+  
+  .progress-bar-wrapper {
+    height: 8px;
+    background: rgba(26, 77, 143, 0.3);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(to right, $accent-blue, $accent-cyan);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+      position: relative;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent);
+        animation: progressShine 2s ease infinite;
+      }
+    }
+  }
+}
+
+// ============ 状态标签 ============
+.status-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  
+  &.normal {
+    background: rgba(76, 175, 80, 0.2);
+    color: $success-color;
+    border: 1px solid $success-color;
+  }
+  
+  &.warning {
+    background: rgba(255, 152, 0, 0.2);
+    color: $warning-color;
+    border: 1px solid $warning-color;
+  }
+  
+  &.danger {
+    background: rgba(244, 67, 54, 0.2);
+    color: $danger-color;
+    border: 1px solid $danger-color;
+  }
+}
+
+// ============ 表格样式 ============
+.tech-table {
+  width: 100%;
+  border-collapse: collapse;
+  
+  thead {
+    tr {
+      background: rgba(26, 77, 143, 0.3);
+      
+      th {
+        padding: 12px;
+        text-align: left;
+        color: $accent-blue;
+        font-weight: bold;
+        font-size: 14px;
+        border-bottom: 2px solid $border-color;
+      }
+    }
+  }
+  
+  tbody {
+    tr {
+      border-bottom: 1px solid rgba(26, 77, 143, 0.2);
+      transition: all 0.3s ease;
+      
+      &:hover {
+        background: rgba(0, 212, 255, 0.05);
+      }
+      
+      td {
+        padding: 12px;
+        color: $text-primary;
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+// ============ 圆形进度 ============
+.circle-progress {
+  position: relative;
+  display: inline-block;
+  
+  .progress-svg {
+    transform: rotate(-90deg);
+  }
+  
+  .progress-bg {
+    fill: none;
+    stroke: rgba(26, 77, 143, 0.3);
+  }
+  
+  .progress-bar {
+    fill: none;
+    stroke: $accent-blue;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease;
+  }
+  
+  .progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    
+    .value {
+      font-size: 24px;
+      font-weight: bold;
+      color: $accent-blue;
+      font-family: 'Consolas', monospace;
+    }
+    
+    .label {
+      font-size: 12px;
+      color: $text-secondary;
+      margin-top: 5px;
+    }
+  }
+}
+
+// ============ 动画定义 ============
+@keyframes shine {
+  0% {
+    transform: rotate(45deg) translateY(-100%);
+  }
+  100% {
+    transform: rotate(45deg) translateY(100%);
+  }
+}
+
+@keyframes progressShine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+// ============ 响应式 ============
+@media screen and (max-width: 1920px) {
+  .health-monitor-header .main-title {
+    font-size: 32px;
+  }
+}
+
+@media screen and (max-width: 1366px) {
+  .health-monitor-header .main-title {
+    font-size: 28px;
+  }
+  
+  .data-card .data-value {
+    font-size: 28px;
+  }
+}

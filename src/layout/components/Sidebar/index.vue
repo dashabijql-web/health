@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div :class="{'has-logo':showLogo}">
     <logo v-if="showLogo" :collapse="isCollapse" />
     <el-scrollbar wrap-class="scrollbar-wrapper">
@@ -12,8 +12,13 @@
         :collapse-transition="false"
         mode="vertical"
       >
-        <!-- 潘xx:遍历菜单栏的时候，开始遍历的都是常量路由 -->
-        <sidebar-item v-for="route in routes" :key="route.path" :item="route" :base-path="route.path" />
+        <sidebar-item
+          v-for="route in routes"
+          :key="route.path"
+          :item="route"
+          :base-path="route.path"
+          :is-collapse="isCollapse"
+        />
       </el-menu>
     </el-scrollbar>
   </div>
@@ -21,35 +26,34 @@
 
 <script>
 import { mapGetters } from 'vuex'
-import Logo from './Logo'
-import SidebarItem from './SidebarItem'
-import variables from '@/styles/variables.scss'
+import Logo from './Logo.vue'
+import SidebarItem from './SidebarItem.vue'
+import {constantRoutes} from '@/router';
+
+const menuVariables = {
+  menuBg: '#304156',
+  menuText: '#bfcbd9',
+  menuActiveText: '#409EFF'
+}
 
 export default {
   components: { SidebarItem, Logo },
   computed: {
-    ...mapGetters([
-      'sidebar'
-    ]),
-    //应该替换为仓库中已经计算好的需要展示的全部路由
+    ...mapGetters(['sidebar']),
     routes() {
-      //sliderbar：需要遍历的应该是仓库计算完毕的全部路由
-      return this.$store.state.user.resultAllRputes;
+      return this.$store.state.user.resultAllRoutes;
     },
     activeMenu() {
       const route = this.$route
       const { meta, path } = route
-      // if set path, the sidebar will highlight the path you set
-      if (meta.activeMenu) {
-        return meta.activeMenu
-      }
+      if (meta.activeMenu) return meta.activeMenu
       return path
     },
     showLogo() {
       return this.$store.state.settings.sidebarLogo
     },
     variables() {
-      return variables
+      return menuVariables
     },
     isCollapse() {
       return !this.sidebar.opened
@@ -57,3 +61,44 @@ export default {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+:deep(.el-menu--vertical) {
+  /* overflow: hidden removed — allow el-scrollbar to scroll */
+}
+
+/* 收缩时：只隐藏文字标签，保留图标 */
+:deep(.el-menu--collapse) {
+  .menu-title {
+    display: none !important;
+  }
+
+  .el-submenu__icon-arrow,
+  .el-sub-menu__icon-arrow {
+    display: none !important;
+  }
+
+  .el-menu-item,
+  .el-submenu__title,
+  .el-sub-menu__title {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    width: 36px !important;
+
+    .sub-el-icon, .svg-icon, svg {
+      margin: 0 !important;
+      font-size: 18px;
+    }
+  }
+}
+
+:deep(.el-menu--vertical.el-menu--collapse) {
+  .el-submenu > .el-submenu__title,
+  .el-sub-menu > .el-sub-menu__title {
+    overflow: hidden;
+    white-space: nowrap;
+  }
+}
+</style>

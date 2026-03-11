@@ -1,0 +1,106 @@
+import request from '@/utils/request'
+
+/**
+ * 获取心率统计概览
+ */
+export function getHeartRateOverview(startDate, endDate) {
+  return request({
+    url: '/heart-rate/overview',
+    method: 'get',
+    params: { startDate, endDate }
+  })
+}
+
+/**
+ * 获取心率趋势数据
+ * @param {Number} days 天数，默认7天
+ */
+export function getHeartRateTrend(days = 7) {
+  return request({
+    url: '/heart-rate/trend',
+    method: 'get',
+    params: { days }
+  })
+}
+
+/**
+ * 获取心率分布数据
+ */
+export function getHeartRateDistribution(startDate, endDate) {
+  return request({
+    url: '/heart-rate/distribution',
+    method: 'get',
+    params: { startDate, endDate }
+  })
+}
+
+/**
+ * 获取异常心率记录
+ * @param {Number} page 页码
+ * @param {Number} size 每页条数
+ */
+export function getAbnormalHeartRate(page = 1, size = 10) {
+  return request({
+    url: '/heart-rate/abnormal',
+    method: 'get',
+    params: { page, size }
+  })
+}
+
+/**
+ * 获取TOP用户心率数据
+ * @param {Number} limit 返回数量，默认5
+ */
+export function getTopUsers(limit = 5, startDate, endDate) {
+  return request({
+    url: '/heart-rate/top-users',
+    method: 'get',
+    params: { limit, startDate, endDate }
+  })
+}
+
+/**
+ * 获取部门心率异常统计
+ */
+export function getDeptAbnormalStats(startDate, endDate) {
+  return request({
+    url: '/heart-rate/department-stats',
+    method: 'get',
+    params: { startDate, endDate }
+  })
+}
+
+/**
+ * 获取各年龄段平均心率
+ */
+export function getAgeHeartRate() {
+  return request({
+    url: '/heart-rate/age-stats',
+    method: 'get'
+  })
+}
+
+/**
+ * 获取实时心率数据
+ * @param {Number} limit 返回数量，默认20
+ */
+export function getRealtimeHeartRate(limit = 20) {
+  return request({
+    url: '/heart-rate/realtime',
+    method: 'get',
+    params: { limit }
+  })
+}
+
+/**
+ * 获取逐小时平均心率（支持单日或日期范围）
+ * @param {String} startDate 开始日期 YYYY-MM-DD
+ * @param {String} endDate 结束日期 YYYY-MM-DD
+ */
+export function getHourlyHeartRate(startDate, endDate) {
+  return request({
+    url: '/heart-rate/hourly',
+    method: 'get',
+    params: { startDate, endDate }
+  })
+}

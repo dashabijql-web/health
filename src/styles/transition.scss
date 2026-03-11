@@ -6,34 +6,39 @@
   transition: opacity 0.28s;
 }
 
-.fade-enter,
+.fade-enter-from,
 .fade-leave-active {
   opacity: 0;
 }
 
 /* fade-transform */
+/*
+ * ⭐ 只用 opacity 过渡，不加 transform。
+ * 原因：部分页面（dashboard/real-time）用 JS setScale() 给根元素设置了
+ * 内联 transform: scale(...)，内联样式优先级高于 CSS 类，
+ * 导致 leave-to 的 transform 不生效 → transitionend 不触发 →
+ * Vue mode="out-in" 卡在旧页面 leave 阶段 → 新页面永远不 enter → 空白页。
+ */
 .fade-transform-leave-active,
 .fade-transform-enter-active {
-  transition: all .5s;
+  transition: opacity .25s;
 }
 
-.fade-transform-enter {
+.fade-transform-enter-from {
   opacity: 0;
-  transform: translateX(-30px);
 }
 
 .fade-transform-leave-to {
   opacity: 0;
-  transform: translateX(30px);
 }
 
 /* breadcrumb transition */
 .breadcrumb-enter-active,
 .breadcrumb-leave-active {
-  transition: all .5s;
+  transition: opacity .3s, transform .3s;
 }
 
-.breadcrumb-enter,
+.breadcrumb-enter-from,
 .breadcrumb-leave-active {
   opacity: 0;
   transform: translateX(20px);

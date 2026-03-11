@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div :class="classObj" class="app-wrapper">
     <div v-if="device==='mobile'&&sidebar.opened" class="drawer-bg" @click="handleClickOutside" />
     <sidebar class="sidebar-container" />
@@ -51,8 +51,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-  @import "~@/styles/mixin.scss";
-  @import "~@/styles/variables.scss";
+  @import "@/styles/mixin.scss";
+  @import "@/styles/variables.scss";
 
   .app-wrapper {
     @include clearfix;
@@ -84,7 +84,7 @@ export default {
   }
 
   .hideSidebar .fixed-header {
-    width: calc(100% - 54px)
+    width: calc(100% - 36px)
   }
 
   .mobile .fixed-header {

@@ -5,6 +5,8 @@
     transition: margin-left .28s;
     margin-left: $sideBarWidth;
     position: relative;
+    overflow-x: hidden;
+    width: calc(100% - #{$sideBarWidth});
   }
 
   .sidebar-container {
@@ -20,7 +22,6 @@
     z-index: 1001;
     overflow: hidden;
 
-    // reset element-ui css
     .horizontal-collapse-transition {
       transition: 0s width ease-in-out, 0s padding-left ease-in-out, 0s padding-right ease-in-out;
     }
@@ -64,11 +65,11 @@
 
     .el-menu {
       border: none;
-      height: 100%;
+      height: auto;  /* 改为auto，让内容自然撑高，el-scrollbar才能正常滚动 */
       width: 100% !important;
     }
 
-    // menu hover
+    // hover — Element UI 旧类名
     .submenu-title-noDropdown,
     .el-submenu__title {
       &:hover {
@@ -76,10 +77,19 @@
       }
     }
 
-    .is-active>.el-submenu__title {
+    // hover — Element Plus 新类名
+    .el-sub-menu__title {
+      &:hover {
+        background-color: $menuHover !important;
+      }
+    }
+
+    .is-active>.el-submenu__title,
+    .is-active>.el-sub-menu__title {
       color: $subMenuActiveText !important;
     }
 
+    // 子菜单背景色 — Element UI 旧类名
     & .nest-menu .el-submenu>.el-submenu__title,
     & .el-submenu .el-menu-item {
       min-width: $sideBarWidth !important;
@@ -89,15 +99,45 @@
         background-color: $subMenuHover !important;
       }
     }
+
+    // 子菜单背景色 — Element Plus 新类名（Vue3 核心修复）
+    // 展开后子菜单容器类名是 .el-menu--inline
+    .el-menu--inline {
+      background-color: $subMenuBg !important;
+
+      .el-menu-item {
+        background-color: $subMenuBg !important;
+        min-width: $sideBarWidth !important;
+
+        &:hover {
+          background-color: $subMenuHover !important;
+        }
+
+        &.is-active {
+          background-color: $subMenuHover !important;
+        }
+      }
+
+      .el-sub-menu__title {
+        background-color: $subMenuBg !important;
+        min-width: $sideBarWidth !important;
+
+        &:hover {
+          background-color: $subMenuHover !important;
+        }
+      }
+    }
   }
 
   .hideSidebar {
     .sidebar-container {
-      width: 54px !important;
+      width: 36px !important;
+      overflow: hidden !important;
     }
 
     .main-container {
-      margin-left: 54px;
+      margin-left: 36px;
+      width: calc(100% - 36px);
     }
 
     .submenu-title-noDropdown {
@@ -117,51 +157,53 @@
       }
     }
 
+    // Element UI 旧类名
     .el-submenu {
       overflow: hidden;
 
       &>.el-submenu__title {
         padding: 0 !important;
 
-        .svg-icon {
-          margin-left: 20px;
-        }
+        .svg-icon { margin-left: 20px; }
+        .sub-el-icon { margin-left: 19px; }
+        .el-submenu__icon-arrow { display: none; }
+      }
+    }
 
-        .sub-el-icon {
-          margin-left: 19px;
-        }
+    // Element Plus 新类名
+    .el-sub-menu {
+      overflow: hidden;
 
-        .el-submenu__icon-arrow {
-          display: none;
-        }
+      &>.el-sub-menu__title {
+        padding: 0 !important;
+
+        .svg-icon { margin-left: 20px; }
+        .sub-el-icon { margin-left: 19px; }
+        .el-sub-menu__icon-arrow { display: none; }
       }
     }
 
     .el-menu--collapse {
       .el-submenu {
-        &>.el-submenu__title {
-          &>span {
-            height: 0;
-            width: 0;
-            overflow: hidden;
-            visibility: hidden;
-            display: inline-block;
-          }
+        &>.el-submenu__title>span {
+          height: 0; width: 0; overflow: hidden;
+          visibility: hidden; display: inline-block;
+        }
+      }
+      .el-sub-menu {
+        &>.el-sub-menu__title>span {
+          height: 0; width: 0; overflow: hidden;
+          visibility: hidden; display: inline-block;
         }
       }
     }
   }
 
-  .el-menu--collapse .el-menu .el-submenu {
-    min-width: $sideBarWidth !important;
-  }
+  .el-menu--collapse .el-menu .el-submenu { min-width: 36px !important; }
+  .el-menu--collapse .el-menu .el-sub-menu { min-width: 36px !important; }
 
-  // mobile responsive
   .mobile {
-    .main-container {
-      margin-left: 0px;
-    }
-
+    .main-container { margin-left: 0px; }
     .sidebar-container {
       transition: transform .28s;
       width: $sideBarWidth !important;
@@ -177,7 +219,6 @@
   }
 
   .withoutAnimation {
-
     .main-container,
     .sidebar-container {
       transition: none;
@@ -188,39 +229,31 @@
 // when menu collapsed
 .el-menu--vertical {
   &>.el-menu {
-    .svg-icon {
-      margin-right: 16px;
-    }
-    .sub-el-icon {
-      margin-right: 12px;
-      margin-left: -2px;
-    }
+    .svg-icon { margin-right: 16px; }
+    .sub-el-icon { margin-right: 12px; margin-left: -2px; }
   }
 
+  // Element UI 旧类名
   .nest-menu .el-submenu>.el-submenu__title,
   .el-menu-item {
     &:hover {
-      // you can use $subMenuHover
       background-color: $menuHover !important;
     }
   }
 
-  // the scroll bar appears when the subMenu is too long
+  // Element Plus 新类名
+  .nest-menu .el-sub-menu>.el-sub-menu__title {
+    &:hover {
+      background-color: $menuHover !important;
+    }
+  }
+
   >.el-menu--popup {
     max-height: 100vh;
     overflow-y: auto;
 
-    &::-webkit-scrollbar-track-piece {
-      background: #d3dce6;
-    }
-
-    &::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: #99a9bf;
-      border-radius: 20px;
-    }
+    &::-webkit-scrollbar-track-piece { background: #d3dce6; }
+    &::-webkit-scrollbar { width: 6px; }
+    &::-webkit-scrollbar-thumb { background: #99a9bf; border-radius: 20px; }
   }
 }

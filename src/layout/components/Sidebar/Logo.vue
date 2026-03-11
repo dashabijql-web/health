@@ -36,7 +36,7 @@ export default {
   transition: opacity 1.5s;
 }
 
-.sidebarLogoFade-enter,
+.sidebarLogoFade-enter-from,
 .sidebarLogoFade-leave-to {
   opacity: 0;
 }

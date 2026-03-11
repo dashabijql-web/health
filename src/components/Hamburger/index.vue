@@ -1,5 +1,5 @@
 <template>
-  <div style="padding: 0 15px;" @click="toggleClick">
+  <div style="padding: 0 15px; display:flex; align-items:center; height:100%;" @click="toggleClick">
     <svg
       :class="{'is-active':isActive}"
       class="hamburger"
@@ -34,8 +34,15 @@ export default {
 .hamburger {
   display: inline-block;
   vertical-align: middle;
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
+  fill: #00d4ff;
+  filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.5));
+  transition: transform 0.3s, filter 0.3s;
+}
+
+.hamburger:hover {
+  filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.9));
 }
 
 .hamburger.is-active {
