@@ -23,3 +23,11 @@ export function getBPDeptStats(startDate, endDate) {
 export function getBPAbnormal(page = 1, size = 10) {
   return request({ url: '/blood-pressure/abnormal', method: 'get', params: { page, size } })
 }
+
+export function getBPRealtime(limit = 1000) {
+  return request({ url: '/blood-pressure/realtime', method: 'get', params: { limit } })
+}
+
+export function getBPHourly(date) {
+  return request({ url: '/blood-pressure/hourly', method: 'get', params: { date } })
+}

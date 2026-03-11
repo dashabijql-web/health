@@ -18,3 +18,11 @@ export function getPressureDeptStats(startDate, endDate) {
 export function getPressureAbnormal(page = 1, size = 10) {
   return request({ url: '/pressure/abnormal', method: 'get', params: { page, size } })
 }
+
+export function getPressureRealtime(limit = 1000) {
+  return request({ url: '/pressure/realtime', method: 'get', params: { limit } })
+}
+
+export function getPressureHourly(date) {
+  return request({ url: '/pressure/hourly', method: 'get', params: { date } })
+}

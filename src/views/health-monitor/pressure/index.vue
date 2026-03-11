@@ -1,148 +1,246 @@
 <template>
-  <div class="ps-page">
-    <!-- 顶部筛选栏 -->
-    <div class="ps-toolbar">
-      <span class="ps-toolbar-title">压力指数分析</span>
-      <div class="ps-toolbar-right">
-        <el-date-picker
-          v-model="dateRange"
-          type="daterange"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          size="small"
-          :disabled-date="d => d > new Date()"
-          value-format="YYYY-MM-DD"
-          style="width:240px"
-          @change="onDateChange"
-        />
-        <el-select v-model="trendDays" size="small" style="width:100px;margin-left:8px" @change="loadTrend">
-          <el-option label="近7天" :value="7" />
-          <el-option label="近30天" :value="30" />
-          <el-option label="近90天" :value="90" />
-        </el-select>
-      </div>
-    </div>
+  <div class="ps-root">
 
-    <!-- 概览卡片 -->
-    <div class="ps-overview">
-      <div class="ps-ov-card" v-for="card in overviewCards" :key="card.key">
-        <div class="ps-ov-icon" :style="{ background: card.bg }">
-          <el-icon :color="card.color" :size="22"><component :is="card.icon" /></el-icon>
-        </div>
-        <div class="ps-ov-info">
-          <div class="ps-ov-val" :style="{ color: card.color }">{{ card.value }}</div>
-          <div class="ps-ov-label">{{ card.label }}</div>
-        </div>
-        <div class="ps-ov-sub">{{ card.sub }}</div>
-      </div>
-    </div>
-
-    <!-- 中部图表区 -->
-    <div class="ps-charts-row">
-      <!-- 趋势折线图 -->
-      <div class="ps-panel ps-panel-trend">
-        <div class="ps-panel-hd">
-          <span class="ps-panel-dot"></span>
-          <span class="ps-panel-title">压力趋势</span>
-          <span class="ps-panel-sub">日均压力指数</span>
-        </div>
-        <div ref="trendChart" class="ps-chart-area"></div>
+    <!-- ══ 顶部 Header ══ -->
+    <header class="ps-hd">
+      <div class="ps-hd-left">
+        <span class="ps-live-dot"></span>
+        <h1 class="ps-hd-title">压力指数分析</h1>
       </div>
 
-      <!-- 分布饼图 -->
-      <div class="ps-panel ps-panel-dist">
-        <div class="ps-panel-hd">
-          <span class="ps-panel-dot"></span>
-          <span class="ps-panel-title">压力分布</span>
+      <div class="ps-hd-kpis">
+        <div class="ps-kpi" v-for="k in headerKpis" :key="k.label">
+          <span class="ps-kpi-n" :class="k.cls">{{ k.val }}</span>
+          <span class="ps-kpi-l">{{ k.label }}</span>
         </div>
-        <div ref="distChart" class="ps-chart-area"></div>
-        <ul class="ps-dist-legend" v-if="distData.length">
-          <li v-for="d in distData" :key="d.name">
-            <span class="ps-legend-dot" :style="{ background: d.color }"></span>
-            <span class="ps-legend-name">{{ d.name }}</span>
-            <span class="ps-legend-val">{{ d.value }}%</span>
-          </li>
-        </ul>
-        <div v-else class="ps-empty">暂无数据</div>
       </div>
-    </div>
 
-    <!-- 下部：TOP5 + 部门统计 -->
-    <div class="ps-charts-row">
-      <!-- TOP5 高压力人员 -->
-      <div class="ps-panel ps-panel-top5">
-        <div class="ps-panel-hd">
-          <span class="ps-panel-dot"></span>
-          <span class="ps-panel-title">高压力 TOP 5</span>
-          <span class="ps-panel-sub">近{{ trendDays }}天均值</span>
-        </div>
-        <div v-if="top5Data.length" class="ps-top5-list">
-          <div v-for="(item, i) in top5Data" :key="i" class="ps-top5-item">
-            <span class="ps-top5-rank" :class="'rank-' + (i + 1)">{{ i + 1 }}</span>
-            <div class="ps-top5-info">
+      <div class="ps-period-tabs">
+        <span v-for="p in periodOptions" :key="p.value"
+          :class="['ps-period-tab', activePeriod === p.value ? 'is-active' : '']"
+          @click="switchPeriod(p.value)">{{ p.label }}</span>
+      </div>
+
+      <div class="ps-hd-time">{{ currentTime }}</div>
+    </header>
+
+    <!-- ══ 主体 ══ -->
+    <section class="ps-bd">
+
+      <!-- ─ 左侧：TOP5 紧凑列表 + 部门柱状图 ─ -->
+      <aside class="ps-aside">
+        <!-- TOP5：高压力人员 -->
+        <div class="ps-panel ps-aside-top">
+          <div class="ps-ph">
+            <span class="ps-ph-bar"></span>
+            <span class="ps-ph-title">高压力 TOP5</span>
+          </div>
+          <div class="ps-top5-list">
+            <div v-if="!top5Data.length" class="ps-top5-empty">暂无高压力数据</div>
+            <div class="ps-top5-row" v-for="(item, i) in top5Data" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
+              <span class="ps-top5-rank" :class="'rank-'+(i+1)">{{ i+1 }}</span>
               <span class="ps-top5-name">{{ item.userName }}</span>
-              <span class="ps-top5-dept">{{ item.deptName }}</span>
-            </div>
-            <div class="ps-top5-values">
-              <span class="ps-top5-avg">均值 <em>{{ item.avgPressure }}</em></span>
-              <span class="ps-top5-max">峰值 <em>{{ item.maxPressure }}</em></span>
-            </div>
-            <div class="ps-top5-bar-wrap">
-              <div class="ps-top5-bar" :style="{ width: barWidth(item.avgPressure) + '%', background: barColor(item.avgPressure) }"></div>
+              <div class="ps-top5-bar-wrap">
+                <div class="ps-top5-bar"
+                  :style="{
+                    width: (top5Max > 0 ? (item.avgPressure / top5Max * 100) : 0) + '%',
+                    background: top5BarColor(item.avgPressure)
+                  }"></div>
+              </div>
+              <span class="ps-top5-val" :style="{ color: top5ValColor(item.avgPressure) }">{{ item.avgPressure }}</span>
             </div>
           </div>
         </div>
-        <div v-else class="ps-empty">暂无异常人员</div>
-      </div>
 
-      <!-- 部门统计柱状图 -->
-      <div class="ps-panel ps-panel-dept">
-        <div class="ps-panel-hd">
-          <span class="ps-panel-dot"></span>
-          <span class="ps-panel-title">部门平均压力指数</span>
+        <!-- 部门平均压力柱状图 -->
+        <div class="ps-panel ps-aside-bot">
+          <div class="ps-ph">
+            <span class="ps-ph-bar"></span>
+            <span class="ps-ph-title">部门平均压力指数</span>
+          </div>
+          <div class="ps-pc">
+            <div ref="deptRef" style="width:100%;height:100%"></div>
+          </div>
         </div>
-        <div ref="deptChart" class="ps-chart-area"></div>
-      </div>
-    </div>
+      </aside>
 
-    <!-- 异常记录表 -->
-    <div class="ps-panel ps-panel-table">
-      <div class="ps-panel-hd">
-        <span class="ps-panel-dot"></span>
-        <span class="ps-panel-title">异常压力记录</span>
-        <span class="ps-panel-sub">近30天，压力指数 ≥ 70</span>
+      <!-- ─ 中间 ─ -->
+      <main class="ps-main">
+
+        <!-- 概况面板：仪表盘 + KPI cards + 压力等级说明 -->
+        <div class="ps-panel ps-overview-panel">
+          <div class="ps-ph">
+            <span class="ps-ph-bar"></span>
+            <span class="ps-ph-title">{{ overviewTitle }}</span>
+          </div>
+          <div class="ps-overview-body">
+            <!-- 仪表盘 -->
+            <div class="ps-gauge-wrap">
+              <div ref="gaugeRef" class="ps-gauge-chart"></div>
+              <div class="ps-gauge-center">
+                <div class="ps-gauge-val">{{ overview.avgPressure != null ? overview.avgPressure : '--' }}</div>
+                <div class="ps-gauge-sub">平均压力指数</div>
+              </div>
+            </div>
+            <!-- KPI 小卡片 -->
+            <div class="ps-kpi-cards">
+              <div class="ps-kpi-card" v-for="c in ovAllCards" :key="c.label">
+                <div class="ps-kpi-card-val" :style="{color: c.color}">{{ c.val }}<span class="ps-kpi-card-unit">{{ c.unit }}</span></div>
+                <div class="ps-kpi-card-label">{{ c.label }}</div>
+              </div>
+            </div>
+            <!-- 压力等级说明 -->
+            <div class="ps-range-info">
+              <div class="ps-range-title">压力等级说明</div>
+              <div class="ps-range-item" v-for="r in psRanges" :key="r.label">
+                <span class="ps-range-dot" :style="{background: r.color}"></span>
+                <span class="ps-range-name" :style="{color: r.color}">{{ r.label }}</span>
+                <span class="ps-range-val">{{ r.range }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 中间行：趋势折线 + 分布饼图 -->
+        <div class="ps-mid-row">
+          <div class="ps-panel ps-panel-hourly">
+            <div class="ps-ph">
+              <span class="ps-ph-bar"></span>
+              <span class="ps-ph-title">{{ hourlyTitle }}</span>
+              <div class="ps-trend-tags">
+                <span class="ps-tag" style="color:#fb923c;border-color:rgba(251,146,60,0.3)">── 压力指数</span>
+                <span class="ps-tag" style="color:#FFB84D;border-color:rgba(255,184,77,0.3)">- - 偏高(70)</span>
+                <span class="ps-tag" style="color:#ff5252;border-color:rgba(255,82,82,0.3)">- - 高压(85)</span>
+              </div>
+            </div>
+            <div class="ps-pc">
+              <div ref="hourlyRef" style="width:100%;height:100%"></div>
+            </div>
+          </div>
+
+          <div class="ps-panel ps-panel-dist">
+            <div class="ps-ph">
+              <span class="ps-ph-bar"></span>
+              <span class="ps-ph-title">压力区间分布</span>
+            </div>
+            <div class="ps-dist-body">
+              <div ref="distRef" class="ps-dist-chart"></div>
+              <div class="ps-dist-legend">
+                <div class="ps-dist-row" v-for="d in distLegend" :key="d.name">
+                  <div class="ps-dist-dot" :style="{background: d.color}"></div>
+                  <span class="ps-dist-name">{{ d.name }}</span>
+                  <div class="ps-dist-bar-wrap">
+                    <div class="ps-dist-bar" :style="{width: d.value + '%', background: d.color}"></div>
+                  </div>
+                  <span class="ps-dist-pct" :style="{color: d.color}">{{ d.value }}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 实时区间分布面板 -->
+        <div class="ps-panel ps-panel-dist-stat">
+          <div class="ps-ph">
+            <span class="ps-ph-bar"></span>
+            <span class="ps-ph-title">当前在线人员压力分布</span>
+            <span class="ps-ds-total">共 <em>{{ realtimeList.length }}</em> 人在线</span>
+          </div>
+          <div class="ps-ds-body">
+            <div class="ps-ds-zone" :class="z.cls" v-for="z in psZones" :key="z.key">
+              <div class="ps-ds-icon" :style="{color: z.color}">{{ z.icon }}</div>
+              <div class="ps-ds-count" :style="{color: z.color}">{{ z.count }}</div>
+              <div class="ps-ds-pct" :style="{color: z.color}">{{ z.pct }}%</div>
+              <div class="ps-ds-label">{{ z.label }}</div>
+              <div class="ps-ds-range">{{ z.range }}</div>
+            </div>
+          </div>
+          <div class="ps-ds-bar-row">
+            <div class="ps-ds-seg" v-for="z in psZones" :key="z.key"
+              :style="{width: z.pct + '%', background: z.color}"
+              :title="z.label + ': ' + z.count + '人'"></div>
+          </div>
+        </div>
+
+        <!-- 当前异常压力明细 -->
+        <div class="ps-panel ps-panel-anomaly">
+          <div class="ps-ph">
+            <span class="ps-ph-bar"></span>
+            <span class="ps-ph-title">当前异常压力明细</span>
+            <span class="ps-anomaly-count" v-if="psAnomalyList.length">
+              共 <em>{{ psAnomalyList.length }}</em> 人异常
+            </span>
+          </div>
+          <div v-if="!psAnomalyList.length" class="ps-anomaly-empty">
+            <span class="ps-anomaly-ok">✓</span> 当前无异常压力人员
+          </div>
+          <div v-else class="ps-anomaly-body">
+            <div class="ps-anomaly-hd">
+              <span>姓名</span><span>部门</span><span>压力指数</span><span>等级</span><span>时间</span>
+            </div>
+            <div class="ps-anomaly-list">
+              <div
+                class="ps-anomaly-row"
+                v-for="(item, i) in psAnomalyList"
+                :key="i"
+                :class="item.pressure >= 85 ? 'anom-high' : 'anom-elevated'"
+                @click="goToPortrait(item)"
+                style="cursor:pointer"
+              >
+                <span class="pa-name">{{ item.userName }}</span>
+                <span class="pa-dept">{{ item.deptName || '--' }}</span>
+                <span class="pa-val">{{ item.pressure }}</span>
+                <span class="pa-type">{{ item.pressure >= 85 ? '高压⚠' : '偏高!' }}</span>
+                <span class="pa-time">{{ fmtTime(item.recordTime) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- ─ 右侧：实时压力列表 ─ -->
+      <div class="ps-rtlist">
+        <div class="ps-panel" style="height:100%;display:flex;flex-direction:column;overflow:hidden">
+          <div class="ps-ph">
+            <span class="ps-ph-bar"></span>
+            <span class="ps-ph-title">实时压力数据</span>
+            <span class="ps-rt-total">{{ realtimeList.length }} 条</span>
+          </div>
+
+          <div class="ps-rt-hd">
+            <span>姓名</span><span>压力</span><span>状态</span><span>时间</span>
+          </div>
+
+          <div class="ps-rt-body" ref="listRef">
+            <div
+              class="ps-rt-row"
+              v-for="(item, i) in pagedList"
+              :key="i"
+              :class="psLevel(item.pressure)"
+              @click="goToPortrait(item)"
+              style="cursor:pointer"
+            >
+              <span class="ps-rt-name">{{ item.userName }}</span>
+              <span class="ps-rt-val">{{ item.pressure }}</span>
+              <span class="ps-rt-badge" :class="psLevel(item.pressure)">
+                {{ item.pressure >= 85 ? '高压' : item.pressure >= 70 ? '偏高' : item.pressure >= 50 ? '正常' : '放松' }}
+              </span>
+              <span class="ps-rt-time">{{ fmtTime(item.recordTime) }}</span>
+            </div>
+          </div>
+
+          <div class="ps-rt-pg">
+            <button class="ps-pg-btn" :disabled="currentPage===1" @click="currentPage=1">首页</button>
+            <button class="ps-pg-btn" :disabled="currentPage===1" @click="currentPage--">‹</button>
+            <span class="ps-pg-info">{{ currentPage }} / {{ totalPages }}</span>
+            <button class="ps-pg-btn" :disabled="currentPage>=totalPages" @click="currentPage++">›</button>
+            <button class="ps-pg-btn" :disabled="currentPage>=totalPages" @click="currentPage=totalPages">末页</button>
+          </div>
+        </div>
       </div>
-      <el-table :data="abnormal.list" size="small" stripe class="ps-table">
-        <el-table-column prop="userName"  label="姓名"   width="100" />
-        <el-table-column prop="deptName"  label="部门"   width="130" />
-        <el-table-column prop="pressure"  label="压力指数" width="110" align="center">
-          <template #default="{ row }">
-            <span :class="levelCls(row.level)">{{ row.pressure }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="level" label="等级" width="90" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.level === 'danger' ? 'danger' : 'warning'" size="small">
-              {{ row.level === 'danger' ? '高压' : '偏高' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="recordTime" label="记录时间" min-width="160">
-          <template #default="{ row }">{{ fmtTime(row.recordTime) }}</template>
-        </el-table-column>
-      </el-table>
-      <div class="ps-pagination">
-        <el-pagination
-          v-model:current-page="abnormal.page"
-          :page-size="abnormal.size"
-          :total="abnormal.total"
-          layout="total, prev, pager, next"
-          small
-          @current-change="loadAbnormal"
-        />
-      </div>
-    </div>
+
+    </section>
   </div>
 </template>
 
@@ -150,338 +248,884 @@
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import {
-  getPressureOverview, getPressureTrend, getPressureDistribution,
-  getPressureTopUsers, getPressureDeptStats, getPressureAbnormal
+  getPressureOverview,
+  getPressureTrend,
+  getPressureDistribution,
+  getPressureTopUsers,
+  getPressureDeptStats,
+  getPressureRealtime,
+  getPressureHourly
 } from '@/api/pressure'
 
 export default {
   name: 'PressureAnalysis',
   data() {
-    const end = dayjs().format('YYYY-MM-DD')
-    const start = dayjs().subtract(29, 'day').format('YYYY-MM-DD')
     return {
-      dateRange: [start, end],
-      trendDays: 30,
+      currentTime: '',
       overview: {},
-      distData: [],
+      distLegend: [],
       top5Data: [],
       deptData: [],
-      abnormal: { list: [], total: 0, page: 1, size: 10 },
-      trendChart: null,
-      distChart: null,
-      deptChart: null,
+      realtimeList: [],
+      currentPage: 1,
+      pageSize: 20,
+      activePeriod: 'month',
+      periodOptions: [
+        { label: '今日',  value: 'day'   },
+        { label: '近7日', value: 'week'  },
+        { label: '近30日',value: 'month' }
+      ],
+      psRanges: [
+        { label: '放松 (低压力)', range: '< 50',      color: '#4FC3F7' },
+        { label: '正常 (健康)',   range: '50 – 69',   color: '#52c41a' },
+        { label: '偏高 (注意)',   range: '70 – 84',   color: '#FFB84D' },
+        { label: '高压 (危险)',   range: '≥ 85',      color: '#ff5252' }
+      ],
+      charts: {},
+      clockTimer: null,
+      refreshTimer: null,
+      scrollTimer: null,
+      resizeTimer: null
     }
   },
   computed: {
-    startDate() { return this.dateRange ? this.dateRange[0] : dayjs().subtract(29, 'day').format('YYYY-MM-DD') },
-    endDate()   { return this.dateRange ? this.dateRange[1] : dayjs().format('YYYY-MM-DD') },
-    overviewCards() {
+    headerKpis() {
       const o = this.overview
       return [
-        {
-          key: 'avg', label: '平均压力指数', icon: 'Cpu', color: '#fb923c', bg: 'rgba(251,146,60,0.15)',
-          value: o.avgPressure != null ? o.avgPressure : '--',
-          sub: '正常 < 70'
-        },
-        {
-          key: 'normal', label: '正常率', icon: 'CircleCheck', color: '#4ade80', bg: 'rgba(74,222,128,0.15)',
-          value: o.normalRate != null ? o.normalRate + '%' : '--',
-          sub: '压力指数 < 70'
-        },
-        {
-          key: 'count', label: '检测人数', icon: 'User', color: '#38bdf8', bg: 'rgba(56,189,248,0.15)',
-          value: o.detectionCount != null ? o.detectionCount + ' 人' : '--',
-          sub: '区间内有记录'
-        },
-        {
-          key: 'abnormal', label: '偏高次数', icon: 'Warning', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)',
-          value: o.abnormalCount != null ? o.abnormalCount + ' 次' : '--',
-          sub: '压力指数 ≥ 70'
-        },
-        {
-          key: 'high', label: '高压次数', icon: 'AlarmClock', color: '#f87171', bg: 'rgba(248,113,113,0.15)',
-          value: o.highCount != null ? o.highCount + ' 次' : '--',
-          sub: '压力指数 ≥ 85'
-        },
+        { label: '平均压力指数', val: o.avgPressure   != null ? o.avgPressure : '--',                     cls: 'kpi-orange' },
+        { label: '正常率',       val: o.normalRate    != null ? o.normalRate + '%' : '--',                cls: 'kpi-green'  },
+        { label: '偏高次数',     val: o.abnormalCount != null ? o.abnormalCount : 0,                      cls: 'kpi-yellow' },
+        { label: '高压次数',     val: o.highCount     != null ? o.highCount : 0,                          cls: 'kpi-red'    }
+      ]
+    },
+    ovAllCards() {
+      const o = this.overview
+      return [
+        { label: '平均压力指数', val: o.avgPressure    != null ? o.avgPressure    : '--', unit: '',    color: '#fb923c' },
+        { label: '正常率',       val: o.normalRate     != null ? o.normalRate     : '--', unit: '%',   color: '#52c41a' },
+        { label: '偏高次数',     val: o.abnormalCount  != null ? o.abnormalCount  : '--', unit: ' 次', color: '#FFB84D' },
+        { label: '高压次数',     val: o.highCount      != null ? o.highCount      : '--', unit: ' 次', color: '#ff5252' },
+        { label: '检测人数',     val: o.detectionCount != null ? o.detectionCount : '--', unit: ' 人', color: '#4FC3F7' },
+        { label: '记录总数',     val: o.totalCount     != null ? (o.totalCount).toLocaleString() : '--', unit: ' 条', color: '#7eb8f7' }
+      ]
+    },
+    overviewTitle() {
+      return { day: '今日压力概况', week: '近7日压力概况', month: '近30日压力概况' }[this.activePeriod]
+    },
+    hourlyTitle() {
+      return { day: '今日24小时压力波动', week: '近7日每日均值', month: '近30日每日均值' }[this.activePeriod]
+    },
+    periodRange() {
+      const today = dayjs().format('YYYY-MM-DD')
+      if (this.activePeriod === 'day')   return { startDate: today, endDate: today }
+      if (this.activePeriod === 'week')  return { startDate: dayjs().subtract(6,  'day').format('YYYY-MM-DD'), endDate: today }
+      return { startDate: dayjs().subtract(29, 'day').format('YYYY-MM-DD'), endDate: today }
+    },
+    top5Max() {
+      return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.avgPressure || 0)) : 1
+    },
+    pagedList() {
+      const s = (this.currentPage - 1) * this.pageSize
+      return this.realtimeList.slice(s, s + this.pageSize)
+    },
+    totalPages() {
+      return Math.max(1, Math.ceil(this.realtimeList.length / this.pageSize))
+    },
+    psAnomalyList() {
+      return this.realtimeList.filter(x => x.pressure >= 70)
+    },
+    psZones() {
+      const list = this.realtimeList
+      const total = list.length || 1
+      const relaxed  = list.filter(x => x.pressure < 50).length
+      const normal   = list.filter(x => x.pressure >= 50 && x.pressure < 70).length
+      const elevated = list.filter(x => x.pressure >= 70 && x.pressure < 85).length
+      const high     = list.filter(x => x.pressure >= 85).length
+      const pct = n => list.length > 0 ? Math.round(n / total * 100) : 0
+      return [
+        { key: 'relaxed',  label: '放松', range: '< 50',    count: relaxed,  pct: pct(relaxed),  color: '#4FC3F7', icon: '○', cls: 'zone-relaxed'  },
+        { key: 'normal',   label: '正常', range: '50–69',   count: normal,   pct: pct(normal),   color: '#52c41a', icon: '✓', cls: 'zone-normal'   },
+        { key: 'elevated', label: '偏高', range: '70–84',   count: elevated, pct: pct(elevated), color: '#FFB84D', icon: '!', cls: 'zone-elevated' },
+        { key: 'high',     label: '高压', range: '≥ 85',    count: high,     pct: pct(high),     color: '#ff5252', icon: '⚠', cls: 'zone-high'     }
       ]
     }
   },
   mounted() {
-    this.loadAll()
-    window.addEventListener('resize', this.resizeCharts)
+    this.initClock()
+    this.fetchData()
+    this.setScale()
+    window.addEventListener('resize', this.handleResize)
+    this.$nextTick(() => this.startAutoScroll())
+    this.refreshTimer = setInterval(() => {
+      this.loadRealtime()
+    }, 30000)
   },
   beforeUnmount() {
-    window.removeEventListener('resize', this.resizeCharts)
-    ;[this.trendChart, this.distChart, this.deptChart].forEach(c => c && c.dispose())
+    clearInterval(this.clockTimer)
+    clearInterval(this.refreshTimer)
+    clearInterval(this.scrollTimer)
+    clearTimeout(this.resizeTimer)
+    window.removeEventListener('resize', this.handleResize)
+    Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
-    async loadAll() {
-      await Promise.all([
-        this.loadOverview(), this.loadTrend(), this.loadDist(),
-        this.loadTop5(), this.loadDept(), this.loadAbnormal(),
+    initClock() {
+      const tick = () => { this.currentTime = dayjs().format('YYYY年MM月DD日 HH:mm:ss') }
+      tick()
+      this.clockTimer = setInterval(tick, 1000)
+    },
+
+    async fetchData() {
+      await Promise.allSettled([
+        this.loadOverview(),
+        this.loadTopUsers(),
+        this.loadDept(),
+        this.loadDist(),
+        this.loadHourly(),
+        this.loadRealtime()
       ])
     },
-    onDateChange() {
-      this.loadOverview(); this.loadDist(); this.loadTop5(); this.loadDept()
-    },
+
     async loadOverview() {
-      try { const res = await getPressureOverview(this.startDate, this.endDate); this.overview = res.data || {} }
-      catch { this.overview = {} }
-    },
-    async loadTrend() {
+      const { startDate, endDate } = this.periodRange
       try {
-        const res = await getPressureTrend(this.trendDays)
-        const d = res.data || {}
-        this.initTrendChart(d.dates || [], d.values || [])
-      } catch { this.initTrendChart([], []) }
+        const r = await getPressureOverview(startDate, endDate)
+        if (r.code === 200) this.overview = r.data || {}
+      } catch { this.overview = {} }
+      this.$nextTick(() => this.initGauge())
     },
-    async loadDist() {
-      try { const res = await getPressureDistribution(this.startDate, this.endDate); this.distData = res.data || []; this.initDistChart() }
-      catch { this.distData = [] }
+
+    async loadTopUsers() {
+      const { startDate, endDate } = this.periodRange
+      let d = []
+      try {
+        const r = await getPressureTopUsers(5, startDate, endDate)
+        if (r.code === 200) d = r.data || []
+      } catch {}
+      this.top5Data = d
     },
-    async loadTop5() {
-      try { const res = await getPressureTopUsers(5, this.startDate, this.endDate); this.top5Data = res.data || [] }
-      catch { this.top5Data = [] }
-    },
+
     async loadDept() {
-      try { const res = await getPressureDeptStats(this.startDate, this.endDate); this.deptData = res.data || []; this.initDeptChart() }
-      catch { this.deptData = [] }
-    },
-    async loadAbnormal(page) {
-      if (page) this.abnormal.page = page
+      const { startDate, endDate } = this.periodRange
+      let d = []
       try {
-        const res = await getPressureAbnormal(this.abnormal.page, this.abnormal.size)
-        const d = res.data || {}
-        this.abnormal.list  = d.list  || []
-        this.abnormal.total = d.total || 0
-      } catch { this.abnormal.list = [] }
+        const r = await getPressureDeptStats(startDate, endDate)
+        if (r.code === 200) d = r.data || []
+      } catch {}
+      this.deptData = d
+      this.$nextTick(() => this.initDept(d))
     },
 
-    initTrendChart(dates, values) {
-      if (!this.$refs.trendChart) return
-      if (!this.trendChart) this.trendChart = echarts.init(this.$refs.trendChart)
-      const isEmpty = !dates.length
-      this.trendChart.setOption({
+    async loadDist() {
+      const { startDate, endDate } = this.periodRange
+      let d = []
+      try {
+        const r = await getPressureDistribution(startDate, endDate)
+        if (r.code === 200) {
+          d = (r.data || []).filter(x => x.name && x.value > 0)
+          this.distLegend = d
+        }
+      } catch {}
+      this.$nextTick(() => this.initDist(d))
+    },
+
+    async loadHourly() {
+      if (this.activePeriod === 'day') {
+        const today = dayjs().format('YYYY-MM-DD')
+        const vals = new Array(24).fill(null)
+        try {
+          const r = await getPressureHourly(today)
+          if (r.code === 200 && Array.isArray(r.data)) {
+            r.data.forEach(({ hour, avgPressure }) => {
+              if (hour >= 0 && hour < 24) vals[hour] = avgPressure
+            })
+          }
+        } catch {}
+        this.$nextTick(() => this.renderHourly(vals))
+      } else {
+        const days = this.activePeriod === 'week' ? 7 : 30
+        let dates = [], vals = []
+        try {
+          const r = await getPressureTrend(days)
+          if (r.code === 200 && r.data) {
+            dates = r.data.dates  || []
+            vals  = r.data.values || []
+          }
+        } catch {}
+        this.$nextTick(() => this.renderHourlyDaily(dates, vals))
+      }
+    },
+
+    async loadRealtime() {
+      try {
+        const r = await getPressureRealtime(1000)
+        if (r.code === 200) this.realtimeList = r.data || []
+      } catch {}
+    },
+
+    // ── ECharts ──
+
+    initGauge() {
+      const el = this.$refs.gaugeRef; if (!el) return
+      if (this.charts.gauge) this.charts.gauge.dispose()
+      const c = echarts.init(el); this.charts.gauge = c
+      const v = this.overview.avgPressure || 0
+      c.setOption({
+        series: [{
+          type: 'gauge',
+          startAngle: 225, endAngle: -45,
+          radius: '90%', center: ['50%', '58%'],
+          min: 0, max: 100,
+          axisLine: {
+            lineStyle: {
+              width: 16,
+              color: [
+                [0.50, '#4FC3F7'],
+                [0.70, '#52c41a'],
+                [0.85, '#FFB84D'],
+                [1.00, '#ff5252']
+              ]
+            }
+          },
+          pointer: {
+            length: '60%', width: 6,
+            itemStyle: { color: '#fb923c', shadowBlur: 14, shadowColor: 'rgba(251,146,60,0.8)' }
+          },
+          axisTick:  { length: 5,  distance: -22, lineStyle: { color: 'rgba(251,146,60,0.25)', width: 1 } },
+          splitLine: { length: 10, distance: -22, lineStyle: { color: 'rgba(251,146,60,0.45)', width: 2 } },
+          axisLabel: { color: '#8ba6c8', fontSize: 10, distance: -28 },
+          detail:    { show: false },
+          data:      [{ value: v }]
+        }]
+      })
+    },
+
+    initDept(data) {
+      const el = this.$refs.deptRef; if (!el) return
+      if (this.charts.dept) this.charts.dept.dispose()
+      const c = echarts.init(el); this.charts.dept = c
+      if (!data.length) {
+        c.setOption({
+          backgroundColor: 'transparent',
+          graphic: [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无数据', fill: '#8ba6c8', fontSize: 14 } }]
+        })
+        return
+      }
+      const d = data.slice(0, 10)
+      c.setOption({
         backgroundColor: 'transparent',
-        tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,18,48,0.9)', borderColor: '#00d4ff33', textStyle: { color: '#e0f0ff' } },
-        grid: { top: 24, bottom: 24, left: 48, right: 16 },
+        grid: { left: '26%', right: '8%', top: '8%', bottom: '6%' },
         xAxis: {
-          type: 'category', data: isEmpty ? ['暂无数据'] : dates,
-          axisLine: { lineStyle: { color: '#1e3a5f' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 11 },
-          splitLine: { show: false }
+          type: 'value',
+          axisLine: { show: false }, axisTick: { show: false },
+          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.07)', type: 'dashed' } },
+          axisLabel: { color: '#8ba6c8', fontSize: 10 },
+          min: 0, max: 100
         },
         yAxis: {
-          type: 'value', min: 0, max: 100,
-          axisLabel: { color: '#8ba6c8', fontSize: 11 },
-          splitLine: { lineStyle: { color: '#1e3a5f' } }
-        },
-        series: [{
-          name: '压力指数', type: 'line', data: isEmpty ? [] : values,
-          smooth: true, connectNulls: false,
-          lineStyle: { color: '#fb923c', width: 2 },
-          itemStyle: { color: '#fb923c' },
-          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(251,146,60,0.35)' },
-            { offset: 1, color: 'rgba(251,146,60,0.02)' }
-          ])},
-          markLine: { silent: true, lineStyle: { color: '#fbbf2455', type: 'dashed' },
-            data: [{ yAxis: 70, name: '偏高' }, { yAxis: 85, name: '高压' }] }
-        }]
-      })
-    },
-
-    initDistChart() {
-      if (!this.$refs.distChart) return
-      if (!this.distChart) this.distChart = echarts.init(this.$refs.distChart)
-      const data = this.distData
-      this.distChart.setOption({
-        backgroundColor: 'transparent',
-        tooltip: { trigger: 'item', backgroundColor: 'rgba(10,18,48,0.9)', borderColor: '#00d4ff33', textStyle: { color: '#e0f0ff' },
-          formatter: '{b}: {c}%' },
-        series: [{
-          type: 'pie', radius: ['45%', '70%'], center: ['50%', '50%'],
-          data: data.length ? data.map(d => ({ name: d.name, value: d.value, itemStyle: { color: d.color } }))
-                            : [{ name: '暂无数据', value: 1, itemStyle: { color: '#1e3a5f' } }],
-          label: { show: data.length, color: '#8ba6c8', fontSize: 11, formatter: '{b}\n{c}%' },
-          labelLine: { lineStyle: { color: '#1e3a5f' } },
-          emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,212,255,0.3)' } }
-        }]
-      })
-    },
-
-    initDeptChart() {
-      if (!this.$refs.deptChart) return
-      if (!this.deptChart) this.deptChart = echarts.init(this.$refs.deptChart)
-      const data = this.deptData.slice(0, 10)
-      this.deptChart.setOption({
-        backgroundColor: 'transparent',
-        tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,18,48,0.9)', borderColor: '#00d4ff33',
-          textStyle: { color: '#e0f0ff' } },
-        grid: { top: 16, bottom: 60, left: 48, right: 16 },
-        xAxis: {
           type: 'category',
-          data: data.length ? data.map(d => d.deptName) : ['暂无数据'],
-          axisLabel: { color: '#8ba6c8', fontSize: 10, rotate: 30 },
-          axisLine: { lineStyle: { color: '#1e3a5f' } }
-        },
-        yAxis: {
-          type: 'value', min: 0, max: 100,
-          axisLabel: { color: '#8ba6c8', fontSize: 11 },
-          splitLine: { lineStyle: { color: '#1e3a5f' } }
+          data: d.map(x => x.deptName),
+          inverse: true,
+          axisLine: { show: false }, axisTick: { show: false },
+          axisLabel: { color: '#a8c5e6', fontSize: 11 }
         },
         series: [{
-          name: '平均压力', type: 'bar', barMaxWidth: 22,
-          data: data.map(d => ({
-            value: d.avgPressure,
+          name: '平均压力', type: 'bar', barWidth: '46%',
+          data: d.map(x => ({
+            value: x.avgPressure,
             itemStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: d.avgPressure >= 85 ? '#f87171' : d.avgPressure >= 70 ? '#fbbf24' : '#fb923c' },
-                { offset: 1, color: d.avgPressure >= 85 ? '#b91c1c' : d.avgPressure >= 70 ? '#d97706' : '#c2410c' }
+              color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+                { offset: 0, color: x.avgPressure >= 85 ? '#ff5252' : x.avgPressure >= 70 ? '#FFB84D' : '#fb923c' },
+                { offset: 1, color: x.avgPressure >= 85 ? '#b91c1c' : x.avgPressure >= 70 ? '#d97706' : '#c2410c' }
               ]),
-              borderRadius: [3, 3, 0, 0]
+              borderRadius: [0, 4, 4, 0]
             }
           })),
-          markLine: { silent: true, lineStyle: { color: '#fbbf2455', type: 'dashed' },
-            data: [{ yAxis: 70, name: '偏高线' }] }
+          label: {
+            show: true, position: 'inside', color: '#fff', fontSize: 10,
+            formatter: p => p.value > 0 ? p.value : ''
+          },
+          markLine: {
+            silent: true, lineStyle: { color: '#FFB84D55', type: 'dashed' },
+            data: [{ xAxis: 70, name: '偏高线' }]
+          }
         }]
       })
     },
 
-    barWidth(val) {
-      return Math.min(Math.round((val / 100) * 100), 100)
+    initDist(data) {
+      const el = this.$refs.distRef; if (!el) return
+      if (this.charts.dist) this.charts.dist.dispose()
+      const c = echarts.init(el); this.charts.dist = c
+      c.setOption({
+        backgroundColor: 'transparent',
+        series: [{
+          type: 'pie', radius: ['52%', '80%'], center: ['50%', '50%'],
+          label: { show: false }, labelLine: { show: false },
+          data: data.length
+            ? data.map(x => ({
+                value: x.value, name: x.name,
+                itemStyle: { color: x.color, borderRadius: 4, shadowColor: x.color + '66', shadowBlur: 10 }
+              }))
+            : [{ name: '暂无数据', value: 1, itemStyle: { color: '#1e3a5f' } }]
+        }]
+      })
     },
-    barColor(val) {
-      if (val >= 85) return 'linear-gradient(90deg, #f87171, #b91c1c)'
-      if (val >= 70) return 'linear-gradient(90deg, #fbbf24, #d97706)'
-      return 'linear-gradient(90deg, #fb923c, #c2410c)'
+
+    renderHourly(vals) {
+      const el = this.$refs.hourlyRef; if (!el) return
+      if (this.charts.hourly) this.charts.hourly.dispose()
+      const c = echarts.init(el); this.charts.hourly = c
+      const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
+      c.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(8,13,35,0.9)', borderColor: 'rgba(251,146,60,0.25)',
+          textStyle: { color: '#e0f0ff', fontSize: 11 },
+          formatter: p => p[0].value != null
+            ? `${p[0].name}<br/>压力指数：<b style="color:#fb923c">${p[0].value}</b>`
+            : `${p[0].name}<br/>暂无数据`
+        },
+        grid: { left: '8%', right: '2%', top: '14%', bottom: '16%', containLabel: true },
+        xAxis: {
+          type: 'category', data: hours, boundaryGap: false,
+          axisLine: { lineStyle: { color: 'rgba(251,146,60,0.15)' } }, axisTick: { show: false },
+          axisLabel: { color: '#8ba6c8', fontSize: 9, interval: 3 }
+        },
+        yAxis: {
+          type: 'value', min: 0, max: 100,
+          axisLine: { show: false }, axisTick: { show: false },
+          splitLine: { lineStyle: { color: 'rgba(251,146,60,0.06)', type: 'dashed' } },
+          axisLabel: { color: '#8ba6c8', fontSize: 9 }
+        },
+        series: [{
+          type: 'line', data: vals, smooth: true, symbol: 'none', connectNulls: false,
+          lineStyle: { color: '#fb923c', width: 2 },
+          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(251,146,60,0.28)' },
+            { offset: 1, color: 'rgba(251,146,60,0.02)' }
+          ])},
+          markLine: {
+            silent: true, symbol: 'none',
+            data: [
+              { yAxis: 70, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '偏高 70' } },
+              { yAxis: 85, lineStyle: { color: '#ff5252', type: 'dashed', width: 1 }, label: { color: '#ff5252', fontSize: 10, formatter: '高压 85' } }
+            ]
+          }
+        }]
+      })
     },
-    levelCls(level) {
-      return level === 'danger' ? 'ps-danger' : 'ps-warn'
+
+    renderHourlyDaily(dates, vals) {
+      const el = this.$refs.hourlyRef; if (!el) return
+      if (this.charts.hourly) this.charts.hourly.dispose()
+      const c = echarts.init(el); this.charts.hourly = c
+      if (!dates.length) {
+        c.setOption({
+          backgroundColor: 'transparent',
+          graphic: [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无数据', fill: '#8ba6c8', fontSize: 13 } }]
+        })
+        return
+      }
+      c.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(8,13,35,0.9)', borderColor: 'rgba(251,146,60,0.25)',
+          textStyle: { color: '#e0f0ff', fontSize: 11 },
+          formatter: p => `${p[0].name}<br/>压力指数：<b style="color:#fb923c">${p[0].value}</b>`
+        },
+        grid: { left: '8%', right: '2%', top: '14%', bottom: '16%', containLabel: true },
+        xAxis: {
+          type: 'category', data: dates, boundaryGap: true,
+          axisLine: { lineStyle: { color: 'rgba(251,146,60,0.15)' } }, axisTick: { show: false },
+          axisLabel: { color: '#8ba6c8', fontSize: 9, interval: Math.floor(dates.length / 5) }
+        },
+        yAxis: {
+          type: 'value', min: 0, max: 100,
+          axisLine: { show: false }, axisTick: { show: false },
+          splitLine: { lineStyle: { color: 'rgba(251,146,60,0.06)', type: 'dashed' } },
+          axisLabel: { color: '#8ba6c8', fontSize: 9 }
+        },
+        series: [{
+          type: 'bar', data: vals, barMaxWidth: 14,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#fb923c' },
+              { offset: 1, color: 'rgba(251,146,60,0.2)' }
+            ]),
+            borderRadius: [3, 3, 0, 0]
+          },
+          markLine: {
+            silent: true, symbol: 'none',
+            data: [
+              { yAxis: 70, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '偏高 70' } },
+              { yAxis: 85, lineStyle: { color: '#ff5252', type: 'dashed', width: 1 }, label: { color: '#ff5252', fontSize: 10, formatter: '高压 85' } }
+            ]
+          }
+        }]
+      })
     },
-    fmtTime(t) {
-      return t ? dayjs(t).format('YYYY-MM-DD HH:mm:ss') : '--'
+
+    switchPeriod(val) {
+      if (this.activePeriod === val) return
+      this.activePeriod = val
+      this.fetchData()
     },
-    resizeCharts() {
-      ;[this.trendChart, this.distChart, this.deptChart].forEach(c => c && c.resize())
+
+    psLevel(v) {
+      if (v >= 85) return 'high'
+      if (v >= 70) return 'elevated'
+      if (v >= 50) return 'normal'
+      return 'relaxed'
+    },
+
+    top5BarColor(val) {
+      if (val >= 85) return 'linear-gradient(90deg, #ff5252, #b91c1c)'
+      if (val >= 70) return 'linear-gradient(90deg, #FFB84D, #d97706)'
+      if (val >= 50) return 'linear-gradient(90deg, #52c41a, #166534)'
+      return 'linear-gradient(90deg, #4FC3F7, #0284c7)'
+    },
+
+    top5ValColor(val) {
+      if (val >= 85) return '#ff5252'
+      if (val >= 70) return '#FFB84D'
+      if (val >= 50) return '#52c41a'
+      return '#4FC3F7'
+    },
+
+    fmtTime(ts) { return ts ? dayjs(ts).format('MM-DD HH:mm') : '' },
+
+    goToPortrait(item) {
+      if (item.userCode || item.empCode) {
+        this.$router.push({ path: '/personnel-management/health-portrait', query: { empCode: item.userCode || item.empCode } })
+      } else {
+        this.$router.push({ path: '/personnel-management/health-portrait', query: { name: item.userName } })
+      }
+    },
+
+    setScale() {
+      const el = this.$el; if (!el) return
+      const bcr = el.getBoundingClientRect()
+      const vw = window.innerWidth  - bcr.left
+      const vh = window.innerHeight - bcr.top
+      const scale = Math.max(0.4, Math.min(1, Math.min(vw / 1920, vh / 1030)))
+      el.style.transformOrigin = 'top left'
+      el.style.transform = `scale(${scale})`
+      if (scale < 1) {
+        el.style.width  = `${(1 / scale) * 100}%`
+        el.style.height = `${(1 / scale) * vh}px`
+      } else {
+        el.style.width  = '1920px'
+        el.style.height = '1030px'
+      }
+      this.$nextTick(() => this.setPageSize())
+    },
+
+    setPageSize() {
+      const el = this.$refs.listRef; if (!el) return
+      const ROW_H = 27
+      const n = Math.max(10, Math.floor(el.clientHeight / ROW_H))
+      if (n !== this.pageSize) {
+        this.pageSize = n
+        this.currentPage = 1
+      }
+    },
+
+    handleResize() {
+      clearTimeout(this.resizeTimer)
+      this.resizeTimer = setTimeout(() => {
+        this.setScale()
+        this.$nextTick(() => Object.values(this.charts).forEach(c => c && c.resize && c.resize()))
+      }, 200)
+    },
+
+    startAutoScroll() {
+      const el = this.$refs.listRef; if (!el) return
+      let top = 0
+      this.scrollTimer = setInterval(() => {
+        const max = el.scrollHeight - el.clientHeight
+        if (max <= 0) return
+        if (top >= max) { setTimeout(() => { top = 0; el.scrollTop = 0 }, 1500) }
+        else { top += 1; el.scrollTop = top }
+      }, 40)
     }
   }
 }
 </script>
 
 <style lang="scss" scoped>
-.ps-page {
-  padding: 16px;
-  min-height: 100%;
-  background: #060e24;
-  color: #e0f0ff;
+// ── 颜色变量 ──
+$bg:     #080d1e;
+$panel:  rgba(8, 16, 42, 0.88);
+$border: rgba(0, 212, 255, 0.14);
+$accent: #fb923c;
+$cyan:   #00d4ff;
+$text:   #a8c5e6;
+$dim:    #6a88ab;
+$white:  #e8f4ff;
+
+// ── Root ──
+.ps-root {
+  width: 1920px;
+  height: 1030px;
+  background: $bg;
+  background-image:
+    radial-gradient(circle at 18% 28%, rgba(251,146,60,0.05) 0%, transparent 48%),
+    radial-gradient(circle at 82% 72%, rgba(42,82,152,0.08) 0%, transparent 48%);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  font-family: 'Microsoft YaHei', sans-serif;
+  color: $text;
 }
-.ps-toolbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px;
-  background: rgba(10,18,48,0.65);
-  border: 1px solid rgba(0,212,255,0.15);
-  border-radius: 10px;
-}
-.ps-toolbar-title {
-  font-size: 16px; font-weight: bold; color: #e0f0ff;
-  border-left: 3px solid #00d4ff; padding-left: 10px;
-}
-.ps-toolbar-right { display: flex; align-items: center; }
 
-.ps-overview {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+// ── Header ──
+.ps-hd {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 22px;
+  gap: 20px;
+  background: rgba(0, 6, 24, 0.65);
+  border-bottom: 1px solid $border;
 }
-.ps-ov-card {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px;
-  background: rgba(10,18,48,0.65);
-  border: 1px solid rgba(0,212,255,0.12);
-  border-radius: 10px;
-  position: relative; overflow: hidden;
-}
-.ps-ov-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.ps-ov-info { flex: 1; }
-.ps-ov-val  { font-size: 20px; font-weight: bold; line-height: 1.2; }
-.ps-ov-label{ font-size: 12px; color: #8ba6c8; margin-top: 2px; }
-.ps-ov-sub  { position: absolute; bottom: 6px; right: 10px; font-size: 10px; color: #4a6a8a; }
+.ps-hd-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 
-.ps-panel {
-  background: rgba(10,18,48,0.65);
-  border: 1px solid rgba(0,212,255,0.12);
-  border-radius: 10px;
-  padding: 14px 16px;
+.ps-live-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: $accent;
+  box-shadow: 0 0 8px $accent;
+  animation: psPulse 2s ease-in-out infinite;
+}
+@keyframes psPulse { 0%,100% { opacity:1; transform:scale(1) } 50% { opacity:0.45; transform:scale(0.75) } }
+
+.ps-hd-title {
+  font-size: 20px; font-weight: 700; color: $white; margin: 0;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #fb923c, #fde68a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 0 10px rgba(251,146,60,0.5));
+}
+
+.ps-hd-kpis {
+  flex: 1; display: flex; justify-content: center;
+}
+.ps-kpi {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 32px;
+  border-right: 1px solid $border;
+  &:first-child { border-left: 1px solid $border; }
+}
+.ps-kpi-n {
+  font-size: 20px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1;
+  &.kpi-orange { color: $accent;  text-shadow: 0 0 10px rgba(251,146,60,0.5); }
+  &.kpi-green  { color: #52c41a; text-shadow: 0 0 10px rgba(82,196,26,0.35);  }
+  &.kpi-yellow { color: #FFB84D; text-shadow: 0 0 10px rgba(255,184,77,0.4);  }
+  &.kpi-red    { color: #ff5252; text-shadow: 0 0 10px rgba(255,82,82,0.4);   }
+}
+.ps-kpi-l { font-size: 11px; color: $dim; margin-top: 2px; white-space: nowrap; }
+.ps-hd-time { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: $dim; }
+
+.ps-period-tabs {
+  display: flex;
+  background: rgba(251,146,60,0.06);
+  border: 1px solid rgba(251,146,60,0.2);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.ps-period-tab {
+  padding: 4px 14px;
+  font-size: 12px;
+  color: $dim;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover { color: $white; background: rgba(251,146,60,0.1); }
+  &.is-active { color: $bg; background: $accent; font-weight: 700; }
+}
+
+// ── Body ──
+.ps-bd {
+  flex: 1; display: flex; gap: 10px; padding: 10px; overflow: hidden; min-height: 0;
+}
+
+// ── Aside（左侧）──
+.ps-aside {
+  width: 260px; flex-shrink: 0;
   display: flex; flex-direction: column; gap: 10px;
 }
-.ps-panel-hd { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.ps-panel-dot { width: 6px; height: 6px; background: #00d4ff; border-radius: 50%; box-shadow: 0 0 6px #00d4ff; }
-.ps-panel-title { font-size: 14px; font-weight: bold; color: #e0f0ff; }
-.ps-panel-sub   { font-size: 11px; color: #4a6a8a; margin-left: 4px; }
-.ps-chart-area  { flex: 1; min-height: 200px; }
+.ps-aside-top { height: 200px; flex-shrink: 0; }
+.ps-aside-bot { flex: 1; }
 
-.ps-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.ps-panel-dist  { min-height: 280px; }
-.ps-panel-top5  { min-height: 260px; }
-.ps-panel-table { min-height: 200px; }
-
-.ps-dist-legend {
-  list-style: none; margin: 0; padding: 0;
-  display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+// TOP5 紧凑列表
+.ps-top5-empty { padding: 20px 0; text-align: center; color: rgba(251,146,60,0.5); font-size: 12px; }
+.ps-top5-list {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
 }
-.ps-dist-legend li { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #8ba6c8; }
-.ps-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-.ps-legend-val { color: #e0f0ff; font-weight: bold; }
-
-.ps-top5-list { display: flex; flex-direction: column; gap: 10px; }
-.ps-top5-item { display: grid; grid-template-columns: 28px 1fr auto 120px; align-items: center; gap: 10px; }
+.ps-top5-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .ps-top5-rank {
-  width: 24px; height: 24px; border-radius: 50%;
-  background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.3);
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: bold; color: #8ba6c8;
-  &.rank-1 { background: rgba(251,191,36,0.2); border-color: #fbbf24; color: #fbbf24; }
-  &.rank-2 { background: rgba(156,163,175,0.2); border-color: #9ca3af; color: #9ca3af; }
-  &.rank-3 { background: rgba(180,83,9,0.2); border-color: #b45309; color: #b45309; }
+  flex-shrink: 0;
+  &.rank-1 { background: rgba(255,184,77,0.2); color: #FFB84D; border: 1px solid rgba(255,184,77,0.4); }
+  &.rank-2 { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
+  &.rank-3 { background: rgba(82,196,26,0.12); color: #52c41a; border: 1px solid rgba(82,196,26,0.3); }
+  &.rank-4, &.rank-5 { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
 }
-.ps-top5-info { display: flex; flex-direction: column; }
-.ps-top5-name { font-size: 13px; color: #e0f0ff; }
-.ps-top5-dept { font-size: 11px; color: #4a6a8a; }
-.ps-top5-values { display: flex; gap: 8px; white-space: nowrap; font-size: 11px; color: #4a6a8a; }
-.ps-top5-values em { font-style: normal; color: #fb923c; font-weight: bold; }
-.ps-top5-bar-wrap { height: 6px; background: rgba(251,146,60,0.1); border-radius: 3px; overflow: hidden; }
-.ps-top5-bar { height: 100%; border-radius: 3px; transition: width 0.6s; }
+.ps-top5-name { font-size: 12px; color: $white; width: 60px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ps-top5-bar-wrap { flex: 1; height: 6px; background: rgba(251,146,60,0.08); border-radius: 3px; overflow: hidden; }
+.ps-top5-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+.ps-top5-val { font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; width: 26px; text-align: right; flex-shrink: 0; }
 
-.ps-table { background: transparent; }
-:deep(.ps-table .el-table__header th) { background: rgba(0,30,70,0.6); color: #8ba6c8; font-size: 12px; }
-:deep(.ps-table .el-table__body tr) { background: transparent; }
-:deep(.ps-table .el-table__body tr:hover td) { background: rgba(0,212,255,0.05); }
-:deep(.ps-table .el-table__body td) { border-bottom: 1px solid rgba(0,212,255,0.06); color: #a8c5e6; font-size: 12px; }
-:deep(.ps-table .el-table__body tr.el-table__row--striped td) { background: rgba(0,20,55,0.4); }
-
-.ps-danger { color: #f87171; font-weight: bold; }
-.ps-warn   { color: #fbbf24; font-weight: bold; }
-
-.ps-pagination { display: flex; justify-content: flex-end; margin-top: 6px; }
-:deep(.ps-pagination .el-pagination) {
-  --el-pagination-text-color: #8ba6c8;
-  --el-pagination-button-color: #8ba6c8;
-  --el-pagination-hover-color: #00d4ff;
+// ── Main（中间）──
+.ps-main {
+  flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;
 }
-.ps-empty { text-align: center; color: #4a6a8a; font-size: 13px; padding: 30px 0; }
+.ps-overview-panel { height: 162px; flex-shrink: 0; }
+.ps-mid-row        { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }
+.ps-panel-hourly   { flex: 1; }
+.ps-panel-dist     { flex: 0 0 258px; }
 
-:deep(.el-date-editor), :deep(.el-select .el-input__wrapper) {
-  background: rgba(0,20,55,0.6) !important;
-  box-shadow: 0 0 0 1px rgba(0,212,255,0.2) !important;
-  .el-input__inner, .el-range-input { color: #e0f0ff !important; background: transparent !important; }
-  .el-range-separator { color: #4a6a8a !important; }
-  .el-input__icon { color: #4a6a8a !important; }
+// ── Right list ──
+.ps-rtlist { width: 272px; flex-shrink: 0; }
+
+// ── Panel 通用 ──
+.ps-panel {
+  background: $panel;
+  border: 1px solid $border;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
 }
-:deep(.el-select-dropdown) {
-  background: rgba(6,14,36,0.98) !important;
-  border-color: rgba(0,212,255,0.2) !important;
-  .el-select-dropdown__item { color: #8ba6c8; &.is-selected, &:hover { color: #00d4ff; background: rgba(0,212,255,0.08); } }
+
+.ps-ph {
+  height: 38px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  border-bottom: 1px solid rgba(0,212,255,0.09);
+  background: rgba(251,146,60,0.03);
 }
+.ps-ph-bar {
+  width: 3px; height: 14px;
+  background: linear-gradient(180deg, $accent, rgba(251,146,60,0.3));
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(251,146,60,0.7);
+}
+.ps-ph-title { font-size: 13px; font-weight: 600; color: $white; letter-spacing: 1px; }
+.ps-rt-total { margin-left: auto; font-size: 11px; color: $dim; }
+
+.ps-trend-tags { margin-left: 12px; display: flex; gap: 10px; }
+.ps-tag { font-size: 10px; padding: 2px 6px; border-radius: 3px; border: 1px solid; }
+
+.ps-pc { flex: 1; min-height: 0; padding: 6px; }
+
+// ── 概况主体 ──
+.ps-overview-body {
+  flex: 1; min-height: 0;
+  display: flex; align-items: center; padding: 8px 14px; gap: 14px;
+}
+.ps-gauge-wrap { width: 120px; height: 108px; flex-shrink: 0; position: relative; }
+.ps-gauge-chart { width: 100%; height: 100%; }
+.ps-gauge-center {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  text-align: center; pointer-events: none;
+}
+.ps-gauge-val { font-size: 22px; font-weight: 700; color: $accent; font-family: 'Consolas', monospace; line-height: 1; }
+.ps-gauge-sub { font-size: 10px; color: $dim; margin-top: 1px; white-space: nowrap; }
+
+// KPI 小卡片 2行3列
+.ps-kpi-cards {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 7px;
+}
+.ps-kpi-card {
+  background: rgba(251,146,60,0.04);
+  border: 1px solid rgba(251,146,60,0.1);
+  border-radius: 7px;
+  padding: 7px 10px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.ps-kpi-card-val   { font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
+.ps-kpi-card-unit  { font-size: 10px; color: $dim; font-weight: normal; font-family: sans-serif; margin-left: 1px; }
+.ps-kpi-card-label { font-size: 10px; color: $dim; margin-top: 2px; }
+
+// 压力等级说明
+.ps-range-info {
+  width: 168px; flex-shrink: 0;
+  background: rgba(251,146,60,0.03);
+  border: 1px solid rgba(251,146,60,0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ps-range-title { font-size: 11px; color: $dim; font-weight: 600; margin-bottom: 3px; letter-spacing: 0.5px; }
+.ps-range-item  { display: flex; align-items: center; gap: 6px; }
+.ps-range-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.ps-range-name  { font-size: 10px; width: 78px; flex-shrink: 0; }
+.ps-range-val   { font-size: 10px; color: $dim; font-family: 'Consolas', monospace; }
+
+// ── 分布图 ──
+.ps-dist-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.ps-dist-chart { width: 120px; height: 120px; flex-shrink: 0; }
+.ps-dist-legend { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.ps-dist-row { display: flex; align-items: center; gap: 7px; }
+.ps-dist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ps-dist-name { font-size: 11px; color: $text; flex-shrink: 0; width: 56px; }
+.ps-dist-bar-wrap { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+.ps-dist-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; opacity: 0.85; }
+.ps-dist-pct { font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; width: 34px; text-align: right; flex-shrink: 0; }
+
+// ── 实时列表 ──
+.ps-rt-hd {
+  display: grid; grid-template-columns: 64px 44px 42px 1fr;
+  gap: 6px; padding: 6px 10px; flex-shrink: 0;
+  background: rgba(251,146,60,0.06);
+  span { font-size: 11px; color: $dim; font-weight: 600; }
+}
+.ps-rt-body {
+  flex: 1; overflow-y: auto; padding: 3px 6px; min-height: 0;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(251,146,60,0.18); border-radius: 2px; }
+}
+.ps-rt-row {
+  display: grid; grid-template-columns: 64px 44px 42px 1fr;
+  gap: 6px; padding: 6px 4px; margin-bottom: 1px;
+  border-radius: 5px; align-items: center;
+  border-left: 2px solid transparent;
+  transition: background 0.2s;
+  &:hover { background: rgba(251,146,60,0.055); }
+  &.relaxed  { border-left-color: rgba(79,195,247,0.55);  }
+  &.normal   { border-left-color: rgba(82,196,26,0.45);   }
+  &.elevated { border-left-color: rgba(255,184,77,0.55);  }
+  &.high     { border-left-color: rgba(255,82,82,0.65);   }
+}
+.ps-rt-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ps-rt-val {
+  font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; color: #52c41a;
+  .ps-rt-row.elevated & { color: #FFB84D; }
+  .ps-rt-row.high     & { color: #ff5252; }
+  .ps-rt-row.relaxed  & { color: #4FC3F7; }
+}
+.ps-rt-badge {
+  font-size: 10px; padding: 1px 4px; border-radius: 3px; text-align: center;
+  &.relaxed  { background: rgba(79,195,247,0.13);  color: #4FC3F7; border: 1px solid rgba(79,195,247,0.28);  }
+  &.normal   { background: rgba(82,196,26,0.13);   color: #52c41a; border: 1px solid rgba(82,196,26,0.28);   }
+  &.elevated { background: rgba(255,184,77,0.13);  color: #FFB84D; border: 1px solid rgba(255,184,77,0.28);  }
+  &.high     { background: rgba(255,82,82,0.13);   color: #ff5252; border: 1px solid rgba(255,82,82,0.28);   }
+}
+.ps-rt-time { font-size: 10px; color: $dim; }
+
+.ps-rt-pg {
+  height: 36px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  border-top: 1px solid rgba(251,146,60,0.1);
+}
+.ps-pg-btn {
+  height: 22px; padding: 0 7px;
+  background: rgba(251,146,60,0.07); border: 1px solid rgba(251,146,60,0.18);
+  border-radius: 3px; color: $accent; font-size: 12px; cursor: pointer;
+  transition: background 0.2s;
+  &:hover:not(:disabled) { background: rgba(251,146,60,0.16); }
+  &:disabled { opacity: 0.28; cursor: not-allowed; }
+}
+.ps-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; }
+
+// ── 异常明细面板 ──
+.ps-panel-anomaly { flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+.ps-anomaly-count {
+  margin-left: auto; font-size: 12px; color: #FFB84D;
+  em { font-style: normal; font-weight: 700; }
+}
+.ps-anomaly-empty {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: rgba(82,196,26,0.8);
+  .ps-anomaly-ok { font-size: 16px; margin-right: 6px; }
+}
+.ps-anomaly-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.ps-anomaly-hd {
+  display: grid; grid-template-columns: 64px 1fr 80px 52px 88px;
+  gap: 6px; padding: 4px 10px; flex-shrink: 0;
+  background: rgba(255,184,77,0.06);
+  span { font-size: 11px; color: $dim; font-weight: 600; }
+}
+.ps-anomaly-list {
+  flex: 1; overflow-y: auto; padding: 3px 6px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,184,77,0.2); border-radius: 2px; }
+}
+.ps-anomaly-row {
+  display: grid; grid-template-columns: 64px 1fr 80px 52px 88px;
+  gap: 6px; padding: 5px 4px; margin-bottom: 1px;
+  border-radius: 4px; align-items: center;
+  border-left: 2px solid transparent;
+  transition: background 0.15s;
+  &:hover { background: rgba(255,255,255,0.04); }
+  &.anom-high     { border-left-color: rgba(255,82,82,0.6);   background: rgba(255,82,82,0.04); }
+  &.anom-elevated { border-left-color: rgba(255,184,77,0.6);  background: rgba(255,184,77,0.04); }
+}
+.pa-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pa-dept { font-size: 11px; color: $dim; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pa-val  {
+  font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace;
+  .anom-high     & { color: #ff5252; }
+  .anom-elevated & { color: #FFB84D; }
+}
+.pa-type {
+  font-size: 11px; padding: 1px 5px; border-radius: 3px; text-align: center;
+  .anom-high     & { color: #ff5252; background: rgba(255,82,82,0.12);   border: 1px solid rgba(255,82,82,0.25);   }
+  .anom-elevated & { color: #FFB84D; background: rgba(255,184,77,0.12);  border: 1px solid rgba(255,184,77,0.25);  }
+}
+.pa-time { font-size: 10px; color: $dim; }
+
+// ── 压力分布统计面板 ──
+.ps-panel-dist-stat { flex-shrink: 0; }
+.ps-ds-total {
+  margin-left: auto; font-size: 12px; color: $dim;
+  em { color: #93c5fd; font-style: normal; font-weight: 700; }
+}
+.ps-ds-body {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; padding: 6px 0 8px;
+}
+.ps-ds-zone {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 10px 8px 8px;
+  text-align: center; transition: background 0.15s;
+  &:hover { background: rgba(255,255,255,0.07); }
+  &.zone-relaxed  { border-color: rgba(79,195,247,0.2);  }
+  &.zone-normal   { border-color: rgba(82,196,26,0.2);   }
+  &.zone-elevated { border-color: rgba(255,184,77,0.2);  }
+  &.zone-high     { border-color: rgba(255,82,82,0.2);   }
+}
+.ps-ds-icon  { font-size: 16px; margin-bottom: 4px; }
+.ps-ds-count { font-size: 24px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
+.ps-ds-pct   { font-size: 11px; margin-top: 1px; }
+.ps-ds-label { font-size: 13px; font-weight: 600; color: $white; margin-top: 4px; }
+.ps-ds-range { font-size: 10px; color: $dim; margin-top: 2px; }
+.ps-ds-bar-row {
+  display: flex; height: 6px; border-radius: 3px; overflow: hidden;
+  background: rgba(255,255,255,0.05); margin-bottom: 2px;
+}
+.ps-ds-seg { transition: width 0.4s ease; min-width: 0; }
 </style>
