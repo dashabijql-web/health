@@ -130,6 +130,7 @@
             <div class="status-badge" :class="vitalStatus(vitals.bloodOxygen, 95, 100)"><span class="sb-dot"></span>血氧</div>
             <div class="status-badge" :class="vitalStatus(vitals.temperature, 36, 37.3)"><span class="sb-dot"></span>体温</div>
             <div class="status-badge" :class="vitalStatus(vitals.systolic, 90, 140)"><span class="sb-dot"></span>血压</div>
+            <div class="status-badge" :class="pressureStatus(vitals.pressure)"><span class="sb-dot"></span>压力</div>
           </div>
 
           <!-- ⑤ 建议复查 -->
@@ -257,9 +258,9 @@ const loading = ref(false)
 const firstLoading = ref(false)
 
 const portrait = reactive({ empName: '', empCode: '', deptName: '', jobTypeName: '', gender: null, bloodType: '', height: null, weight: null })
-const vitals = reactive({ heartRate: null, bloodOxygen: null, temperature: null, systolic: null, diastolic: null })
+const vitals = reactive({ heartRate: null, bloodOxygen: null, temperature: null, systolic: null, diastolic: null, pressure: null })
 const trendData = ref({ dates: [], heartRates: [], bloodOxygens: [] })
-const healthScores = ref({ heartRate: 0, bloodOxygen: 0, temperature: 0, bloodPressure: 0, activity: 0 })
+const healthScores = ref({ heartRate: 0, bloodOxygen: 0, temperature: 0, bloodPressure: 0, pressure: 0, activity: 0 })
 const warnings = ref([])
 
 const trendChartRef = ref(null)
@@ -274,7 +275,7 @@ const aiLoading = ref(false)
 // ── 综合等级 ──
 const gradeInfo = computed(() => {
   const s = healthScores.value
-  const vals = [s.heartRate, s.bloodOxygen, s.temperature, s.bloodPressure].filter(v => v > 0)
+  const vals = [s.heartRate, s.bloodOxygen, s.temperature, s.bloodPressure, s.pressure].filter(v => v > 0)
   const avg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0
   if (avg >= 90) return { grade: 'A', score: avg, label: '健康状态优秀', cls: 'grade-a' }
   if (avg >= 75) return { grade: 'B', score: avg, label: '健康状态良好', cls: 'grade-b' }
@@ -364,6 +365,7 @@ const scorePills = computed(() => {
     bloodOxygen:   { label: '血氧',   value: s.bloodOxygen  || 0, color: '#00d4ff' },
     temperature:   { label: '体温',   value: s.temperature  || 0, color: '#ffd200' },
     bloodPressure: { label: '血压',   value: s.bloodPressure|| 0, color: '#38ef7d' },
+    pressure:      { label: '压力',   value: s.pressure     || 0, color: '#fb923c' },
     activity:      { label: '活动',   value: s.activity     || 0, color: '#764ba2' }
   }
 })
@@ -413,6 +415,11 @@ const vitalStatus = (val, min, max) => {
   return val >= min && val <= max ? 'normal' : 'abnormal'
 }
 
+const pressureStatus = (val) => {
+  if (val == null) return 'unknown'
+  return val < 70 ? 'normal' : 'abnormal'
+}
+
 const vitalStatusText = (val, min, max) => {
   if (val == null) return '--'
   return val >= min && val <= max ? '正常' : '异常'
@@ -443,7 +450,8 @@ const fetchPortrait = async (isFirstLoad = false) => {
           bloodOxygen: v.bloodOxygen ?? v.blood_oxygen ?? null,
           temperature: v.temperature ?? null,
           systolic: v.systolic ?? v.sbp ?? null,
-          diastolic: v.diastolic ?? v.dbp ?? null
+          diastolic: v.diastolic ?? v.dbp ?? null,
+          pressure: v.pressure ?? null
         })
       }
       if (d.trend) trendData.value = d.trend
@@ -452,11 +460,13 @@ const fetchPortrait = async (isFirstLoad = false) => {
       } else {
         const hr = vitals.heartRate, spo = vitals.bloodOxygen, tmp = vitals.temperature
         const sbp = vitals.systolic, dbp = vitals.diastolic
+        const prs = vitals.pressure
         healthScores.value = {
           heartRate:    hr  ? (hr  >= 60  && hr  <= 100 ? 90 : hr  >= 50 && hr  <= 110 ? 70 : 50) : 0,
           bloodOxygen:  spo ? (spo >= 95  ? 95 : spo >= 90 ? 65 : 40) : 0,
           temperature:  tmp ? (tmp >= 36.0 && tmp <= 37.5 ? 90 : tmp >= 35.5 && tmp <= 38.0 ? 65 : 50) : 0,
           bloodPressure: (sbp && dbp) ? (sbp <= 135 && dbp <= 85 ? 85 : sbp <= 145 && dbp <= 95 ? 65 : 50) : 0,
+          pressure: prs != null ? (prs < 70 ? 90 : prs < 85 ? 65 : 40) : 0,
           activity: 0
         }
       }
@@ -515,14 +525,15 @@ const initRadarChart = () => {
       center: ['50%', '50%'], radius: '68%',
       indicator: [
         { name: '心率', max: 100 }, { name: '血氧', max: 100 },
-        { name: '活动', max: 100 }, { name: '血压', max: 100 }, { name: '体温', max: 100 }
+        { name: '活动', max: 100 }, { name: '血压', max: 100 },
+        { name: '体温', max: 100 }, { name: '压力', max: 100 }
       ],
       name: { textStyle: { color: '#7eb8d4', fontSize: 11 } },
       axisLine: { lineStyle: { color: '#232b4d' } },
       splitLine: { lineStyle: { color: '#232b4d' } },
       splitArea: { areaStyle: { color: ['rgba(0,212,255,.02)', 'rgba(0,212,255,.05)'] } }
     },
-    series: [{ type: 'radar', data: [{ value: [scores.heartRate||0, scores.bloodOxygen||0, scores.activity||0, scores.bloodPressure||0, scores.temperature||0], name: '健康评分', areaStyle: { color: 'rgba(0,212,255,.18)' }, lineStyle: { color: '#00d4ff', width: 2 }, itemStyle: { color: '#00d4ff' } }] }]
+    series: [{ type: 'radar', data: [{ value: [scores.heartRate||0, scores.bloodOxygen||0, scores.activity||0, scores.bloodPressure||0, scores.temperature||0, scores.pressure||0], name: '健康评分', areaStyle: { color: 'rgba(0,212,255,.18)' }, lineStyle: { color: '#00d4ff', width: 2 }, itemStyle: { color: '#00d4ff' } }] }]
   })
 }
 
