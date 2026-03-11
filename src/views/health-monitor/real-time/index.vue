@@ -99,6 +99,7 @@
             @mouseleave="resumeAutoScroll">
             <el-table
               :data="paginatedUserList"
+              :height="tableHeight"
               style="width: 100%"
               :header-cell-style="tblHeadStyle"
               :cell-style="tblCellStyle"
@@ -267,6 +268,7 @@ export default {
       deptList: [],
       currentPage: 1,
       pageSize: 20,
+      tableHeight: 880,
       autoScrollEnabled: true,
       scrollPaused: false,
       refreshTimer: null,
@@ -536,7 +538,7 @@ export default {
     startAutoScroll() {
       this.autoScrollTimer = setInterval(() => {
         if (!this.autoScrollEnabled || this.scrollPaused) return
-        const el = this.$refs.tableWrapper
+        const el = this.$el?.querySelector('.el-table__body-wrapper .el-scrollbar__wrap')
         if (!el) return
         const max = el.scrollHeight - el.clientHeight
         if (max <= 0) return
@@ -564,7 +566,10 @@ export default {
       el.style.transformOrigin = 'top left'
       el.style.transform = `scale(${scale})`
       el.style.width  = `${(1 / scale) * 100}%`
-      el.style.height = `${(1 / scale) * vh}px`
+      const designH = (1 / scale) * vh
+      el.style.height = `${designH}px`
+      // rt-hd=60, rt-ph≈44, rt-pg≈46
+      this.tableHeight = Math.max(200, Math.floor(designH - 60 - 44 - 46))
     },
 
     handleResize() {
