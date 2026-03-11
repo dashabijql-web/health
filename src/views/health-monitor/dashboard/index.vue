@@ -375,6 +375,9 @@
           </div>
         </div>
 
+        <!-- 健康小贴士 -->
+        <health-tips :count="4" class="dm-right-tips" />
+
         <!-- 指标预警率分析 -->
         <div class="dm-panel dm-right-warnrate">
           <div class="dm-ph">
@@ -537,9 +540,11 @@ import { getWarningTypes } from '@/api/statistics'
 import { getHealthPortrait } from '@/api/health-portrait'
 import { handleRiskWarning } from '@/api/risk-warning'
 import { getRealtimeStatistics } from '@/api/realtime'
+import HealthTips from '@/components/HealthTips.vue'
 
 export default {
   name: 'HealthDashboard',
+  components: { HealthTips },
   data() {
     return {
       currentTime: '',
@@ -2083,6 +2088,7 @@ $white:  #e8f4ff;
 .dm-right { width:300px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
 .dm-right-events  { flex:1; min-height:0; }
 .dm-right-warnrate{ flex:0 0 220px; }
+.dm-right-tips    { flex:0 0 200px; }
 
 // 实时预警动态
 .dm-badge-count {

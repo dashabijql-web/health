@@ -142,6 +142,27 @@
                   <span class="c-steps">{{ row.steps != null ? row.steps : '--' }}</span>
                 </template>
               </el-table-column>
+              <el-table-column prop="bloodPressureHigh" label="收缩压" width="90" align="center">
+                <template #default="{ row }">
+                  <span :class="bpCls(row.bloodPressureHigh)">
+                    {{ row.bloodPressureHigh || '--' }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="bloodPressureLow" label="舒张压" width="90" align="center">
+                <template #default="{ row }">
+                  <span :class="bpLowCls(row.bloodPressureLow)">
+                    {{ row.bloodPressureLow || '--' }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="pressure" label="压力指数" width="90" align="center">
+                <template #default="{ row }">
+                  <span :class="pressureCls(row.pressure)">
+                    {{ row.pressure != null ? row.pressure : '--' }}
+                  </span>
+                </template>
+              </el-table-column>
               <el-table-column prop="status" label="状态" width="90" align="center">
                 <template #default="{ row }">
                   <span :class="['rt-status', row.status === 'normal' ? 'st-ok' : 'st-warn']">
@@ -227,6 +248,9 @@ export default {
         avgSteps: 0,
         avgTemperature: 0,
         avgSleep: 0,
+        avgBloodPressureHigh: 0,
+        avgBloodPressureLow: 0,
+        avgPressure: 0,
         todayWarningCount: 0
       },
       statistics: {
@@ -333,6 +357,19 @@ export default {
           dotCls: 'dot-ok'
         },
         {
+          key: 'bp', label: '平均收缩压',
+          value: o.avgBloodPressureHigh ? Math.round(o.avgBloodPressureHigh) + ' mmHg' : '--',
+          sub: '正常 90~139',
+          icon: 'Pointer', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)',
+          dotCls: this.metricDot('bp', o.avgBloodPressureHigh)
+        },
+        {
+          key: 'pressure', label: '平均压力指数',
+          value: o.avgPressure ? Math.round(o.avgPressure) : '--', sub: '正常 < 70',
+          icon: 'Lightning', color: '#fb923c', bg: 'rgba(251,146,60,0.15)',
+          dotCls: this.metricDot('pressure', o.avgPressure)
+        },
+        {
           key: 'warn', label: '近7天预警',
           value: o.todayWarningCount || 0, sub: '近7天累计',
           icon: 'Warning', color: '#E6A23C', bg: 'rgba(230,162,60,0.15)',
@@ -390,8 +427,26 @@ export default {
             : this.tempCls(u.temperature).includes('warn') ? '#ffd200' : '#52c41a'
         },
         { label: '步数',   value: u.steps != null ? u.steps + ' 步' : '--', color: '#22c55e' },
-        { label: '部门',   value: u.deptName || '--',                         color: '#a8c5e6' },
-        { label: '工号',   value: u.userCode || '--',                         color: '#a8c5e6' }
+        {
+          label: '收缩压',
+          value: u.bloodPressureHigh ? u.bloodPressureHigh + ' mmHg' : '--',
+          color: this.bpCls(u.bloodPressureHigh).includes('danger') ? '#ff5252'
+            : this.bpCls(u.bloodPressureHigh).includes('warn') ? '#ffd200' : '#a78bfa'
+        },
+        {
+          label: '舒张压',
+          value: u.bloodPressureLow ? u.bloodPressureLow + ' mmHg' : '--',
+          color: this.bpLowCls(u.bloodPressureLow).includes('danger') ? '#ff5252'
+            : this.bpLowCls(u.bloodPressureLow).includes('warn') ? '#ffd200' : '#a78bfa'
+        },
+        {
+          label: '压力指数',
+          value: u.pressure != null ? u.pressure : '--',
+          color: this.pressureCls(u.pressure).includes('danger') ? '#ff5252'
+            : this.pressureCls(u.pressure).includes('warn') ? '#ffd200' : '#fb923c'
+        },
+        { label: '部门',   value: u.deptName || '--', color: '#a8c5e6' },
+        { label: '工号',   value: u.userCode || '--', color: '#a8c5e6' }
       ]
     }
   },
@@ -533,10 +588,12 @@ export default {
     metricDot(key, val) {
       if (!val) return 'dot-none'
       const map = {
-        hr:    v => (v >= 60 && v <= 100) ? 'dot-ok' : (v >= 50 && v <= 120) ? 'dot-warn' : 'dot-danger',
-        spo2:  v => v >= 97 ? 'dot-ok' : v >= 94 ? 'dot-warn' : 'dot-danger',
-        temp:  v => (v >= 36.0 && v <= 37.3) ? 'dot-ok' : (v >= 35.5 && v <= 37.8) ? 'dot-warn' : 'dot-danger',
-        sleep: v => (v >= 7 && v <= 9) ? 'dot-ok' : v >= 6 ? 'dot-warn' : 'dot-danger'
+        hr:       v => (v >= 60 && v <= 100) ? 'dot-ok' : (v >= 50 && v <= 120) ? 'dot-warn' : 'dot-danger',
+        spo2:     v => v >= 97 ? 'dot-ok' : v >= 94 ? 'dot-warn' : 'dot-danger',
+        temp:     v => (v >= 36.0 && v <= 37.3) ? 'dot-ok' : (v >= 35.5 && v <= 37.8) ? 'dot-warn' : 'dot-danger',
+        sleep:    v => (v >= 7 && v <= 9) ? 'dot-ok' : v >= 6 ? 'dot-warn' : 'dot-danger',
+        bp:       v => (v >= 90 && v <= 139) ? 'dot-ok' : (v < 160) ? 'dot-warn' : 'dot-danger',
+        pressure: v => v < 70 ? 'dot-ok' : v < 85 ? 'dot-warn' : 'dot-danger'
       }
       return map[key] ? map[key](val) : 'dot-ok'
     },
@@ -560,6 +617,27 @@ export default {
       if (v < 35 || v > 38) return 'c-danger'
       if (v < 36 || v > 37.5) return 'c-warn'
       return 'c-ok'
+    },
+
+    bpCls(v) {
+      if (!v) return 'c-dim'
+      if (v >= 160) return 'c-danger'
+      if (v >= 140 || v < 90) return 'c-warn'
+      return 'c-bp'
+    },
+
+    bpLowCls(v) {
+      if (!v) return 'c-dim'
+      if (v >= 100) return 'c-danger'
+      if (v >= 90 || v < 60) return 'c-warn'
+      return 'c-bp'
+    },
+
+    pressureCls(v) {
+      if (v == null) return 'c-dim'
+      if (v >= 85) return 'c-danger'
+      if (v >= 70) return 'c-warn'
+      return 'c-pressure'
     },
 
     fmtTime(t) {
@@ -1119,16 +1197,18 @@ export default {
 }
 
 /* Cell value color classes */
-.c-name   { color: #00d4ff; font-weight: 500; }
-.c-code   { color: #8ba6c8; }
-.c-dept   { color: #a8c5e6; }
-.c-steps  { color: #22c55e; font-weight: 500; }
-.c-sleep  { color: #a855f7; font-weight: 500; }
-.c-time   { color: #8ba6c8; font-size: 12px; }
-.c-dim    { color: #6b7b94; }
-.c-ok     { color: #67C23A; font-weight: 600; }
-.c-warn   { color: #E6A23C; font-weight: 600; }
-.c-danger { color: #F56C6C; font-weight: 600; }
+.c-name     { color: #00d4ff; font-weight: 500; }
+.c-code     { color: #8ba6c8; }
+.c-dept     { color: #a8c5e6; }
+.c-steps    { color: #22c55e; font-weight: 500; }
+.c-sleep    { color: #a855f7; font-weight: 500; }
+.c-time     { color: #8ba6c8; font-size: 12px; }
+.c-dim      { color: #6b7b94; }
+.c-ok       { color: #67C23A; font-weight: 600; }
+.c-warn     { color: #E6A23C; font-weight: 600; }
+.c-danger   { color: #F56C6C; font-weight: 600; }
+.c-bp       { color: #a78bfa; font-weight: 600; }
+.c-pressure { color: #fb923c; font-weight: 600; }
 
 .rt-status {
   display: inline-block;
