@@ -841,6 +841,16 @@ export default {
       el.style.transform = `scale(${scale})`
       if (scale < 1) { el.style.width = `${(1/scale)*100}%`; el.style.height = `${(1/scale)*vh}px` }
       else { el.style.width = '1920px'; el.style.height = '1030px' }
+      this.$nextTick(() => this.setPageSize())
+    },
+    setPageSize() {
+      const el = this.$refs.listRef; if (!el) return
+      const ROW_H = 27  // bo-rt-row: 6+6 padding + ~14px line + 1px margin
+      const n = Math.max(10, Math.floor(el.clientHeight / ROW_H))
+      if (n !== this.pageSize) {
+        this.pageSize = n
+        this.currentPage = 1
+      }
     },
     handleResize() {
       clearTimeout(this.resizeTimer)
