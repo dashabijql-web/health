@@ -133,7 +133,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="recordTime" label="记录时间" min-width="160" />
+        <el-table-column prop="recordTime" label="记录时间" min-width="160">
+          <template #default="{ row }">{{ fmtTime(row.recordTime) }}</template>
+        </el-table-column>
       </el-table>
       <div class="bp-pagination">
         <el-pagination
@@ -399,6 +401,9 @@ export default {
 
     resizeCharts() {
       ;[this.trendChart, this.distChart, this.deptChart].forEach(c => c && c.resize())
+    },
+    fmtTime(t) {
+      return t ? dayjs(t).format('YYYY-MM-DD HH:mm:ss') : '--'
     }
   }
 }
