@@ -111,6 +111,17 @@ const healthMonitorRouter = {
       }
     },
     {
+      // 压力指数分析页面
+      path: 'pressure',
+      name: 'PressureAnalysis',
+      component: () => import('@/views/health-monitor/pressure/index.vue'),
+      meta: {
+        title: '压力分析',
+        icon: 'Cpu',
+        permCode: 'health:pressure'
+      }
+    },
+    {
       // 血压分析页面
       path: 'blood-pressure',
       name: 'BloodPressureAnalysis',
