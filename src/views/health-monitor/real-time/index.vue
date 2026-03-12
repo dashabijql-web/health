@@ -557,7 +557,7 @@ export default {
 
     setScale() {
       const el = this.$el
-      if (!el) return
+      if (!el || typeof el.getBoundingClientRect !== 'function') return
       // 用 BCR 直接读取元素实际位置：transform-origin:top-left 保证 left/top 在缩放前后稳定
       const bcr = el.getBoundingClientRect()
       const vw = window.innerWidth - bcr.left

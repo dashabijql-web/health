@@ -131,92 +131,46 @@
             </div>
           </div>
 
-          <!-- 右侧面板 320px -->
+          <!-- 右侧：在线人员实时状态 -->
           <div class="rw-right-col">
-
-            <!-- 3.1 体征均值卡 -->
-            <div class="rw-vc-panel">
+            <div class="rw-online-panel">
               <div class="rw-sub-ph">
                 <span class="rw-ph-bar"></span>
-                <span class="rw-ph-title">体征均值</span>
-              </div>
-              <div class="rw-vc-row">
-                <div class="rw-vc" v-for="v in vitalAvg" :key="v.label">
-                  <div class="rw-vc-label">{{ v.label }}</div>
-                  <div class="rw-vc-val" :style="{color:v.color}">{{ v.val }}</div>
-                  <div class="rw-vc-sub">异常 {{ v.abnormal }} 人</div>
-                  <div class="rw-vc-bar-track">
-                    <div class="rw-vc-bar" :style="{width:v.rate+'%',background:v.color}"></div>
-                  </div>
+                <span class="rw-ph-title">在线人员实时状态</span>
+                <span class="rw-online-count">{{ onlineUsers.length }} 人在线</span>
+                <div class="rw-online-filter">
+                  <input v-model="onlineFilter" class="rw-filter-input rw-ol-search" placeholder="搜索姓名…" @input="onlinePage=1" />
+                  <select v-model="onlineFilterStatus" class="rw-filter-select" @change="onlinePage=1">
+                    <option value="">全部</option>
+                    <option value="normal">正常</option>
+                    <option value="warning">预警</option>
+                  </select>
                 </div>
+              </div>
+              <div class="rw-ol-hd">
+                <span>姓名</span><span>部门</span><span>心率</span><span>血氧</span><span>体温</span><span>状态</span><span>更新时间</span>
+              </div>
+              <div class="rw-ol-body" ref="onlineListRef">
+                <div class="rw-ol-row" v-for="(u, i) in pagedOnlineUsers" :key="u.empCode||i"
+                  :class="onlineRowClass(u.warningLevel)">
+                  <span class="rw-ol-name">{{ u.empName || '--' }}</span>
+                  <span class="rw-ol-dept">{{ u.deptName || '--' }}</span>
+                  <span class="rw-ol-num" :style="{color: hrColor(u.heartRate)}">{{ u.heartRate || '--' }}</span>
+                  <span class="rw-ol-num" :style="{color: spo2Color(u.bloodOxygen)}">{{ u.bloodOxygen || '--' }}</span>
+                  <span class="rw-ol-num" :style="{color: tempColor(u.temperature)}">{{ fmtTemp(u.temperature) }}</span>
+                  <span class="rw-ol-badge" :class="warnClass(u.warningLevel)">{{ u.warningLevel || '正常' }}</span>
+                  <span class="rw-ol-time">{{ fmtTime(u.lastUpdateTime) }}</span>
+                </div>
+                <div v-if="filteredOnlineUsers.length===0" class="rw-list-empty">暂无在线人员数据</div>
+              </div>
+              <div class="rw-ol-pg">
+                <button class="rw-pg-btn" :disabled="onlinePage===1" @click="onlinePage=1">首页</button>
+                <button class="rw-pg-btn" :disabled="onlinePage===1" @click="onlinePage--">‹</button>
+                <span class="rw-pg-info">{{ onlinePage }} / {{ onlineTotalPages }}</span>
+                <button class="rw-pg-btn" :disabled="onlinePage>=onlineTotalPages" @click="onlinePage++">›</button>
+                <button class="rw-pg-btn" :disabled="onlinePage>=onlineTotalPages" @click="onlinePage=onlineTotalPages">末页</button>
               </div>
             </div>
-
-            <!-- 3.2 预警类型分布 -->
-            <div class="rw-panel rw-donut-panel">
-              <div class="rw-sub-ph">
-                <span class="rw-ph-bar"></span>
-                <span class="rw-ph-title">预警类型分布</span>
-              </div>
-              <div class="rw-donut-body">
-                <div ref="donutRef" class="rw-donut-chart"></div>
-                <div class="rw-donut-legend">
-                  <div class="rw-donut-leg-row" v-for="s in warningStats" :key="s.label">
-                    <span class="rw-donut-dot" :style="{color:s.color}">●</span>
-                    <span class="rw-donut-lname">{{ s.label }}</span>
-                    <span class="rw-donut-lval" :style="{color:s.color}">{{ s.value }}</span>
-                    <span class="rw-donut-lpct">{{ donutPct(s.value) }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 3.3 处理进度 -->
-            <div class="rw-panel rw-prog-panel">
-              <div class="rw-sub-ph">
-                <span class="rw-ph-bar"></span>
-                <span class="rw-ph-title">处理进度</span>
-              </div>
-              <div class="rw-prog-body">
-                <div class="rw-prog-row" v-for="p in handleProgress" :key="p.label">
-                  <div class="rw-prog-hd">
-                    <span class="rw-prog-name">{{ p.label }}</span>
-                    <span class="rw-prog-cnt">
-                      <span style="color:#22c55e">{{ p.handled }}</span>
-                      <span style="color:#4a5578">/{{ p.total }}</span>
-                    </span>
-                  </div>
-                  <div class="rw-prog-track">
-                    <div class="rw-prog-fill" :style="{width:p.rate+'%'}"></div>
-                  </div>
-                </div>
-                <div class="rw-prog-total">
-                  总处理率：<span style="color:#22c55e;font-weight:700">{{ handleProgressTotal }}%</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 3.4 高危人员 TOP5 -->
-            <div class="rw-panel rw-top5-panel">
-              <div class="rw-sub-ph">
-                <span class="rw-ph-bar"></span>
-                <span class="rw-ph-title">高危人员 TOP5</span>
-              </div>
-              <div class="rw-top5-body">
-                <div class="rw-top5-row" v-for="(u, i) in top5Users" :key="u.empCode"
-                  @click="openDetailByUser(u)">
-                  <span class="rw-top5-rank" :class="'rank-'+(i+1)">{{ i+1 }}</span>
-                  <div class="rw-top5-info">
-                    <div class="rw-top5-name">{{ u.name }}</div>
-                    <div class="rw-top5-dept">{{ u.dept }}</div>
-                  </div>
-                  <span class="rw-top5-count">{{ u.count }}</span>
-                  <span class="rw-top5-badge" :class="'lvbadge-'+levelClass(u.maxLevel)">{{ levelLabel(u.maxLevel) }}</span>
-                </div>
-                <div v-if="!top5Users.length" class="rw-list-empty">暂无数据</div>
-              </div>
-            </div>
-
           </div>
         </div>
       </main>
@@ -291,6 +245,7 @@ import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getDeptWarningStats } from '@/api/risk-warning'
 import { getHealthRecords } from '@/api/health'
+import { getOnlineUsers } from '@/api/realtime'
 
 export default {
   name: 'RiskWarning',
@@ -318,6 +273,12 @@ export default {
       detailVisible: false, detailRow: null,
       autoScrollPaused: false,
       scrollTop: 0,
+      // 在线人员实时状态
+      onlineUsers: [],
+      onlineFilter: '',
+      onlineFilterStatus: '',
+      onlinePage: 1,
+      onlinePageSize: 15,
       // 体征曲线
       vitalLoading: false,
       vitalEmpty: false,
@@ -388,17 +349,22 @@ export default {
       return Math.round(this.warningList.filter(x=>x.handled||x.isHandled===1||x.isHandled===true).length/all*100)
     },
 
-    // 右侧面板：TOP5 高危人员
-    top5Users() {
-      const map = {}
-      this.warningList.forEach(x => {
-        const k = x.empCode || x.userCode; if(!k) return
-        if(!map[k]) map[k] = { name:x.userName||'--', dept:x.deptName||'--', empCode:k, count:0, maxLevel:'低', _first:x }
-        map[k].count++
-        if(this.levelRank(x.warningLevel) > this.levelRank(map[k].maxLevel)) map[k].maxLevel = x.warningLevel
+    // 在线人员过滤
+    filteredOnlineUsers() {
+      return this.onlineUsers.filter(u => {
+        const nameOk = !this.onlineFilter || (u.empName||'').includes(this.onlineFilter)
+        const lv = u.warningLevel
+        const hasWarning = lv && lv !== '正常' && lv !== 'normal'
+        const statusOk = !this.onlineFilterStatus ||
+          (this.onlineFilterStatus === 'warning' ? hasWarning : !hasWarning)
+        return nameOk && statusOk
       })
-      return Object.values(map).sort((a,b)=>b.count-a.count).slice(0,5)
-    }
+    },
+    pagedOnlineUsers() {
+      const s = (this.onlinePage-1)*this.onlinePageSize
+      return this.filteredOnlineUsers.slice(s, s+this.onlinePageSize)
+    },
+    onlineTotalPages() { return Math.max(1, Math.ceil(this.filteredOnlineUsers.length/this.onlinePageSize)) }
   },
   watch: {
     filteredList() {
@@ -423,7 +389,7 @@ export default {
       tick(); this.clockTimer = setInterval(tick, 1000)
     },
     async fetchData() {
-      await Promise.allSettled([this.loadStats(), this.loadTrend(), this.loadDept(), this.loadList()])
+      await Promise.allSettled([this.loadStats(), this.loadTrend(), this.loadDept(), this.loadList(), this.loadOnlineUsers()])
       this.$nextTick(() => this.initDonutChart())
     },
     async loadStats() {
@@ -466,6 +432,15 @@ export default {
       try {
         const r = await getRiskWarningList({page:1,size:10000,level:'',handled:null})
         if (r.code===200 && r.data) this.warningList=r.data.list||r.data||[]
+      } catch {}
+    },
+    async loadOnlineUsers() {
+      try {
+        const r = await getOnlineUsers(1, 1000)
+        if (r.code===200 && r.data) {
+          this.onlineUsers = r.data.list || r.data || []
+          this.$nextTick(() => this.setOnlinePageSize())
+        }
       } catch {}
     },
 
@@ -802,8 +777,21 @@ export default {
     statBarWidth(val) { return val/this.statMax*100 },
     fmtTime(ts)     { return ts?dayjs(ts).format('MM-DD HH:mm'):'--' },
     fmtTimeFull(ts) { return ts?dayjs(ts).format('YYYY-MM-DD HH:mm:ss'):'--' },
+
+    // 在线人员辅助方法
+    hrColor(v)   { if(!v||v===0) return '#8ba6c8'; return v>100||v<60?'#ef4444':'#52c41a' },
+    spo2Color(v) { if(!v||v===0) return '#8ba6c8'; return v<95?'#ef4444':v<97?'#f97316':'#52c41a' },
+    tempColor(v) { if(!v||v===0) return '#8ba6c8'; const t=parseFloat(v); return t>37.5?'#ef4444':t>37.2?'#f97316':'#52c41a' },
+    fmtTemp(v)   { if(!v||v===0) return '--'; const t=parseFloat(v); return (t>100?(t/10):t).toFixed(1) },
+    onlineRowClass(lv) { return lv && lv!=='正常' && lv!=='normal' ? 'ol-warning' : '' },
+    setOnlinePageSize() {
+      const el = this.$refs.onlineListRef; if(!el) return
+      const n = Math.max(8, Math.floor(el.clientHeight / 28))
+      if (n !== this.onlinePageSize) { this.onlinePageSize = n; this.onlinePage = 1 }
+    },
+
     setScale() {
-      const el=this.$el; if(!el) return
+      const el=this.$el; if(!el || typeof el.getBoundingClientRect !== 'function') return
       const bcr=el.getBoundingClientRect()
       const vw=window.innerWidth-bcr.left
       const vh=window.innerHeight-bcr.top
@@ -814,7 +802,7 @@ export default {
     },
     handleResize() {
       clearTimeout(this.resizeTimer)
-      this.resizeTimer=setTimeout(()=>{ this.setScale(); this.$nextTick(()=>Object.values(this.charts).forEach(c=>c&&c.resize&&c.resize())) },200)
+      this.resizeTimer=setTimeout(()=>{ this.setScale(); this.$nextTick(()=>{ Object.values(this.charts).forEach(c=>c&&c.resize&&c.resize()); this.setOnlinePageSize() }) },200)
     }
   }
 }
@@ -1013,10 +1001,7 @@ $white:  #e8f4ff;
 .rw-panel-list { flex-direction: row !important; }
 .rw-list-wrap  { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
 .rw-right-col  {
-  width:320px; flex-shrink:0; display:flex; flex-direction:column; gap:8px;
-  padding:8px 8px 8px 8px; overflow-y:auto;
-  &::-webkit-scrollbar { width:2px; }
-  &::-webkit-scrollbar-thumb { background:rgba(0,212,255,.15); border-radius:2px; }
+  width:460px; flex-shrink:0; display:flex; flex-direction:column; padding:0 0 0 8px;
 }
 
 /* 右侧子面板 header */
@@ -1025,65 +1010,53 @@ $white:  #e8f4ff;
   padding:0 12px; border-bottom:1px solid rgba(0,212,255,.09); background:rgba(0,212,255,.03);
 }
 
-/* 体征均值卡 */
-.rw-vc-panel { background:$panel; border:1px solid $border; border-radius:10px; overflow:hidden; flex-shrink:0; }
-.rw-vc-row   { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; padding:8px; }
-.rw-vc       { background:rgba(0,212,255,.04); border-radius:8px; padding:10px 10px 8px; }
-.rw-vc-label { font-size:9px; color:$dim; letter-spacing:.5px; margin-bottom:3px; }
-.rw-vc-val   { font-size:19px; font-weight:800; font-family:'Consolas',monospace; line-height:1.1; }
-.rw-vc-sub   { font-size:9px; color:$dim; margin-top:2px; }
-.rw-vc-bar-track { height:3px; background:rgba(255,255,255,.06); border-radius:2px; margin-top:5px; overflow:hidden; }
-.rw-vc-bar   { height:100%; border-radius:2px; transition:width .8s; opacity:.8; }
-
-/* 环形图面板 */
-.rw-donut-panel { flex-shrink:0; }
-.rw-donut-body  { display:flex; align-items:center; padding:8px; gap:8px; }
-.rw-donut-chart { width:80px; height:80px; flex-shrink:0; }
-.rw-donut-legend { flex:1; display:flex; flex-direction:column; gap:6px; }
-.rw-donut-leg-row { display:flex; align-items:center; gap:5px; }
-.rw-donut-dot  { font-size:10px; flex-shrink:0; }
-.rw-donut-lname { font-size:11px; color:$text; flex:1; }
-.rw-donut-lval  { font-size:12px; font-weight:700; font-family:'Consolas',monospace; min-width:28px; text-align:right; }
-.rw-donut-lpct  { font-size:10px; color:$dim; min-width:32px; text-align:right; }
-
-/* 处理进度 */
-.rw-prog-panel  { flex-shrink:0; }
-.rw-prog-body   { padding:8px 12px; display:flex; flex-direction:column; gap:8px; }
-.rw-prog-hd     { display:flex; justify-content:space-between; margin-bottom:4px; }
-.rw-prog-name   { font-size:11px; color:$text; }
-.rw-prog-cnt    { font-size:11px; font-family:'Consolas',monospace; }
-.rw-prog-track  { height:10px; background:rgba(255,255,255,.05); border-radius:5px; overflow:hidden; position:relative; }
-.rw-prog-fill   { height:100%; border-radius:5px; background:linear-gradient(90deg,#22c55e,rgba(34,197,94,.6)); position:absolute; left:0; top:0; transition:width .8s; }
-.rw-prog-total  { font-size:11px; color:$dim; text-align:center; padding-top:6px; border-top:1px solid rgba(0,212,255,.08); }
-
-/* TOP5 */
-.rw-top5-panel { flex:1; min-height:0; }
-.rw-top5-body  {
-  flex:1; overflow-y:auto; padding:6px 8px;
-  &::-webkit-scrollbar { width:2px; }
-  &::-webkit-scrollbar-thumb { background:rgba(0,212,255,.15); border-radius:2px; }
+/* 在线人员实时状态面板 */
+.rw-online-panel {
+  flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;
+  background:$panel; border:1px solid $border; border-radius:10px;
 }
-.rw-top5-row {
-  display:flex; align-items:center; gap:8px; padding:7px 6px; border-radius:5px; cursor:pointer; transition:background .12s;
+.rw-online-count {
+  font-size:11px; color:$accent; font-family:'Consolas',monospace;
+  background:rgba(0,212,255,.1); border:1px solid rgba(0,212,255,.25);
+  border-radius:3px; padding:1px 6px; flex-shrink:0;
+}
+.rw-online-filter { margin-left:auto; display:flex; align-items:center; gap:5px; }
+.rw-ol-search { width:72px !important; }
+.rw-ol-hd {
+  display:grid;
+  grid-template-columns: 56px 80px 46px 46px 50px 54px 1fr;
+  gap:0; padding:5px 12px; flex-shrink:0;
+  background:rgba(0,212,255,.055); border-bottom:1px solid rgba(0,212,255,.1);
+  span { font-size:11px; color:$dim; font-weight:600; padding:0 3px; }
+}
+.rw-ol-body {
+  flex:1; min-height:0; overflow-y:auto; padding:3px 6px;
+  &::-webkit-scrollbar { width:3px; }
+  &::-webkit-scrollbar-thumb { background:rgba(0,212,255,.18); border-radius:2px; }
+}
+.rw-ol-row {
+  display:grid;
+  grid-template-columns: 56px 80px 46px 46px 50px 54px 1fr;
+  gap:0; padding:5px 6px; margin-bottom:1px;
+  border-radius:5px; align-items:center; border-left:3px solid transparent;
+  transition:background .15s;
   &:hover { background:rgba(0,212,255,.05); }
+  &:nth-child(even) { background:rgba(255,255,255,.013); }
+  &:nth-child(even):hover { background:rgba(0,212,255,.05); }
+  &.ol-warning { border-left-color:rgba(249,115,22,.7); background:rgba(249,115,22,.03) !important; }
 }
-.rw-top5-rank {
-  width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-  font-size:10px; font-weight:700; flex-shrink:0;
-  &.rank-1,&.rank-2 { background:rgba(239,68,68,.2);  color:#ef4444; border:1px solid rgba(239,68,68,.4); }
-  &.rank-3           { background:rgba(249,115,22,.2); color:#f97316; border:1px solid rgba(249,115,22,.4); }
-  &.rank-4,&.rank-5  { background:rgba(255,255,255,.06); color:$dim;  border:1px solid rgba(255,255,255,.1); }
+.rw-ol-name  { font-size:12px; color:$white; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 3px; }
+.rw-ol-dept  { font-size:11px; color:$text; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 3px; }
+.rw-ol-num   { font-size:12px; font-weight:700; font-family:'Consolas',monospace; text-align:center; padding:0 3px; }
+.rw-ol-badge {
+  font-size:10px; padding:1px 5px; border-radius:3px; text-align:center; white-space:nowrap; display:inline-block;
+  &.danger { background:rgba(239,68,68,.14); color:#ef4444; border:1px solid rgba(239,68,68,.3); }
+  &.warn   { background:rgba(249,115,22,.14); color:#f97316; border:1px solid rgba(249,115,22,.3); }
+  &.info   { background:rgba(59,130,246,.14); color:#3b82f6; border:1px solid rgba(59,130,246,.3); }
+  &.normal { background:rgba(82,196,26,.1);  color:#52c41a; border:1px solid rgba(82,196,26,.22); }
 }
-.rw-top5-info  { flex:1; min-width:0; }
-.rw-top5-name  { font-size:12px; color:$white; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.rw-top5-dept  { font-size:10px; color:$dim; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.rw-top5-count { font-size:14px; font-weight:700; font-family:'Consolas',monospace; color:#ef4444; min-width:24px; text-align:right; flex-shrink:0; }
-.rw-top5-badge {
-  font-size:9px; padding:1px 5px; border-radius:3px; white-space:nowrap; flex-shrink:0; margin-left:4px;
-  &.lvbadge-danger { color:#ef4444; background:rgba(239,68,68,.14);  border:1px solid rgba(239,68,68,.3); }
-  &.lvbadge-warn   { color:#f97316; background:rgba(249,115,22,.14); border:1px solid rgba(249,115,22,.3); }
-  &.lvbadge-info   { color:#3b82f6; background:rgba(59,130,246,.14); border:1px solid rgba(59,130,246,.3); }
-}
+.rw-ol-time  { font-size:10px; color:$dim; padding:0 3px; }
+.rw-ol-pg    { height:32px; flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:5px; border-top:1px solid rgba(0,212,255,.1); }
 </style>
 
 <style lang="scss">

@@ -1647,7 +1647,7 @@ export default {
     },
     setScale() {
       const el = this.$refs.dmScale
-      if (!el) return
+      if (!el || typeof el.getBoundingClientRect !== 'function') return
       const bcr = el.getBoundingClientRect()
       const vw = window.innerWidth - bcr.left
       const vh = window.innerHeight - bcr.top

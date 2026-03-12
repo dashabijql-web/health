@@ -206,7 +206,7 @@ class WatchSimulator:
                 break
             try:
                 data_type = random.choice([
-                    'apht', 'aphp', 'temp', 'gps', 'heartbeat'
+                    'apht', 'aphp', 'temp', 'gps', 'heartbeat', 'sleep'
                 ])
                 dispatch = {
                     'apht':      self.send_health_data_apht,
@@ -214,6 +214,7 @@ class WatchSimulator:
                     'temp':      self.send_temperature,
                     'gps':       self.send_gps_data,
                     'heartbeat': self.send_heartbeat,
+                    'sleep':     self.send_sleep_data,
                 }
                 success = dispatch[data_type]()
 

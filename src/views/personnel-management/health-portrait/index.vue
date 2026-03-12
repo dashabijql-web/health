@@ -260,6 +260,7 @@ const firstLoading = ref(false)
 const portrait = reactive({ empName: '', empCode: '', deptName: '', jobTypeName: '', gender: null, bloodType: '', height: null, weight: null })
 const vitals = reactive({ heartRate: null, bloodOxygen: null, temperature: null, systolic: null, diastolic: null, pressure: null })
 const trendData = ref({ dates: [], heartRates: [], bloodOxygens: [] })
+const hourlyHrData = ref(new Array(24).fill(0))
 const healthScores = ref({ heartRate: 0, bloodOxygen: 0, temperature: 0, bloodPressure: 0, pressure: 0, activity: 0 })
 const warnings = ref([])
 
@@ -330,23 +331,15 @@ const riskLevels = computed(() => {
   })
 })
 
-// ── 心率时段热力图（从 trendData 或随机）──
+// ── 心率时段热力图（今日每小时真实心率）──
 const heatmapCells = computed(() => {
-  // 若有实时数据尝试用，否则根据 vitals.heartRate 生成示意
-  const hr = vitals.heartRate || 80
-  const cells = []
-  for (let h = 0; h < 24; h++) {
-    // 粗略模拟：深夜低，工作时段正常，05:00/14:00 偶尔偏高
-    let color = '#1a2a4d'
-    let label = `${String(h).padStart(2,'0')}:00`
-    if (h >= 6 && h <= 22) {
-      color = '#1565c0'
-      if (h === 5 || h === 14) { color = '#ff5252'; label += ' ⚠偏高' }
-      else if (h >= 9 && h <= 18) color = '#1976d2'
-    }
-    cells.push({ color, label })
-  }
-  return cells
+  return hourlyHrData.value.map((hr, h) => {
+    const label = `${String(h).padStart(2,'0')}:00`
+    if (!hr) return { color: '#1a2a4d', label }
+    if (hr > 100 || hr < 55) return { color: '#ff5252', label: `${label} ${hr}bpm ⚠` }
+    if (hr > 90) return { color: '#f97316', label: `${label} ${hr}bpm` }
+    return { color: '#1565c0', label: `${label} ${hr}bpm` }
+  })
 })
 
 // ── AI ──
@@ -455,6 +448,7 @@ const fetchPortrait = async (isFirstLoad = false) => {
         })
       }
       if (d.trend) trendData.value = d.trend
+      if (d.hourlyHr) hourlyHrData.value = d.hourlyHr
       if (d.healthScores) {
         healthScores.value = d.healthScores
       } else {

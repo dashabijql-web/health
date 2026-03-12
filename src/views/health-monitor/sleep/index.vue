@@ -457,13 +457,12 @@ export default {
       const el = this.$refs.scoreRef; if (!el) return
       if (this.charts.score) this.charts.score.dispose()
       const c = echarts.init(el); this.charts.score = c
-      const fb = [
-        { label: '差(0-40)',    count: 45,  color: '#ff5252' },
-        { label: '较差(40-60)', count: 120, color: '#FFB84D' },
-        { label: '良好(60-80)', count: 380, color: '#4FC3F7' },
-        { label: '优秀(80+)',   count: 210, color: '#52c41a' }
+      const d = data.length ? data : [
+        { label: '差(0-40)',    count: 0, color: '#ff5252' },
+        { label: '较差(40-60)', count: 0, color: '#FFB84D' },
+        { label: '良好(60-80)', count: 0, color: '#4FC3F7' },
+        { label: '优秀(80+)',   count: 0, color: '#52c41a' }
       ]
-      const d = data.length ? data : fb
       c.setOption({
         backgroundColor: 'transparent',
         tooltip: {
@@ -709,7 +708,7 @@ export default {
     },
 
     setScale() {
-      const el = this.$el; if (!el) return
+      const el = this.$el; if (!el || typeof el.getBoundingClientRect !== 'function') return
       const bcr = el.getBoundingClientRect()
       const vw = window.innerWidth - bcr.left
       const vh = window.innerHeight - bcr.top
