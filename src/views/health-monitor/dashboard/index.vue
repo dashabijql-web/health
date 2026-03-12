@@ -888,14 +888,14 @@ export default {
     })
     this.kpiRefreshTimer = setInterval(() => this.fetchKpiData(), 30000)
     this.startAutoRefresh()
-    this.setScale()
+    
     this._resizeHandler = () => this.handleResize()
     window.addEventListener('resize', this._resizeHandler)
     this.refreshTextTimer = setInterval(() => this.updateRefreshText(), 5000)
   },
   activated() {
     this.fetchData()
-    this.setScale()
+    
     this.$nextTick(() => Object.values(this.charts).forEach(c => c && c.resize()))
   },
   beforeUnmount() {
@@ -1644,22 +1644,10 @@ export default {
     startAutoRefresh() {
       this.refreshTimer = setInterval(() => this.fetchData(), 30000)
     },
-    setScale() {
-      const el = this.$refs.dmScale
-      if (!el || typeof el.getBoundingClientRect !== 'function') return
-      const bcr = el.getBoundingClientRect()
-      const vw = window.innerWidth - bcr.left
-      const vh = window.innerHeight - bcr.top
-      const scale = Math.max(0.4, Math.min(1, Math.min(vw / 1920, vh / 1030)))
-      el.style.transformOrigin = 'top left'
-      el.style.transform = `scale(${scale})`
-      if (scale < 1) { el.style.width = `${(1/scale)*100}%`; el.style.height = `${(1/scale)*vh}px` }
-      else { el.style.width = '1920px'; el.style.height = '1030px' }
-    },
     handleResize() {
       clearTimeout(this.resizeTimer)
       this.resizeTimer = setTimeout(() => {
-        this.setScale()
+        
         this.$nextTick(() => Object.values(this.charts).forEach(c => c && c.resize && c.resize()))
       }, 200)
     }
@@ -1687,7 +1675,7 @@ $text:   #c8d8e8;
 $dim:    #8ba6c8;
 $white:  #e8f4ff;
 
-.dm-outer { width:100%; height:calc(100vh - 50px); overflow:hidden; background:$bg; }
+.dm-outer { width:100%; height:calc(100vh - 50px) !important; overflow:hidden; background:$bg; }
 .dm-root {
   width:100%; height:100%; /* 填满 dm-outer */
   min-height: 600px; /* 最小高度防止过小 */
@@ -1792,7 +1780,13 @@ $white:  #e8f4ff;
 .dm-assess-tag  { font-size:12px; font-weight:600; width:28px; text-align:right; flex-shrink:0; }
 
 // ══ MAIN flex:1 ══
-.dm-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
+.dm-main {
+  flex:1; min-width:0; display:flex; flex-direction:column; gap:10px;
+  overflow-y: auto; overflow-x: hidden;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
+  &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
+}
 // metrics 36+50=86, device 36+64=100, gaps 20 → model = 966-54-86-100-20=706px
 .dm-main-metrics { flex:0 0 96px; overflow:hidden; }
 .dm-main-model   { flex:1; min-height:0; overflow:hidden; }

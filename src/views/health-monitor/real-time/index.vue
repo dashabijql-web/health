@@ -99,7 +99,7 @@
             @mouseleave="resumeAutoScroll">
             <el-table
               :data="paginatedUserList"
-              :height="tableHeight"
+              height="100%"
               style="width: 100%"
               :header-cell-style="tblHeadStyle"
               :cell-style="tblCellStyle"
@@ -543,7 +543,7 @@ export default {
       this.initCharts()
       // 延迟调用 setScale 确保 DOM 完全渲染
       setTimeout(() => {
-        this.setScale()
+        
       }, 100)
     })
   },
@@ -659,7 +659,7 @@ export default {
     handleResize() {
       clearTimeout(this.resizeTimer)
       this.resizeTimer = setTimeout(() => {
-        this.setScale()
+        
         if (!this.statusChart) {
           this.initCharts()
         } else {

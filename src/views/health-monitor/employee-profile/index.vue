@@ -463,9 +463,9 @@ onUnmounted(() => {
 
 <style scoped>
 /* ═══ 整体 ═══ */
-/* app-main 有 padding-top: 50px（fixed-header 场景）+ header 本身 50px = 100px 总偏移 */
+/* app-main padding-top:50px（fixed-header），ep-page 填满剩余 100vh-50px */
 .ep-page {
-  height: calc(100vh - 100px);
+  height: calc(100vh - 50px);
   background: #080d1a;
   color: #c8d8f0;
   display: flex;

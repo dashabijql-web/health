@@ -121,6 +121,9 @@
               <el-button v-if="row.bufferCount > 0" type="danger" link size="small" @click="handleDeleteBuffer(row)">
                 <el-icon><Delete /></el-icon> 清空
               </el-button>
+              <el-button v-if="row.status === 1" type="info" link size="small" @click="handleSendMessage(row)">
+                <el-icon><ChatDotRound /></el-icon> 发消息
+              </el-button>
             </div>
           </template>
         </el-table-column>
@@ -245,6 +248,33 @@
       </template>
     </el-dialog>
 
+    <!-- 发消息对话框 -->
+    <el-dialog v-model="messageDialogVisible" title="发送消息到手表" width="480px"
+      :close-on-click-modal="false" class="dark-dialog">
+      <div class="msg-dialog-meta">
+        <span class="msg-meta-label">设备 IMEI：</span>
+        <span class="msg-meta-value mono">{{ currentDevice.imei }}</span>
+        <span v-if="currentDevice.userName" class="msg-meta-user">（{{ currentDevice.userName }}）</span>
+      </div>
+      <el-form :model="messageForm" label-width="0">
+        <el-form-item>
+          <el-input
+            v-model="messageForm.text"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入要推送到手表的消息内容（最多 50 个字符）"
+            :maxlength="50"
+            show-word-limit
+            resize="none"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="messageDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmSendMessage" :disabled="!messageForm.text.trim()">发送</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 转移数据对话框 -->
     <el-dialog v-model="transferDialogVisible" title="转移缓冲数据" width="600px"
       :close-on-click-modal="false" class="dark-dialog">
@@ -296,7 +326,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Monitor, Timer, CircleCheck, Connection, Document, Link, Unlock, Upload, Delete } from '@element-plus/icons-vue'
+import { Refresh, Monitor, Timer, CircleCheck, Connection, Document, Link, Unlock, Upload, Delete, ChatDotRound } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import {
   getOnlineDevices,
@@ -304,7 +334,8 @@ import {
   transferBufferData,
   deleteBufferData,
   bindDeviceToUser,
-  unbindDevice
+  unbindDevice,
+  sendWatchMessage
 } from '@/api/device'
 
 // 当前时间
@@ -360,6 +391,32 @@ const transferForm = reactive({
   userDept: '',
   searchKey: ''
 })
+
+// 发消息对话框
+const messageDialogVisible = ref(false)
+const messageForm = reactive({ text: '' })
+
+const handleSendMessage = (row) => {
+  currentDevice.value = row
+  messageForm.text = ''
+  messageDialogVisible.value = true
+}
+
+const confirmSendMessage = async () => {
+  const text = messageForm.text.trim()
+  if (!text) return
+  try {
+    const res = await sendWatchMessage(currentDevice.value.imei, text)
+    if (res.code === 200) {
+      ElMessage.success('消息发送成功')
+      messageDialogVisible.value = false
+    } else {
+      ElMessage.error(res.message || '消息发送失败')
+    }
+  } catch (error) {
+    ElMessage.error('消息发送失败')
+  }
+}
 
 // 计算统计数据
 const deviceStats = computed(() => {
@@ -867,6 +924,17 @@ onBeforeUnmount(() => {
   padding: 12px 0;
   text-align: center;
 }
+
+/* ── 发消息对话框 ── */
+.msg-dialog-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+  padding: 10px 14px; margin-bottom: 16px;
+  background: rgba(0, 212, 255, 0.06); border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 6px; font-size: 13px;
+}
+.msg-meta-label { color: #7eb8d4; }
+.msg-meta-value { color: #e8f4ff; font-family: monospace; }
+.msg-meta-user  { color: #7eb8d4; }
 
 /* ── Element Plus 覆盖 ── */
 :deep(.el-table) {

@@ -421,7 +421,6 @@ export default {
   mounted() {
     this.initClock()
     this.fetchData()
-    this.setScale()
     window.addEventListener('resize', this.handleResize)
     this.$nextTick(() => this.startAutoScroll())
     this.refreshTimer = setInterval(() => this.fetchData(), 30000)
@@ -844,26 +843,6 @@ export default {
       this.detailItem = item
       this.detailVisible = true
     },
-
-    setScale() {
-      const el = this.$el; if (!el) return
-      // 用 BCR 直接读取元素实际位置：transform-origin:top-left 保证 left/top 在缩放前后稳定
-      const bcr = el.getBoundingClientRect()
-      const vw = window.innerWidth - bcr.left   // 可用宽度 = 窗口宽 - 侧边栏实际宽
-      const vh = window.innerHeight - bcr.top   // 可用高度 = 窗口高 - 顶栏实际高
-      const scale = Math.max(0.4, Math.min(1, Math.min(vw / 1920, vh / 1030)))
-      el.style.transformOrigin = 'top left'
-      el.style.transform = `scale(${scale})`
-      if (scale < 1) {
-        el.style.width  = `${(1 / scale) * 100}%`
-        el.style.height = `${(1 / scale) * vh}px`
-        el.style.position = 'absolute'; el.style.top = bcr.top + 'px'; el.style.left = '0'
-      } else {
-        el.style.width = '1920px'; el.style.height = '1030px'
-        el.style.position = ''; el.style.top = ''; el.style.left = ''
-      }
-      this.$nextTick(() => this.setPageSize())
-    },
     setPageSize() {
       const el = this.$refs.listRef; if (!el) return
       const ROW_H = 27  // hr-rt-row: 6+6 padding + ~14px line + 1px margin
@@ -876,7 +855,6 @@ export default {
     handleResize() {
       clearTimeout(this.resizeTimer)
       this.resizeTimer = setTimeout(() => {
-        this.setScale()
         this.$nextTick(() => Object.values(this.charts).forEach(c => c && c.resize && c.resize()))
       }, 200)
     },
@@ -907,7 +885,7 @@ $white:  #e8f4ff;
 // ── Root：自适应视口高度 ──
 .hr-root {
   width: 100%;
-  height: calc(100vh - 50px); /* 视口高度 - 顶部导航栏 */
+  height: calc(100vh - 50px) !important; /* 视口高度 - 顶部导航栏 */
   min-height: 600px; /* 最小高度防止过小 */
   background: $bg;
   background-image:
@@ -1016,6 +994,10 @@ $white:  #e8f4ff;
 // ── Main（中间）──
 .hr-main {
   flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+  overflow-y: auto; overflow-x: hidden;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
+  &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
 }
 .hr-overview-panel { height: 162px; flex-shrink: 0; }
 .hr-mid-row        { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }

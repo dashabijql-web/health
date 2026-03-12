@@ -400,7 +400,7 @@ export default {
   mounted() {
     this.initClock()
     this.fetchData()
-    this.setScale()
+    
     window.addEventListener('resize', this.handleResize)
     this.$nextTick(() => {
       this.startAutoScroll()
@@ -830,24 +830,6 @@ export default {
       this.detailItem = item
       this.detailVisible = true
     },
-
-    setScale() {
-      const el = this.$el; if (!el) return
-      const bcr = el.getBoundingClientRect()
-      const vw = window.innerWidth - bcr.left
-      const vh = window.innerHeight - bcr.top
-      const scale = Math.max(0.4, Math.min(1, Math.min(vw / 1920, vh / 1030)))
-      el.style.transformOrigin = 'top left'
-      el.style.transform = `scale(${scale})`
-      if (scale < 1) {
-        el.style.width = `${(1/scale)*100}%`; el.style.height = `${(1/scale)*vh}px`
-        el.style.position = 'absolute'; el.style.top = bcr.top + 'px'; el.style.left = '0'
-      } else {
-        el.style.width = '1920px'; el.style.height = '1030px'
-        el.style.position = ''; el.style.top = ''; el.style.left = ''
-      }
-      this.$nextTick(() => this.setPageSize())
-    },
     setPageSize() {
       const el = this.$refs.listRef; if (!el) return
       const ROW_H = 27  // bo-rt-row: 6+6 padding + ~14px line + 1px margin
@@ -860,7 +842,7 @@ export default {
     handleResize() {
       clearTimeout(this.resizeTimer)
       this.resizeTimer = setTimeout(() => {
-        this.setScale()
+        
         this.$nextTick(() => Object.values(this.charts).forEach(c => c && c.resize && c.resize()))
       }, 200)
     },
@@ -889,7 +871,7 @@ $white:  #e8f4ff;
 
 .bo-root {
   width: 100%;
-  height: calc(100vh - 50px); /* 视口高度 - 顶部导航栏 */
+  height: calc(100vh - 50px) !important; /* 视口高度 - 顶部导航栏 */
   min-height: 600px; /* 最小高度防止过小 */
   background: $bg;
   background-image:
@@ -940,7 +922,13 @@ $white:  #e8f4ff;
 .bo-aside-bot   { flex: 1; }
 
 /* ── Main ── */
-.bo-main        { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.bo-main        {
+  flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+  overflow-y: auto; overflow-x: hidden;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
+  &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
+}
 .bo-overview-panel { height: 162px; flex-shrink: 0; }
 .bo-mid-row     { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }
 .bo-panel-age   { flex: 0 0 340px; }
