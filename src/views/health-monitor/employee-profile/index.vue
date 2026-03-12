@@ -25,9 +25,6 @@
         <div class="ep-panel ep-basic">
           <div class="ep-ph"><span class="ep-ph-bar"></span>职工基本信息</div>
           <div class="ep-basic-body">
-            <div class="ep-basic-avatar">
-              <img src="/assets/miner-worker.png" class="ep-avatar-img" />
-            </div>
             <div class="ep-basic-name">{{ empInfo.empName || '--' }}</div>
             <div class="ep-basic-grid">
               <div class="ep-bi"><span>性别</span><b>{{ empInfo.gender === 2 ? '女' : '男' }}</b></div>
@@ -575,7 +572,7 @@ onUnmounted(() => {
 /* ═══ 中栏：左面板列 | 矿工 | 右面板列 ═══ */
 .ep-center {
   display: grid;
-  grid-template-columns: 185px 1fr 185px;
+  grid-template-columns: 200px 1fr 200px;
   height: 100%;
 }
 
@@ -624,9 +621,9 @@ onUnmounted(() => {
   padding: 7px 10px;
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
-.ep-sp-label { font-size: 11px; color: #4a6880; flex: 1; white-space: nowrap; }
-.ep-sp-val   { font-size: 15px; font-weight: 700; font-family: monospace; }
-.ep-sp-unit  { font-size: 10px; color: #4a7090; min-width: 18px; }
+.ep-sp-label { font-size: 11px; color: #4a6880; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ep-sp-val   { font-size: 14px; font-weight: 700; font-family: monospace; white-space: nowrap; }
+.ep-sp-unit  { font-size: 10px; color: #4a7090; min-width: 16px; white-space: nowrap; }
 
 /* 滚动动画 — 4种速度 */
 @keyframes spScrollUp { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
