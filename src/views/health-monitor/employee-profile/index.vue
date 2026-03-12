@@ -428,8 +428,9 @@ onUnmounted(() => {
 
 <style scoped>
 /* ═══ 整体 ═══ */
+/* app-main 有 padding-top: 50px（fixed-header 场景）+ header 本身 50px = 100px 总偏移 */
 .ep-page {
-  min-height: 100vh;
+  height: calc(100vh - 100px);
   background: #080d1a;
   color: #c8d8f0;
   display: flex;
@@ -591,14 +592,12 @@ onUnmounted(() => {
   100% { transform: translateY(4px); }
 }
 
-/* 矿工图 — 放大到占主舞台高度 */
+/* 矿工图 — 高度撑满舞台，宽度按比例自适应 */
 .ep-miner {
   position: relative;
-  width: 260px;
-  height: 450px;
-  object-fit: contain;
-  object-position: top;
-  filter: drop-shadow(0 0 20px rgba(0,180,255,0.5)) drop-shadow(0 0 40px rgba(0,100,255,0.3));
+  height: 82%;
+  width: auto;
+  filter: drop-shadow(0 0 24px rgba(0,180,255,0.55)) drop-shadow(0 0 48px rgba(0,100,255,0.35));
   animation: epMinerFloat 3s ease-in-out infinite alternate;
   z-index: 2;
 }
