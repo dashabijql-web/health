@@ -77,11 +77,12 @@ const healthMonitorRouter = {
   },
   children: [
     {
-      // 职工健康画像（全屏详情，图11样式）
+      // 职工健康画像（全屏详情，图11样式）— 隐藏菜单，由档案库卡片跳转
       path: 'employee-profile',
       name: 'EmployeeProfile',
+      hidden: true,
       component: () => import('@/views/health-monitor/employee-profile/index.vue'),
-      meta: { title: '职工健康画像', icon: 'User', hidden: true }
+      meta: { title: '职工健康画像', icon: 'User' }
     },
     {
       // 员工档案库（卡片网格 + 健康档案入口）
@@ -89,7 +90,7 @@ const healthMonitorRouter = {
       name: 'EmployeeArchive',
       component: () => import('@/views/health-monitor/employee-archive/index.vue'),
       meta: {
-        title: '员工档案',
+        title: '职工健康档案库',
         icon: 'UserFilled',
         permCode: 'health:employee'
       }

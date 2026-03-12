@@ -52,22 +52,7 @@
         <div class="ea-card-top-bar"></div>
 
         <div class="ea-card-body">
-          <!-- 左：矿工人物 + 状态 -->
-          <div class="ea-avatar-wrap">
-            <div class="ea-miner-wrap">
-              <!-- 旋转光晕圈 -->
-              <div class="ea-miner-ring"></div>
-              <!-- 矿工图片 + 浮动动画 -->
-              <img class="ea-miner-img" src="/assets/miner-worker.png" alt="worker" />
-              <!-- 扫描线 -->
-              <div class="ea-miner-scan"></div>
-              <!-- 底部光晕 -->
-              <div class="ea-miner-glow"></div>
-            </div>
-            <div :class="['ea-online-dot', onlineSet.has(emp.empCode) ? 'online' : 'offline']"></div>
-          </div>
-
-          <!-- 右：基本信息 -->
+          <!-- 基本信息 -->
           <div class="ea-info">
             <div class="ea-name-row">
               <span class="ea-name">{{ emp.empName }}</span>
@@ -368,103 +353,6 @@ onMounted(() => {
   display: flex;
   gap: 14px;
   padding: 14px 14px 10px;
-}
-
-/* 矿工头像区 */
-.ea-avatar-wrap { position: relative; flex-shrink: 0; width: 72px; }
-
-.ea-miner-wrap {
-  position: relative;
-  width: 72px;
-  height: 90px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  overflow: visible;
-}
-
-/* 旋转光晕圈 */
-.ea-miner-ring {
-  position: absolute;
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 1.5px solid transparent;
-  background:
-    conic-gradient(rgba(0,180,255,0.7), rgba(0,180,255,0.05), rgba(0,180,255,0.7)) border-box;
-  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: destination-out;
-  mask-composite: exclude;
-  animation: minerRingSpin 3s linear infinite;
-}
-
-/* 矿工图片 + 浮动 */
-.ea-miner-img {
-  position: relative;
-  width: 60px;
-  height: 80px;
-  object-fit: contain;
-  object-position: top;
-  filter: drop-shadow(0 0 8px rgba(0,180,255,0.5));
-  animation: minerFloat 2.8s ease-in-out infinite alternate;
-  z-index: 2;
-}
-
-/* 扫描线 */
-.ea-miner-scan {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: repeating-linear-gradient(
-    rgba(0, 200, 255, 0.06) 0px,
-    rgba(0, 200, 255, 0) 2px,
-    rgba(0, 200, 255, 0) 4px
-  );
-  animation: minerScan 4s linear infinite alternate;
-  pointer-events: none;
-  z-index: 3;
-}
-
-/* 底部地台光晕 */
-.ea-miner-glow {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 50px;
-  height: 10px;
-  background: radial-gradient(ellipse at center, rgba(0,180,255,0.5) 0%, transparent 70%);
-  border-radius: 50%;
-  animation: minerFloat 2.8s ease-in-out infinite alternate;
-  z-index: 1;
-}
-
-.ea-online-dot {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid #0d1528;
-  z-index: 4;
-}
-.ea-online-dot.online { background: #00e676; box-shadow: 0 0 6px #00e676; }
-.ea-online-dot.offline { background: #4a5870; }
-
-/* ═══════════════ 动画关键帧 ═══════════════ */
-@keyframes minerFloat {
-  0%   { transform: translateY(0px); }
-  100% { transform: translateY(-5px); }
-}
-@keyframes minerRingSpin {
-  100% { transform: translateX(-50%) rotate(360deg); }
-}
-@keyframes minerScan {
-  0%   { transform: translateY(-4px); opacity: 0.6; }
-  100% { transform: translateY(4px);  opacity: 1; }
 }
 
 /* 信息区 */

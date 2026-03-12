@@ -65,105 +65,92 @@
 
       </aside>
 
-      <!-- ═══════ 中栏：矿工人物 + 数据浮框 ═══════ -->
+      <!-- ═══════ 中栏：左面板 | 矿工 | 右面板 三列网格 ═══════ -->
       <main class="ep-center">
 
-        <!-- 矿工舞台（浮框全部放在舞台内，连接线对齐） -->
+        <!-- 左侧两个滚动面板 -->
+        <div class="ep-side-panels ep-side-left">
+          <!-- 心率数据 -->
+          <div class="ep-scroll-panel sp-red">
+            <div class="ep-sp-header">
+              <span class="ep-sp-dot red"></span>
+              <span class="ep-sp-name">心率数据</span>
+              <span class="ep-sp-tag">实时</span>
+            </div>
+            <div class="ep-sp-body">
+              <div class="ep-sp-inner ep-sp-scroll-a">
+                <div v-for="(item, idx) in hrItems.concat(hrItems)" :key="'hr'+idx" class="ep-sp-row">
+                  <span class="ep-sp-label">{{ item.label }}</span>
+                  <span :class="['ep-sp-val', item.cls]">{{ item.v }}</span>
+                  <span class="ep-sp-unit">{{ item.unit }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 体征数据 -->
+          <div class="ep-scroll-panel sp-yellow">
+            <div class="ep-sp-header">
+              <span class="ep-sp-dot yellow"></span>
+              <span class="ep-sp-name">体征数据</span>
+              <span class="ep-sp-tag">实时</span>
+            </div>
+            <div class="ep-sp-body">
+              <div class="ep-sp-inner ep-sp-scroll-b">
+                <div v-for="(item, idx) in vitalItems.concat(vitalItems)" :key="'vt'+idx" class="ep-sp-row">
+                  <span class="ep-sp-label">{{ item.label }}</span>
+                  <span :class="['ep-sp-val', item.cls]">{{ item.v }}</span>
+                  <span class="ep-sp-unit">{{ item.unit }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 中央矿工舞台 -->
         <div class="ep-miner-stage">
-          <!-- 旋转外圈 -->
           <div class="ep-ring ep-ring1"></div>
           <div class="ep-ring ep-ring2"></div>
-          <!-- 扫描线 -->
           <div class="ep-scan-overlay"></div>
-          <!-- 矿工图 -->
           <img class="ep-miner" src="/assets/miner-worker.png" />
-          <!-- 底部光晕 -->
           <div class="ep-glow-base"></div>
+        </div>
 
-          <!-- 顶部左浮框：心率 -->
-          <div class="ep-float ep-float-tl">
-            <div class="ep-float-title">● 心率监测</div>
-            <div class="ep-float-row">
-              <span class="ep-fl">当前心率</span>
-              <span :class="['ep-fv', hrClass(vitals.heartRate)]">{{ vitals.heartRate || 0 }}</span>
-              <span class="ep-fu">bpm</span>
+        <!-- 右侧两个滚动面板 -->
+        <div class="ep-side-panels ep-side-right">
+          <!-- 血氧监测 -->
+          <div class="ep-scroll-panel sp-blue">
+            <div class="ep-sp-header">
+              <span class="ep-sp-dot blue"></span>
+              <span class="ep-sp-name">血氧监测</span>
+              <span class="ep-sp-tag">实时</span>
             </div>
-            <div class="ep-float-row">
-              <span class="ep-fl">7日均值</span>
-              <span class="ep-fv cyan">{{ trend7.avgHr || 0 }}</span>
-              <span class="ep-fu">bpm</span>
-            </div>
-            <div class="ep-float-row">
-              <span class="ep-fl">正常范围</span>
-              <span class="ep-fv dim">60~100 bpm</span>
+            <div class="ep-sp-body">
+              <div class="ep-sp-inner ep-sp-scroll-c">
+                <div v-for="(item, idx) in spo2Items.concat(spo2Items)" :key="'sp'+idx" class="ep-sp-row">
+                  <span class="ep-sp-label">{{ item.label }}</span>
+                  <span :class="['ep-sp-val', item.cls]">{{ item.v }}</span>
+                  <span class="ep-sp-unit">{{ item.unit }}</span>
+                </div>
+              </div>
             </div>
           </div>
-
-          <!-- 顶部右浮框：血氧 -->
-          <div class="ep-float ep-float-tr">
-            <div class="ep-float-title">● 血氧监测</div>
-            <div class="ep-float-row">
-              <span class="ep-fl">当前血氧</span>
-              <span :class="['ep-fv', spo2Class(vitals.bloodOxygen)]">{{ vitals.bloodOxygen || 0 }}</span>
-              <span class="ep-fu">%</span>
+          <!-- 预警摘要 -->
+          <div class="ep-scroll-panel sp-orange">
+            <div class="ep-sp-header">
+              <span class="ep-sp-dot orange"></span>
+              <span class="ep-sp-name">预警摘要</span>
+              <span class="ep-sp-tag">统计</span>
             </div>
-            <div class="ep-float-row">
-              <span class="ep-fl">7日均值</span>
-              <span class="ep-fv cyan">{{ trend7.avgSpo2 || 0 }}</span>
-              <span class="ep-fu">%</span>
-            </div>
-            <div class="ep-float-row">
-              <span class="ep-fl">正常范围</span>
-              <span class="ep-fv dim">≥ 95 %</span>
+            <div class="ep-sp-body">
+              <div class="ep-sp-inner ep-sp-scroll-d">
+                <div v-for="(item, idx) in warnItems.concat(warnItems)" :key="'wn'+idx" class="ep-sp-row">
+                  <span class="ep-sp-label">{{ item.label }}</span>
+                  <span :class="['ep-sp-val', item.cls]">{{ item.v }}</span>
+                  <span class="ep-sp-unit">{{ item.unit }}</span>
+                </div>
+              </div>
             </div>
           </div>
-
-          <!-- 底部左浮框：体征数据 -->
-          <div class="ep-float ep-float-bl">
-            <div class="ep-float-title">● 体征数据</div>
-            <div class="ep-float-row">
-              <span class="ep-fl">体温</span>
-              <span :class="['ep-fv', tempClass(vitals.temperature)]">{{ fmtTemp(vitals.temperature) }}</span>
-              <span class="ep-fu">°C</span>
-            </div>
-            <div class="ep-float-row">
-              <span class="ep-fl">今日步数</span>
-              <span class="ep-fv green">{{ vitals.steps || 0 }}</span>
-              <span class="ep-fu">步</span>
-            </div>
-            <div class="ep-float-row">
-              <span class="ep-fl">压力指数</span>
-              <span :class="['ep-fv', pressClass(vitals.pressure)]">{{ vitals.pressure || 0 }}</span>
-            </div>
-          </div>
-
-          <!-- 底部右浮框：预警摘要 -->
-          <div class="ep-float ep-float-br">
-            <div class="ep-float-title">● 预警摘要</div>
-            <div class="ep-float-row">
-              <span class="ep-fl">近30日预警</span>
-              <span :class="['ep-fv', warnCount > 10 ? 'red' : warnCount > 5 ? 'yellow' : 'green']">{{ warnCount }}</span>
-              <span class="ep-fu">次</span>
-            </div>
-            <div class="ep-float-row">
-              <span class="ep-fl">未处理</span>
-              <span :class="['ep-fv', pendCount > 0 ? 'red' : 'green']">{{ pendCount }}</span>
-              <span class="ep-fu">条</span>
-            </div>
-            <div class="ep-float-row">
-              <span class="ep-fl">7日预警</span>
-              <span class="ep-fv cyan">{{ warn7Count }}</span>
-              <span class="ep-fu">次</span>
-            </div>
-          </div>
-
-          <!-- 连接线（从人物中心到四角浮框） -->
-          <svg class="ep-lines" viewBox="0 0 700 600" preserveAspectRatio="none">
-            <line x1="350" y1="220" x2="155" y2="120" stroke="#00b4ff" stroke-width="1" stroke-dasharray="5 4" opacity="0.55"/>
-            <line x1="350" y1="220" x2="545" y2="120" stroke="#00b4ff" stroke-width="1" stroke-dasharray="5 4" opacity="0.55"/>
-            <line x1="350" y1="430" x2="155" y2="500" stroke="#00b4ff" stroke-width="1" stroke-dasharray="5 4" opacity="0.55"/>
-            <line x1="350" y1="430" x2="545" y2="500" stroke="#00b4ff" stroke-width="1" stroke-dasharray="5 4" opacity="0.55"/>
-          </svg>
         </div>
 
       </main>
@@ -297,6 +284,57 @@ const hrPct    = (v) => !v ? 0 : Math.min(100, Math.max(0, (v - 40) / 80 * 100))
 const spo2Pct  = (v) => !v ? 0 : Math.min(100, Math.max(0, (v - 85) / 15 * 100))
 const tempPct  = (v) => { if (!v) return 0; const t = v > 100 ? v/10 : v; return Math.min(100, Math.max(0, (t - 35) / 5 * 100)) }
 const calcAge  = (b) => { if (!b) return '--'; const age = new Date().getFullYear() - new Date(b).getFullYear(); return age > 0 && age < 100 ? age + '岁' : '--' }
+
+// ─── 四个滚动面板数据 ──────────────────────────────────────
+const hrItems = computed(() => {
+  const hr = vitals.value.heartRate
+  const status = !hr ? '--' : hr < 60 ? '偏低' : hr > 100 ? '偏高' : '正常'
+  return [
+    { key:'h1', label:'当前心率', v: hr || '--', unit:'bpm', cls: hrClass(hr) },
+    { key:'h2', label:'7日均值', v: trend7.value.avgHr || '--', unit:'bpm', cls:'cyan' },
+    { key:'h3', label:'正常范围', v:'60~100', unit:'bpm', cls:'dim' },
+    { key:'h4', label:'心率状态', v: status, unit:'', cls: hrClass(hr) || 'green' },
+    { key:'h5', label:'压力指数', v: vitals.value.pressure || '--', unit:'', cls: pressClass(vitals.value.pressure) },
+    { key:'h6', label:'7日预警', v: warn7Count.value, unit:'次', cls: warn7Count.value > 3 ? 'red' : 'green' },
+  ]
+})
+const spo2Items = computed(() => {
+  const s = vitals.value.bloodOxygen
+  const status = !s ? '--' : s < 90 ? '严重偏低' : s < 95 ? '偏低' : '正常'
+  return [
+    { key:'s1', label:'当前血氧', v: s || '--', unit:'%', cls: spo2Class(s) },
+    { key:'s2', label:'7日均值', v: trend7.value.avgSpo2 || '--', unit:'%', cls:'cyan' },
+    { key:'s3', label:'正常值', v:'≥ 95', unit:'%', cls:'dim' },
+    { key:'s4', label:'血氧状态', v: status, unit:'', cls: spo2Class(s) || 'green' },
+    { key:'s5', label:'近期预警', v: warnCount.value, unit:'次', cls: warnCount.value > 5 ? 'red' : 'green' },
+    { key:'s6', label:'未处理', v: pendCount.value, unit:'条', cls: pendCount.value > 0 ? 'red' : 'green' },
+  ]
+})
+const vitalItems = computed(() => {
+  const t = vitals.value.temperature
+  const tStatus = !t ? '--' : (tempClass(t) === 'red' ? '异常' : tempClass(t) === 'yellow' ? '偏高' : '正常')
+  return [
+    { key:'v1', label:'体温', v: fmtTemp(t), unit:'°C', cls: tempClass(t) },
+    { key:'v2', label:'今日步数', v: vitals.value.steps || '--', unit:'步', cls:'green' },
+    { key:'v3', label:'压力指数', v: vitals.value.pressure || '--', unit:'', cls: pressClass(vitals.value.pressure) },
+    { key:'v4', label:'目标步数', v:'10,000', unit:'步', cls:'dim' },
+    { key:'v5', label:'体温状态', v: tStatus, unit:'', cls: tempClass(t) || 'green' },
+    { key:'v6', label:'综合评分', v: trend7.value.avgHr ? Math.max(60, 100 - warnCount.value * 3) : '--', unit:'分', cls:'cyan' },
+  ]
+})
+const warnItems = computed(() => {
+  const hrW  = warnings.value.filter(w => (w.warningType||'').includes('心率')).length
+  const s2W  = warnings.value.filter(w => (w.warningType||'').includes('血氧')).length
+  const prW  = warnings.value.filter(w => (w.warningType||'').includes('压力')).length
+  return [
+    { key:'w1', label:'近30日预警', v: warnCount.value, unit:'次', cls: warnCount.value > 10 ? 'red' : warnCount.value > 5 ? 'yellow' : 'green' },
+    { key:'w2', label:'未处理', v: pendCount.value, unit:'条', cls: pendCount.value > 0 ? 'red' : 'green' },
+    { key:'w3', label:'7日预警', v: warn7Count.value, unit:'次', cls:'cyan' },
+    { key:'w4', label:'心率预警', v: hrW, unit:'次', cls: hrW > 0 ? 'red' : 'green' },
+    { key:'w5', label:'血氧预警', v: s2W, unit:'次', cls: s2W > 0 ? 'red' : 'green' },
+    { key:'w6', label:'压力预警', v: prW, unit:'次', cls: prW > 0 ? 'yellow' : 'green' },
+  ]
+})
 
 // ─── 风险评估（基于实时数据计算）─────────────────────────
 const riskItems = computed(() => {
@@ -534,33 +572,83 @@ onUnmounted(() => {
 .ep-wst.pend { background: rgba(255,82,82,0.2); color: #ff5252; }
 .ep-wst.done { background: rgba(0,200,83,0.15); color: #00c853; }
 
-/* ═══ 中栏 ═══ */
+/* ═══ 中栏：左面板列 | 矿工 | 右面板列 ═══ */
 .ep-center {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
+  display: grid;
+  grid-template-columns: 185px 1fr 185px;
+  height: 100%;
 }
 
-/* 矿工舞台 — 占满中栏，浮框内置 */
+/* 侧面板列 */
+.ep-side-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 8px;
+  justify-content: center;
+}
+
+/* 滚动面板 */
+.ep-scroll-panel {
+  background: rgba(5, 18, 40, 0.88);
+  border: 1px solid rgba(0,180,255,0.3);
+  border-radius: 8px;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 14px rgba(0,80,200,0.1);
+}
+.ep-scroll-panel.sp-red    { border-color: rgba(255,80,80,0.4); }
+.ep-scroll-panel.sp-yellow { border-color: rgba(255,170,0,0.35); }
+.ep-scroll-panel.sp-blue   { border-color: rgba(0,150,255,0.4); }
+.ep-scroll-panel.sp-orange { border-color: rgba(255,120,0,0.4); }
+
+.ep-sp-header {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.25); flex-shrink: 0;
+}
+.ep-sp-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ep-sp-dot.red    { background: #ff5252; box-shadow: 0 0 5px #ff5252; }
+.ep-sp-dot.yellow { background: #ffaa00; box-shadow: 0 0 5px #ffaa00; }
+.ep-sp-dot.blue   { background: #1890ff; box-shadow: 0 0 5px #1890ff; }
+.ep-sp-dot.orange { background: #ff7700; box-shadow: 0 0 5px #ff7700; }
+.ep-sp-name { font-size: 12px; font-weight: 700; color: #c0d8f8; flex: 1; }
+.ep-sp-tag  { font-size: 10px; color: #4a7090; background: rgba(0,180,255,0.08); padding: 1px 5px; border-radius: 2px; }
+
+.ep-sp-body { flex: 1; overflow: hidden; }
+.ep-sp-row {
+  display: flex; align-items: center; gap: 4px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.ep-sp-label { font-size: 11px; color: #4a6880; flex: 1; white-space: nowrap; }
+.ep-sp-val   { font-size: 15px; font-weight: 700; font-family: monospace; }
+.ep-sp-unit  { font-size: 10px; color: #4a7090; min-width: 18px; }
+
+/* 滚动动画 — 4种速度 */
+@keyframes spScrollUp { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+.ep-sp-scroll-a { animation: spScrollUp  9s linear infinite; }
+.ep-sp-scroll-b { animation: spScrollUp 11s linear infinite; }
+.ep-sp-scroll-c { animation: spScrollUp 10s linear infinite; }
+.ep-sp-scroll-d { animation: spScrollUp 13s linear infinite; }
+.ep-sp-scroll-a:hover,.ep-sp-scroll-b:hover,
+.ep-sp-scroll-c:hover,.ep-sp-scroll-d:hover { animation-play-state: paused; }
+
+/* 矿工舞台 */
 .ep-miner-stage {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 520px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 /* 旋转圆环 */
-.ep-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid transparent;
-}
+.ep-ring { position: absolute; border-radius: 50%; border: 1px solid transparent; }
 .ep-ring1 {
   width: 300px; height: 300px;
   top: 50%; left: 50%; transform: translate(-50%, 20%);
@@ -577,7 +665,6 @@ onUnmounted(() => {
   -webkit-mask-composite: destination-out; mask-composite: exclude;
   animation: epRing1Centered 6s linear infinite reverse;
 }
-@keyframes epRing1 { 100% { transform: translateX(-50%) rotate(360deg); } }
 @keyframes epRing1Centered { 0% { transform: translate(-50%, 20%) rotate(0deg); } 100% { transform: translate(-50%, 20%) rotate(360deg); } }
 
 /* 扫描线 */
@@ -587,73 +674,26 @@ onUnmounted(() => {
   animation: epScan 5s linear infinite alternate;
   pointer-events: none; z-index: 3;
 }
-@keyframes epScan {
-  0% { transform: translateY(-4px); }
-  100% { transform: translateY(4px); }
-}
+@keyframes epScan { 0% { transform: translateY(-4px); } 100% { transform: translateY(4px); } }
 
-/* 矿工图 — 高度撑满舞台，宽度按比例自适应 */
+/* 矿工图 */
 .ep-miner {
   position: relative;
-  height: 82%;
-  width: auto;
+  height: 90%; width: auto;
   filter: drop-shadow(0 0 24px rgba(0,180,255,0.55)) drop-shadow(0 0 48px rgba(0,100,255,0.35));
   animation: epMinerFloat 3s ease-in-out infinite alternate;
   z-index: 2;
 }
 @keyframes epMinerFloat { 0% { transform: translateY(0); } 100% { transform: translateY(-12px); } }
 
-/* 底部光晕 — 跟随人物（居中后人物脚部约在 top:73%） */
+/* 底部光晕 */
 .ep-glow-base {
   position: absolute;
   top: 73%; left: 50%; transform: translateX(-50%);
   width: 200px; height: 24px;
   background: radial-gradient(ellipse at center, rgba(0,180,255,0.55) 0%, transparent 70%);
-  border-radius: 50%;
-  z-index: 1;
+  border-radius: 50%; z-index: 1;
 }
-
-/* 连接线 */
-.ep-lines {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* 浮框 — 定位在舞台四角 */
-.ep-float {
-  position: absolute;
-  background: rgba(5, 18, 40, 0.9);
-  border: 1px solid rgba(0, 180, 255, 0.4);
-  border-radius: 8px;
-  padding: 10px 14px;
-  min-width: 158px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 0 16px rgba(0, 100, 255, 0.15), inset 0 0 10px rgba(0,180,255,0.04);
-  z-index: 10;
-  transition: box-shadow 0.2s;
-}
-.ep-float:hover { box-shadow: 0 0 28px rgba(0,180,255,0.3); }
-.ep-float-tl { top: 8%;  left: 2%; }
-.ep-float-tr { top: 8%;  right: 2%; }
-.ep-float-bl { bottom: 12%; left: 2%; }
-.ep-float-br { bottom: 12%; right: 2%; }
-
-.ep-float-title {
-  font-size: 12px; font-weight: 700; color: #00c8ff;
-  margin-bottom: 8px; padding-bottom: 5px;
-  border-bottom: 1px solid rgba(0,180,255,0.2);
-}
-.ep-float-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 5px; font-size: 12px; }
-.ep-fl { color: #4a7090; min-width: 52px; }
-.ep-fv { font-size: 18px; font-weight: 700; font-family: monospace; }
-.ep-fv.red    { color: #ff4444; }
-.ep-fv.yellow { color: #ffaa00; }
-.ep-fv.green  { color: #00e676; }
-.ep-fv.cyan   { color: #00c8ff; }
 .ep-fv.dim    { color: #5a8090; font-size: 13px; }
 .ep-fu { font-size: 11px; color: #4a7090; }
 
@@ -709,4 +749,5 @@ onUnmounted(() => {
 .yellow { color: #ffaa00; }
 .green  { color: #00e676; }
 .cyan   { color: #00c8ff; }
+.dim    { color: #5a8090; }
 </style>
