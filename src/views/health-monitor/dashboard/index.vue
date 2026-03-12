@@ -1558,7 +1558,7 @@ export default {
 
     // ─── 辅助 ───
     getWarningIcon(name) {
-      const map = { '压力预警率':'MagicStick', '睡眠预警率':'Moon', '体温预警率':'Sunny', '心率预警率':'Monitor', '血氧预警率':'FirstAidKit' }
+      const map = { '压力预警率':'MagicStick', '体温预警率':'Sunny', '心率预警率':'Monitor', '血氧预警率':'FirstAidKit' }
       return map[name] || 'Warning'
     },
     getWarnColor(rate) {
