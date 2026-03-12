@@ -77,6 +77,13 @@ const healthMonitorRouter = {
   },
   children: [
     {
+      // 职工健康画像（全屏详情，图11样式）
+      path: 'employee-profile',
+      name: 'EmployeeProfile',
+      component: () => import('@/views/health-monitor/employee-profile/index.vue'),
+      meta: { title: '职工健康画像', icon: 'User', hidden: true }
+    },
+    {
       // 员工档案库（卡片网格 + 健康档案入口）
       path: 'employee-archive',
       name: 'EmployeeArchive',

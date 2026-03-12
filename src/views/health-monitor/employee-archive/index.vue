@@ -120,22 +120,17 @@
       />
     </div>
 
-    <!-- 健康档案抽屉 -->
-    <PersonDetailDrawer
-      v-model:visible="drawerVisible"
-      :userCode="drawerUserCode"
-      :userName="drawerUserName"
-    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ArrowLeft, UserFilled, Search, DataAnalysis } from '@element-plus/icons-vue'
 import { getEmployeeListDetail } from '@/api/employee'
-import PersonDetailDrawer from '@/views/safety-command/components/PersonDetailDrawer.vue'
 import { getRealtimeOverview } from '@/api/realtime'
 
+const router = useRouter()
 const loading = ref(false)
 const employees = ref([])
 const keyword = ref('')
@@ -143,10 +138,6 @@ const selectedDept = ref('')
 const currentPage = ref(1)
 const pageSize = 20
 const onlineSet = ref(new Set())
-
-const drawerVisible = ref(false)
-const drawerUserCode = ref('')
-const drawerUserName = ref('')
 
 // 部门列表（从员工数据动态提取）
 const deptList = computed(() => {
@@ -222,9 +213,18 @@ async function loadOnlineStatus() {
 }
 
 function openDetail(emp) {
-  drawerUserCode.value = emp.empCode || ''
-  drawerUserName.value = emp.empName || ''
-  drawerVisible.value = true
+  router.push({
+    path: '/health-monitor/employee-profile',
+    query: {
+      empCode:     emp.empCode     || '',
+      empName:     emp.empName     || '',
+      gender:      emp.gender      ?? 1,
+      birthDate:   emp.birthDate   || '',
+      deptName:    emp.deptName    || '',
+      jobTypeName: emp.jobTypeName || '',
+      phone:       emp.phone       || '',
+    }
+  })
 }
 
 onMounted(() => {
