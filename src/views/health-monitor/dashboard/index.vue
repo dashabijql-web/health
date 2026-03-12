@@ -77,12 +77,12 @@
           </div>
         </div>
 
-        <!-- 各部门数据量 -->
+        <!-- 部门综合看板（数据量 + 预警量双柱对比） -->
         <div class="dm-panel dm-left-dept">
           <div class="dm-ph">
             <span class="dm-ph-bar"></span>
-            <span class="dm-ph-title">各部门数据量</span>
-            <span class="dm-ph-sub">共 {{ deptDataList.length }} 个部门</span>
+            <span class="dm-ph-title">部门综合看板</span>
+            <span class="dm-ph-sub">数据量 vs 预警量</span>
           </div>
           <div class="dm-pc">
             <div id="deptDataChart" style="width:100%;height:100%"></div>
@@ -144,15 +144,37 @@
                 </div>
               </div>
 
-              <!-- 中间：视频贴边撑满 -->
-              <div class="dm-video-wrap">
-                <video class="dm-model-video" src="/miner-worker.mp4" autoplay loop muted playsinline></video>
-                <div class="dm-video-mask"></div>
-                <!-- 四角科技装饰 -->
-                <div class="dm-corner dm-corner-tl"></div>
-                <div class="dm-corner dm-corner-tr"></div>
-                <div class="dm-corner dm-corner-bl"></div>
-                <div class="dm-corner dm-corner-br"></div>
+              <!-- 实时预警动态（从右栏移过来，已优化高度） -->
+              <div class="dm-event-list-wrap">
+                <div class="dm-event-list" ref="warningListMid" style="max-height:680px;overflow-y:auto">
+                  <div
+                    v-for="(ev, i) in paginatedWarningEvents" :key="i"
+                    :class="['dm-event', ev.level === 'danger' ? 'ev-danger' : 'ev-warn', ev.level === 'danger' ? 'alert-item--critical' : '', ev.handled ? 'ev-handled' : '']"
+                  >
+                    <div class="dm-ev-row1">
+                      <span :class="['dm-ev-badge', ev.level === 'danger' ? 'badge-danger' : 'badge-warn']">
+                        {{ ev.level === 'danger' ? '危险' : '预警' }}
+                      </span>
+                      <span class="dm-ev-type">{{ ev.type }}</span>
+                      <span class="dm-ev-time">{{ formatTimeAgo(ev.time) }}</span>
+                    </div>
+                    <div class="dm-ev-row2">
+                      <span class="dm-ev-user">{{ ev.userName }}</span>
+                      <span class="dm-ev-val">{{ ev.indicator }}: <em>{{ ev.value }}</em></span>
+                      <span v-if="ev.handled" class="dm-ev-done">✓处理</span>
+                      <span v-else>
+                        <span class="dm-ev-pending">待处理</span>
+                        <span class="dm-ev-handle-btn" @click.stop="openHandleDialog(ev)">处理</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div v-if="!warningEvents.length" class="dm-empty">暂无预警事件</div>
+                </div>
+                <div class="dm-event-page" v-if="warningTotalPages > 1" style="margin-top:8px">
+                  <button class="dm-page-btn" :disabled="warningCurrentPage === 1" @click="warningCurrentPage--">‹</button>
+                  <span class="dm-page-info">{{ warningCurrentPage }} / {{ warningTotalPages }}</span>
+                  <button class="dm-page-btn" :disabled="warningCurrentPage === warningTotalPages" @click="warningCurrentPage++">›</button>
+                </div>
               </div>
 
               <!-- 下方：最新预警横幅 -->
@@ -175,48 +197,24 @@
             <!-- ── 右：三区数据 ── -->
             <div class="dm-model-data-col">
 
-              <!-- 区1：异常人员排行 + 预警类型分布 -->
-              <div class="dm-data-block" style="flex-direction:row;gap:0;">
-                <!-- 左：异常人员排行 -->
-                <div class="dm-split-left">
-                  <div class="dm-block-hd">
-                    <span class="dm-ph-bar"></span>
-                    <span class="dm-block-title">异常人员排行</span>
-                    <span class="dm-block-sub">{{ periodLabel }}累计</span>
-                  </div>
-                  <div class="dm-top5-list" ref="top5List">
-                    <div class="dm-top5-row" v-for="(item,i) in top5DisplayData" :key="i"
-                         @click="openEmployeeDrawer(item)" style="cursor:pointer">
-                      <span class="dm-top5-rank" :class="'rk-'+(i+1)">{{i+1}}</span>
-                      <span class="dm-top5-name">{{item.userName||item.name}}</span>
-                      <div class="dm-top5-bar-wrap">
-                        <div class="dm-top5-bar" :style="{width:(item.count/top5Max*100)+'%'}"></div>
-                      </div>
-                      <span class="dm-top5-val">{{item.count}}</span>
-                    </div>
-                    <div v-if="!top5DisplayData.length" class="dm-empty">暂无数据</div>
-                  </div>
+              <!-- 区1：异常人员排行（已删除预警类型分布，保留在右侧栏） -->
+              <div class="dm-data-block">
+                <div class="dm-block-hd">
+                  <span class="dm-ph-bar"></span>
+                  <span class="dm-block-title">异常人员排行</span>
+                  <span class="dm-block-sub">{{ periodLabel }}累计</span>
                 </div>
-                <!-- 分隔线 -->
-                <div class="dm-split-divider"></div>
-                <!-- 右：预警类型分布 -->
-                <div class="dm-split-right">
-                  <div class="dm-block-hd">
-                    <span class="dm-ph-bar"></span>
-                    <span class="dm-block-title">预警类型分布</span>
-                    <span class="dm-block-sub">{{ periodLabel }}</span>
-                  </div>
-                  <div class="dm-warn-type-body">
-                    <div id="warnTypeChart" style="width:130px;height:130px;flex-shrink:0"></div>
-                    <div class="dm-warn-type-legend">
-                      <div class="dm-wtl-item" v-for="w in warnTypeData" :key="w.name">
-                        <span class="dm-wtl-dot" :style="{background:w.color}"></span>
-                        <span class="dm-wtl-name">{{w.name}}</span>
-                        <span class="dm-wtl-val" :style="{color:w.color}">{{w.value}}</span>
-                        <span class="dm-wtl-pct">{{w.pct}}%</span>
-                      </div>
+                <div class="dm-top5-list" ref="top5List">
+                  <div class="dm-top5-row" v-for="(item,i) in top5DisplayData" :key="i"
+                       @click="openEmployeeDrawer(item)" style="cursor:pointer">
+                    <span class="dm-top5-rank" :class="'rk-'+(i+1)">{{i+1}}</span>
+                    <span class="dm-top5-name">{{item.userName||item.name}}</span>
+                    <div class="dm-top5-bar-wrap">
+                      <div class="dm-top5-bar" :style="{width:(item.count/top5Max*100)+'%'}"></div>
                     </div>
+                    <span class="dm-top5-val">{{item.count}}</span>
                   </div>
+                  <div v-if="!top5DisplayData.length" class="dm-empty">暂无数据</div>
                 </div>
               </div>
 
@@ -230,69 +228,41 @@
                 <div ref="unifiedTrendChart" style="width:100%;flex:1;min-height:0;"></div>
               </div>
 
-              <!-- 区3：部门风险排行 + 今日预警时段 -->
-              <div class="dm-data-block" style="flex-direction:row;gap:0;">
-                <!-- 左：部门风险排行 -->
-                <div class="dm-split-left">
-                  <div class="dm-block-hd">
-                    <span class="dm-ph-bar"></span>
-                    <span class="dm-block-title">部门风险排行</span>
-                  </div>
-                  <div class="dm-risk-list" ref="riskList">
-                    <div class="dm-risk-row" v-for="(d,i) in riskDeptList" :key="i">
-                      <span class="dm-risk-no">{{i+1}}</span>
-                      <span class="dm-risk-name">{{d.name}}</span>
-                      <div class="dm-risk-bar-wrap">
-                        <div class="dm-risk-bar" :style="{width:d.pct+'%',background:d.color}"></div>
-                      </div>
-                      <span class="dm-risk-count" :style="{color:d.color}">{{d.count}}</span>
-                      <span v-if="d.delta !== null"
-                            :style="{color: d.delta > 0 ? '#ff5252' : '#38ef7d', fontSize:'10px', width:'34px', textAlign:'right', flexShrink:0}">
-                        {{ d.delta > 0 ? '↑' : '↓' }}{{ Math.abs(d.delta) }}%
-                      </span>
-                    </div>
-                  </div>
+              <!-- 区3：预警时段分布（已删除部门风险排行，已合并到左侧栏） -->
+              <div class="dm-data-block">
+                <div class="dm-block-hd">
+                  <span class="dm-ph-bar"></span>
+                  <span class="dm-block-title">{{ hourDistTitle }}</span>
                 </div>
-                <!-- 分隔线 -->
-                <div class="dm-split-divider"></div>
-                <!-- 右：今日预警时段 -->
-                <div class="dm-split-right">
-                  <div class="dm-block-hd">
-                    <span class="dm-ph-bar"></span>
-                    <span class="dm-block-title">{{ hourDistTitle }}</span>
-                  </div>
-                  <div id="hourDistChart" style="width:100%;height:100%;flex:1;"></div>
-                </div>
+                <div id="hourDistChart" style="width:100%;height:100%;flex:1;"></div>
               </div>
 
             </div><!-- /dm-model-data-col -->
           </div><!-- /dm-model-body -->
 
-          <!-- 底部信息条 -->
+          <!-- 底部信息条（业务统计） -->
           <div class="dm-model-footer">
             <div class="dm-mf-dot" style="background:#00d4ff"></div>
-            <span class="dm-mf-label">{{ activePeriod === 'day' ? '人均日步数' : '人均步数' }}</span>
-            <span class="dm-mf-val" style="color:#00d4ff">{{ (bodyIndicators.avgSteps||0).toLocaleString() }}</span>
-            <span style="color:#8ba6c8;font-size:12px">步</span>
+            <span class="dm-mf-label">在线设备</span>
+            <span class="dm-mf-val" style="color:#00d4ff">{{ deviceOnline }}</span>
+            <span style="color:#8ba6c8;font-size:12px">/ {{ deviceStats.boundDevices ?? deviceStats.total }} 台</span>
             <div class="dm-mf-sep"></div>
             <div class="dm-mf-dot" style="background:#38ef7d"></div>
             <span class="dm-mf-label">健康达标率</span>
             <span class="dm-mf-val" style="color:#38ef7d">{{ healthPassRate }}%</span>
-            <template v-if="bodyIndicators.avgTemperature">
-              <div class="dm-mf-sep"></div>
-              <div class="dm-mf-dot" style="background:#00c8c8"></div>
-              <span class="dm-mf-label">人均体温</span>
-              <span class="dm-mf-val" style="color:#00c8c8">{{ bodyIndicators.avgTemperature }}</span>
-              <span style="color:#8ba6c8;font-size:12px">°C</span>
-            </template>
+            <div class="dm-mf-sep"></div>
+            <div class="dm-mf-dot" style="background:#ff9800"></div>
+            <span class="dm-mf-label">预警设备</span>
+            <span class="dm-mf-val" style="color:#ff9800">{{ deviceWarningCount }}</span>
+            <span style="color:#8ba6c8;font-size:12px">台</span>
             <div class="dm-mf-sep"></div>
             <div class="dm-mf-dot" style="background:#ffd200"></div>
-            <span class="dm-mf-label">{{ periodLabel }}已处理预警</span>
+            <span class="dm-mf-label">{{ periodLabel }}已处理</span>
             <span class="dm-mf-val" style="color:#ffd200">{{ warningEvents.filter(e=>e.handled).length }}</span>
             <span style="color:#8ba6c8;font-size:12px">件</span>
             <div class="dm-mf-sep"></div>
             <div class="dm-mf-dot" style="background:#ff5252"></div>
-            <span class="dm-mf-label">待处理预警</span>
+            <span class="dm-mf-label">待处理</span>
             <span class="dm-mf-val" style="color:#ff5252">{{ warningEvents.filter(e=>!e.handled).length }}</span>
             <span style="color:#8ba6c8;font-size:12px">件</span>
           </div>
@@ -336,47 +306,8 @@
       <!-- ─── 右栏 ─── -->
       <aside class="dm-right">
 
-        <!-- 实时预警动态 -->
-        <div class="dm-panel dm-right-events">
-          <div class="dm-ph">
-            <span class="dm-ph-bar"></span>
-            <span class="dm-ph-title">实时预警动态</span>
-            <span class="dm-badge-count">{{ warningEvents.length }}</span>
-            <span v-if="unhandledHighCount > 0" class="dm-hd-critical-badge">{{ unhandledHighCount }}条高危未处理</span>
-          </div>
-          <div class="dm-event-list" ref="warningList">
-            <div
-              v-for="(ev, i) in paginatedWarningEvents" :key="i"
-              :class="['dm-event', ev.level === 'danger' ? 'ev-danger' : 'ev-warn', ev.level === 'danger' ? 'alert-item--critical' : '', ev.handled ? 'ev-handled' : '']"
-            >
-              <div class="dm-ev-row1">
-                <span :class="['dm-ev-badge', ev.level === 'danger' ? 'badge-danger' : 'badge-warn']">
-                  {{ ev.level === 'danger' ? '危险' : '预警' }}
-                </span>
-                <span class="dm-ev-type">{{ ev.type }}</span>
-                <span class="dm-ev-time">{{ formatTimeAgo(ev.time) }}</span>
-              </div>
-              <div class="dm-ev-row2">
-                <span class="dm-ev-user">{{ ev.userName }}</span>
-                <span class="dm-ev-val">{{ ev.indicator }}: <em>{{ ev.value }}</em></span>
-                <span v-if="ev.handled" class="dm-ev-done">✓处理</span>
-                <span v-else>
-                  <span class="dm-ev-pending">待处理</span>
-                  <span class="dm-ev-handle-btn" @click.stop="openHandleDialog(ev)">处理</span>
-                </span>
-              </div>
-            </div>
-            <div v-if="!warningEvents.length" class="dm-empty">暂无预警事件</div>
-          </div>
-          <div class="dm-event-page" v-if="warningTotalPages > 1">
-            <button class="dm-page-btn" :disabled="warningCurrentPage === 1" @click="warningCurrentPage--">‹</button>
-            <span class="dm-page-info">{{ warningCurrentPage }} / {{ warningTotalPages }}</span>
-            <button class="dm-page-btn" :disabled="warningCurrentPage === warningTotalPages" @click="warningCurrentPage++">›</button>
-          </div>
-        </div>
-
-        <!-- 健康小贴士 -->
-        <health-tips :count="5" class="dm-right-tips" />
+        <!-- 健康小贴士（已扩展至15条） -->
+        <health-tips :count="15" class="dm-right-tips" />
 
         <!-- 指标预警率分析 -->
         <div class="dm-panel dm-right-warnrate">
@@ -1237,16 +1168,40 @@ export default {
       if (this.charts.dept) this.charts.dept.dispose()
       const chart = echarts.init(dom)
       this.charts.dept = chart
-      const sorted = [...this.deptDataList].sort((a, b) => b.count - a.count)
+
+      // 合并数据量和预警量，按数据量排序
+      const deptMap = {}
+      this.deptDataList.forEach(d => {
+        deptMap[d.name] = { name: d.name, dataCount: d.count, warningCount: 0 }
+      })
+      this.riskDeptList.forEach(d => {
+        if (deptMap[d.name]) {
+          deptMap[d.name].warningCount = d.count
+        } else {
+          deptMap[d.name] = { name: d.name, dataCount: 0, warningCount: d.count }
+        }
+      })
+      const sorted = Object.values(deptMap).sort((a, b) => b.dataCount - a.dataCount).slice(0, 10)
+
       chart.setOption({
         backgroundColor: 'transparent',
         tooltip: {
-          trigger: 'axis', axisPointer: { type: 'none' },
+          trigger: 'axis', axisPointer: { type: 'shadow' },
           backgroundColor: 'rgba(10,20,50,0.9)', borderColor: '#00d4ff',
           textStyle: { color: '#fff', fontSize: 11 },
-          formatter: p => `${p[0].name}：<b style="color:#00d4ff">${p[0].value.toLocaleString()}</b> 条`
+          formatter: p => {
+            return `${p[0].name}<br/>` +
+              `<span style="color:#00d4ff">●</span> 数据量: <b style="color:#00d4ff">${p[0].value.toLocaleString()}</b><br/>` +
+              `<span style="color:#ff9800">●</span> 预警量: <b style="color:#ff9800">${p[1].value.toLocaleString()}</b>`
+          }
         },
-        grid: { left: 90, right: 44, top: 4, bottom: 4, containLabel: false },
+        legend: {
+          data: ['数据量', '预警量'],
+          top: 0, right: 10,
+          textStyle: { color: '#8ba6c8', fontSize: 10 },
+          itemWidth: 12, itemHeight: 8
+        },
+        grid: { left: 90, right: 20, top: 26, bottom: 4, containLabel: false },
         xAxis: {
           type: 'value',
           axisLine: { show: false }, axisTick: { show: false },
@@ -1260,22 +1215,34 @@ export default {
           axisLine: { show: false }, axisTick: { show: false },
           axisLabel: { color: '#8ba6c8', fontSize: 9, width: 82, overflow: 'truncate', interval: 0 }
         },
-        series: [{
-          type: 'bar', barMaxWidth: 12,
-          data: sorted.map((d, i) => ({
-            value: d.count,
+        series: [
+          {
+            name: '数据量',
+            type: 'bar', barMaxWidth: 10, barGap: '20%',
+            data: sorted.map(d => d.dataCount),
             itemStyle: {
               color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
-                { offset: 0, color: i === 0 ? '#ff9800' : '#00d4ff' },
-                { offset: 1, color: i === 0 ? '#ffcc0244' : '#00d4ff33' }
+                { offset: 0, color: '#00d4ff' },
+                { offset: 1, color: '#00d4ff33' }
               ]),
               borderRadius: [0, 3, 3, 0]
-            }
-          })),
-          label: { show: true, position: 'right', color: '#a8c5e6', fontSize: 8, formatter: p => p.value >= 1000 ? (p.value/1000).toFixed(1)+'k' : p.value },
-          showBackground: true,
-          backgroundStyle: { color: 'rgba(0,200,255,0.03)', borderRadius: [0,3,3,0] }
-        }]
+            },
+            label: { show: true, position: 'right', color: '#00d4ff', fontSize: 8, formatter: p => p.value >= 1000 ? (p.value/1000).toFixed(1)+'k' : p.value }
+          },
+          {
+            name: '预警量',
+            type: 'bar', barMaxWidth: 10,
+            data: sorted.map(d => d.warningCount),
+            itemStyle: {
+              color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+                { offset: 0, color: '#ff9800' },
+                { offset: 1, color: '#ffcc0244' }
+              ]),
+              borderRadius: [0, 3, 3, 0]
+            },
+            label: { show: true, position: 'right', color: '#ff9800', fontSize: 8, formatter: p => p.value || '' }
+          }
+        ]
       })
     },
 
@@ -1726,7 +1693,7 @@ $white:  #e8f4ff;
 .dm-hd-time  { font-family:'Consolas',monospace; font-size:14px; color:$dim; }
 
 // ── Body ──
-.dm-bd { flex:1; min-height:0; display:flex; gap:10px; padding:10px; overflow:hidden; }
+.dm-bd { flex:1; min-height:0; display:flex; gap:10px; padding:10px; overflow-y:auto; overflow-x:hidden; }
 
 // ── Panel 通用 ──
 .dm-panel {
@@ -1977,7 +1944,7 @@ $white:  #e8f4ff;
   }
 }
 .dm-top5-name { font-size:13px; color:$white; width:72px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.dm-top5-bar-wrap { flex:0 0 38%; height:6px; background:rgba(0,212,255,0.08); border-radius:3px; overflow:hidden; }
+.dm-top5-bar-wrap { flex:1; height:6px; background:rgba(0,212,255,0.08); border-radius:3px; overflow:hidden; }
 .dm-top5-bar { height:100%; border-radius:3px; background:linear-gradient(90deg,#00d4ff,#0066cc); transition:width 0.8s ease; }
 .dm-top5-val { font-size:14px; font-weight:700; color:#00d4ff; font-family:'Consolas',monospace; width:28px; text-align:right; flex-shrink:0; }
 
