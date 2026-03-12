@@ -1687,9 +1687,10 @@ $text:   #c8d8e8;
 $dim:    #8ba6c8;
 $white:  #e8f4ff;
 
-.dm-outer { width:100%; height:100vh; overflow:hidden; background:$bg; }
+.dm-outer { width:100%; height:calc(100vh - 50px); overflow:hidden; background:$bg; }
 .dm-root {
-  width:1920px; height:1030px;
+  width:100%; height:100%; /* 填满 dm-outer */
+  min-height: 600px; /* 最小高度防止过小 */
   background:$bg;
   background-image:
     radial-gradient(circle at 15% 25%, rgba(0,212,255,0.05) 0%, transparent 45%),

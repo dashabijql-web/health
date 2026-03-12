@@ -857,9 +857,10 @@ export default {
       if (scale < 1) {
         el.style.width  = `${(1 / scale) * 100}%`
         el.style.height = `${(1 / scale) * vh}px`
+        el.style.position = 'absolute'; el.style.top = bcr.top + 'px'; el.style.left = '0'
       } else {
-        el.style.width  = '1920px'
-        el.style.height = '1030px'
+        el.style.width = '1920px'; el.style.height = '1030px'
+        el.style.position = ''; el.style.top = ''; el.style.left = ''
       }
       this.$nextTick(() => this.setPageSize())
     },
@@ -903,10 +904,11 @@ $text:   #a8c5e6;
 $dim:    #6a88ab;
 $white:  #e8f4ff;
 
-// ── Root：与统一管控/实时监控一致的全屏缩放结构 ──
+// ── Root：自适应视口高度 ──
 .hr-root {
-  width: 1920px;
-  height: 1030px;
+  width: 100%;
+  height: calc(100vh - 50px); /* 视口高度 - 顶部导航栏 */
+  min-height: 600px; /* 最小高度防止过小 */
   background: $bg;
   background-image:
     radial-gradient(circle at 18% 28%, rgba(0,212,255,0.06) 0%, transparent 48%),

@@ -797,8 +797,13 @@ export default {
       const vh=window.innerHeight-bcr.top
       const scale=Math.max(0.4,Math.min(1,Math.min(vw/1920,vh/1030)))
       el.style.transformOrigin='top left'; el.style.transform=`scale(${scale})`
-      if(scale<1){el.style.width=`${(1/scale)*100}%`;el.style.height=`${(1/scale)*vh}px`}
-      else{el.style.width='1920px';el.style.height='1030px'}
+      if(scale<1){
+        el.style.width=`${(1/scale)*100}%`;el.style.height=`${(1/scale)*vh}px`
+        el.style.position='absolute';el.style.top=bcr.top+'px';el.style.left='0'
+      } else{
+        el.style.width='1920px';el.style.height='1030px'
+        el.style.position='';el.style.top='';el.style.left=''
+      }
     },
     handleResize() {
       clearTimeout(this.resizeTimer)
@@ -818,7 +823,10 @@ $dim:    #6a88ab;
 $white:  #e8f4ff;
 
 .rw-root {
-  width:1920px; height:1032px; background:$bg;
+  width: 100%;
+  height: calc(100vh - 50px); /* 视口高度 - 顶部导航栏 */
+  min-height: 600px; /* 最小高度防止过小 */
+  background:$bg;
   background-image: radial-gradient(circle at 18% 28%,rgba(239,68,68,.05) 0%,transparent 48%),radial-gradient(circle at 82% 72%,rgba(42,82,152,.08) 0%,transparent 48%);
   overflow:hidden; display:flex; flex-direction:column;
   font-family:'Microsoft YaHei',sans-serif; color:$text;

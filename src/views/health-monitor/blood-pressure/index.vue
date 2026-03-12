@@ -701,9 +701,10 @@ export default {
       if (scale < 1) {
         el.style.width  = `${(1 / scale) * 100}%`
         el.style.height = `${(1 / scale) * vh}px`
+        el.style.position = 'absolute'; el.style.top = bcr.top + 'px'; el.style.left = '0'
       } else {
-        el.style.width  = '1920px'
-        el.style.height = '1030px'
+        el.style.width = '1920px'; el.style.height = '1030px'
+        el.style.position = ''; el.style.top = ''; el.style.left = ''
       }
       this.$nextTick(() => this.setPageSize())
     },
@@ -749,10 +750,11 @@ $white:  #e8f4ff;
 $purple: #a78bfa;
 $sky:    #38bdf8;
 
-// ── Root：1920×1030 固定画布 + CSS scale ──
+// ── Root：自适应视口高度 ──
 .bp-root {
-  width: 1920px;
-  height: 1030px;
+  width: 100%;
+  height: calc(100vh - 50px); /* 视口高度 - 顶部导航栏 */
+  min-height: 600px; /* 最小高度防止过小 */
   background: $bg;
   background-image:
     radial-gradient(circle at 18% 28%, rgba(167,139,250,0.06) 0%, transparent 48%),

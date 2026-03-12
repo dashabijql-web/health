@@ -751,7 +751,9 @@ $white:  #e8f4ff;
 
 /* ── Root ── */
 .sl-root {
-  width: 1920px; height: 1030px;
+  width: 100%;
+  height: calc(100vh - 50px); /* 视口高度 - 顶部导航栏 */
+  min-height: 600px; /* 最小高度防止过小 */
   background: $bg;
   background-image:
     radial-gradient(circle at 20% 30%, rgba(167,139,250,0.07) 0%, transparent 50%),
