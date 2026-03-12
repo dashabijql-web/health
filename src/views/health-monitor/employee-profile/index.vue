@@ -68,45 +68,7 @@
       <!-- ═══════ 中栏：矿工人物 + 数据浮框 ═══════ -->
       <main class="ep-center">
 
-        <!-- 顶部左浮框：心率 -->
-        <div class="ep-float ep-float-tl">
-          <div class="ep-float-title">● 心率监测</div>
-          <div class="ep-float-row">
-            <span class="ep-fl">当前心率</span>
-            <span :class="['ep-fv', hrClass(vitals.heartRate)]">{{ vitals.heartRate || 0 }}</span>
-            <span class="ep-fu">bpm</span>
-          </div>
-          <div class="ep-float-row">
-            <span class="ep-fl">7日均值</span>
-            <span class="ep-fv cyan">{{ trend7.avgHr || 0 }}</span>
-            <span class="ep-fu">bpm</span>
-          </div>
-          <div class="ep-float-row">
-            <span class="ep-fl">正常范围</span>
-            <span class="ep-fv dim">60~100 bpm</span>
-          </div>
-        </div>
-
-        <!-- 顶部右浮框：血氧 -->
-        <div class="ep-float ep-float-tr">
-          <div class="ep-float-title">● 血氧监测</div>
-          <div class="ep-float-row">
-            <span class="ep-fl">当前血氧</span>
-            <span :class="['ep-fv', spo2Class(vitals.bloodOxygen)]">{{ vitals.bloodOxygen || 0 }}</span>
-            <span class="ep-fu">%</span>
-          </div>
-          <div class="ep-float-row">
-            <span class="ep-fl">7日均值</span>
-            <span class="ep-fv cyan">{{ trend7.avgSpo2 || 0 }}</span>
-            <span class="ep-fu">%</span>
-          </div>
-          <div class="ep-float-row">
-            <span class="ep-fl">正常范围</span>
-            <span class="ep-fv dim">≥ 95 %</span>
-          </div>
-        </div>
-
-        <!-- 矿工人物 -->
+        <!-- 矿工舞台（浮框全部放在舞台内，连接线对齐） -->
         <div class="ep-miner-stage">
           <!-- 旋转外圈 -->
           <div class="ep-ring ep-ring1"></div>
@@ -117,52 +79,91 @@
           <img class="ep-miner" src="/assets/miner-worker.png" />
           <!-- 底部光晕 -->
           <div class="ep-glow-base"></div>
-          <!-- 连接线（左上/右上/左下/右下） -->
-          <svg class="ep-lines" viewBox="0 0 500 600" preserveAspectRatio="none">
-            <line x1="250" y1="200" x2="80"  y2="120" stroke="#00b4ff" stroke-width="1" stroke-dasharray="4 3" opacity="0.5"/>
-            <line x1="250" y1="200" x2="420" y2="120" stroke="#00b4ff" stroke-width="1" stroke-dasharray="4 3" opacity="0.5"/>
-            <line x1="250" y1="420" x2="80"  y2="480" stroke="#00b4ff" stroke-width="1" stroke-dasharray="4 3" opacity="0.5"/>
-            <line x1="250" y1="420" x2="420" y2="480" stroke="#00b4ff" stroke-width="1" stroke-dasharray="4 3" opacity="0.5"/>
+
+          <!-- 顶部左浮框：心率 -->
+          <div class="ep-float ep-float-tl">
+            <div class="ep-float-title">● 心率监测</div>
+            <div class="ep-float-row">
+              <span class="ep-fl">当前心率</span>
+              <span :class="['ep-fv', hrClass(vitals.heartRate)]">{{ vitals.heartRate || 0 }}</span>
+              <span class="ep-fu">bpm</span>
+            </div>
+            <div class="ep-float-row">
+              <span class="ep-fl">7日均值</span>
+              <span class="ep-fv cyan">{{ trend7.avgHr || 0 }}</span>
+              <span class="ep-fu">bpm</span>
+            </div>
+            <div class="ep-float-row">
+              <span class="ep-fl">正常范围</span>
+              <span class="ep-fv dim">60~100 bpm</span>
+            </div>
+          </div>
+
+          <!-- 顶部右浮框：血氧 -->
+          <div class="ep-float ep-float-tr">
+            <div class="ep-float-title">● 血氧监测</div>
+            <div class="ep-float-row">
+              <span class="ep-fl">当前血氧</span>
+              <span :class="['ep-fv', spo2Class(vitals.bloodOxygen)]">{{ vitals.bloodOxygen || 0 }}</span>
+              <span class="ep-fu">%</span>
+            </div>
+            <div class="ep-float-row">
+              <span class="ep-fl">7日均值</span>
+              <span class="ep-fv cyan">{{ trend7.avgSpo2 || 0 }}</span>
+              <span class="ep-fu">%</span>
+            </div>
+            <div class="ep-float-row">
+              <span class="ep-fl">正常范围</span>
+              <span class="ep-fv dim">≥ 95 %</span>
+            </div>
+          </div>
+
+          <!-- 底部左浮框：体征数据 -->
+          <div class="ep-float ep-float-bl">
+            <div class="ep-float-title">● 体征数据</div>
+            <div class="ep-float-row">
+              <span class="ep-fl">体温</span>
+              <span :class="['ep-fv', tempClass(vitals.temperature)]">{{ fmtTemp(vitals.temperature) }}</span>
+              <span class="ep-fu">°C</span>
+            </div>
+            <div class="ep-float-row">
+              <span class="ep-fl">今日步数</span>
+              <span class="ep-fv green">{{ vitals.steps || 0 }}</span>
+              <span class="ep-fu">步</span>
+            </div>
+            <div class="ep-float-row">
+              <span class="ep-fl">压力指数</span>
+              <span :class="['ep-fv', pressClass(vitals.pressure)]">{{ vitals.pressure || 0 }}</span>
+            </div>
+          </div>
+
+          <!-- 底部右浮框：预警摘要 -->
+          <div class="ep-float ep-float-br">
+            <div class="ep-float-title">● 预警摘要</div>
+            <div class="ep-float-row">
+              <span class="ep-fl">近30日预警</span>
+              <span :class="['ep-fv', warnCount > 10 ? 'red' : warnCount > 5 ? 'yellow' : 'green']">{{ warnCount }}</span>
+              <span class="ep-fu">次</span>
+            </div>
+            <div class="ep-float-row">
+              <span class="ep-fl">未处理</span>
+              <span :class="['ep-fv', pendCount > 0 ? 'red' : 'green']">{{ pendCount }}</span>
+              <span class="ep-fu">条</span>
+            </div>
+            <div class="ep-float-row">
+              <span class="ep-fl">7日预警</span>
+              <span class="ep-fv cyan">{{ warn7Count }}</span>
+              <span class="ep-fu">次</span>
+            </div>
+          </div>
+
+          <!-- 连接线（从人物中心到四角浮框） -->
+          <svg class="ep-lines" viewBox="0 0 700 600" preserveAspectRatio="none">
+            <line x1="350" y1="220" x2="155" y2="120" stroke="#00b4ff" stroke-width="1" stroke-dasharray="5 4" opacity="0.55"/>
+            <line x1="350" y1="220" x2="545" y2="120" stroke="#00b4ff" stroke-width="1" stroke-dasharray="5 4" opacity="0.55"/>
+            <line x1="350" y1="430" x2="155" y2="500" stroke="#00b4ff" stroke-width="1" stroke-dasharray="5 4" opacity="0.55"/>
+            <line x1="350" y1="430" x2="545" y2="500" stroke="#00b4ff" stroke-width="1" stroke-dasharray="5 4" opacity="0.55"/>
           </svg>
-        </div>
-
-        <!-- 底部左浮框：体温 + 步数 -->
-        <div class="ep-float ep-float-bl">
-          <div class="ep-float-title">● 体征数据</div>
-          <div class="ep-float-row">
-            <span class="ep-fl">体温</span>
-            <span :class="['ep-fv', tempClass(vitals.temperature)]">{{ fmtTemp(vitals.temperature) }}</span>
-            <span class="ep-fu">°C</span>
-          </div>
-          <div class="ep-float-row">
-            <span class="ep-fl">今日步数</span>
-            <span class="ep-fv green">{{ vitals.steps || 0 }}</span>
-            <span class="ep-fu">步</span>
-          </div>
-          <div class="ep-float-row">
-            <span class="ep-fl">压力指数</span>
-            <span :class="['ep-fv', pressClass(vitals.pressure)]">{{ vitals.pressure || 0 }}</span>
-          </div>
-        </div>
-
-        <!-- 底部右浮框：预警摘要 -->
-        <div class="ep-float ep-float-br">
-          <div class="ep-float-title">● 预警摘要</div>
-          <div class="ep-float-row">
-            <span class="ep-fl">近30日预警</span>
-            <span :class="['ep-fv', warnCount > 10 ? 'red' : warnCount > 5 ? 'yellow' : 'green']">{{ warnCount }}</span>
-            <span class="ep-fu">次</span>
-          </div>
-          <div class="ep-float-row">
-            <span class="ep-fl">未处理</span>
-            <span :class="['ep-fv', pendCount > 0 ? 'red' : 'green']">{{ pendCount }}</span>
-            <span class="ep-fu">条</span>
-          </div>
-          <div class="ep-float-row">
-            <span class="ep-fl">7日预警</span>
-            <span class="ep-fv cyan">{{ warn7Count }}</span>
-            <span class="ep-fu">次</span>
-          </div>
         </div>
 
       </main>
@@ -215,6 +216,7 @@
                     <div class="ep-risk-bar-fill" :style="{ width: r.pct + '%', background: r.color }"></div>
                   </div>
                   <span :class="['ep-risk-label', r.level]">{{ r.levelText }}</span>
+                  <span class="ep-risk-pct">{{ r.pct }}%</span>
                 </div>
               </div>
             </div>
@@ -469,11 +471,13 @@ onUnmounted(() => {
 .ep-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 260px 1fr 320px;
+  grid-template-columns: 250px 1fr 310px;
   gap: 12px;
-  padding: 14px 20px;
+  padding: 12px 18px;
   overflow: hidden;
+  min-height: 0;
 }
+.ep-center { height: 100%; }
 
 /* ═══ 通用面板 ═══ */
 .ep-panel {
@@ -536,15 +540,17 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  overflow: visible;
 }
 
-/* 矿工舞台 */
+/* 矿工舞台 — 占满中栏，浮框内置 */
 .ep-miner-stage {
   position: relative;
-  width: 280px;
-  height: 420px;
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
 }
 
@@ -555,22 +561,23 @@ onUnmounted(() => {
   border: 1px solid transparent;
 }
 .ep-ring1 {
-  width: 240px; height: 240px;
-  bottom: 10px; left: 50%; transform: translateX(-50%);
+  width: 300px; height: 300px;
+  top: 50%; left: 50%; transform: translate(-50%, 20%);
   background: conic-gradient(rgba(0,180,255,0.6), rgba(0,180,255,0.05), rgba(0,180,255,0.6)) border-box;
   -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: destination-out; mask-composite: exclude;
-  animation: epRing1 4s linear infinite;
+  animation: epRing1Centered 4s linear infinite;
 }
 .ep-ring2 {
-  width: 200px; height: 200px;
-  bottom: 30px; left: 50%; transform: translateX(-50%);
+  width: 250px; height: 250px;
+  top: 50%; left: 50%; transform: translate(-50%, 15%);
   background: conic-gradient(rgba(0,220,255,0.3), transparent, rgba(0,220,255,0.3)) border-box;
   -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: destination-out; mask-composite: exclude;
-  animation: epRing1 6s linear infinite reverse;
+  animation: epRing1Centered 6s linear infinite reverse;
 }
 @keyframes epRing1 { 100% { transform: translateX(-50%) rotate(360deg); } }
+@keyframes epRing1Centered { 0% { transform: translate(-50%, 20%) rotate(0deg); } 100% { transform: translate(-50%, 20%) rotate(360deg); } }
 
 /* 扫描线 */
 .ep-scan-overlay {
@@ -584,27 +591,26 @@ onUnmounted(() => {
   100% { transform: translateY(4px); }
 }
 
-/* 矿工图 */
+/* 矿工图 — 放大到占主舞台高度 */
 .ep-miner {
   position: relative;
-  width: 200px;
-  height: 340px;
+  width: 260px;
+  height: 450px;
   object-fit: contain;
   object-position: top;
-  filter: drop-shadow(0 0 16px rgba(0,180,255,0.45)) drop-shadow(0 0 30px rgba(0,100,255,0.25));
+  filter: drop-shadow(0 0 20px rgba(0,180,255,0.5)) drop-shadow(0 0 40px rgba(0,100,255,0.3));
   animation: epMinerFloat 3s ease-in-out infinite alternate;
   z-index: 2;
 }
-@keyframes epMinerFloat { 0% { transform: translateY(0); } 100% { transform: translateY(-10px); } }
+@keyframes epMinerFloat { 0% { transform: translateY(0); } 100% { transform: translateY(-12px); } }
 
-/* 底部光晕 */
+/* 底部光晕 — 跟随人物（居中后人物脚部约在 top:73%） */
 .ep-glow-base {
   position: absolute;
-  bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 160px; height: 20px;
-  background: radial-gradient(ellipse at center, rgba(0,180,255,0.5) 0%, transparent 70%);
+  top: 73%; left: 50%; transform: translateX(-50%);
+  width: 200px; height: 24px;
+  background: radial-gradient(ellipse at center, rgba(0,180,255,0.55) 0%, transparent 70%);
   border-radius: 50%;
-  animation: epMinerFloat 3s ease-in-out infinite alternate;
   z-index: 1;
 }
 
@@ -618,24 +624,24 @@ onUnmounted(() => {
   z-index: 0;
 }
 
-/* 浮框 */
+/* 浮框 — 定位在舞台四角 */
 .ep-float {
   position: absolute;
-  background: rgba(5, 18, 40, 0.88);
+  background: rgba(5, 18, 40, 0.9);
   border: 1px solid rgba(0, 180, 255, 0.4);
   border-radius: 8px;
-  padding: 10px 12px;
-  min-width: 150px;
+  padding: 10px 14px;
+  min-width: 158px;
   backdrop-filter: blur(8px);
   box-shadow: 0 0 16px rgba(0, 100, 255, 0.15), inset 0 0 10px rgba(0,180,255,0.04);
   z-index: 10;
   transition: box-shadow 0.2s;
 }
-.ep-float:hover { box-shadow: 0 0 24px rgba(0,180,255,0.25); }
-.ep-float-tl { top: 5%;  left: 0; }
-.ep-float-tr { top: 5%;  right: 0; }
-.ep-float-bl { bottom: 10%; left: 0; }
-.ep-float-br { bottom: 10%; right: 0; }
+.ep-float:hover { box-shadow: 0 0 28px rgba(0,180,255,0.3); }
+.ep-float-tl { top: 8%;  left: 2%; }
+.ep-float-tr { top: 8%;  right: 2%; }
+.ep-float-bl { bottom: 12%; left: 2%; }
+.ep-float-br { bottom: 12%; right: 2%; }
 
 .ep-float-title {
   font-size: 12px; font-weight: 700; color: #00c8ff;
@@ -693,6 +699,7 @@ onUnmounted(() => {
 .ep-risk-label.high { color: #ff4444; }
 .ep-risk-label.mid  { color: #ffaa00; }
 .ep-risk-label.low  { color: #00c853; }
+.ep-risk-pct { font-size: 10px; color: rgba(255,255,255,0.35); margin-left: 2px; }
 
 /* ECG */
 .ep-ecg { flex-shrink: 0; }
