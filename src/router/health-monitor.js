@@ -77,6 +77,17 @@ const healthMonitorRouter = {
   },
   children: [
     {
+      // 员工档案库（卡片网格 + 健康档案入口）
+      path: 'employee-archive',
+      name: 'EmployeeArchive',
+      component: () => import('@/views/health-monitor/employee-archive/index.vue'),
+      meta: {
+        title: '员工档案',
+        icon: 'UserFilled',
+        permCode: 'health:employee'
+      }
+    },
+    {
       // 工作台日历（每日健康均值 + 预警日历视图）
       path: 'workbench',
       name: 'Workbench',

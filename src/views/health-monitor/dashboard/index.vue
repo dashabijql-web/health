@@ -714,7 +714,7 @@ export default {
         {
           label: '当前在线 / 在岗总数',
           val: `${this.kpiRealtimeOnline} / ${this.kpiRealtimeTotal}`,
-          cls: 'kpi-cyan', clickable: false,
+          cls: 'kpi-cyan', clickable: true, route: '/health-monitor/employee-archive',
           sub: `上报率 ${onlineRate}%`
         },
         {
@@ -862,8 +862,7 @@ export default {
         { label: '在线设备', val: this.deviceOnline,        cls: 'dc-green'  },
         { label: '离线设备', val: this.deviceOffline,       cls: 'dc-gray'   },
         { label: '预警设备', val: this.deviceWarningCount,  cls: 'dc-red'    },
-        { label: '电量不足', val: this.lowBatteryCount,     cls: 'dc-orange' },
-        { label: '达标率',   val: this.healthPassRate+'%',  cls: 'dc-teal'   }
+        { label: '电量不足', val: this.lowBatteryCount,     cls: 'dc-orange' }
       ]
     },
     paginatedWarningEvents() {
