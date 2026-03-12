@@ -507,13 +507,13 @@ onUnmounted(() => {
 .ep-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 250px 1fr 310px;
-  gap: 12px;
-  padding: 12px 18px;
+  grid-template-columns: minmax(170px, 200px) 1fr minmax(220px, 260px);
+  gap: 10px;
+  padding: 10px 14px;
   overflow: hidden;
   min-height: 0;
 }
-.ep-center { height: 100%; }
+.ep-center { height: 100%; overflow: hidden; }
 
 /* ═══ 通用面板 ═══ */
 .ep-panel {
@@ -572,7 +572,7 @@ onUnmounted(() => {
 /* ═══ 中栏：左面板列 | 矿工 | 右面板列 ═══ */
 .ep-center {
   display: grid;
-  grid-template-columns: 200px 1fr 200px;
+  grid-template-columns: minmax(130px, 155px) 1fr minmax(130px, 155px);
   height: 100%;
 }
 
@@ -612,7 +612,7 @@ onUnmounted(() => {
 .ep-sp-dot.yellow { background: #ffaa00; box-shadow: 0 0 5px #ffaa00; }
 .ep-sp-dot.blue   { background: #1890ff; box-shadow: 0 0 5px #1890ff; }
 .ep-sp-dot.orange { background: #ff7700; box-shadow: 0 0 5px #ff7700; }
-.ep-sp-name { font-size: 12px; font-weight: 700; color: #c0d8f8; flex: 1; }
+.ep-sp-name { font-size: 11px; font-weight: 700; color: #c0d8f8; flex: 1; white-space: nowrap; overflow: hidden; }
 .ep-sp-tag  { font-size: 10px; color: #4a7090; background: rgba(0,180,255,0.08); padding: 1px 5px; border-radius: 2px; }
 
 .ep-sp-body { flex: 1; overflow: hidden; }
@@ -621,9 +621,9 @@ onUnmounted(() => {
   padding: 7px 10px;
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
-.ep-sp-label { font-size: 11px; color: #4a6880; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ep-sp-val   { font-size: 14px; font-weight: 700; font-family: monospace; white-space: nowrap; }
-.ep-sp-unit  { font-size: 10px; color: #4a7090; min-width: 16px; white-space: nowrap; }
+.ep-sp-label { font-size: 10px; color: #4a6880; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ep-sp-val   { font-size: 13px; font-weight: 700; font-family: monospace; white-space: nowrap; color: #c0d8f8; flex-shrink: 0; }
+.ep-sp-unit  { font-size: 10px; color: #4a7090; white-space: nowrap; flex-shrink: 0; }
 
 /* 滚动动画 — 4种速度 */
 @keyframes spScrollUp { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
@@ -639,6 +639,7 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -676,7 +677,11 @@ onUnmounted(() => {
 /* 矿工图 */
 .ep-miner {
   position: relative;
-  height: 90%; width: auto;
+  max-height: 90%;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
   filter: drop-shadow(0 0 24px rgba(0,180,255,0.55)) drop-shadow(0 0 48px rgba(0,100,255,0.35));
   animation: epMinerFloat 3s ease-in-out infinite alternate;
   z-index: 2;
@@ -698,14 +703,14 @@ onUnmounted(() => {
 .ep-right { display: flex; flex-direction: column; overflow: hidden; }
 
 /* 实时体征 */
-.ep-vital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-.ep-vital-card { padding: 10px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.2); }
+.ep-vital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+.ep-vital-card { padding: 8px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.2); }
 .ep-vital-card.hr   { border-left: 3px solid #ff5252; }
 .ep-vital-card.spo2 { border-left: 3px solid #1890ff; }
 .ep-vital-card.temp { border-left: 3px solid #ffaa00; }
 .ep-vital-card.steps{ border-left: 3px solid #00c853; }
-.ep-vc-label { font-size: 11px; color: #4a7090; margin-bottom: 3px; }
-.ep-vc-val { font-size: 20px; font-weight: 700; margin-bottom: 5px; color: #e0f0ff; font-family: monospace; }
+.ep-vc-label { font-size: 10px; color: #4a7090; margin-bottom: 2px; }
+.ep-vc-val { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: #e0f0ff; font-family: monospace; }
 .ep-vc-val .red    { color: #ff4444; }
 .ep-vc-val .yellow { color: #ffaa00; }
 .ep-vc-val .green  { color: #00e676; }
@@ -725,7 +730,7 @@ onUnmounted(() => {
 .ep-risk-card.high { border-color: rgba(255,60,60,0.25); }
 .ep-risk-card.mid  { border-color: rgba(255,170,0,0.2); }
 .ep-risk-card.low  { border-color: rgba(0,200,83,0.15); }
-.ep-risk-icon { font-size: 20px; flex-shrink: 0; }
+.ep-risk-icon { font-size: 16px; flex-shrink: 0; }
 .ep-risk-body { flex: 1; overflow: hidden; }
 .ep-risk-name { font-size: 11px; color: #8ab0d0; margin-bottom: 4px; }
 .ep-risk-bar-wrap { display: flex; align-items: center; gap: 6px; }
