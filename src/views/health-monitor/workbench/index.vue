@@ -79,27 +79,59 @@
     <div class="wb-detail" v-if="selected">
       <div class="detail-header">
         <span class="detail-date">{{ selected.dateStr }} 详情</span>
-        <el-button text :icon="Close" @click="selected = null" />
+        <el-button text :icon="Close" @click="selected = null; activeRank = null" />
       </div>
       <div class="detail-body">
-        <div class="detail-item">
+        <div class="detail-item di-clickable" :class="{ 'di-active': activeRank === 'heartRate' }" @click="toggleRank('heartRate')">
           <span class="di-label">平均心率</span>
           <span class="di-val">{{ selected.data.avgHeartRate || '--' }} <small>bpm</small></span>
+          <span class="di-hint">排行 ▾</span>
         </div>
-        <div class="detail-item">
+        <div class="detail-item di-clickable" :class="{ 'di-active': activeRank === 'bloodOxygen' }" @click="toggleRank('bloodOxygen')">
           <span class="di-label">平均血氧</span>
           <span class="di-val">{{ selected.data.avgBloodOxygen || '--' }} <small>%</small></span>
+          <span class="di-hint">排行 ▾</span>
         </div>
-        <div class="detail-item">
+        <div class="detail-item di-clickable" :class="{ 'di-active': activeRank === 'steps' }" @click="toggleRank('steps')">
           <span class="di-label">平均步数</span>
           <span class="di-val">{{ selected.data.avgSteps || '--' }} <small>步</small></span>
+          <span class="di-hint">排行 ▾</span>
         </div>
-        <div class="detail-item">
+        <div class="detail-item di-clickable" :class="{ 'di-active': activeRank === 'warnings' }" @click="toggleRank('warnings')">
           <span class="di-label">预警次数</span>
-          <span class="di-val" :class="selected.data.warningCount > 0 ? 'text-red' : 'text-green'">
-            {{ selected.data.warningCount }}
-          </span>
+          <span class="di-val" :class="selected.data.warningCount > 0 ? 'text-red' : 'text-green'">{{ selected.data.warningCount }}</span>
+          <span class="di-hint">列表 ▾</span>
         </div>
+      </div>
+
+      <!-- 排行榜 / 预警列表 -->
+      <div class="rank-panel" v-if="activeRank" v-loading="rankLoading">
+        <div class="rank-title">{{ rankTitle }}</div>
+        <div v-if="!rankLoading && rankData.length === 0" class="rank-empty">暂无数据</div>
+        <!-- 心率 / 血氧 / 步数排行 -->
+        <template v-if="activeRank !== 'warnings'">
+          <div class="rank-row" v-for="(row, i) in rankData" :key="i">
+            <span class="rank-no" :class="i < 3 ? 'rank-top' : ''">{{ i + 1 }}</span>
+            <span class="rank-name">{{ row.empName }}</span>
+            <span class="rank-dept">{{ row.deptName }}</span>
+            <span class="rank-val" :class="rankValClass(row)">
+              <template v-if="activeRank === 'heartRate'">{{ row.avgHeartRate }} <small>bpm</small></template>
+              <template v-else-if="activeRank === 'bloodOxygen'">{{ row.avgBloodOxygen }} <small>%</small></template>
+              <template v-else>{{ row.avgSteps }} <small>步</small></template>
+            </span>
+          </div>
+        </template>
+        <!-- 预警列表 -->
+        <template v-else>
+          <div class="rank-row warn-row" v-for="(row, i) in rankData" :key="i">
+            <span class="rank-no" :class="i < 3 ? 'rank-top' : ''">{{ i + 1 }}</span>
+            <span class="rank-name">{{ row.empName }}</span>
+            <span class="rank-dept">{{ row.deptName }}</span>
+            <span class="warn-type">{{ row.warningType || row.indicatorName }}</span>
+            <span class="warn-val">{{ row.warningValue }}</span>
+            <span class="warn-level" :class="warnLevelClass(row.warningLevel)">{{ warnLevelLabel(row.warningLevel) }}</span>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -108,7 +140,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ArrowLeft, ArrowRight, Close } from '@element-plus/icons-vue'
-import { getCalendarData } from '@/api/workbench'
+import { getCalendarData, getDayHeartRateRank, getDayBloodOxygenRank, getDayStepsRank, getDayWarnings } from '@/api/workbench'
 
 const weekDays = ['日', '一', '二', '三', '四', '五', '六']
 
@@ -207,10 +239,57 @@ function cellClass(cell) {
 }
 
 // ── 选中详情 ─────────────────────────────────────────────────────────
-const selected = ref(null)
+const selected   = ref(null)
+const activeRank = ref(null)   // 'heartRate' | 'bloodOxygen' | 'steps' | 'warnings' | null
+const rankData   = ref([])
+const rankLoading = ref(false)
+
 function selectDay(cell) {
-  if (!cell.data) { selected.value = null; return }
+  if (!cell.data) { selected.value = null; activeRank.value = null; return }
+  if (selected.value?.dateStr !== cell.dateStr) activeRank.value = null
   selected.value = cell
+}
+
+const rankTitle = computed(() => {
+  const map = { heartRate: '心率排行（偏差最大）', bloodOxygen: '血氧排行（最低）', steps: '步数排行（最少）', warnings: '当日预警列表（严重优先）' }
+  return map[activeRank.value] || ''
+})
+
+async function toggleRank(type) {
+  if (activeRank.value === type) { activeRank.value = null; return }
+  activeRank.value = type
+  rankData.value = []
+  rankLoading.value = true
+  try {
+    const date = selected.value.dateStr
+    const apiFn = { heartRate: getDayHeartRateRank, bloodOxygen: getDayBloodOxygenRank, steps: getDayStepsRank, warnings: getDayWarnings }[type]
+    const res = await apiFn(date)
+    rankData.value = res.code === 200 ? res.data : []
+  } finally {
+    rankLoading.value = false
+  }
+}
+
+function rankValClass(row) {
+  if (activeRank.value === 'heartRate') {
+    const v = row.avgHeartRate
+    return (v < 60 || v > 100) ? 'text-red' : 'text-green'
+  }
+  if (activeRank.value === 'bloodOxygen') return row.avgBloodOxygen < 95 ? 'text-red' : 'text-green'
+  if (activeRank.value === 'steps') return row.avgSteps < 6000 ? 'text-red' : ''
+  return ''
+}
+
+function warnLevelLabel(level) {
+  return level || '—'
+}
+
+function warnLevelClass(level) {
+  if (!level) return ''
+  if (['危急','高危','高','危险'].includes(level)) return 'wl-high'
+  if (['中','警告'].includes(level)) return 'wl-mid'
+  if (['低'].includes(level)) return 'wl-low'
+  return ''
 }
 </script>
 
@@ -390,13 +469,30 @@ function selectDay(cell) {
 }
 .detail-body {
   display: flex;
-  gap: 24px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 .detail-item {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+.di-clickable {
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: background 0.15s, border-color 0.15s;
+  &:hover { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); }
+}
+.di-active {
+  background: rgba(59,130,246,0.2) !important;
+  border-color: #3b82f6 !important;
+}
+.di-hint {
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 2px;
 }
 .di-label {
   font-size: 12px;
@@ -408,4 +504,51 @@ function selectDay(cell) {
   color: #e2e8f0;
   small { font-size: 11px; color: #9ca3af; }
 }
+
+/* 排行榜面板 */
+.rank-panel {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.rank-title {
+  font-size: 12px;
+  color: #60a5fa;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.rank-empty {
+  font-size: 12px;
+  color: #6b7280;
+  padding: 12px 0;
+  text-align: center;
+}
+.rank-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  border-radius: 4px;
+  font-size: 13px;
+  &:hover { background: rgba(255,255,255,0.04); }
+}
+.rank-no {
+  width: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+.rank-top { color: #f59e0b; font-weight: 700; }
+.rank-name { width: 64px; color: #e2e8f0; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-dept { flex: 1; color: #9ca3af; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-val { width: 80px; text-align: right; font-weight: 600; color: #93c5fd; small { font-size: 10px; color: #6b7280; } }
+.warn-type { flex: 1; color: #fbbf24; font-size: 12px; }
+.warn-val  { width: 50px; text-align: right; color: #e2e8f0; font-size: 12px; }
+.warn-level { width: 24px; text-align: center; font-size: 11px; font-weight: 700; border-radius: 3px; padding: 1px 4px; flex-shrink: 0; }
+.wl-low  { background: rgba(234,179,8,0.2);  color: #fbbf24; }
+.wl-mid  { background: rgba(249,115,22,0.2); color: #fb923c; }
+.wl-high { background: rgba(239,68,68,0.2);  color: #f87171; }
 </style>
