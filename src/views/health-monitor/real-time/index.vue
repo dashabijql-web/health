@@ -176,6 +176,18 @@
                   <span class="c-time">{{ fmtTime(row.lastUpdate) }}</span>
                 </template>
               </el-table-column>
+              <el-table-column label="操作" width="140" align="center" fixed="right">
+                <template #default="{ row }">
+                  <div v-if="row.imei" style="display:flex;gap:4px;justify-content:center">
+                    <button class="rt-msg-btn" @click.stop="handleSendMessage(row)" title="文字消息">
+                      💬
+                    </button>
+                    <button class="rt-msg-btn rt-voice-btn" @click.stop="handleSendVoice(row)" title="语音广播">
+                      🔊
+                    </button>
+                  </div>
+                </template>
+              </el-table-column>
             </el-table>
           </div>
 
@@ -208,6 +220,62 @@
       </div>
     </section>
 
+    <!-- 发消息对话框 -->
+    <el-dialog
+      v-model="messageDialogVisible"
+      title="发送消息到手表"
+      width="420px"
+      :append-to-body="true"
+      :close-on-click-modal="false">
+      <div v-if="messageTarget" class="rt-msg-meta">
+        <span>{{ messageTarget.userName }}</span>
+        <span class="rt-msg-dept">{{ messageTarget.deptName }}</span>
+        <span class="rt-msg-imei">{{ messageTarget.imei }}</span>
+      </div>
+      <el-input
+        v-model="messageText"
+        type="textarea"
+        :rows="4"
+        placeholder="请输入要推送到手表的消息内容（最多 50 个字符）"
+        :maxlength="50"
+        show-word-limit
+        resize="none"
+      />
+      <template #footer>
+        <el-button @click="messageDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmSendMessage" :disabled="!messageText.trim()">发送</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 语音广播对话框 -->
+    <el-dialog
+      v-model="voiceDialogVisible"
+      title="🔊 语音广播到手表"
+      width="400px"
+      :append-to-body="true"
+      :close-on-click-modal="false">
+      <div v-if="voiceTarget" class="rt-msg-meta" style="margin-bottom:16px">
+        <span>{{ voiceTarget.userName }}</span>
+        <span class="rt-msg-dept">{{ voiceTarget.deptName }}</span>
+        <span class="rt-msg-imei">{{ voiceTarget.imei }}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div
+          v-for="t in voiceTemplates"
+          :key="t.id"
+          :class="['rt-voice-tpl', voiceTemplateId === t.id ? 'rt-voice-tpl--active' : '']"
+          @click="voiceTemplateId = t.id">
+          {{ t.name }}
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="voiceDialogVisible = false">取消</el-button>
+        <el-button type="warning" @click="confirmSendVoice" :disabled="!voiceTemplateId">
+          立即播报
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- Detail dialog -->
     <el-dialog
       v-model="detailVisible"
@@ -237,6 +305,7 @@ import {
   getOnlineUsers,
   getRealtimeStatistics
 } from '@/api/realtime'
+import { sendWatchMessage, sendVoiceMessage, getVoiceTemplates } from '@/api/device'
 
 export default {
   name: 'RealtimeMonitor',
@@ -268,7 +337,7 @@ export default {
       deptList: [],
       currentPage: 1,
       pageSize: 20,
-      tableHeight: 880,
+      tableHeight: 600,
       autoScrollEnabled: true,
       scrollPaused: false,
       refreshTimer: null,
@@ -280,6 +349,13 @@ export default {
       hrChart: null,
       detailUser: null,
       detailVisible: false,
+      messageTarget: null,
+      messageDialogVisible: false,
+      messageText: '',
+      voiceTarget: null,
+      voiceDialogVisible: false,
+      voiceTemplateId: '',
+      voiceTemplates: [],
       tblHeadStyle: {
         background: 'rgba(0,40,90,0.9)',
         color: '#00d4ff',
@@ -462,10 +538,13 @@ export default {
     this.fetchData()
     this.autoRefresh()
     this.startAutoScroll()
-    this.setScale()
     window.addEventListener('resize', this.handleResize)
     this.$nextTick(() => {
       this.initCharts()
+      // 延迟调用 setScale 确保 DOM 完全渲染
+      setTimeout(() => {
+        this.setScale()
+      }, 100)
     })
   },
   beforeUnmount() {
@@ -556,21 +635,24 @@ export default {
     resumeAutoScroll() { this.scrollPaused = false },
 
     setScale() {
-      const el = this.$el
-      if (!el || typeof el.getBoundingClientRect !== 'function') return
-      // 用 BCR 直接读取元素实际位置：transform-origin:top-left 保证 left/top 在缩放前后稳定
-      const bcr = el.getBoundingClientRect()
-      const vw = window.innerWidth - bcr.left
-      const vh = window.innerHeight - bcr.top
-      const scale = Math.max(0.4, Math.min(1, Math.min(vw / 1920, vh / 1030)))
-      el.style.transformOrigin = 'top left'
-      el.style.transform = `scale(${scale})`
-      if (scale < 1) { el.style.width = `${(1/scale)*100}%`; el.style.height = `${(1/scale)*vh}px` }
-      else { el.style.width = '1920px'; el.style.height = '1030px' }
-      // 读取 tbl-wrap 实际渲染高度（flex:1 自动撑满，无需估算 ph/pg 高度）
+      // 动态计算表格高度，填充所有可用空间
       this.$nextTick(() => {
-        const wrap = this.$refs.tableWrapper
-        if (wrap) this.tableHeight = wrap.clientHeight
+        const root = document.querySelector('.rt-root')
+        const header = document.querySelector('.rt-hd')
+        const tablePanel = document.querySelector('.rt-table-panel')
+        const tableHeader = document.querySelector('.rt-ph')
+
+        if (!root || !header || !tablePanel || !tableHeader) return
+
+        // 计算：root高度 - header高度 - tableHeader高度 - 分页高度(50px) - 间距(20px)
+        const rootHeight = root.offsetHeight
+        const headerHeight = header.offsetHeight
+        const tableHeaderHeight = tableHeader.offsetHeight
+        const paginationHeight = 50
+        const margins = 20
+
+        const availableHeight = rootHeight - headerHeight - tableHeaderHeight - paginationHeight - margins
+        this.tableHeight = Math.max(400, availableHeight)
       })
     },
 
@@ -655,6 +737,55 @@ export default {
     showUserDetail(row) {
       this.detailUser = row
       this.detailVisible = true
+    },
+
+    handleSendMessage(row) {
+      this.messageTarget = row
+      this.messageText = ''
+      this.messageDialogVisible = true
+    },
+
+    async handleSendVoice(row) {
+      this.voiceTarget = row
+      this.voiceTemplateId = ''
+      if (this.voiceTemplates.length === 0) {
+        try {
+          const res = await getVoiceTemplates()
+          if (res.code === 200) this.voiceTemplates = res.data || []
+        } catch { /* ignore */ }
+      }
+      this.voiceDialogVisible = true
+    },
+
+    async confirmSendVoice() {
+      if (!this.voiceTemplateId) return
+      try {
+        const res = await sendVoiceMessage(this.voiceTarget.imei, this.voiceTemplateId)
+        if (res.code === 200) {
+          ElMessage.success('语音广播已推送，手表将在数秒内播放')
+          this.voiceDialogVisible = false
+        } else {
+          ElMessage.error(res.message || '推送失败')
+        }
+      } catch {
+        ElMessage.error('推送失败')
+      }
+    },
+
+    async confirmSendMessage() {
+      const text = this.messageText.trim()
+      if (!text) return
+      try {
+        const res = await sendWatchMessage(this.messageTarget.imei, text)
+        if (res.code === 200) {
+          ElMessage.success('消息已推送到手表')
+          this.messageDialogVisible = false
+        } else {
+          ElMessage.error(res.message || '推送失败')
+        }
+      } catch {
+        ElMessage.error('推送失败')
+      }
     },
 
     initCharts() {
@@ -844,8 +975,9 @@ export default {
 <style lang="scss" scoped>
 /* ===== Root ===== */
 .rt-root {
-  width: 1920px;
-  height: 1030px;
+  width: 100%;
+  height: calc(100vh - 50px); /* 视口高度 - 顶部导航栏 */
+  min-height: 600px; /* 最小高度防止过小 */
   background: #0a0e27;
   overflow: hidden;
   display: flex;
@@ -951,7 +1083,7 @@ export default {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .rt-vital {
@@ -1235,6 +1367,48 @@ export default {
     animation: blink 2s infinite;
   }
 }
+
+/* 发消息按钮 */
+.rt-msg-btn {
+  padding: 3px 8px;
+  font-size: 13px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+  border-radius: 4px;
+  cursor: pointer;
+  &:hover { background: rgba(99, 102, 241, 0.3); color: #c7d2fe; }
+}
+.rt-voice-btn {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  &:hover { background: rgba(245, 158, 11, 0.3); color: #fde68a; }
+}
+.rt-voice-tpl {
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,212,255,0.15);
+  background: rgba(0,212,255,0.04);
+  color: #c8d8e8;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3); }
+}
+.rt-voice-tpl--active {
+  background: rgba(245,158,11,0.15) !important;
+  border-color: rgba(245,158,11,0.5) !important;
+  color: #fbbf24 !important;
+}
+.rt-msg-meta {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px; margin-bottom: 14px;
+  background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 6px; font-size: 13px; color: #e8f4ff;
+}
+.rt-msg-dept { color: #7eb8d4; }
+.rt-msg-imei { color: #7eb8d4; font-family: monospace; font-size: 12px; }
 
 /* Pagination */
 .rt-pg {
