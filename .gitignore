@@ -7,6 +7,12 @@ yarn-error.log*
 package-lock.json
 tests/**/coverage/
 
+# Screenshots and temp files
+*.png
+*.sql
+real-time-snapshot.md
+.playwright-mcp/
+
 # Editor directories and files
 .idea
 .vscode

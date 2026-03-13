@@ -819,7 +819,7 @@ $sky:    #38bdf8;
 
 // ── Body ──
 .bp-bd {
-  flex: 1; display: flex; gap: 10px; padding: 10px; overflow: hidden; min-height: 0;
+  flex: 1; display: flex; gap: 10px; padding: 10px; overflow-y: auto; overflow-x: hidden; min-height: 0;
 }
 
 // ── Aside（左侧）──

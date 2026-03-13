@@ -21,10 +21,11 @@ import signal
 # ─── 全局配置 ─────────────────────────────────────────────────────────────────
 SERVER_HOST   = '127.0.0.1'
 SERVER_PORT   = 9000
-NUM_WATCHES   = 1000     # 手表数量（数据库已有 1000 台，可调至 1~1000）
+START_ID      = 1        # 起始设备ID（1-1000）
+NUM_WATCHES   = 100      # 手表数量（数据库已有 1000 台，可调至 1~1000）
 DURATION      = 0        # 运行时长(秒)，0=无限运行直到 Ctrl+C
-INTERVAL_MIN  = 300      # 最短发送间隔(秒)
-INTERVAL_MAX  = 600      # 最长发送间隔(秒)
+INTERVAL_MIN  = 60       # 最短发送间隔(秒)
+INTERVAL_MAX  = 120      # 最长发送间隔(秒)
 ANOMALY_RATE  = 0.05     # 各健康指标异常概率 5%
 
 # 全局停止标志
@@ -47,10 +48,10 @@ class WatchSimulator:
             self.sock.settimeout(10)
             self.sock.connect((SERVER_HOST, SERVER_PORT))
             self.connected = True
-            print(f"[{self.watch_id:04d}] ✓ 连接成功  IMEI={self.imei}")
+            print(f"[{self.watch_id:04d}] [OK] 连接成功  IMEI={self.imei}")
             return True
         except Exception as e:
-            print(f"[{self.watch_id:04d}] ✗ 连接失败: {e}")
+            print(f"[{self.watch_id:04d}] [ERR] 连接失败: {e}")
             return False
 
     def send_packet(self, packet):
@@ -86,10 +87,12 @@ class WatchSimulator:
         return self.send_packet(f"IW*AP00*{self.imei}#")
 
     def send_heartbeat(self):
-        """AP03 心跳包：状态,步数,翻身次数"""
+        """AP03 心跳包：状态,步数,翻身次数,卡路里"""
         steps     = random.randint(3000, 12000)
         rollovers = random.randint(5, 30)
-        return self.send_packet(f"IW*AP03*1,{steps},{rollovers}#")
+        # 卡路里估算：走路约 0.04-0.05 kcal/步，加上基础代谢
+        calories  = int(steps * random.uniform(0.04, 0.05)) + random.randint(50, 150)
+        return self.send_packet(f"IW*AP03*1,{steps},{rollovers},{calories}#")
 
     def send_health_data_apht(self):
         """APHT：心率,收缩压,舒张压"""
@@ -191,7 +194,7 @@ class WatchSimulator:
         if not self.connect():
             return
         if not self.login():
-            print(f"[{self.watch_id:04d}] ✗ 登录失败")
+            print(f"[{self.watch_id:04d}] [ERR] 登录失败")
             self.close()
             return
 
@@ -240,7 +243,7 @@ class WatchSimulator:
 
             except Exception as e:
                 if not stop_event.is_set():
-                    print(f"[{self.watch_id:04d}] ✗ 异常: {e}")
+                    print(f"[{self.watch_id:04d}] [ERR] 异常: {e}")
                 break
 
         if packet_count > 0:
@@ -251,7 +254,7 @@ class WatchSimulator:
 # ─── 入口 ─────────────────────────────────────────────────────────────────────
 
 def run_single_watch(watch_id):
-    WatchSimulator(watch_id).run_simulation()
+    WatchSimulator(START_ID + watch_id - 1).run_simulation()
 
 
 def signal_handler(sig, frame):
@@ -260,14 +263,21 @@ def signal_handler(sig, frame):
 
 
 def main():
+    global START_ID, NUM_WATCHES
     signal.signal(signal.SIGINT, signal_handler)
+
+    # 支持命令行参数: python watch_tcp_simulator_1000.py [START_ID] [NUM_WATCHES]
+    if len(sys.argv) >= 2:
+        START_ID = int(sys.argv[1])
+    if len(sys.argv) >= 3:
+        NUM_WATCHES = int(sys.argv[2])
 
     dur_desc = f"{DURATION} 秒" if DURATION > 0 else "无限（Ctrl+C 停止）"
     print("=" * 70)
     print("智能手表 TCP 模拟器".center(70))
     print("=" * 70)
     print(f"  服务器     : {SERVER_HOST}:{SERVER_PORT}")
-    print(f"  手表数量   : {NUM_WATCHES}")
+    print(f"  设备范围   : {START_ID} - {START_ID + NUM_WATCHES - 1} (共 {NUM_WATCHES} 台)")
     print(f"  发送间隔   : {INTERVAL_MIN}~{INTERVAL_MAX} 秒")
     print(f"  异常概率   : {int(ANOMALY_RATE*100)}%")
     print(f"  运行时长   : {dur_desc}")
@@ -293,7 +303,7 @@ def main():
                 time.sleep(1)
 
         if not stop_event.is_set():
-            print(f"\n✓ 全部 {NUM_WATCHES} 个手表已启动，等待数据上报...\n")
+            print(f"\n[OK] 全部 {NUM_WATCHES} 个手表已启动，等待数据上报...\n")
 
         while threads:
             threads = [t for t in threads if t.is_alive()]
@@ -306,10 +316,10 @@ def main():
             for t in threads:
                 t.join(timeout=5)
 
-        print("\n✓ 所有手表已停止!")
+        print("\n[OK] 所有手表已停止!")
 
     except Exception as e:
-        print(f"\n✗ 发生异常: {e}")
+        print(f"\n[ERR] 发生异常: {e}")
         stop_event.set()
 
 

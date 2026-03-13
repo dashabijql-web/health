@@ -5,6 +5,23 @@
 @import './sidebar.scss';
 @import './health-monitor.scss';
 
+// ══════════════════════════════════════════════════════════════
+// 全局预警等级颜色变量（用于徽章、图表等）
+// ══════════════════════════════════════════════════════════════
+:root {
+  // 预警等级颜色（从严重到正常）
+  --severity-critical: #ff4444;  // 红色 - 严重/高危
+  --severity-high: #ff9800;      // 橙色 - 中度
+  --severity-medium: #ffc107;    // 黄色 - 轻度
+  --severity-low: #00c853;       // 绿色 - 正常/低危
+
+  // 预警等级颜色（半透明版本，用于背景）
+  --severity-critical-bg: rgba(255, 68, 68, 0.15);
+  --severity-high-bg: rgba(255, 152, 0, 0.15);
+  --severity-medium-bg: rgba(255, 193, 7, 0.15);
+  --severity-low-bg: rgba(0, 200, 83, 0.15);
+}
+
 body {
   height: 100%;
   -moz-osx-font-smoothing: grayscale;

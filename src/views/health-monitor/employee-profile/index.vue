@@ -179,9 +179,15 @@
             </div>
             <div class="ep-vital-card steps">
               <div class="ep-vc-label">今日步数</div>
-              <div class="ep-vc-val"><span class="cyan">{{ vitals.steps || '--' }}</span> 步</div>
-              <div class="ep-vc-bar"><div :style="{ width: Math.min(100, (vitals.steps||0)/100) + '%' }" class="ep-vc-fill steps-fill"></div></div>
+              <div class="ep-vc-val"><span class="cyan">{{ exercise.todaySteps || '--' }}</span> 步</div>
+              <div class="ep-vc-bar"><div :style="{ width: Math.min(100, (exercise.todaySteps||0)/100) + '%' }" class="ep-vc-fill steps-fill"></div></div>
               <div class="ep-vc-range">目标 10,000 步</div>
+            </div>
+            <div class="ep-vital-card cals">
+              <div class="ep-vc-label">今日卡路里</div>
+              <div class="ep-vc-val"><span class="cyan">{{ exercise.todayCalories || '--' }}</span> kcal</div>
+              <div class="ep-vc-bar"><div :style="{ width: Math.min(100, (exercise.todayCalories||0)/20) + '%' }" class="ep-vc-fill cals-fill"></div></div>
+              <div class="ep-vc-range">目标 2,000 kcal</div>
             </div>
           </div>
           <div class="ep-update-time">更新于：{{ lastUpdate }}</div>
@@ -233,6 +239,7 @@ import HeartRateWave from '@/components/HeartRateWave.vue'
 import { getUserRealtimeData } from '@/api/realtime'
 import { getHealthRecords } from '@/api/health'
 import { getRiskWarningList } from '@/api/risk-warning'
+import { getHealthPortrait } from '@/api/health-portrait'
 
 const route = useRoute()
 const router = useRouter()
@@ -250,6 +257,7 @@ const empInfo = ref({
 
 const loading    = ref(false)
 const vitals     = ref({})
+const exercise   = ref({ todaySteps: 0, todayCalories: 0 })
 const warnings   = ref([])
 const isOnline   = ref(false)
 const lastUpdate = ref('--')
@@ -312,9 +320,9 @@ const vitalItems = computed(() => {
   const tStatus = !t ? '--' : (tempClass(t) === 'red' ? '异常' : tempClass(t) === 'yellow' ? '偏高' : '正常')
   return [
     { key:'v1', label:'体温', v: fmtTemp(t), unit:'°C', cls: tempClass(t) },
-    { key:'v2', label:'今日步数', v: vitals.value.steps || '--', unit:'步', cls:'green' },
-    { key:'v3', label:'压力指数', v: vitals.value.pressure || '--', unit:'', cls: pressClass(vitals.value.pressure) },
-    { key:'v4', label:'目标步数', v:'10,000', unit:'步', cls:'dim' },
+    { key:'v2', label:'今日步数', v: exercise.value.todaySteps || '--', unit:'步', cls:'green' },
+    { key:'v3', label:'今日卡路里', v: exercise.value.todayCalories || '--', unit:'kcal', cls:'cyan' },
+    { key:'v4', label:'压力指数', v: vitals.value.pressure || '--', unit:'', cls: pressClass(vitals.value.pressure) },
     { key:'v5', label:'体温状态', v: tStatus, unit:'', cls: tempClass(t) || 'green' },
     { key:'v6', label:'综合评分', v: trend7.value.avgHr ? Math.max(60, 100 - warnCount.value * 3) : '--', unit:'分', cls:'cyan' },
   ]
@@ -370,14 +378,15 @@ const refresh = async () => {
   const code = empInfo.value.empCode
   if (!code) return
 
-  const [rtRes, warnRes] = await Promise.allSettled([
-    getUserRealtimeData(code),
+  const [portraitRes, warnRes] = await Promise.allSettled([
+    getHealthPortrait(code),
     getRiskWarningList({ userCode: code, page: 1, size: 20 })
   ])
 
-  if (rtRes.status === 'fulfilled' && rtRes.value?.data) {
-    const d = rtRes.value.data
-    vitals.value   = d
+  if (portraitRes.status === 'fulfilled' && portraitRes.value?.data) {
+    const d = portraitRes.value.data
+    vitals.value   = d.vitals || {}
+    exercise.value = d.exercise || { todaySteps: 0, todayCalories: 0 }
     isOnline.value = true
     lastUpdate.value = new Date().toLocaleString('zh-CN')
   }

@@ -4,6 +4,11 @@
       <span class="ht-dot"></span>
       <span class="ht-title">健康小贴士</span>
       <span class="ht-date">{{ dateLabel }}</span>
+      <button class="ht-refresh" @click="refresh" title="换一批">
+        <svg viewBox="0 0 1024 1024" width="14" height="14">
+          <path d="M960 416V192l-73.056 73.056a447.712 447.712 0 0 0-373.6-201.088C265.92 63.968 65.312 264.544 65.312 512S265.92 960.032 513.344 960.032a448.064 448.064 0 0 0 415.232-279.488 38.368 38.368 0 1 0-71.136-28.896 371.36 371.36 0 0 1-344.096 231.584C308.32 883.232 142.112 717.024 142.112 512S308.32 140.768 513.344 140.768c132.448 0 251.936 70.08 318.016 179.84L736 416h224z" fill="currentColor"/>
+        </svg>
+      </button>
     </div>
     <transition-group name="ht-slide" tag="ul" class="ht-list">
       <li v-for="tip in todayTips" :key="tip.id" class="ht-item">
@@ -43,19 +48,29 @@ export default {
   props: {
     count: { type: Number, default: 5 }
   },
+  data() {
+    return {
+      refreshSeed: 0
+    }
+  },
   computed: {
     dateLabel() {
       return dayjs().format('MM月DD日 健康提示')
     },
     todayTips() {
-      // 用日期作为随机种子，保证当天内容固定
-      const seed = parseInt(dayjs().format('YYYYMMDD'))
+      // 用日期 + refreshSeed 作为随机种子，支持手动刷新
+      const seed = parseInt(dayjs().format('YYYYMMDD')) + this.refreshSeed
       const shuffled = [...ALL_TIPS].sort((a, b) => {
         const ha = Math.sin(seed * a.id) * 10000
         const hb = Math.sin(seed * b.id) * 10000
         return (ha - Math.floor(ha)) - (hb - Math.floor(hb))
       })
       return shuffled.slice(0, this.count)
+    }
+  },
+  methods: {
+    refresh() {
+      this.refreshSeed += 1
     }
   }
 }
@@ -100,6 +115,34 @@ export default {
   font-size: 11px;
   color: #8ba6c8;
   margin-left: auto;
+}
+
+.ht-refresh {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 4px;
+  color: #00d4ff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(0, 212, 255, 0.2);
+    transform: rotate(180deg);
+  }
+
+  &:active {
+    transform: rotate(180deg) scale(0.9);
+  }
+
+  svg {
+    display: block;
+  }
 }
 
 .ht-list {

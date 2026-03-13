@@ -783,7 +783,7 @@ $white:  #e8f4ff;
 .sl-hd-time { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: $dim; }
 
 /* ── Body ── */
-.sl-bd { flex: 1; display: flex; gap: 8px; padding: 8px; overflow: hidden; min-height: 0; }
+.sl-bd { flex: 1; display: flex; gap: 8px; padding: 8px; overflow-y: auto; overflow-x: hidden; min-height: 0; }
 
 /* ── Aside ── */
 .sl-aside { width: 304px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }

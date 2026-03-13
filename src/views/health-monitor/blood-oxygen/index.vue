@@ -914,7 +914,7 @@ $white:  #e8f4ff;
 .bo-hd-time  { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: $dim; }
 
 /* ── Body ── */
-.bo-bd { flex: 1; display: flex; gap: 10px; padding: 10px; overflow: hidden; min-height: 0; }
+.bo-bd { flex: 1; display: flex; gap: 10px; padding: 10px; overflow-y: auto; overflow-x: hidden; min-height: 0; }
 
 /* ── Aside ── */
 .bo-aside       { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }

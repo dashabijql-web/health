@@ -65,16 +65,6 @@
               <div class="dm-vital-tag" :class="v.tagCls">{{ v.tag }}</div>
             </div>
           </div>
-          <!-- 健康进度条 -->
-          <div class="dm-assess-bars">
-            <div class="dm-assess-row" v-for="item in healthAssess" :key="item.label">
-              <span class="dm-assess-label">{{ item.label }}</span>
-              <div class="dm-assess-track">
-                <div class="dm-assess-fill" :style="{width: item.pct+'%', background: item.color}"></div>
-              </div>
-              <span class="dm-assess-tag" :style="{color: item.color}">{{ item.tag }}</span>
-            </div>
-          </div>
         </div>
 
         <!-- 部门综合看板（数据量 + 预警量双柱对比） -->
@@ -99,7 +89,7 @@
           <div class="dm-ph">
             <span class="dm-ph-bar"></span>
             <span class="dm-ph-title">{{ periodLabel }}检测概览</span>
-            <span class="dm-ph-sub">共 {{ totalRecords.toLocaleString() }} 条记录</span>
+            <span class="dm-ph-sub">共 {{ totalRecords !== null ? totalRecords.toLocaleString() : '--' }} 条记录</span>
           </div>
           <div class="dm-metrics-row">
             <div class="dm-metric-card" v-for="m in metricCards" :key="m.label"
@@ -129,12 +119,12 @@
               <!-- 上方：实时在岗概况（始终为当前实时数据，不随时间段切换） -->
               <div class="dm-duty-bar">
                 <div class="dm-duty-item">
-                  <span class="dm-duty-val" style="color:#38ef7d">{{ onDutyStats.onDuty.toLocaleString() }}</span>
+                  <span class="dm-duty-val" style="color:#38ef7d">{{ (onDutyStats.onDuty > 0 || onDutyStats.offDuty > 0) ? onDutyStats.onDuty.toLocaleString() : '--' }}</span>
                   <span class="dm-duty-lbl">当前在岗</span>
                 </div>
                 <div class="dm-duty-sep"></div>
                 <div class="dm-duty-item">
-                  <span class="dm-duty-val" style="color:#8ba6c8">{{ onDutyStats.offDuty.toLocaleString() }}</span>
+                  <span class="dm-duty-val" style="color:#8ba6c8">{{ (onDutyStats.onDuty > 0 || onDutyStats.offDuty > 0) ? onDutyStats.offDuty.toLocaleString() : '--' }}</span>
                   <span class="dm-duty-lbl">当前离岗</span>
                 </div>
                 <div class="dm-duty-sep"></div>
@@ -146,6 +136,15 @@
 
               <!-- 实时预警动态（从右栏移过来，已优化高度） -->
               <div class="dm-event-list-wrap">
+                <!-- 页码指示器（固定在顶部，始终可见） -->
+                <div class="dm-event-header" v-if="warningTotalPages > 1">
+                  <span class="dm-event-title">实时预警</span>
+                  <span class="dm-event-page-info">第 {{ warningCurrentPage }} / {{ warningTotalPages }} 页</span>
+                  <div class="dm-event-page-btns">
+                    <button class="dm-page-btn-sm" :disabled="warningCurrentPage === 1" @click="goToWarningPage('prev')">‹</button>
+                    <button class="dm-page-btn-sm" :disabled="warningCurrentPage === warningTotalPages" @click="goToWarningPage('next')">›</button>
+                  </div>
+                </div>
                 <div class="dm-event-list" ref="warningListMid" style="max-height:680px;overflow-y:auto">
                   <div
                     v-for="(ev, i) in paginatedWarningEvents" :key="i"
@@ -171,9 +170,9 @@
                   <div v-if="!warningEvents.length" class="dm-empty">暂无预警事件</div>
                 </div>
                 <div class="dm-event-page" v-if="warningTotalPages > 1" style="margin-top:8px">
-                  <button class="dm-page-btn" :disabled="warningCurrentPage === 1" @click="warningCurrentPage--">‹</button>
+                  <button class="dm-page-btn" :disabled="warningCurrentPage === 1" @click="goToWarningPage('prev')">‹</button>
                   <span class="dm-page-info">{{ warningCurrentPage }} / {{ warningTotalPages }}</span>
-                  <button class="dm-page-btn" :disabled="warningCurrentPage === warningTotalPages" @click="warningCurrentPage++">›</button>
+                  <button class="dm-page-btn" :disabled="warningCurrentPage === warningTotalPages" @click="goToWarningPage('next')">›</button>
                 </div>
               </div>
 
@@ -240,13 +239,8 @@
             </div><!-- /dm-model-data-col -->
           </div><!-- /dm-model-body -->
 
-          <!-- 底部信息条（业务统计） -->
+          <!-- 底部信息条（业务统计，在线率已移至设备状态面板） -->
           <div class="dm-model-footer">
-            <div class="dm-mf-dot" style="background:#00d4ff"></div>
-            <span class="dm-mf-label">在线设备</span>
-            <span class="dm-mf-val" style="color:#00d4ff">{{ deviceOnline }}</span>
-            <span style="color:#8ba6c8;font-size:12px">/ {{ deviceStats.boundDevices ?? deviceStats.total }} 台</span>
-            <div class="dm-mf-sep"></div>
             <div class="dm-mf-dot" style="background:#38ef7d"></div>
             <span class="dm-mf-label">健康达标率</span>
             <span class="dm-mf-val" style="color:#38ef7d">{{ healthPassRate }}%</span>
@@ -286,6 +280,10 @@
             <!-- 右：仪表盘 -->
             <div class="dm-device-gauges">
               <div class="dm-gauge-item">
+                <div id="onlineRateChart" class="dm-gauge-chart"></div>
+                <div class="dm-gauge-label">在线率</div>
+              </div>
+              <div class="dm-gauge-item">
                 <div id="activeRateChart" class="dm-gauge-chart"></div>
                 <div class="dm-gauge-label">激活率</div>
               </div>
@@ -317,6 +315,9 @@
             <span class="dm-ph-sub">{{ periodLabel }}触发预警人员占比</span>
           </div>
           <div class="dm-warn-stats">
+            <div v-if="!warningRateList.length" class="dm-empty" style="padding:40px 20px;text-align:center;color:#4a6080;font-size:12px">
+              暂无数据
+            </div>
             <div v-for="item in warningRateList" :key="item.name" class="dm-warn-item">
               <div class="dm-warn-icon-wrap">
                 <el-icon :size="15"><component :is="getWarningIcon(item.name)" /></el-icon>
@@ -601,6 +602,8 @@ export default {
     },
     totalRecords() {
       const d = this.checkData
+      // 如果 checkData 为空对象（API未返回），返回 null 而非 0
+      if (!d || Object.keys(d).length === 0) return null
       return (d.heartRate||0)+(d.bloodOxygen||0)+(d.steps||0)+(d.temperature||0)+(d.pressure||0)
     },
     kpiOnline() {
@@ -616,11 +619,21 @@ export default {
       return Math.round((this.deviceStats.total||0) * (this.deviceStats.warningRate||0) / 100)
     },
     lowBatteryCount() {
-      return this.deviceStats.lowBattery ?? '--'
+      // 优先使用后端返回的 lowBattery 字段
+      if (this.deviceStats.lowBattery !== undefined && this.deviceStats.lowBattery !== null) {
+        return this.deviceStats.lowBattery
+      }
+      // 如果后端有低电量率，计算估算值
+      if (this.deviceStats.lowBatteryRate && this.deviceStats.total) {
+        return Math.round((this.deviceStats.total || 0) * (this.deviceStats.lowBatteryRate || 0) / 100)
+      }
+      // 否则返回 0
+      return 0
     },
     healthPassRate() {
       const rates = this.warningRates
-      if (!rates.length) return 100
+      // 数据未加载时返回 null，前端显示"--"
+      if (!rates || !rates.length) return null
       const avgWarn = rates.reduce((s, r) => s + (r.rate||0), 0) / rates.length
       return Math.max(0, Math.min(100, Math.round(100 - avgWarn)))
     },
@@ -641,12 +654,22 @@ export default {
       const deltaText = delta !== null
         ? `昨日${this.kpiYesterdayWarnings} ${delta > 0 ? '↑' : '↓'}${Math.abs(delta)}%`
         : `昨日 ${this.kpiYesterdayWarnings}`
+      // 计算异常人员数（从 warningEvents 中去重统计，优先使用唯一标识）
+      const abnormalUsers = new Set(
+        this.warningEvents
+          .map(e => e.userCode || e.empCode || e.id)
+          .filter(Boolean)
+      ).size
+
+      // KPI 加载状态判断：kpiRealtimeTotal === 0 表示未加载（初始值），应显示 "--"
+      const hasKpiData = this.kpiRealtimeTotal > 0 || this.kpiRealtimeOnline > 0
+
       return [
         {
           label: '当前在线 / 在岗总数',
-          val: `${this.kpiRealtimeOnline} / ${this.kpiRealtimeTotal}`,
+          val: hasKpiData ? `${this.kpiRealtimeOnline} / ${this.kpiRealtimeTotal}` : '--',
           cls: 'kpi-cyan', clickable: true, route: '/health-monitor/employee-archive',
-          sub: `上报率 ${onlineRate}%`
+          sub: hasKpiData ? `上报率 ${onlineRate}%` : '数据加载中...'
         },
         {
           label: '今日新增预警',
@@ -661,13 +684,14 @@ export default {
           cls: 'kpi-red', clickable: true, route: '/health-monitor/risk-warning'
         },
         {
-          label: '设备在线率',
-          val: `${this.deviceStats.activeRate || 0}%`,
-          cls: 'kpi-green', clickable: false
+          label: '异常人员数',
+          val: abnormalUsers,
+          cls: 'kpi-orange', clickable: true, route: '/health-monitor/risk-warning',
+          sub: `${this.activePeriod === 'day' ? '今日' : this.periodLabel}累计`
         },
         {
           label: '健康达标率',
-          val: this.healthPassRate + '%',
+          val: this.healthPassRate !== null ? this.healthPassRate + '%' : '--',
           cls: 'kpi-teal', clickable: false
         }
       ]
@@ -708,6 +732,48 @@ export default {
           label: '人均步数', val: b.avgSteps ? Math.round(b.avgSteps/1000*10)/10+'k' : '--', unit: '', color: '#F56C6C', icon: 'Promotion',
           tag: !b.avgSteps ? '-' : b.avgSteps < 5000 ? '偏少' : b.avgSteps > 12000 ? '充足' : '达标',
           tagCls: !b.avgSteps ? '' : b.avgSteps < 5000 ? 'vtag-warn' : 'vtag-ok'
+        },
+        {
+          label: '收缩压(高压)',
+          val: b.avgBloodPressureHigh ? Math.round(b.avgBloodPressureHigh) : '--',
+          unit: 'mmHg',
+          color: '#ff6b9d',
+          icon: 'Top',
+          tag: !b.avgBloodPressureHigh ? '-'
+            : b.avgBloodPressureHigh <= 120 ? '正常'
+            : b.avgBloodPressureHigh <= 140 ? '偏高'
+            : '高血压',
+          tagCls: !b.avgBloodPressureHigh ? ''
+            : b.avgBloodPressureHigh <= 120 ? 'vtag-ok'
+            : 'vtag-warn'
+        },
+        {
+          label: '舒张压(低压)',
+          val: b.avgBloodPressureLow ? Math.round(b.avgBloodPressureLow) : '--',
+          unit: 'mmHg',
+          color: '#a78bfa',
+          icon: 'Bottom',
+          tag: !b.avgBloodPressureLow ? '-'
+            : b.avgBloodPressureLow <= 80 ? '正常'
+            : b.avgBloodPressureLow <= 90 ? '偏高'
+            : '高血压',
+          tagCls: !b.avgBloodPressureLow ? ''
+            : b.avgBloodPressureLow <= 80 ? 'vtag-ok'
+            : 'vtag-warn'
+        },
+        {
+          label: '人均卡路里',
+          val: b.avgCalories ? Math.round(b.avgCalories) : '--',
+          unit: 'kcal',
+          color: '#FFB84D',
+          icon: 'Odometer',
+          tag: !b.avgCalories ? '-'
+            : b.avgCalories < 300 ? '偏低'
+            : b.avgCalories > 800 ? '充足'
+            : '适中',
+          tagCls: !b.avgCalories ? ''
+            : b.avgCalories < 300 ? 'vtag-warn'
+            : 'vtag-ok'
         }
       ]
     },
@@ -740,7 +806,10 @@ export default {
              null
     },
     top5DisplayData() {
-      return this.top5Data.slice(0, 15)
+      // 过滤掉 userName 为 "--" 或空值的记录，避免显示无效数据
+      return this.top5Data
+        .filter(d => d.userName && d.userName !== '--')
+        .slice(0, 15)
     },
     top5Max() {
       const data = this.top5DisplayData
@@ -788,12 +857,16 @@ export default {
       })
     },
     deviceCards() {
+      // 判断设备数据是否已加载：total > 0 或 boundDevices > 0
+      const hasDeviceData = (this.deviceStats.total > 0) || (this.deviceStats.boundDevices > 0)
+      const showVal = (val) => hasDeviceData ? val : '--'
+
       return [
-        { label: '设备总数', val: this.deviceStats.boundDevices ?? this.deviceStats.total,  cls: 'dc-blue'   },
-        { label: '在线设备', val: this.deviceOnline,        cls: 'dc-green'  },
-        { label: '离线设备', val: this.deviceOffline,       cls: 'dc-gray'   },
-        { label: '预警设备', val: this.deviceWarningCount,  cls: 'dc-red'    },
-        { label: '电量不足', val: this.lowBatteryCount,     cls: 'dc-orange' }
+        { label: '设备总数', val: showVal(this.deviceStats.boundDevices ?? this.deviceStats.total),  cls: 'dc-blue'   },
+        { label: '在线设备', val: showVal(this.deviceOnline),        cls: 'dc-green'  },
+        { label: '离线设备', val: showVal(this.deviceOffline),       cls: 'dc-gray'   },
+        { label: '预警设备', val: showVal(this.deviceWarningCount),  cls: 'dc-red'    },
+        { label: '电量不足', val: showVal(this.lowBatteryCount),     cls: 'dc-orange' }
       ]
     },
     paginatedWarningEvents() {
@@ -934,11 +1007,27 @@ export default {
         const res = await getWarningEvents(this.periodRange)
         if (res.code === 200) {
           this.warningEvents = (res.data || []).map(e => ({
-            ...e,
-            level:   e.level === 3 || e.level === '3' ? 'danger' : e.level === 2 || e.level === '2' ? 'warn' : 'info',
-            handled: e.handled === true || e.handled === 1,
+            id:        e.id,
+            type:      e.warningType || e.type || e.indicatorName || '--',
+            indicator: e.indicatorName || e.indicator || e.warningType || '--',
+            value:     e.warningValue || e.value || e.actualValue || '--',
+            time:      e.createTime || e.recordTime || e.warningTime || e.time,
+            userName:  e.empName || e.userName || e.name || '--',
+            userCode:  e.empCode || e.userCode || e.code,
+            deptName:  e.deptName || e.department || '--',
+            level:     (e.warningLevel === 3 || e.level === 3 || e.level === '3') ? 'danger'
+                     : (e.warningLevel === 2 || e.level === 2 || e.level === '2') ? 'warn'
+                     : 'info',
+            handled:   e.handled === true || e.handled === 1 || e.status === 1,
           }))
-          this.onDutyStats.abnormal = this.warningEvents.filter(e => !e.handled).length
+          // 计算异常人员数（去重后的唯一用户数，而非预警总数）
+          const abnormalUsers = new Set(
+            this.warningEvents
+              .filter(e => !e.handled)
+              .map(e => e.userCode)
+              .filter(Boolean)
+          )
+          this.onDutyStats.abnormal = abnormalUsers.size
           this.$nextTick(() => { this.startAutoScroll(); this.startListScroll('top5List', 'top5ScrollInterval', 45) })
         }
       } catch(e) { this.warningEvents = [] }
@@ -947,11 +1036,23 @@ export default {
       try {
         const r = await getDeptHealthCounts(this.periodRange)
         if (r.code === 200 && Array.isArray(r.data) && r.data.length) {
-          this.deptDataList = r.data.map(d => ({ name: d.name || '', count: d.count || 0, prevCount: d.prevCount || 0 })).filter(d => d.name)
+          this.deptDataList = r.data
+            .map(d => ({
+              name: d.name || d.deptName || '',
+              count: d.count || d.dataCount || 0,
+              prevCount: d.prevCount || d.previousCount || 0
+            }))
+            .filter(d => d.name && d.name !== '')
+
+          if (!this.deptDataList.length) {
+            console.warn('[Dashboard] 部门数据加载成功但过滤后为空，原始数据:', r.data)
+          }
         } else {
+          console.warn('[Dashboard] 部门数据加载失败或为空, code:', r.code, 'data:', r.data)
           this.deptDataList = []
         }
-      } catch {
+      } catch (error) {
+        console.error('[Dashboard] 部门数据加载异常:', error)
         this.deptDataList = []
       }
       this.$nextTick(() => { this.initDeptChart(); this.startListScroll('riskList','riskScrollInterval',35) })
@@ -1023,12 +1124,17 @@ export default {
         const res = await getHealthPortrait(empCode)
         if (res.code === 200 && res.data) {
           const d = res.data
+          console.log('[Dashboard] 员工档案数据:', { empCode, response: d })
+
           this.empDrawer.data = {
             empName:        d.empName        || d.employee?.empName        || userName,
             deptName:       d.deptName       || d.employee?.deptName       || '--',
             jobTypeName:    d.jobTypeName    || d.employee?.jobTypeName    || '--',
           }
           const v = d.vitals || d.realtime || {}
+          if (!d.vitals && !d.realtime) {
+            console.warn('[Dashboard] 员工档案缺少体征数据 (vitals/realtime):', d)
+          }
           this.empDrawer.vitals = [
             {
               label: '心率', val: v.heartRate || '--', unit: 'bpm', color: '#ff5252',
@@ -1046,9 +1152,12 @@ export default {
               statusText: (v.temperature >= 36 && v.temperature <= 37.3) ? '正常' : '异常'
             },
             {
-              label: '血压', val: v.systolic ? `${v.systolic}/${v.diastolic}` : '--', unit: 'mmHg', color: '#38ef7d',
-              statusCls:  (v.systolic >= 90 && v.systolic <= 140) ? 'dv-ok' : 'dv-warn',
-              statusText: (v.systolic >= 90 && v.systolic <= 140) ? '正常' : '异常'
+              label: '血压',
+              val: (v.systolic && v.diastolic) ? `${v.systolic}/${v.diastolic}` : '--',
+              unit: 'mmHg',
+              color: '#38ef7d',
+              statusCls: (v.systolic && v.diastolic && v.systolic >= 90 && v.systolic <= 140 && v.diastolic >= 60 && v.diastolic <= 90) ? 'dv-ok' : (v.systolic || v.diastolic) ? 'dv-warn' : '',
+              statusText: (v.systolic && v.diastolic && v.systolic >= 90 && v.systolic <= 140 && v.diastolic >= 60 && v.diastolic <= 90) ? '正常' : (v.systolic || v.diastolic) ? '异常' : '--'
             },
           ]
           this.empDrawer.warnings = d.warnings || d.recentWarnings || []
@@ -1070,9 +1179,20 @@ export default {
       if (this.empDrawer.trendChart) this.empDrawer.trendChart.dispose()
       const chart = echarts.init(dom)
       this.empDrawer.trendChart = chart
-      const dates = trend?.dates || ['6天前','5天前','4天前','3天前','2天前','昨天','今天']
-      const hrs   = trend?.heartRates   || []
-      const bos   = trend?.bloodOxygens || []
+
+      // 如果没有趋势数据，显示"暂无数据"
+      if (!trend || !trend.dates || trend.dates.length === 0) {
+        chart.setOption({
+          backgroundColor: 'transparent',
+          graphic: [{ type: 'text', left: 'center', top: 'middle',
+            style: { text: '暂无趋势数据', fill: '#4a6080', fontSize: 12 } }]
+        })
+        return
+      }
+
+      const dates = trend.dates
+      const hrs   = trend.heartRates   || []
+      const bos   = trend.bloodOxygens || []
       chart.setOption({
         backgroundColor: 'transparent',
         tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,20,50,0.92)', borderColor: '#00d4ff', textStyle: { color: '#fff', fontSize: 12 } },
@@ -1096,7 +1216,18 @@ export default {
       if (this.empDrawer.radarChart) this.empDrawer.radarChart.dispose()
       const chart = echarts.init(dom)
       this.empDrawer.radarChart = chart
-      const s = scores || { heartRate: 0, bloodOxygen: 0, temperature: 0, bloodPressure: 0, activity: 0 }
+
+      // 如果没有评分数据，显示"暂无数据"
+      if (!scores || (scores.heartRate === 0 && scores.bloodOxygen === 0 && scores.temperature === 0 && scores.bloodPressure === 0 && scores.activity === 0)) {
+        chart.setOption({
+          backgroundColor: 'transparent',
+          graphic: [{ type: 'text', left: 'center', top: 'middle',
+            style: { text: '暂无评分数据', fill: '#4a6080', fontSize: 12 } }]
+        })
+        return
+      }
+
+      const s = scores
       chart.setOption({
         backgroundColor: 'transparent',
         radar: {
@@ -1183,6 +1314,16 @@ export default {
       })
       const sorted = Object.values(deptMap).sort((a, b) => b.dataCount - a.dataCount).slice(0, 10)
 
+      // 如果没有部门数据，显示"暂无数据"
+      if (sorted.length === 0) {
+        chart.setOption({
+          backgroundColor: 'transparent',
+          graphic: [{ type: 'text', left: 'center', top: 'middle',
+            style: { text: '暂无数据', fill: '#4a6080', fontSize: 13 } }]
+        })
+        return
+      }
+
       chart.setOption({
         backgroundColor: 'transparent',
         tooltip: {
@@ -1247,8 +1388,11 @@ export default {
     },
 
     initDeviceCharts() {
+      const totalDevices = this.deviceStats.boundDevices ?? this.deviceStats.total ?? 1
+      const onlineRate = totalDevices > 0 ? Math.round((this.deviceOnline / totalDevices) * 100) : 0
+      this.initGauge('onlineRateChart',  onlineRate, '#00d4ff', '#F56C6C')
       this.initGauge('activeRateChart',  this.deviceStats.activeRate  || 0, '#67C23A', '#F56C6C')
-      this.initGauge('usageRateChart',   this.deviceStats.usageRate   || 0, '#00d4ff', '#E6A23C')
+      this.initGauge('usageRateChart',   this.deviceStats.usageRate   || 0, '#a78bfa', '#E6A23C')
       this.initGauge('warningRateChart', this.deviceStats.warningRate || 0, '#F56C6C', '#67C23A')
     },
     async fetchTrendDaily() {
@@ -1298,14 +1442,21 @@ export default {
       }
 
       const dates = rawData.map(d => d.date)
+
+      // 字段名兼容性检查：支持多种后端字段命名
+      const sampleRecord = rawData[0] || {}
+      const getFieldKey = (possibleKeys) => {
+        return possibleKeys.find(key => sampleRecord.hasOwnProperty(key)) || possibleKeys[0]
+      }
+
       // 左轴：心率/血氧/体温异常率；右轴：压力异常率（量纲可能偏高）
       const seriesLeft = [
-        { name: '心率', key: 'heartRateRate',   color: '#00d4ff', threshold: (this.VITAL_NORMAL_RANGES.heartRate.max)   },
-        { name: '血氧', key: 'bloodOxygenRate', color: '#67C23A', threshold: (this.VITAL_NORMAL_RANGES.bloodOxygen.max) },
-        { name: '体温', key: 'temperatureRate', color: '#ffd200', threshold: (this.VITAL_NORMAL_RANGES.temperature.max) },
+        { name: '心率', key: getFieldKey(['heartRateRate', 'hrRate', 'heartRateAbnormalRate']), color: '#00d4ff', threshold: (this.VITAL_NORMAL_RANGES.heartRate.max)   },
+        { name: '血氧', key: getFieldKey(['bloodOxygenRate', 'boRate', 'bloodOxygenAbnormalRate']), color: '#67C23A', threshold: (this.VITAL_NORMAL_RANGES.bloodOxygen.max) },
+        { name: '体温', key: getFieldKey(['temperatureRate', 'tempRate', 'temperatureAbnormalRate']), color: '#ffd200', threshold: (this.VITAL_NORMAL_RANGES.temperature.max) },
       ]
       const seriesRight = [
-        { name: '压力', key: 'pressureRate', color: '#a78bfa', threshold: (this.VITAL_NORMAL_RANGES.pressure.max), yAxisIndex: 1 },
+        { name: '压力', key: getFieldKey(['pressureRate', 'stressRate', 'pressureAbnormalRate']), color: '#a78bfa', threshold: (this.VITAL_NORMAL_RANGES.pressure.max), yAxisIndex: 1 },
       ]
       const allSeries = [...seriesLeft, ...seriesRight]
 
@@ -1431,19 +1582,35 @@ export default {
       let labels = []
       let vals   = []
 
-      const dist = this.warningDistData
+      const dist = this.warningDistData || { labels: [], counts: [] }
+
+      if (!dist.labels || !dist.counts || !Array.isArray(dist.labels) || !Array.isArray(dist.counts) || dist.counts.length === 0) {
+        // 数据无效或全为空时显示"暂无数据"
+        chart.setOption({
+          backgroundColor: 'transparent',
+          graphic: [{ type: 'text', left: 'center', top: 'middle',
+            style: { text: '暂无数据', fill: '#4a6080', fontSize: 13 } }]
+        })
+        return
+      }
+
       if (this.activePeriod === 'day') {
         // 后端按小时返回 labels=[0..23], counts=[...]
         const hourCounts = new Array(24).fill(0)
-        if (dist.labels && dist.counts) {
-          dist.labels.forEach((h, i) => { hourCounts[parseInt(h)] = dist.counts[i] || 0 })
-        }
+        dist.labels.forEach((h, i) => {
+          // 更鲁棒的小时解析：支持 "3", "03", "03:00", "2026-03-01 03:00:00" 等格式
+          const hourStr = String(h).split(':')[0].split(' ').pop()
+          const hour = parseInt(hourStr, 10)
+          if (!isNaN(hour) && hour >= 0 && hour < 24) {
+            hourCounts[hour] = dist.counts[i] || 0
+          }
+        })
         labels = Array.from({ length: 24 }, (_, i) => i % 3 === 0 ? i + 'h' : '')
-        vals   = hourCounts
+        vals = hourCounts
       } else {
         // 后端按日返回 labels=['2026-03-01',...], counts=[...]
-        labels = (dist.labels || []).map(d => d.slice(5)) // "MM-DD"
-        vals   = dist.counts || []
+        labels = (dist.labels || []).map(d => String(d).slice(5))
+        vals = dist.counts || []
       }
 
       const maxVal = Math.max(...vals, 1)
@@ -1550,6 +1717,22 @@ export default {
       return dayjs(timestamp).format('MM-DD HH:mm')
     },
 
+    // 手动翻页时滚动到顶部
+    goToWarningPage(direction) {
+      if (direction === 'prev' && this.warningCurrentPage > 1) {
+        this.warningCurrentPage--
+      } else if (direction === 'next' && this.warningCurrentPage < this.warningTotalPages) {
+        this.warningCurrentPage++
+      }
+      // 翻页后滚动到顶部
+      this.$nextTick(() => {
+        const list = this.$refs.warningListMid
+        if (list) {
+          list.scrollTop = 0
+        }
+      })
+    },
+
     startAutoScroll() {
       if (this.pageScrollInterval) clearInterval(this.pageScrollInterval)
       if (this.warningPageTimer)   clearInterval(this.warningPageTimer)
@@ -1560,7 +1743,7 @@ export default {
           this.warningCurrentPage = this.warningCurrentPage < this.warningTotalPages
             ? this.warningCurrentPage + 1 : 1
           this.$nextTick(() => {
-            const list = this.$refs.warningList
+            const list = this.$refs.warningListMid
             if (list) list.scrollTop = 0
           })
         }
@@ -1568,7 +1751,7 @@ export default {
 
       // 平滑滚动（内容溢出时）
       this.$nextTick(() => {
-        const list = this.$refs.warningList
+        const list = this.$refs.warningListMid
         if (!list) return
         let scrollTop = 0
         this.pageScrollInterval = setInterval(() => {
@@ -1720,18 +1903,18 @@ $white:  #e8f4ff;
 // 体征卡 2×3
 .dm-vitals-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; padding:6px 12px 4px; }
 .dm-vital-card {
-  display:flex; align-items:center; gap:7px;
+  display:flex; align-items:center; gap:6px;
   background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.12);
-  border-radius:7px; padding:5px 8px;
+  border-radius:7px; padding:5px 7px;
 }
 .dm-vital-icon {
-  width:28px; height:28px; border-radius:6px; border:1px solid;
+  width:26px; height:26px; border-radius:6px; border:1px solid;
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
-.dm-vital-body { flex:1; min-width:0; }
+.dm-vital-body { flex:1; min-width:0; overflow:visible; }
 .dm-vital-val  { font-size:15px; font-weight:700; font-family:'Consolas',monospace; line-height:1.1; }
-.dm-vital-unit { font-size:11px; margin-left:2px; opacity:0.8; }
-.dm-vital-label{ font-size:12px; color:$dim; margin-top:1px; }
+.dm-vital-unit { font-size:10px; margin-left:2px; opacity:0.8; }
+.dm-vital-label{ font-size:10px; color:$dim; margin-top:1px; white-space:nowrap; }
 .dm-vital-tag  {
   font-size:11px; font-weight:600; padding:2px 5px; border-radius:3px; flex-shrink:0;
   &.vtag-ok     { color:#38ef7d; background:rgba(56,239,125,0.12);  border:1px solid rgba(56,239,125,0.3); }
@@ -2057,6 +2240,32 @@ $white:  #e8f4ff;
   font-size:12px; font-weight:700; font-family:'Consolas',monospace;
   padding:2px 8px; border-radius:10px;
 }
+// 预警列表页码标题栏（固定在顶部，始终可见）
+.dm-event-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 12px; margin-bottom:6px;
+  background:rgba(0,40,90,0.45); border:1px solid rgba(0,212,255,0.15);
+  border-radius:6px; flex-shrink:0;
+}
+.dm-event-title {
+  font-size:13px; font-weight:700; color:$accent;
+  border-left:3px solid $accent; padding-left:8px;
+}
+.dm-event-page-info {
+  font-size:12px; color:$text; margin-left:auto; margin-right:8px;
+}
+.dm-event-page-btns {
+  display:flex; gap:4px;
+}
+.dm-page-btn-sm {
+  background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.25);
+  color:$accent; border-radius:3px; width:24px; height:22px;
+  cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center;
+  transition: all 0.2s;
+  &:disabled { opacity:0.3; cursor:not-allowed; }
+  &:not(:disabled):hover { background:rgba(0,212,255,0.25); transform:scale(1.05); }
+}
+
 .dm-event-list {
   flex:1; overflow-y:auto; padding:2px 0;
   &::-webkit-scrollbar { width:3px; }

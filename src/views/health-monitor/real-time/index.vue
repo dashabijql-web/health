@@ -104,79 +104,84 @@
               :header-cell-style="tblHeadStyle"
               :cell-style="tblCellStyle"
               @row-click="showUserDetail">
-              <el-table-column prop="userName" label="姓名" width="90" align="center">
+              <el-table-column prop="userName" label="姓名" min-width="70" align="center">
                 <template #default="{ row }">
                   <span class="c-name">{{ row.userName || '--' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="userCode" label="工号" width="100" align="center">
+              <el-table-column prop="userCode" label="工号" min-width="90" align="center">
                 <template #default="{ row }">
                   <span class="c-code">{{ row.userCode || '--' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="deptName" label="部门" width="130" align="center">
+              <el-table-column prop="deptName" label="部门" min-width="100" align="center">
                 <template #default="{ row }">
                   <span class="c-dept">{{ row.deptName || '--' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="heartRate" label="心率(bpm)" width="110" align="center">
+              <el-table-column prop="heartRate" label="心率(bpm)" width="85" align="center">
                 <template #default="{ row }">
                   <span :class="hrCls(row.heartRate)">{{ row.heartRate || '--' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="bloodOxygen" label="血氧(%)" width="100" align="center">
+              <el-table-column prop="bloodOxygen" label="血氧(%)" width="75" align="center">
                 <template #default="{ row }">
                   <span :class="spo2Cls(row.bloodOxygen)">
                     {{ row.bloodOxygen ? row.bloodOxygen + '%' : '--' }}
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="temperature" label="体温(°C)" width="100" align="center">
+              <el-table-column prop="temperature" label="体温(°C)" width="80" align="center">
                 <template #default="{ row }">
                   <span :class="tempCls(row.temperature)">
                     {{ row.temperature ? row.temperature + '°' : '--' }}
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="steps" label="步数" width="90" align="center">
+              <el-table-column prop="steps" label="步数" width="70" align="center">
                 <template #default="{ row }">
                   <span class="c-steps">{{ row.steps != null ? row.steps : '--' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="bloodPressureHigh" label="收缩压" width="90" align="center">
+              <el-table-column prop="calories" label="卡路里(kcal)" width="105" align="center">
+                <template #default="{ row }">
+                  <span class="c-calories">{{ row.calories != null ? row.calories : '--' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="bloodPressureHigh" label="收缩压" width="70" align="center">
                 <template #default="{ row }">
                   <span :class="bpCls(row.bloodPressureHigh)">
                     {{ row.bloodPressureHigh || '--' }}
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="bloodPressureLow" label="舒张压" width="90" align="center">
+              <el-table-column prop="bloodPressureLow" label="舒张压" width="70" align="center">
                 <template #default="{ row }">
                   <span :class="bpLowCls(row.bloodPressureLow)">
                     {{ row.bloodPressureLow || '--' }}
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="pressure" label="压力指数" width="90" align="center">
+              <el-table-column prop="pressure" label="压力指数" width="80" align="center">
                 <template #default="{ row }">
                   <span :class="pressureCls(row.pressure)">
                     {{ row.pressure != null ? row.pressure : '--' }}
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="status" label="状态" width="90" align="center">
+              <el-table-column prop="status" label="状态" width="60" align="center">
                 <template #default="{ row }">
                   <span :class="['rt-status', row.status === 'normal' ? 'st-ok' : 'st-warn']">
                     {{ row.status === 'normal' ? '正常' : '预警' }}
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="lastUpdate" label="更新时间" align="center">
+              <el-table-column prop="lastUpdate" label="时间" min-width="120" align="center">
                 <template #default="{ row }">
                   <span class="c-time">{{ fmtTime(row.lastUpdate) }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="140" align="center" fixed="right">
+              <el-table-column label="操作" width="100" align="center" fixed="right">
                 <template #default="{ row }">
                   <div v-if="row.imei" style="display:flex;gap:4px;justify-content:center">
                     <button class="rt-msg-btn" @click.stop="handleSendMessage(row)" title="文字消息">
@@ -202,22 +207,6 @@
           </div>
         </div>
       </main>
-
-      <!-- Right: 3 ECharts panels -->
-      <div class="rt-charts">
-        <div class="rt-panel rt-cp">
-          <div class="rt-cp-title">健康状态分布</div>
-          <div ref="statusChartRef" class="rt-ec"></div>
-        </div>
-        <div class="rt-panel rt-cp rt-cp-md">
-          <div class="rt-cp-title">部门在线分布</div>
-          <div ref="deptChartRef" class="rt-ec"></div>
-        </div>
-        <div class="rt-panel rt-cp">
-          <div class="rt-cp-title">心率区间分布</div>
-          <div ref="hrChartRef" class="rt-ec"></div>
-        </div>
-      </div>
     </section>
 
     <!-- 发消息对话框 -->
@@ -344,9 +333,6 @@ export default {
       autoScrollTimer: null,
       resizeTimer: null,
       clockTimer: null,
-      statusChart: null,
-      deptChart: null,
-      hrChart: null,
       detailUser: null,
       detailVisible: false,
       messageTarget: null,
@@ -530,7 +516,7 @@ export default {
   },
   watch: {
     filteredUserList() {
-      this.$nextTick(() => this.updateCharts())
+      // Removed chart updates
     }
   },
   mounted() {
@@ -540,7 +526,7 @@ export default {
     this.startAutoScroll()
     window.addEventListener('resize', this.handleResize)
     this.$nextTick(() => {
-      this.initCharts()
+      // Charts removed
       // 延迟调用 setScale 确保 DOM 完全渲染
       setTimeout(() => {
         
@@ -553,7 +539,6 @@ export default {
     clearInterval(this.clockTimer)
     clearTimeout(this.resizeTimer)
     window.removeEventListener('resize', this.handleResize)
-    ;[this.statusChart, this.deptChart, this.hrChart].forEach(c => c && c.dispose())
   },
   methods: {
     initTime() {
@@ -634,37 +619,10 @@ export default {
     pauseAutoScroll() { this.scrollPaused = true },
     resumeAutoScroll() { this.scrollPaused = false },
 
-    setScale() {
-      // 动态计算表格高度，填充所有可用空间
-      this.$nextTick(() => {
-        const root = document.querySelector('.rt-root')
-        const header = document.querySelector('.rt-hd')
-        const tablePanel = document.querySelector('.rt-table-panel')
-        const tableHeader = document.querySelector('.rt-ph')
-
-        if (!root || !header || !tablePanel || !tableHeader) return
-
-        // 计算：root高度 - header高度 - tableHeader高度 - 分页高度(50px) - 间距(20px)
-        const rootHeight = root.offsetHeight
-        const headerHeight = header.offsetHeight
-        const tableHeaderHeight = tableHeader.offsetHeight
-        const paginationHeight = 50
-        const margins = 20
-
-        const availableHeight = rootHeight - headerHeight - tableHeaderHeight - paginationHeight - margins
-        this.tableHeight = Math.max(400, availableHeight)
-      })
-    },
-
     handleResize() {
       clearTimeout(this.resizeTimer)
       this.resizeTimer = setTimeout(() => {
-        
-        if (!this.statusChart) {
-          this.initCharts()
-        } else {
-          ;[this.statusChart, this.deptChart, this.hrChart].forEach(c => c && c.resize())
-        }
+        // Charts removed - resize handler kept for potential future use
       }, 200)
     },
 
@@ -788,186 +746,6 @@ export default {
       }
     },
 
-    initCharts() {
-      this.statusChart = echarts.init(this.$refs.statusChartRef)
-      this.deptChart   = echarts.init(this.$refs.deptChartRef)
-      this.hrChart     = echarts.init(this.$refs.hrChartRef)
-      this.updateCharts()
-    },
-
-    updateCharts() {
-      this.renderStatusChart()
-      this.renderDeptChart()
-      this.renderHrChart()
-    },
-
-    renderStatusChart() {
-      if (!this.statusChart) return
-      const list   = this.filteredUserList
-      const normal = list.filter(u => u.status === 'normal').length
-      const warn   = list.filter(u => u.status !== 'normal').length
-      this.statusChart.setOption({
-        backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'item',
-          formatter: '{b}: {c} 人 ({d}%)',
-          backgroundColor: 'rgba(0,20,50,0.92)',
-          borderColor: 'rgba(0,212,255,0.3)',
-          textStyle: { color: '#a8c5e6' }
-        },
-        legend: {
-          bottom: 4,
-          itemWidth: 10,
-          itemHeight: 10,
-          textStyle: { color: '#a8c5e6', fontSize: 12 }
-        },
-        series: [{
-          type: 'pie',
-          radius: ['52%', '74%'],
-          center: ['50%', '44%'],
-          data: [
-            { value: normal, name: '健康正常', itemStyle: { color: '#67C23A' } },
-            { value: warn,   name: '存在预警', itemStyle: { color: '#E6A23C' } }
-          ],
-          label: { show: false },
-          emphasis: {
-            label: { show: true, color: '#fff', fontSize: 13, fontWeight: 'bold' }
-          }
-        }]
-      })
-      this.statusChart.off('click')
-      this.statusChart.on('click', (params) => {
-        const statusVal = params.name === '健康正常' ? 'normal' : 'warning'
-        if (this.searchForm.status === statusVal) {
-          this.searchForm.status = ''
-        } else {
-          this.searchForm.status = statusVal
-        }
-        this.currentPage = 1
-      })
-    },
-
-    renderDeptChart() {
-      if (!this.deptChart) return
-      const map = {}
-      this.filteredUserList.forEach(u => {
-        const d = u.deptName || '未知'
-        map[d] = (map[d] || 0) + 1
-      })
-      const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8)
-      const names  = sorted.map(e => e[0]).reverse()
-      const values = sorted.map(e => e[1]).reverse()
-      this.deptChart.setOption({
-        backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: { type: 'shadow' },
-          backgroundColor: 'rgba(0,20,50,0.92)',
-          borderColor: 'rgba(0,212,255,0.3)',
-          textStyle: { color: '#a8c5e6' }
-        },
-        grid: { top: 8, right: 30, bottom: 4, left: 4, containLabel: true },
-        xAxis: {
-          type: 'value',
-          axisLabel: { color: '#8ba6c8', fontSize: 11 },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.1)' } },
-          axisLine: { show: false }
-        },
-        yAxis: {
-          type: 'category',
-          data: names,
-          axisLabel: { color: '#a8c5e6', fontSize: 11 },
-          axisLine: { lineStyle: { color: 'rgba(0,212,255,0.2)' } }
-        },
-        series: [{
-          type: 'bar',
-          data: values,
-          barMaxWidth: 16,
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
-              { offset: 0, color: '#00d4ff' },
-              { offset: 1, color: '#0044cc' }
-            ]),
-            borderRadius: [0, 4, 4, 0]
-          },
-          label: { show: true, position: 'right', color: '#a8c5e6', fontSize: 11 }
-        }]
-      })
-      this.deptChart.off('click')
-      this.deptChart.on('click', (params) => {
-        if (this.searchForm.dept === params.name) {
-          this.searchForm.dept = ''
-        } else {
-          this.searchForm.dept = params.name
-        }
-        this.currentPage = 1
-      })
-    },
-
-    renderHrChart() {
-      if (!this.hrChart) return
-      const labels = ['过缓<50', '偏缓50~60', '正常61~100', '偏速101~120', '过速>120']
-      const colors = ['#4FC3F7', '#81D4FA', '#67C23A', '#E6A23C', '#F56C6C']
-      const counts = [0, 0, 0, 0, 0]
-      this.filteredUserList.forEach(u => {
-        const hr = u.heartRate
-        if (!hr) return
-        if      (hr < 50)  counts[0]++
-        else if (hr <= 60) counts[1]++
-        else if (hr <= 100)counts[2]++
-        else if (hr <= 120)counts[3]++
-        else               counts[4]++
-      })
-      this.hrChart.setOption({
-        backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: { type: 'shadow' },
-          backgroundColor: 'rgba(0,20,50,0.92)',
-          borderColor: 'rgba(0,212,255,0.3)',
-          textStyle: { color: '#a8c5e6' }
-        },
-        grid: { top: 10, right: 10, bottom: 40, left: 10, containLabel: true },
-        xAxis: {
-          type: 'category',
-          data: labels,
-          axisLabel: { color: '#8ba6c8', fontSize: 10, interval: 0, rotate: 12 },
-          axisLine: { lineStyle: { color: 'rgba(0,212,255,0.2)' } }
-        },
-        yAxis: {
-          type: 'value',
-          axisLabel: { color: '#8ba6c8', fontSize: 11 },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.1)' } },
-          axisLine: { show: false }
-        },
-        series: [{
-          type: 'bar',
-          data: counts.map((v, i) => ({
-            value: v,
-            itemStyle: { color: colors[i], borderRadius: [3, 3, 0, 0] }
-          })),
-          barMaxWidth: 32,
-          label: { show: true, position: 'top', color: '#a8c5e6', fontSize: 11 }
-        }]
-      })
-      this.hrChart.off('click')
-      this.hrChart.on('click', (params) => {
-        const rangeMap = {
-          '过缓<50':      { min: 0,   max: 49  },
-          '偏缓50~60':    { min: 50,  max: 60  },
-          '正常61~100':   { min: 61,  max: 100 },
-          '偏速101~120':  { min: 101, max: 120 },
-          '过速>120':     { min: 121, max: 999 }
-        }
-        const range = rangeMap[params.name]
-        if (range) {
-          this.hrFilter = this.hrFilter && this.hrFilter.label === params.name
-            ? null
-            : { ...range, label: params.name }
-          this.currentPage = 1
-        }
-      })
-    }
   }
 }
 </script>
@@ -1304,7 +1082,7 @@ export default {
 .rt-tbl-wrap {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
 
   &::-webkit-scrollbar       { width: 4px; }
   &::-webkit-scrollbar-track { background: rgba(0, 20, 50, 0.4); }
@@ -1318,6 +1096,10 @@ export default {
     background: transparent !important;
 
     &::before { display: none; }
+
+    .el-table__body-wrapper {
+      overflow-x: auto !important;
+    }
 
     .el-table__header th.el-table__cell {
       background: rgba(0, 40, 90, 0.9) !important;
@@ -1453,38 +1235,6 @@ export default {
   margin-left: 6px;
 }
 
-/* ===== Right charts column ===== */
-.rt-charts {
-  width: 300px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rt-cp {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 12px;
-  flex: 1;
-}
-
-.rt-cp-md { flex: 1.6; }
-
-.rt-cp-title {
-  font-size: 13px;
-  font-weight: bold;
-  color: #a8c5e6;
-  margin-bottom: 6px;
-  flex-shrink: 0;
-  padding-left: 8px;
-  border-left: 3px solid #00d4ff;
-}
-
-.rt-ec {
-  flex: 1;
-  min-height: 0;
-}
 
 /* ===== Dialog dark theme override ===== */
 :deep(.el-dialog) {

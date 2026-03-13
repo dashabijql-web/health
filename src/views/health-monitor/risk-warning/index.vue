@@ -769,9 +769,12 @@ export default {
 
     warnClass(level) {
       if(!level) return 'normal'
-      if(['高','危险'].includes(level)) return 'danger'
-      if(['中','警告'].includes(level)) return 'warn'
-      if(['低','提醒'].includes(level)) return 'info'
+      // 高危=红色critical, 中度=橙色high, 轻度=黄色medium, 低危/正常=绿色low
+      const lvl = String(level).trim()
+      if(['高危','严重','危险','高'].includes(lvl)) return 'critical'
+      if(['中度','中','警告'].includes(lvl)) return 'high'
+      if(['轻度','低','提醒'].includes(lvl)) return 'medium'
+      if(['低危','正常'].includes(lvl)) return 'low'
       return 'normal'
     },
     statBarWidth(val) { return val/this.statMax*100 },
@@ -835,7 +838,7 @@ $white:  #e8f4ff;
 .rw-hd-time { flex-shrink:0; font-family:'Consolas',monospace; font-size:13px; color:$dim; }
 
 /* Body */
-.rw-bd { flex:1; display:flex; gap:8px; padding:8px 12px 8px 12px; overflow:hidden; min-height:0; }
+.rw-bd { flex:1; display:flex; gap:8px; padding:8px 12px 8px 12px; overflow-y:auto; overflow-x:hidden; min-height:0; }
 
 /* Aside */
 .rw-aside { width:320px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
@@ -923,10 +926,11 @@ $white:  #e8f4ff;
 .rw-list-type { font-size:12px; color:$text; }
 .rw-list-badge {
   font-size:11px; padding:2px 8px; border-radius:4px; text-align:center; white-space:nowrap; display:inline-block;
-  &.danger { background:rgba(239,68,68,.14); color:#ef4444; border:1px solid rgba(239,68,68,.3); }
-  &.warn   { background:rgba(249,115,22,.14); color:#f97316; border:1px solid rgba(249,115,22,.3); }
-  &.info   { background:rgba(59,130,246,.14); color:#3b82f6; border:1px solid rgba(59,130,246,.3); }
-  &.normal { background:rgba(82,196,26,.12);  color:#52c41a; border:1px solid rgba(82,196,26,.25); }
+  &.critical { background:var(--severity-critical-bg); color:var(--severity-critical); border:1px solid var(--severity-critical); }
+  &.high     { background:var(--severity-high-bg); color:var(--severity-high); border:1px solid var(--severity-high); }
+  &.medium   { background:var(--severity-medium-bg); color:var(--severity-medium); border:1px solid var(--severity-medium); }
+  &.low,
+  &.normal   { background:var(--severity-low-bg); color:var(--severity-low); border:1px solid var(--severity-low); }
 }
 .rw-list-val  { font-size:13px; font-weight:700; font-family:'Consolas',monospace; color:#f97316; }
 .rw-list-handled {
@@ -948,12 +952,13 @@ $white:  #e8f4ff;
 .rw-trend-tags { margin-left:12px; display:flex; gap:8px; }
 .rw-tag { font-size:10px; padding:2px 6px; border-radius:3px; border:1px solid; }
 
-/* Badges (shared) */
-.badge-danger  { color:#ef4444; background:rgba(239,68,68,.14); border:1px solid rgba(239,68,68,.3); padding:2px 8px; border-radius:4px; font-size:12px; }
-.badge-warn    { color:#f97316; background:rgba(249,115,22,.14); border:1px solid rgba(249,115,22,.3); padding:2px 8px; border-radius:4px; font-size:12px; }
-.badge-info    { color:#3b82f6; background:rgba(59,130,246,.14); border:1px solid rgba(59,130,246,.3); padding:2px 8px; border-radius:4px; font-size:12px; }
-.badge-normal  { color:#52c41a; background:rgba(82,196,26,.12);  border:1px solid rgba(82,196,26,.25); padding:2px 8px; border-radius:4px; font-size:12px; }
-.badge-handled { color:#38ef7d; background:rgba(56,239,125,.12); border:1px solid rgba(56,239,125,.3); padding:2px 8px; border-radius:4px; font-size:12px; }
+/* Badges (shared) - 使用统一颜色变量 */
+.badge-critical { color:var(--severity-critical); background:var(--severity-critical-bg); border:1px solid var(--severity-critical); padding:2px 8px; border-radius:4px; font-size:12px; }
+.badge-high     { color:var(--severity-high); background:var(--severity-high-bg); border:1px solid var(--severity-high); padding:2px 8px; border-radius:4px; font-size:12px; }
+.badge-medium   { color:var(--severity-medium); background:var(--severity-medium-bg); border:1px solid var(--severity-medium); padding:2px 8px; border-radius:4px; font-size:12px; }
+.badge-low,
+.badge-normal   { color:var(--severity-low); background:var(--severity-low-bg); border:1px solid var(--severity-low); padding:2px 8px; border-radius:4px; font-size:12px; }
+.badge-handled  { color:#38ef7d; background:rgba(56,239,125,.12); border:1px solid rgba(56,239,125,.3); padding:2px 8px; border-radius:4px; font-size:12px; }
 .badge-pending { color:#ffd200; background:rgba(255,210,0,.12);  border:1px solid rgba(255,210,0,.28); padding:2px 8px; border-radius:4px; font-size:12px; }
 
 /* Drawer body */
@@ -1049,10 +1054,11 @@ $white:  #e8f4ff;
 .rw-ol-num   { font-size:12px; font-weight:700; font-family:'Consolas',monospace; text-align:center; padding:0 3px; }
 .rw-ol-badge {
   font-size:10px; padding:1px 5px; border-radius:3px; text-align:center; white-space:nowrap; display:inline-block;
-  &.danger { background:rgba(239,68,68,.14); color:#ef4444; border:1px solid rgba(239,68,68,.3); }
-  &.warn   { background:rgba(249,115,22,.14); color:#f97316; border:1px solid rgba(249,115,22,.3); }
-  &.info   { background:rgba(59,130,246,.14); color:#3b82f6; border:1px solid rgba(59,130,246,.3); }
-  &.normal { background:rgba(82,196,26,.1);  color:#52c41a; border:1px solid rgba(82,196,26,.22); }
+  &.critical { background:var(--severity-critical-bg); color:var(--severity-critical); border:1px solid var(--severity-critical); }
+  &.high     { background:var(--severity-high-bg); color:var(--severity-high); border:1px solid var(--severity-high); }
+  &.medium   { background:var(--severity-medium-bg); color:var(--severity-medium); border:1px solid var(--severity-medium); }
+  &.low,
+  &.normal   { background:var(--severity-low-bg); color:var(--severity-low); border:1px solid var(--severity-low); }
 }
 .rw-ol-time  { font-size:10px; color:$dim; padding:0 3px; }
 .rw-ol-pg    { height:32px; flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:5px; border-top:1px solid rgba(0,212,255,.1); }

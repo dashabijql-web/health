@@ -288,7 +288,7 @@
                 <div class="av av-H">{{ (a.user || '?')[0] }}</div>
                 <div class="ai-info">
                   <div class="ai-name">{{ a.user }} <span class="ai-dept">{{ a.dept }}</span></div>
-                  <div class="ai-val"><strong>{{ a.type }}</strong> · 高危</div>
+                  <div class="ai-val"><strong>{{ a.type }}</strong> <span class="ai-badge ai-badge-H">高危</span></div>
                 </div>
                 <div class="ai-meta">
                   <div class="ai-time">{{ a.time }}</div>
@@ -302,7 +302,7 @@
                 <div class="av av-M">{{ (a.user || '?')[0] }}</div>
                 <div class="ai-info">
                   <div class="ai-name">{{ a.user }} <span class="ai-dept">{{ a.dept }}</span></div>
-                  <div class="ai-val"><strong>{{ a.type }}</strong></div>
+                  <div class="ai-val"><strong>{{ a.type }}</strong> <span class="ai-badge ai-badge-M">中度</span></div>
                 </div>
                 <div class="ai-meta">
                   <div class="ai-time">{{ a.time }}</div>
@@ -316,7 +316,7 @@
                 <div class="av av-L">{{ (a.user || '?')[0] }}</div>
                 <div class="ai-info">
                   <div class="ai-name">{{ a.user }} <span class="ai-dept">{{ a.dept }}</span></div>
-                  <div class="ai-val"><strong>{{ a.type }}</strong></div>
+                  <div class="ai-val"><strong>{{ a.type }}</strong> <span class="ai-badge ai-badge-L">轻度</span></div>
                 </div>
                 <div class="ai-meta">
                   <div class="ai-time">{{ a.time }}</div>
@@ -1149,13 +1149,13 @@ $mono: 'JetBrains Mono','Courier New',monospace;
   &:hover { background: rgba($accent,.05); }
   &:last-child { border-bottom: none; }
 }
-.ai-H { border-left: 3px solid $red;    &:hover { background: rgba($red,.06); } }
-.ai-M { border-left: 3px solid $orange; &:hover { background: rgba($orange,.06); } }
-.ai-L { border-left: 3px solid $accent; &:hover { background: rgba($accent,.05); } }
+.ai-H { border-left: 3px solid var(--severity-critical); &:hover { background: var(--severity-critical-bg); } }
+.ai-M { border-left: 3px solid var(--severity-high);     &:hover { background: var(--severity-high-bg); } }
+.ai-L { border-left: 3px solid var(--severity-medium);   &:hover { background: var(--severity-medium-bg); } }
 .av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
-.av-H { background: rgba($red,.2);    color: $red; }
-.av-M { background: rgba($orange,.2); color: $orange; }
-.av-L { background: rgba($accent,.15); color: $accent; }
+.av-H { background: var(--severity-critical-bg); color: var(--severity-critical); }
+.av-M { background: var(--severity-high-bg);     color: var(--severity-high); }
+.av-L { background: var(--severity-medium-bg);   color: var(--severity-medium); }
 .ai-info { flex: 1; min-width: 0; }
 .ai-name { font-size: 13px; color: $white; font-weight: 500; }
 .ai-dept { font-size: 10px; color: $dim; margin-left: 6px; }
@@ -1164,9 +1164,13 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 .ai-time { font-size: 10px; color: $dim; white-space: nowrap; }
 .ai-btn  { margin-top: 5px; font-size: 10px; padding: 3px 10px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600; white-space: nowrap; transition: all .15s;
   &:hover { transform: scale(1.08); } }
-.ai-btn-H { background: rgba($red,.15); color: $red; border: 1px solid rgba($red,.3); &:hover { background: rgba($red,.3); } }
-.ai-btn-M { background: rgba($orange,.15); color: $orange; border: 1px solid rgba($orange,.3); &:hover { background: rgba($orange,.3); } }
-.ai-btn-L { background: rgba($accent,.1); color: $accent; border: 1px solid rgba($accent,.25); &:hover { background: rgba($accent,.2); } }
+.ai-badge { font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 5px; white-space: nowrap; display: inline-block; }
+.ai-badge-H { background: var(--severity-critical-bg); color: var(--severity-critical); border: 1px solid var(--severity-critical); }
+.ai-badge-M { background: var(--severity-high-bg); color: var(--severity-high); border: 1px solid var(--severity-high); }
+.ai-badge-L { background: var(--severity-medium-bg); color: var(--severity-medium); border: 1px solid var(--severity-medium); }
+.ai-btn-H { background: var(--severity-critical-bg); color: var(--severity-critical); border: 1px solid var(--severity-critical); &:hover { background: rgba(255,68,68,.25); } }
+.ai-btn-M { background: var(--severity-high-bg); color: var(--severity-high); border: 1px solid var(--severity-high); &:hover { background: rgba(255,152,0,.25); } }
+.ai-btn-L { background: var(--severity-medium-bg); color: var(--severity-medium); border: 1px solid var(--severity-medium); &:hover { background: rgba(255,193,7,.25); } }
 .rbot   { border-top: 1px solid $border; padding: 12px 16px; flex-shrink: 0; }
 .rbot-t { font-size: 10px; color: $dim; letter-spacing: 2px; margin-bottom: 8px; }
 .rbot-g { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

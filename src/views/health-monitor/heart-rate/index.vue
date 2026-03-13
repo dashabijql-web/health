@@ -946,7 +946,7 @@ $white:  #e8f4ff;
 
 // ── Body ──
 .hr-bd {
-  flex: 1; display: flex; gap: 10px; padding: 10px; overflow: hidden; min-height: 0;
+  flex: 1; display: flex; gap: 10px; padding: 10px; overflow-y: auto; overflow-x: hidden; min-height: 0;
 }
 
 // ── Aside（左侧：TOP5紧凑列表 + 部门图）──
