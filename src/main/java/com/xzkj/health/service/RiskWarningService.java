@@ -1,5 +1,6 @@
 package com.xzkj.health.service;
 
+import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.RiskWarningMapper;
 import com.xzkj.health.util.TableNameUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +34,8 @@ public class RiskWarningService {
     public Map<String, Object> getWarningStats(String startDate, String endDate) {
         Map<String, Object> stats = riskWarningMapper.getWarningOverview(startDate, endDate);
         if (!stats.containsKey("handledRate")) {
-            long total = getLongValue(stats, "totalWarnings");
-            long handled = getLongValue(stats, "handledWarnings");
+            long total = MapValueUtil.getLong(stats, "totalWarnings");
+            long handled = MapValueUtil.getLong(stats, "handledWarnings");
             stats.put("handledRate", total > 0 ? (int) (handled * 100 / total) : 0);
         }
         return stats;
@@ -66,11 +67,11 @@ public class RiskWarningService {
         for (Map<String, Object> item : trendData) {
             String date = (String) item.get("date");
             dates.add(date != null && date.length() >= 5 ? date.substring(5) : "");
-            heartRateData.add(getIntValue(item, "heartRate"));
-            bloodOxygenData.add(getIntValue(item, "bloodOxygen"));
-            sleepData.add(getIntValue(item, "sleep"));
-            temperatureData.add(getIntValue(item, "temperature"));
-            pressureData.add(getIntValue(item, "pressure"));
+            heartRateData.add(MapValueUtil.getInt(item, "heartRate"));
+            bloodOxygenData.add(MapValueUtil.getInt(item, "bloodOxygen"));
+            sleepData.add(MapValueUtil.getInt(item, "sleep"));
+            temperatureData.add(MapValueUtil.getInt(item, "temperature"));
+            pressureData.add(MapValueUtil.getInt(item, "pressure"));
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -172,7 +173,7 @@ public class RiskWarningService {
         // 按月份表分组
         Map<String, List<Long>> tableToIds = new HashMap<>();
         for (Map<String, Object> rec : records) {
-            Long recId = toLong(rec.get("id"));
+            Long recId = MapValueUtil.toLong(rec.get("id"));
             if (recId == null) continue;
             LocalDateTime createTime = parseDateTime(rec.get("create_time"));
             if (createTime == null) continue;
@@ -239,29 +240,4 @@ public class RiskWarningService {
         return null;
     }
 
-    private long getLongValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value == null) return 0L;
-        if (value instanceof Long) return (Long) value;
-        if (value instanceof Integer) return ((Integer) value).longValue();
-        return 0L;
-    }
-
-    private int getIntValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value == null) return 0;
-        if (value instanceof Integer) return (Integer) value;
-        if (value instanceof Long) return ((Long) value).intValue();
-        return 0;
-    }
-
-    private Long toLong(Object value) {
-        if (value == null) return null;
-        if (value instanceof Long) return (Long) value;
-        if (value instanceof Integer) return ((Integer) value).longValue();
-        if (value instanceof String) {
-            try { return Long.parseLong((String) value); } catch (Exception e) { return null; }
-        }
-        return null;
-    }
 }

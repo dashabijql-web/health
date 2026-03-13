@@ -1,5 +1,6 @@
 package com.xzkj.health.service.impl;
 
+import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.DashboardMapper;
 import com.xzkj.health.service.DashboardService;
 import lombok.extern.slf4j.Slf4j;
@@ -48,12 +49,12 @@ public class DashboardServiceImpl implements DashboardService {
         Map<String, Object> data = dashboardMapper.getCountsByRange(s, e);
 
         Map<String, Object> result = new HashMap<>();
-        result.put("heartRate",   getIntValue(data, "heartRate"));
-        result.put("bloodOxygen", getIntValue(data, "bloodOxygen"));
-        result.put("sleep",       getIntValue(data, "sleep"));
-        result.put("steps",       getIntValue(data, "steps"));
-        result.put("temperature", getIntValue(data, "temperature"));
-        result.put("pressure",    getIntValue(data, "pressure"));
+        result.put("heartRate",   MapValueUtil.getInt(data, "heartRate"));
+        result.put("bloodOxygen", MapValueUtil.getInt(data, "bloodOxygen"));
+        result.put("sleep",       MapValueUtil.getInt(data, "sleep"));
+        result.put("steps",       MapValueUtil.getInt(data, "steps"));
+        result.put("temperature", MapValueUtil.getInt(data, "temperature"));
+        result.put("pressure",    MapValueUtil.getInt(data, "pressure"));
         return result;
     }
 
@@ -64,15 +65,15 @@ public class DashboardServiceImpl implements DashboardService {
         Map<String, Object> data = dashboardMapper.getAverageByRange(s, e);
 
         Map<String, Object> result = new HashMap<>();
-        result.put("avgSleep",       round(getDoubleValue(data, "avgSleep"), 1));
-        result.put("avgPressure",    getIntValue(data, "avgPressure"));
-        result.put("avgBloodOxygen", getIntValue(data, "avgBloodOxygen"));
-        result.put("avgHeartRate",   getIntValue(data, "avgHeartRate"));
-        result.put("avgSteps",       getIntValue(data, "avgSteps"));
-        result.put("avgTemperature", round(getDoubleValue(data, "avgTemperature"), 1));
-        result.put("avgBloodPressureHigh", getIntValue(data, "avgBloodPressureHigh"));
-        result.put("avgBloodPressureLow",  getIntValue(data, "avgBloodPressureLow"));
-        result.put("avgCalories", getIntValue(data, "avgCalories"));
+        result.put("avgSleep",       round(MapValueUtil.getDouble(data, "avgSleep"), 1));
+        result.put("avgPressure",    MapValueUtil.getInt(data, "avgPressure"));
+        result.put("avgBloodOxygen", MapValueUtil.getInt(data, "avgBloodOxygen"));
+        result.put("avgHeartRate",   MapValueUtil.getInt(data, "avgHeartRate"));
+        result.put("avgSteps",       MapValueUtil.getInt(data, "avgSteps"));
+        result.put("avgTemperature", round(MapValueUtil.getDouble(data, "avgTemperature"), 1));
+        result.put("avgBloodPressureHigh", MapValueUtil.getInt(data, "avgBloodPressureHigh"));
+        result.put("avgBloodPressureLow",  MapValueUtil.getInt(data, "avgBloodPressureLow"));
+        result.put("avgCalories", MapValueUtil.getInt(data, "avgCalories"));
         return result;
     }
 
@@ -87,7 +88,7 @@ public class DashboardServiceImpl implements DashboardService {
             Map<String, Object> row = new HashMap<>();
             row.put("userName", item.get("userName"));
             row.put("userCode", item.get("userCode"));
-            row.put("count",    getIntValue(item, "count"));
+            row.put("count",    MapValueUtil.getInt(item, "count"));
             result.add(row);
         }
         return result;
@@ -100,12 +101,12 @@ public class DashboardServiceImpl implements DashboardService {
         Map<String, Object> data = dashboardMapper.getDeviceStatsByRange(s, e);
 
         Map<String, Object> result = new HashMap<>();
-        result.put("total",        getIntValue(data, "total"));
-        result.put("boundDevices", getIntValue(data, "boundDevices"));
-        result.put("activeRate",   getIntValue(data, "activeRate"));
-        result.put("usageRate",    getIntValue(data, "usageRate"));
-        result.put("warningRate",  getIntValue(data, "warningRate"));
-        result.put("lowBattery",   getIntValue(data, "lowBattery"));
+        result.put("total",        MapValueUtil.getInt(data, "total"));
+        result.put("boundDevices", MapValueUtil.getInt(data, "boundDevices"));
+        result.put("activeRate",   MapValueUtil.getInt(data, "activeRate"));
+        result.put("usageRate",    MapValueUtil.getInt(data, "usageRate"));
+        result.put("warningRate",  MapValueUtil.getInt(data, "warningRate"));
+        result.put("lowBattery",   MapValueUtil.getInt(data, "lowBattery"));
         return result;
     }
 
@@ -119,7 +120,7 @@ public class DashboardServiceImpl implements DashboardService {
         for (Map<String, Object> rate : rates) {
             Map<String, Object> item = new HashMap<>();
             item.put("name", rate.get("name"));
-            item.put("rate", getIntValue(rate, "rate"));
+            item.put("rate", MapValueUtil.getInt(rate, "rate"));
             item.put("icon", rate.get("icon"));
             warningList.add(item);
         }
@@ -160,8 +161,8 @@ public class DashboardServiceImpl implements DashboardService {
             List<Map<String, Object>> rows = dashboardMapper.getWarningCountsByHour(s);
             int[] counts = new int[24];
             for (Map<String, Object> row : rows) {
-                int h = getIntValue(row, "hour_num");
-                if (h >= 0 && h < 24) counts[h] = getIntValue(row, "cnt");
+                int h = MapValueUtil.getInt(row, "hour_num");
+                if (h >= 0 && h < 24) counts[h] = MapValueUtil.getInt(row, "cnt");
             }
             result.put("labels", java.util.stream.IntStream.range(0, 24).mapToObj(String::valueOf).collect(java.util.stream.Collectors.toList()));
             result.put("counts", java.util.Arrays.stream(counts).boxed().collect(java.util.stream.Collectors.toList()));
@@ -171,7 +172,7 @@ public class DashboardServiceImpl implements DashboardService {
             List<Integer> counts = new java.util.ArrayList<>();
             for (Map<String, Object> row : rows) {
                 labels.add(String.valueOf(row.get("stat_date")));
-                counts.add(getIntValue(row, "cnt"));
+                counts.add(MapValueUtil.getInt(row, "cnt"));
             }
             result.put("labels", labels);
             result.put("counts", counts);
@@ -201,8 +202,8 @@ public class DashboardServiceImpl implements DashboardService {
             long diff = java.time.temporal.ChronoUnit.DAYS.between(
                     java.time.LocalDate.parse(s), java.time.LocalDate.parse(e)) + 1;
             days = (int) diff;
-        } catch (Exception e) {
-            log.debug("日期范围解析失败，使用默认30天: {}", e.getMessage());
+        } catch (Exception ex) {
+            log.debug("日期范围解析失败，使用默认30天: {}", ex.getMessage());
         }
         List<Map<String, Object>> list = dashboardMapper.getDeptWarningWithTrend(s, e, days);
 
@@ -210,8 +211,8 @@ public class DashboardServiceImpl implements DashboardService {
         for (Map<String, Object> item : list) {
             Map<String, Object> row = new HashMap<>();
             row.put("name",      item.get("name"));
-            row.put("count",     getIntValue(item, "count"));
-            row.put("prevCount", getIntValue(item, "prevCount"));
+            row.put("count",     MapValueUtil.getInt(item, "count"));
+            row.put("prevCount", MapValueUtil.getInt(item, "prevCount"));
             result.add(row);
         }
         return result;
@@ -243,9 +244,9 @@ public class DashboardServiceImpl implements DashboardService {
             dates.add(d.format(shortFmt));
             Map<String, Object> row = byDate.get(fullKey);
             if (row != null) {
-                heartRates.add(getIntValue(row, "avgHeartRate"));
-                bloodOxygens.add(getIntValue(row, "avgBloodOxygen"));
-                stepsList.add(getIntValue(row, "avgSteps"));
+                heartRates.add(MapValueUtil.getInt(row, "avgHeartRate"));
+                bloodOxygens.add(MapValueUtil.getInt(row, "avgBloodOxygen"));
+                stepsList.add(MapValueUtil.getInt(row, "avgSteps"));
             } else {
                 heartRates.add(null);
                 bloodOxygens.add(null);
@@ -273,8 +274,8 @@ public class DashboardServiceImpl implements DashboardService {
             Map<String, Object> item = new HashMap<>();
             item.put("rank",        i + 1);
             item.put("department",  row.get("department"));
-            item.put("memberCount", getIntValue(row, "memberCount"));
-            item.put("healthScore", getIntValue(row, "healthScore"));
+            item.put("memberCount", MapValueUtil.getInt(row, "memberCount"));
+            item.put("healthScore", MapValueUtil.getInt(row, "healthScore"));
             result.add(item);
         }
         return result;
@@ -311,22 +312,6 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     // ─── 工具方法 ───────────────────────────────────────────────────
-
-    private int getIntValue(Map<String, Object> map, String key) {
-        if (map == null) return 0;
-        Object value = map.get(key);
-        if (value == null) return 0;
-        if (value instanceof Number) return ((Number) value).intValue();
-        try { return Integer.parseInt(value.toString()); } catch (NumberFormatException e) { return 0; }
-    }
-
-    private double getDoubleValue(Map<String, Object> map, String key) {
-        if (map == null) return 0.0;
-        Object value = map.get(key);
-        if (value == null) return 0.0;
-        if (value instanceof Number) return ((Number) value).doubleValue();
-        try { return Double.parseDouble(value.toString()); } catch (NumberFormatException e) { return 0.0; }
-    }
 
     private double round(double value, int places) {
         if (places < 0) throw new IllegalArgumentException();

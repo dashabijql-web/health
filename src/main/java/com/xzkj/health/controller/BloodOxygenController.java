@@ -1,12 +1,12 @@
 package com.xzkj.health.controller;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.service.BloodOxygenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -26,9 +26,8 @@ public class BloodOxygenController {
     public Result<Map<String, Object>> getOverview(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", bloodOxygenService.getBloodOxygenStats(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", bloodOxygenService.getBloodOxygenStats(d[0], d[1]));
     }
 
     /** 获取血氧趋势数据 */
@@ -44,9 +43,8 @@ public class BloodOxygenController {
     public Result<List<Map<String, Object>>> getDistribution(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", bloodOxygenService.getBloodOxygenDistribution(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", bloodOxygenService.getBloodOxygenDistribution(d[0], d[1]));
     }
 
     /** 获取异常血氧记录（分页） */
@@ -64,9 +62,8 @@ public class BloodOxygenController {
             @RequestParam(defaultValue = "5") Integer limit,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", bloodOxygenService.getTopUsers(limit, startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", bloodOxygenService.getTopUsers(limit, d[0], d[1]));
     }
 
     /** 获取部门血氧统计 */
@@ -74,9 +71,8 @@ public class BloodOxygenController {
     public Result<List<Map<String, Object>>> getDepartmentStats(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", bloodOxygenService.getDepartmentStats(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", bloodOxygenService.getDepartmentStats(d[0], d[1]));
     }
 
     /** 获取年龄段血氧统计 */
@@ -97,8 +93,8 @@ public class BloodOxygenController {
     public Result<List<Map<String, Object>>> getHourly(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
+        startDate = DateParamUtil.today(startDate);
+        endDate = DateParamUtil.today(endDate);
         return Result.ok("获取成功", bloodOxygenService.getHourlyStats(startDate, endDate));
     }
 }

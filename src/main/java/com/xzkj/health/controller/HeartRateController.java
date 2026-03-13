@@ -1,12 +1,12 @@
 package com.xzkj.health.controller;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.service.HeartRateService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.*;
 
 /**
@@ -25,9 +25,8 @@ public class HeartRateController {
     public Result<Map<String, Object>> getOverview(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", heartRateService.getHeartRateOverview(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", heartRateService.getHeartRateOverview(d[0], d[1]));
     }
 
     /** 获取 TOP N 心率异常人员 */
@@ -36,9 +35,8 @@ public class HeartRateController {
             @RequestParam(defaultValue = "5") Integer limit,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", heartRateService.getTopUsers(limit, startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", heartRateService.getTopUsers(limit, d[0], d[1]));
     }
 
     /** 获取年龄段心率统计 */
@@ -58,9 +56,8 @@ public class HeartRateController {
     public Result<List<Map<String, Object>>> getDistribution(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", heartRateService.getHeartRateDistribution(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", heartRateService.getHeartRateDistribution(d[0], d[1]));
     }
 
     /** 获取心率趋势数据 */
@@ -83,9 +80,8 @@ public class HeartRateController {
     public Result<List<Map<String, Object>>> getDepartmentStats(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", heartRateService.getDepartmentStats(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", heartRateService.getDepartmentStats(d[0], d[1]));
     }
 
     /** 获取异常心率记录（分页） */
@@ -102,8 +98,8 @@ public class HeartRateController {
     public Result<List<Map<String, Object>>> getHourly(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
+        startDate = DateParamUtil.today(startDate);
+        endDate = DateParamUtil.today(endDate);
         return Result.ok("获取成功", heartRateService.getHourlyStats(startDate, endDate));
     }
 }

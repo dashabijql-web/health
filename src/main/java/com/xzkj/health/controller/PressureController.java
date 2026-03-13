@@ -1,12 +1,12 @@
 package com.xzkj.health.controller;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.service.PressureService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.*;
 
 /**
@@ -24,9 +24,8 @@ public class PressureController {
     public Result<Map<String, Object>> getOverview(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", pressureService.getOverview(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", pressureService.getOverview(d[0], d[1]));
     }
 
     @GetMapping("/trend")
@@ -40,9 +39,8 @@ public class PressureController {
     public Result<List<Map<String, Object>>> getDistribution(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", pressureService.getDistribution(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", pressureService.getDistribution(d[0], d[1]));
     }
 
     @GetMapping("/top-users")
@@ -50,18 +48,16 @@ public class PressureController {
             @RequestParam(defaultValue = "5") Integer limit,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", pressureService.getTopUsers(limit, startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", pressureService.getTopUsers(limit, d[0], d[1]));
     }
 
     @GetMapping("/department-stats")
     public Result<List<Map<String, Object>>> getDepartmentStats(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", pressureService.getDepartmentStats(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", pressureService.getDepartmentStats(d[0], d[1]));
     }
 
     @GetMapping("/realtime")
@@ -73,8 +69,7 @@ public class PressureController {
     @GetMapping("/hourly")
     public Result<List<Map<String, Object>>> getHourly(
             @RequestParam(required = false) String date) {
-        if (date == null) date = LocalDate.now().toString();
-        return Result.ok("获取成功", pressureService.getHourlyStats(date));
+        return Result.ok("获取成功", pressureService.getHourlyStats(DateParamUtil.today(date)));
     }
 
     @GetMapping("/abnormal")

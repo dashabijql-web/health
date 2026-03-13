@@ -1,5 +1,6 @@
 package com.xzkj.health.controller;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.common.exception.BusinessException;
 import com.xzkj.health.service.RiskWarningService;
@@ -7,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.*;
 
 /**
@@ -26,9 +26,8 @@ public class RiskWarningController {
     public Result<Map<String, Object>> getOverview(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", riskWarningService.getWarningStats(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", riskWarningService.getWarningStats(d[0], d[1]));
     }
 
     /** 获取预警列表（分页+过滤） */
@@ -56,9 +55,8 @@ public class RiskWarningController {
     public Result<List<Map<String, Object>>> getDeptStats(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
-        if (endDate == null) endDate = LocalDate.now().toString();
-        return Result.ok("获取成功", riskWarningService.getDeptWarningStats(startDate, endDate));
+        String[] d = DateParamUtil.range30(startDate, endDate);
+        return Result.ok("获取成功", riskWarningService.getDeptWarningStats(d[0], d[1]));
     }
 
     /** 获取预警类型分布 */

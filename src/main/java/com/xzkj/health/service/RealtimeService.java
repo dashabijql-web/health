@@ -1,5 +1,6 @@
 package com.xzkj.health.service;
 
+import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.RealtimeMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,19 +28,19 @@ public class RealtimeService {
 
         // 格式化数据
         Map<String, Object> result = new HashMap<>();
-        result.put("avgHeartRate", Math.round(getDoubleValue(data, "avgHeartRate")));
-        result.put("avgBloodOxygen", Math.round(getDoubleValue(data, "avgBloodOxygen")));
-        result.put("avgSteps", Math.round(getDoubleValue(data, "avgSteps")));
+        result.put("avgHeartRate", Math.round(MapValueUtil.getDouble(data, "avgHeartRate")));
+        result.put("avgBloodOxygen", Math.round(MapValueUtil.getDouble(data, "avgBloodOxygen")));
+        result.put("avgSteps", Math.round(MapValueUtil.getDouble(data, "avgSteps")));
 
         // 体温保留1位小数
-        double avgTemp = getDoubleValue(data, "avgTemperature");
+        double avgTemp = MapValueUtil.getDouble(data, "avgTemperature");
         result.put("avgTemperature", Math.round(avgTemp * 10.0) / 10.0);
 
         // 睡眠保留1位小数
-        double avgSleep = getDoubleValue(data, "avgSleep");
+        double avgSleep = MapValueUtil.getDouble(data, "avgSleep");
         result.put("avgSleep", Math.round(avgSleep * 10.0) / 10.0);
 
-        result.put("todayWarningCount", getLongValue(data, "todayWarningCount"));
+        result.put("todayWarningCount", MapValueUtil.getLong(data, "todayWarningCount"));
 
         return result;
     }
@@ -57,13 +58,13 @@ public class RealtimeService {
         for (Map<String, Object> user : list) {
             // 格式化体温(保留1位小数)
             if (user.containsKey("temperature") && user.get("temperature") != null) {
-                double temp = getDoubleValue(user, "temperature");
+                double temp = MapValueUtil.getDouble(user, "temperature");
                 user.put("temperature", Math.round(temp * 10.0) / 10.0);
             }
 
             // 格式化睡眠(保留1位小数)
             if (user.containsKey("sleepHours") && user.get("sleepHours") != null) {
-                double sleep = getDoubleValue(user, "sleepHours");
+                double sleep = MapValueUtil.getDouble(user, "sleepHours");
                 user.put("sleepHours", Math.round(sleep * 10.0) / 10.0);
             }
         }
@@ -92,13 +93,13 @@ public class RealtimeService {
         } else {
             // 格式化体温
             if (data.containsKey("temperature") && data.get("temperature") != null) {
-                double temp = getDoubleValue(data, "temperature");
+                double temp = MapValueUtil.getDouble(data, "temperature");
                 data.put("temperature", Math.round(temp * 10.0) / 10.0);
             }
 
             // 格式化睡眠
             if (data.containsKey("sleepHours") && data.get("sleepHours") != null) {
-                double sleep = getDoubleValue(data, "sleepHours");
+                double sleep = MapValueUtil.getDouble(data, "sleepHours");
                 data.put("sleepHours", Math.round(sleep * 10.0) / 10.0);
             }
         }
@@ -115,12 +116,12 @@ public class RealtimeService {
 
         // 格式化百分比数据
         Map<String, Object> result = new HashMap<>();
-        result.put("onlineUsers", getLongValue(data, "onlineUsers"));
-        result.put("totalUsers", getLongValue(data, "totalUsers"));
-        result.put("weekRecords", getLongValue(data, "weekRecords"));
-        result.put("todayRecords", getLongValue(data, "todayRecords"));
-        result.put("onlineRate", Math.round(getDoubleValue(data, "onlineRate")));
-        result.put("normalRate", Math.round(getDoubleValue(data, "normalRate")));
+        result.put("onlineUsers", MapValueUtil.getLong(data, "onlineUsers"));
+        result.put("totalUsers", MapValueUtil.getLong(data, "totalUsers"));
+        result.put("weekRecords", MapValueUtil.getLong(data, "weekRecords"));
+        result.put("todayRecords", MapValueUtil.getLong(data, "todayRecords"));
+        result.put("onlineRate", Math.round(MapValueUtil.getDouble(data, "onlineRate")));
+        result.put("normalRate", Math.round(MapValueUtil.getDouble(data, "normalRate")));
 
         return result;
     }
@@ -132,24 +133,4 @@ public class RealtimeService {
         return realtimeMapper.getRecentAlerts(limit);
     }
 
-    // 辅助方法
-    private long getLongValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value == null) return 0L;
-        if (value instanceof Long) return (Long) value;
-        if (value instanceof Integer) return ((Integer) value).longValue();
-        if (value instanceof BigDecimal) return ((BigDecimal) value).longValue();
-        return 0L;
-    }
-
-    private double getDoubleValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value == null) return 0.0;
-        if (value instanceof Double) return (Double) value;
-        if (value instanceof Float) return ((Float) value).doubleValue();
-        if (value instanceof Integer) return ((Integer) value).doubleValue();
-        if (value instanceof Long) return ((Long) value).doubleValue();
-        if (value instanceof BigDecimal) return ((BigDecimal) value).doubleValue();
-        return 0.0;
-    }
 }
