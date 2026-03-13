@@ -280,6 +280,7 @@ import {
 } from '@/api/blood-pressure'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
 import chartPageMixin from '@/mixins/chartPage'
+import { PERIOD_OPTIONS } from '@/constants/periods'
 
 export default {
   name: 'BloodPressureAnalysis',
@@ -304,11 +305,7 @@ export default {
       currentPage: 1,
       pageSize: 20,
       activePeriod: 'month',
-      periodOptions: [
-        { label: '今日',  value: 'day'   },
-        { label: '近7日', value: 'week'  },
-        { label: '近30日',value: 'month' }
-      ],
+      periodOptions: PERIOD_OPTIONS,
       charts: {}
     }
   },
@@ -368,12 +365,7 @@ export default {
       ]
     }
   },
-  mounted() {
-    this.initClock()
-    this.fetchData()
-    this.$nextTick(() => this.startAutoScroll())
-    this.refreshTimer = setInterval(() => this.loadRealtime(), 30000)
-  },
+  mounted() { this.initPage(() => this.loadRealtime()) },
   methods: {
     async fetchData() {
       await Promise.allSettled([

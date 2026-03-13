@@ -248,6 +248,7 @@ import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid
 import { getHealthRecords } from '@/api/health'
 import { getOnlineUsers } from '@/api/realtime'
 import chartPageMixin from '@/mixins/chartPage'
+import { PERIOD_OPTIONS } from '@/constants/periods'
 
 export default {
   name: 'RiskWarning',
@@ -270,7 +271,7 @@ export default {
       trendData: { dates: [], series: { heartRate: [], bloodOxygen: [], temperature: [], pressure: [] } },
       deptData: [],
       activePeriod: 'month',
-      periodOptions: [{ label: '当日', value: 'day' }, { label: '近7日', value: 'week' }, { label: '近30日', value: 'month' }],
+      periodOptions: PERIOD_OPTIONS,
       charts: {},
       detailVisible: false, detailRow: null,
       autoScrollPaused: false,
@@ -367,11 +368,7 @@ export default {
       this.$nextTick(() => { const el=this.$refs.listRef; if(el){ el.scrollTop=0; this.scrollTop=0 } })
     }
   },
-  mounted() {
-    this.initClock(); this.fetchData()
-    this.$nextTick(() => this.startAutoScroll())
-    this.refreshTimer = setInterval(() => this.fetchData(), 30000)
-  },
+  mounted() { this.initPage() },
   methods: {
     async fetchData() {
       await Promise.allSettled([this.loadStats(), this.loadTrend(), this.loadDept(), this.loadList(), this.loadOnlineUsers()])

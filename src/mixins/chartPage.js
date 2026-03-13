@@ -68,6 +68,13 @@ export default {
         else { top += 1; el.scrollTop = top }
       }, 40)
     },
+    /** 通用页面初始化：时钟 + 首次加载 + 自动滚动 + 定时刷新 */
+    initPage(refreshFn, interval = 30000) {
+      this.initClock()
+      this.fetchData()
+      this.$nextTick(() => this.startAutoScroll())
+      this.refreshTimer = setInterval(refreshFn || (() => this.fetchData()), interval)
+    },
     switchPeriod(val) {
       if (this.activePeriod === val) return
       this.activePeriod = val

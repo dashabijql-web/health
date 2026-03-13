@@ -303,6 +303,7 @@ import {
   getHourlyHeartRate
 } from '@/api/heart-rate'
 import chartPageMixin from '@/mixins/chartPage'
+import { PERIOD_OPTIONS } from '@/constants/periods'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, ageGrid, barLabel } from '@/utils/echarts-config'
 
 export default {
@@ -327,11 +328,7 @@ export default {
       currentPage: 1,
       pageSize: 20,
       activePeriod: 'month',
-      periodOptions: [
-        { label: '当日', value: 'day' },
-        { label: '近7日', value: 'week' },
-        { label: '近30日', value: 'month' }
-      ],
+      periodOptions: PERIOD_OPTIONS,
       charts: {},
       detailItem: null,
       detailVisible: false,
@@ -408,12 +405,7 @@ export default {
       ]
     }
   },
-  mounted() {
-    this.initClock()
-    this.fetchData()
-    this.$nextTick(() => this.startAutoScroll())
-    this.refreshTimer = setInterval(() => this.fetchData(), 30000)
-  },
+  mounted() { this.initPage() },
   methods: {
 
     async fetchData() {
