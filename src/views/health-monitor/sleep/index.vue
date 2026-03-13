@@ -261,11 +261,10 @@
 </template>
 
 <script>
-import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { getSleepPageData, getSleepTrend, getSleepQualityDistribution } from '@/api/sleep'
 import { emptyOption, chartTooltip, trendGrid, hourlyGrid } from '@/utils/echarts-config'
-import { initChart } from '@/utils/chart-helpers'
+import { initChart, gradV } from '@/utils/chart-helpers'
 import { getDepartmentList } from '@/api/department'
 import chartPageMixin from '@/mixins/chartPage'
 
@@ -524,8 +523,7 @@ export default {
           {
             name: '睡眠时长', type: 'bar', yAxisIndex: 0, data: hours, barWidth: '55%',
             itemStyle: {
-              color: new echarts.graphic.LinearGradient(0,0,0,1,
-                [{offset:0,color:'rgba(167,139,250,0.9)'},{offset:1,color:'rgba(167,139,250,0.18)'}]),
+              color: gradV('rgba(167,139,250,0.9)', 'rgba(167,139,250,0.18)'),
               borderRadius: [3,3,0,0]
             },
             markLine: {
@@ -537,8 +535,7 @@ export default {
           {
             name: '质量评分', type: 'line', yAxisIndex: 1, data: scores, smooth: true, symbol: 'none',
             lineStyle: { color: '#52c41a', width: 2 },
-            areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,
-              [{offset:0,color:'rgba(82,196,26,0.18)'},{offset:1,color:'rgba(82,196,26,0.02)'}]) },
+            areaStyle: { color: gradV('rgba(82,196,26,0.18)', 'rgba(82,196,26,0.02)') },
             markPoint: {
               symbol: 'circle', symbolSize: 5,
               label: { fontSize: 9, fontFamily: 'Consolas', offset: [0,-12] },
@@ -648,10 +645,7 @@ export default {
           data: sorted.map(x => ({
             value: x.count,
             itemStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: getColor(x.count) },
-                { offset: 1, color: getColor(x.count) + '55' }
-              ]),
+              color: gradV(getColor(x.count), getColor(x.count) + '55'),
               borderRadius: [4, 4, 0, 0]
             }
           })),

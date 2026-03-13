@@ -245,7 +245,6 @@
 </template>
 
 <script>
-import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import {
   getPressureOverview,
@@ -257,7 +256,7 @@ import {
   getPressureHourly
 } from '@/api/pressure'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
-import { initChart, distOption, gaugeOption } from '@/utils/chart-helpers'
+import { initChart, distOption, gaugeOption, gradH, gradV } from '@/utils/chart-helpers'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
 
@@ -449,10 +448,8 @@ export default {
           data: d.map(x => ({
             value: x.avgPressure,
             itemStyle: {
-              color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
-                { offset: 0, color: x.avgPressure >= 85 ? '#ff5252' : x.avgPressure >= 70 ? '#FFB84D' : '#fb923c' },
-                { offset: 1, color: x.avgPressure >= 85 ? '#b91c1c' : x.avgPressure >= 70 ? '#d97706' : '#c2410c' }
-              ]),
+              color: gradH(x.avgPressure >= 85 ? '#ff5252' : x.avgPressure >= 70 ? '#FFB84D' : '#fb923c',
+                           x.avgPressure >= 85 ? '#b91c1c' : x.avgPressure >= 70 ? '#d97706' : '#c2410c'),
               borderRadius: [0, 4, 4, 0]
             }
           })),
@@ -484,10 +481,7 @@ export default {
         series: [{
           type: 'line', data: vals, smooth: true, symbol: 'none', connectNulls: false,
           lineStyle: { color: '#fb923c', width: 2 },
-          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(251,146,60,0.28)' },
-            { offset: 1, color: 'rgba(251,146,60,0.02)' }
-          ])},
+          areaStyle: { color: gradV('rgba(251,146,60,0.28)', 'rgba(251,146,60,0.02)') },
           markLine: {
             silent: true, symbol: 'none',
             data: [
@@ -511,10 +505,7 @@ export default {
         series: [{
           type: 'bar', data: vals, barMaxWidth: 14,
           itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#fb923c' },
-              { offset: 1, color: 'rgba(251,146,60,0.2)' }
-            ]),
+            color: gradV('#fb923c', 'rgba(251,146,60,0.2)'),
             borderRadius: [3, 3, 0, 0]
           },
           markLine: {

@@ -4,6 +4,16 @@
  */
 import * as echarts from 'echarts'
 
+/** Vertical gradient (top→bottom). Shorthand for echarts.graphic.LinearGradient. */
+export function gradV(c1, c2) {
+  return new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: c1 }, { offset: 1, color: c2 }])
+}
+
+/** Horizontal gradient (right→left). Shorthand for echarts.graphic.LinearGradient. */
+export function gradH(c1, c2) {
+  return new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: c1 }, { offset: 1, color: c2 }])
+}
+
 /**
  * Init or re-init an ECharts instance on a ref element.
  * Returns the chart instance, or null if refEl is missing.

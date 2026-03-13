@@ -267,7 +267,6 @@
 </template>
 
 <script>
-import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import {
   getBPOverview,
@@ -279,7 +278,7 @@ import {
   getBPHourly
 } from '@/api/blood-pressure'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
-import { initChart, distOption } from '@/utils/chart-helpers'
+import { initChart, distOption, gradH, gradV } from '@/utils/chart-helpers'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
 
@@ -467,13 +466,13 @@ export default {
           {
             name: '收缩压', type: 'bar', stack: 'none', barWidth: '35%',
             data: d.map(x => x.avgSystolic || 0),
-            itemStyle: { color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: '#a78bfa' }, { offset: 1, color: '#7c3aed' }]) },
+            itemStyle: { color: gradH('#a78bfa', '#7c3aed') },
             label: barLabel()
           },
           {
             name: '舒张压', type: 'bar', stack: 'none', barWidth: '35%',
             data: d.map(x => x.avgDiastolic || 0),
-            itemStyle: { color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: '#38bdf8' }, { offset: 1, color: '#0284c7' }]), borderRadius: [0, 4, 4, 0] },
+            itemStyle: { color: gradH('#38bdf8', '#0284c7'), borderRadius: [0, 4, 4, 0] },
             label: barLabel()
           }
         ]
@@ -510,9 +509,7 @@ export default {
             name: '收缩压', type: 'line', data: isEmpty ? [] : sysVals,
             smooth: true, symbol: 'none', connectNulls: false,
             lineStyle: { color: '#a78bfa', width: 2 },
-            areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(167,139,250,0.28)' }, { offset: 1, color: 'rgba(167,139,250,0.02)' }
-            ])},
+            areaStyle: { color: gradV('rgba(167,139,250,0.28)', 'rgba(167,139,250,0.02)') },
             markLine: { silent: true, symbol: 'none', lineStyle: { color: '#a78bfa55', type: 'dashed' },
               data: [{ yAxis: 139, label: { color: '#a78bfa', fontSize: 10, formatter: '偏高 139' } }] }
           },
@@ -520,9 +517,7 @@ export default {
             name: '舒张压', type: 'line', data: isEmpty ? [] : diaVals,
             smooth: true, symbol: 'none', connectNulls: false,
             lineStyle: { color: '#38bdf8', width: 2 },
-            areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(56,189,248,0.2)' }, { offset: 1, color: 'rgba(56,189,248,0.02)' }
-            ])},
+            areaStyle: { color: gradV('rgba(56,189,248,0.2)', 'rgba(56,189,248,0.02)') },
             markLine: { silent: true, symbol: 'none', lineStyle: { color: '#38bdf855', type: 'dashed' },
               data: [{ yAxis: 89, label: { color: '#38bdf8', fontSize: 10, formatter: '偏高 89' } }] }
           }
@@ -554,17 +549,13 @@ export default {
             name: '收缩压', type: 'line', data: sysVals,
             smooth: true, symbol: 'none', connectNulls: false,
             lineStyle: { color: '#a78bfa', width: 1.5 },
-            areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(167,139,250,0.22)' }, { offset: 1, color: 'rgba(167,139,250,0.02)' }
-            ])}
+            areaStyle: { color: gradV('rgba(167,139,250,0.22)', 'rgba(167,139,250,0.02)') }
           },
           {
             name: '舒张压', type: 'line', data: diaVals,
             smooth: true, symbol: 'none', connectNulls: false,
             lineStyle: { color: '#38bdf8', width: 1.5 },
-            areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(56,189,248,0.18)' }, { offset: 1, color: 'rgba(56,189,248,0.02)' }
-            ])}
+            areaStyle: { color: gradV('rgba(56,189,248,0.18)', 'rgba(56,189,248,0.02)') }
           }
         ]
       })

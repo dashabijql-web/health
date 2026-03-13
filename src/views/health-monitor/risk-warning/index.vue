@@ -245,7 +245,7 @@ import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getDeptWarningStats } from '@/api/risk-warning'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, barLabel } from '@/utils/echarts-config'
-import { initChart } from '@/utils/chart-helpers'
+import { initChart, gradV } from '@/utils/chart-helpers'
 import { getHealthRecords } from '@/api/health'
 import { getOnlineUsers } from '@/api/realtime'
 import chartPageMixin from '@/mixins/chartPage'
@@ -480,7 +480,7 @@ export default {
         grid:{left:'5%',right:'5%',top:'12%',bottom:'12%',containLabel:true},
         xAxis:{type:'category',data:this.warningStats.map(x=>x.label),axisLine:{lineStyle:{color:'rgba(0,212,255,0.18)'}},axisTick:{show:false},axisLabel:{color:'#a8c5e6',fontSize:12}},
         yAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'rgba(0,212,255,0.07)',type:'dashed'}},axisLabel:{color:'#8ba6c8',fontSize:10}},
-        series:[{type:'bar',barWidth:'40%',data:this.warningStats.map(x=>({value:x.value,itemStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:x.color},{offset:1,color:x.color+'55'}]),borderRadius:[6,6,0,0]}})),label:{show:true,position:'top',color:'#e0f0ff',fontSize:13,fontWeight:'bold',fontFamily:'Consolas'}}]
+        series:[{type:'bar',barWidth:'40%',data:this.warningStats.map(x=>({value:x.value,itemStyle:{color:gradV(x.color,x.color+'55'),borderRadius:[6,6,0,0]}})),label:{show:true,position:'top',color:'#e0f0ff',fontSize:13,fontWeight:'bold',fontFamily:'Consolas'}}]
       })
     },
 
@@ -669,7 +669,7 @@ export default {
           {
             name:'心率', type:'line', color:'#ef4444', data: hrs, smooth: true, symbol:'none',
             lineStyle:{color:'#ef4444',width:2},
-            areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(239,68,68,.25)'},{offset:1,color:'rgba(239,68,68,.02)'}])},
+            areaStyle:{color:gradV('rgba(239,68,68,.25)','rgba(239,68,68,.02)')},
             markLine: warnIdx >= 0 ? {
               silent: true,
               symbol: ['none','none'],
@@ -691,7 +691,7 @@ export default {
           { name:'血氧', type:'line', color:'#f97316', data: spo2, smooth:true, symbol:'none',
             yAxisIndex: 0,
             lineStyle:{color:'#f97316',width:2},
-            areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(249,115,22,.2)'},{offset:1,color:'rgba(249,115,22,.01)'}])},
+            areaStyle:{color:gradV('rgba(249,115,22,.2)','rgba(249,115,22,.01)')},
             markPoint: warnIdx >= 0 && spo2[warnIdx] != null ? {
               data: [{ coord:[warnTimeStr, spo2[warnIdx]], symbol:'circle', symbolSize:14,
                 itemStyle:{color:'transparent',borderColor:'#f97316',borderWidth:3}, label:{show:false} }]
