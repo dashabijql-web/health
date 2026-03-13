@@ -1,6 +1,7 @@
 package com.xzkj.health.service.impl;
 
 import com.xzkj.health.common.DateParamUtil;
+import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.BloodPressureMapper;
 import com.xzkj.health.service.BloodPressureService;
 import lombok.extern.slf4j.Slf4j;
@@ -103,13 +104,7 @@ public class BloodPressureServiceImpl implements BloodPressureService {
             int offset = (page - 1) * size;
             List<Map<String, Object>> list = bloodPressureMapper.getAbnormalRecords(offset, size);
             int total = bloodPressureMapper.countAbnormalRecords();
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("list", list);
-            result.put("total", total);
-            result.put("page", page);
-            result.put("size", size);
-            return result;
+            return MapValueUtil.buildPageResult(list, total, page, size);
         } catch (Exception e) {
             log.error("获取异常血压记录失败", e);
             throw new RuntimeException("获取异常血压记录失败: " + e.getMessage());

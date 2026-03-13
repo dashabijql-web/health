@@ -1,6 +1,6 @@
 package com.xzkj.health.common;
 
-import java.util.Map;
+import java.util.*;
 
 /**
  * Map 取值工具类 — 安全地从 Map&lt;String, Object&gt; 中提取数值，
@@ -32,6 +32,33 @@ public final class MapValueUtil {
         if (v == null) return 0.0;
         if (v instanceof Number) return ((Number) v).doubleValue();
         try { return Double.parseDouble(v.toString()); } catch (NumberFormatException e) { return 0.0; }
+    }
+
+    /** 将 [{date, valueKey}] 列表转为 {dates:[], values:[]} 前端趋势格式 */
+    public static Map<String, Object> convertTrendData(List<Map<String, Object>> rows, String valueKey) {
+        List<String> dates = new ArrayList<>();
+        List<Integer> values = new ArrayList<>();
+        if (rows != null) {
+            for (Map<String, Object> row : rows) {
+                dates.add(DateParamUtil.shortDate((String) row.get("date")));
+                Number v = (Number) row.get(valueKey);
+                values.add(v != null ? v.intValue() : 0);
+            }
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("dates", dates);
+        result.put("values", values);
+        return result;
+    }
+
+    /** 构建分页结果 {list, total, page, size} */
+    public static Map<String, Object> buildPageResult(List<?> list, int total, int page, int size) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list != null ? list : Collections.emptyList());
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        return result;
     }
 
     public static Long toLong(Object value) {

@@ -1,6 +1,7 @@
 package com.xzkj.health.service.impl;
 
 import com.xzkj.health.common.DateParamUtil;
+import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.PressureMapper;
 import com.xzkj.health.service.PressureService;
 import lombok.extern.slf4j.Slf4j;
@@ -30,18 +31,7 @@ public class PressureServiceImpl implements PressureService {
     public Map<String, Object> getTrend(int days) {
         try {
             List<Map<String, Object>> rows = pressureMapper.getTrend(days);
-            List<String> dates = new ArrayList<>();
-            List<Integer> values = new ArrayList<>();
-            for (Map<String, Object> row : rows) {
-                String date = (String) row.get("date");
-                dates.add(DateParamUtil.shortDate(date));
-                Number v = (Number) row.get("avgPressure");
-                values.add(v != null ? v.intValue() : 0);
-            }
-            Map<String, Object> result = new HashMap<>();
-            result.put("dates", dates);
-            result.put("values", values);
-            return result;
+            return MapValueUtil.convertTrendData(rows, "avgPressure");
         } catch (Exception e) {
             log.error("获取压力趋势失败", e);
             throw new RuntimeException("获取压力趋势失败: " + e.getMessage());
@@ -96,12 +86,7 @@ public class PressureServiceImpl implements PressureService {
             int offset = (page - 1) * size;
             List<Map<String, Object>> list = pressureMapper.getAbnormalRecords(offset, size);
             int total = pressureMapper.countAbnormalRecords();
-            Map<String, Object> result = new HashMap<>();
-            result.put("list", list);
-            result.put("total", total);
-            result.put("page", page);
-            result.put("size", size);
-            return result;
+            return MapValueUtil.buildPageResult(list, total, page, size);
         } catch (Exception e) {
             log.error("获取异常压力记录失败", e);
             throw new RuntimeException("获取异常压力记录失败: " + e.getMessage());

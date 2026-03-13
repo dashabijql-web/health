@@ -1,6 +1,7 @@
 package com.xzkj.health.service.impl;
 
 import com.xzkj.health.common.DateParamUtil;
+import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.HeartRateMapper;
 import com.xzkj.health.service.HeartRateService;
 import lombok.extern.slf4j.Slf4j;
@@ -70,26 +71,8 @@ public class HeartRateServiceImpl implements HeartRateService {
     @Override
     public Map<String, Object> getHeartRateTrend(int days) {
         try {
-            List<Map<String, Object>> trendList = heartRateMapper.getHeartRateTrend(days);
-
-            // 转换数据格式为前端需要的格式
-            List<String> dates = new ArrayList<>();
-            List<Integer> values = new ArrayList<>();
-
-            for (Map<String, Object> item : trendList) {
-                String date = (String) item.get("date");
-                dates.add(DateParamUtil.shortDate(date));
-
-                Number avg = (Number) item.get("avgHeartRate");
-                values.add(avg != null ? avg.intValue() : 0);
-            }
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("dates", dates);
-            result.put("values", values);
-
-            log.info("获取心率趋势成功，天数: {}, 数据点: {}", days, dates.size());
-            return result;
+            List<Map<String, Object>> rows = heartRateMapper.getHeartRateTrend(days);
+            return MapValueUtil.convertTrendData(rows, "avgHeartRate");
         } catch (Exception e) {
             log.error("获取心率趋势失败", e);
             throw new RuntimeException("获取心率趋势失败: " + e.getMessage());
@@ -124,21 +107,9 @@ public class HeartRateServiceImpl implements HeartRateService {
     public Map<String, Object> getAbnormalRecords(int page, int size) {
         try {
             int offset = (page - 1) * size;
-
-            // 获取异常记录
             List<Map<String, Object>> list = heartRateMapper.getAbnormalRecords(offset, size);
-
-            // 获取总数
             int total = heartRateMapper.countAbnormalRecords();
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("list", list);
-            result.put("total", total);
-            result.put("page", page);
-            result.put("size", size);
-
-            log.info("获取异常心率记录成功，页码: {}, 每页: {}, 总数: {}", page, size, total);
-            return result;
+            return MapValueUtil.buildPageResult(list, total, page, size);
         } catch (Exception e) {
             log.error("获取异常心率记录失败", e);
             throw new RuntimeException("获取异常心率记录失败: " + e.getMessage());

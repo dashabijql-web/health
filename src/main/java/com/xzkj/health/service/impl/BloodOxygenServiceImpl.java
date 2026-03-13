@@ -1,6 +1,7 @@
 package com.xzkj.health.service.impl;
 
 import com.xzkj.health.common.DateParamUtil;
+import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.BloodOxygenMapper;
 import com.xzkj.health.service.BloodOxygenService;
 import lombok.extern.slf4j.Slf4j;
@@ -41,27 +42,8 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
 
     @Override
     public Map<String, Object> getBloodOxygenTrend(Integer days) {
-        List<Map<String, Object>> trendData = bloodOxygenMapper.getBloodOxygenTrend(days);
-
-        Map<String, Object> result = new HashMap<>();
-        List<String> dates = new ArrayList<>();
-        List<Integer> values = new ArrayList<>();
-
-        if (trendData != null && !trendData.isEmpty()) {
-            for (Map<String, Object> item : trendData) {
-                String date = (String) item.get("date");
-                dates.add(DateParamUtil.shortDate(date));
-
-                Object avg = item.get("avgBloodOxygen");
-                values.add(avg != null ? ((Number) avg).intValue() : 0);
-            }
-        }
-
-        result.put("dates", dates);
-        result.put("values", values);
-
-        log.info("获取血氧趋势数据，天数: {}, 数据点: {}", days, dates.size());
-        return result;
+        List<Map<String, Object>> rows = bloodOxygenMapper.getBloodOxygenTrend(days);
+        return MapValueUtil.convertTrendData(rows, "avgBloodOxygen");
     }
 
     @Override
@@ -124,15 +106,7 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
 
         List<Map<String, Object>> records = bloodOxygenMapper.getAbnormalRecords(offset, size);
         Integer total = bloodOxygenMapper.getAbnormalCount();
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("list", records != null ? records : new ArrayList<>());
-        result.put("total", total != null ? total : 0);
-        result.put("page", page);
-        result.put("size", size);
-
-        log.info("获取异常血氧记录，页码: {}, 每页: {}, 总数: {}", page, size, total);
-        return result;
+        return MapValueUtil.buildPageResult(records, total != null ? total : 0, page, size);
     }
 
     @Override
