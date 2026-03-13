@@ -144,11 +144,9 @@ import { Timer, OfficeBuilding, CircleCheck, WarnTriangleFilled, TrendCharts, Vi
 import { ElMessage } from 'element-plus'
 import { getDeptHealthSummary } from '@/api/statistics'
 import * as echarts from 'echarts'
+import { useClock } from '@/composables/useClock'
 
-const currentTime = ref('')
-const updateTime = () => { currentTime.value = new Date().toLocaleString('zh-CN') }
-updateTime()
-const timer = setInterval(updateTime, 1000)
+const { currentTime } = useClock()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -296,7 +294,7 @@ const onTableRowClick = (row) => {
 const handleResize = () => { radarChart?.resize(); detailChart?.resize() }
 
 onMounted(() => { fetchData(); window.addEventListener('resize', handleResize) })
-onUnmounted(() => { clearInterval(timer); window.removeEventListener('resize', handleResize); radarChart?.dispose(); detailChart?.dispose() })
+onUnmounted(() => { window.removeEventListener('resize', handleResize); radarChart?.dispose(); detailChart?.dispose() })
 </script>
 
 <style scoped lang="scss">

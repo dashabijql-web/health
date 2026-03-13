@@ -870,14 +870,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-// ── 颜色变量 ──
-$bg:     #080d1e;
-$panel:  rgba(8, 16, 42, 0.88);
-$border: rgba(0, 212, 255, 0.14);
-$accent: #00d4ff;
-$text:   #a8c5e6;
-$dim:    #6a88ab;
-$white:  #e8f4ff;
+@import '@/styles/hm-vars';
 
 // ── Root：自适应视口高度 ──
 .hr-root {

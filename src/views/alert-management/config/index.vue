@@ -104,12 +104,9 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Timer, Edit, Setting } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAlertConfigList, updateAlertConfig, toggleAlertConfig } from '@/api/alert-config'
+import { useClock } from '@/composables/useClock'
 
-const currentTime = ref('')
-const updateTime = () => { currentTime.value = new Date().toLocaleString('zh-CN') }
-updateTime()
-const clockTimer = setInterval(updateTime, 1000)
-onBeforeUnmount(() => clearInterval(clockTimer))
+const { currentTime } = useClock()
 
 const riskTabs = [
   { label: '默认（无工种）', value: null },

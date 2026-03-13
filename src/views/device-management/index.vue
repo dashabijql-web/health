@@ -351,15 +351,9 @@ import {
   unbindDevice,
   sendWatchMessage
 } from '@/api/device'
+import { useClock } from '@/composables/useClock'
 
-// 当前时间
-const currentTime = ref('')
-const updateTime = () => {
-  currentTime.value = new Date().toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
-  })
-}
+const { currentTime } = useClock()
 
 // 设备列表数据
 const deviceList = ref([])
@@ -718,17 +712,13 @@ const handleCurrentChange = (page) => {
 }
 
 // 组件挂载时刷新设备列表和更新时间
-let timer = null
 let deviceTimer = null
 onMounted(() => {
-  updateTime()
-  timer = setInterval(updateTime, 1000)
   refreshDevices()
   deviceTimer = setInterval(refreshDevices, 30000)
 })
 
 onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
   if (deviceTimer) clearInterval(deviceTimer)
   clearTimeout(searchTimer)
 })

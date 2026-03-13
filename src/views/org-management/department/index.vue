@@ -182,18 +182,9 @@ import { Timer, Search, Plus, Edit, Delete, OfficeBuilding, CircleCheck, CircleC
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getDepartmentList, createDepartment, updateDepartment, deleteDepartment } from '@/api/department'
 import { getEmployeeList } from '@/api/employee'
+import { useClock } from '@/composables/useClock'
 
-// ── Time ──
-const currentTime = ref('')
-const updateTime = () => {
-  currentTime.value = new Date().toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
-  })
-}
-updateTime()
-const timer = setInterval(updateTime, 1000)
-onBeforeUnmount(() => clearInterval(timer))
+const { currentTime } = useClock()
 
 // ── Search ──
 const keyword = ref('')

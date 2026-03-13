@@ -1045,8 +1045,6 @@ export default {
               prevCount: d.prevCount || d.previousCount || 0
             }))
             .filter(d => d.name && d.name !== '')
-
-          }
         } else {
           this.deptDataList = []
         }

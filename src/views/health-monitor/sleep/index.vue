@@ -729,14 +729,10 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-$bg:     #080d1e;
-$panel:  rgba(8,16,42,0.88);
 $border: rgba(167,139,250,0.14);
 $accent: #a78bfa;
+@import '@/styles/hm-vars';
 $cyan:   #00d4ff;
-$text:   #a8c5e6;
-$dim:    #6a88ab;
-$white:  #e8f4ff;
 
 /* ── Root ── */
 .sl-root {

@@ -289,7 +289,6 @@
 </template>
 
 <script>
-import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
 import {

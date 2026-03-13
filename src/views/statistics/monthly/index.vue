@@ -116,13 +116,11 @@ import { ElMessage } from 'element-plus'
 import { getMonthlySummary, getDailyCounts, getWarningTypes } from '@/api/statistics'
 import { getDepartmentList } from '@/api/department'
 import * as echarts from 'echarts'
+import { useClock } from '@/composables/useClock'
 
 const router = useRouter()
 
-const currentTime = ref('')
-const updateTime = () => { currentTime.value = new Date().toLocaleString('zh-CN') }
-updateTime()
-const tmr = setInterval(updateTime, 1000)
+const { currentTime } = useClock()
 
 const now = new Date()
 const defaultMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
@@ -297,7 +295,7 @@ watch(filteredData, computeStats)
 watch(filterDept, () => { page.cur = 1 })
 const onResize = () => { lineChart?.resize(); pieChart?.resize() }
 onMounted(async () => { await fetchDepts(); await fetchData(); window.addEventListener('resize', onResize) })
-onUnmounted(() => { clearInterval(tmr); window.removeEventListener('resize', onResize); lineChart?.dispose(); pieChart?.dispose() })
+onUnmounted(() => { window.removeEventListener('resize', onResize); lineChart?.dispose(); pieChart?.dispose() })
 </script>
 
 <style scoped lang="scss">

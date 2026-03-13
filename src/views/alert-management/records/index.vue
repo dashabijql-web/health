@@ -208,13 +208,10 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Timer, Search, Refresh, Edit, Bell, WarningFilled, WarnTriangleFilled, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { formatDate } from '@/utils'
+import { useClock } from '@/composables/useClock'
 import { getRiskWarningList, getRiskWarningOverview, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
 
-const currentTime = ref('')
-const updateTime = () => { currentTime.value = new Date().toLocaleString('zh-CN') }
-updateTime()
-const tmr = setInterval(updateTime, 1000)
-onBeforeUnmount(() => clearInterval(tmr))
+const { currentTime } = useClock()
 
 const overview = reactive({ todayTotal: 0, pending: 0, critical: 0, handled: 0 })
 const handleRate = computed(() => { const t = overview.todayTotal||0; return t===0?0:((overview.handled/t)*100).toFixed(1) })

@@ -259,22 +259,12 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getEmployeeListDetail, getEmployeeStats, createEmployee, updateEmployee, deleteEmployee } from '@/api/employee'
+import { useClock } from '@/composables/useClock'
 import { getDepartmentList } from '@/api/department'
 import { getJobTypeList } from '@/api/job-type'
 
 const router = useRouter()
-
-// ── Time ──
-const currentTime = ref('')
-const updateTime = () => {
-  currentTime.value = new Date().toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
-  })
-}
-updateTime()
-const clockTimer = setInterval(updateTime, 1000)
-onBeforeUnmount(() => clearInterval(clockTimer))
+const { currentTime } = useClock()
 
 // ── Stats ──
 const stats = reactive({ total: 0, active: 0, online: 0, maleRatio: 0 })
