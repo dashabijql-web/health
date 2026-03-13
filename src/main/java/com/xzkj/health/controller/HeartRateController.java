@@ -78,4 +78,11 @@ public class HeartRateController {
         endDate = DateParamUtil.today(endDate);
         return Result.ok("获取成功", heartRateService.getHourlyStats(startDate, endDate));
     }
+
+    /** 实时心率列表（近2小时） */
+    @GetMapping("/realtime")
+    public Result<List<Map<String, Object>>> getRealtime(
+            @RequestParam(defaultValue = "1000") Integer limit) {
+        return Result.ok("获取成功", heartRateService.getRealtime(limit));
+    }
 }

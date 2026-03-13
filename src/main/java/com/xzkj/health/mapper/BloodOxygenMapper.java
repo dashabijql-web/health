@@ -202,4 +202,18 @@ public interface BloodOxygenMapper {
             "GROUP BY DATEPART(HOUR, record_time) " +
             "ORDER BY hour")
     List<Map<String, Object>> getHourlyStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    /** 实时血氧列表（近2小时最新记录，按时间倒序） */
+    @Select("SELECT TOP (#{limit}) " +
+            "ISNULL(e.emp_name, hr.user_code) AS userName, " +
+            "ISNULL(d.dept_name, '') AS deptName, " +
+            "hr.blood_oxygen AS bloodOxygen, " +
+            "hr.record_time AS recordTime " +
+            "FROM v_health_record hr " +
+            "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
+            "LEFT JOIN department d ON e.dept_id = d.id " +
+            "WHERE hr.blood_oxygen IS NOT NULL AND hr.blood_oxygen > 0 " +
+            "AND hr.record_time >= DATEADD(HOUR, -2, GETDATE()) " +
+            "ORDER BY hr.record_time DESC")
+    List<Map<String, Object>> getRealtime(@Param("limit") int limit);
 }

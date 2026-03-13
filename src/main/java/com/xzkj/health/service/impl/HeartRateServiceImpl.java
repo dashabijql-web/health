@@ -52,4 +52,9 @@ public class HeartRateServiceImpl implements HeartRateService {
     public List<Map<String, Object>> getHourlyStats(String startDate, String endDate) {
         return MapValueUtil.orEmpty(heartRateMapper.getHourlyStats(startDate, endDate));
     }
+
+    @Override
+    public List<Map<String, Object>> getRealtime(int limit) {
+        return MapValueUtil.orEmpty(heartRateMapper.getRealtime(limit));
+    }
 }

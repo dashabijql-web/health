@@ -21,4 +21,6 @@ public interface HeartRateService {
     List<Map<String, Object>> getDepartmentStats(String startDate, String endDate);
 
     List<Map<String, Object>> getHourlyStats(String startDate, String endDate);
+
+    List<Map<String, Object>> getRealtime(int limit);
 }

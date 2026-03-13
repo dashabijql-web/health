@@ -46,4 +46,6 @@ public interface BloodOxygenService {
      * @return List<{hour, avgBloodOxygen}>
      */
     List<Map<String, Object>> getHourlyStats(String startDate, String endDate);
+
+    List<Map<String, Object>> getRealtime(int limit);
 }

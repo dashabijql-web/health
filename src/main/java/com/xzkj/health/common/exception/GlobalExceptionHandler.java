@@ -146,6 +146,30 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理静态资源404异常（NoResourceFoundException）
+     *
+     * 触发场景：
+     *   前端使用 Vue Router hash 模式，但浏览器刷新时可能会直接请求路径（如 /heart-rate/realtime）
+     *   Spring Boot 找不到对应的静态资源，抛出 NoResourceFoundException
+     *
+     * 处理策略：
+     *   - 静态资源404是正常现象，不应该触发"服务器内部错误"提示
+     *   - 返回 null 或空 Result，避免前端显示错误弹窗
+     *   - 日志级别为 DEBUG（不影响正常业务日志）
+     *
+     * @param e Spring 6.x 新增的资源未找到异常
+     * @return null（不触发前端错误提示）
+     */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public Result<String> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException e) {
+        // DEBUG 级别：这不是真正的错误，只是前端路由导致的正常404
+        log.debug("静态资源未找到（前端路由404）: {}", e.getResourcePath());
+        // 返回 null 避免触发前端错误提示
+        // 如果需要返回正常的404响应，可以用 Result.error(404, "页面不存在")
+        return null;
+    }
+
+    /**
      * 兜底处理：捕获所有未被上面方法匹配的异常
      *
      * 触发场景：

@@ -106,4 +106,9 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
     public List<Map<String, Object>> getHourlyStats(String startDate, String endDate) {
         return MapValueUtil.orEmpty(bloodOxygenMapper.getHourlyStats(startDate, endDate));
     }
+
+    @Override
+    public List<Map<String, Object>> getRealtime(int limit) {
+        return MapValueUtil.orEmpty(bloodOxygenMapper.getRealtime(limit));
+    }
 }

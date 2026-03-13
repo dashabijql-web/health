@@ -79,4 +79,11 @@ public class BloodOxygenController {
         endDate = DateParamUtil.today(endDate);
         return Result.ok("获取成功", bloodOxygenService.getHourlyStats(startDate, endDate));
     }
+
+    /** 实时血氧列表（近2小时） */
+    @GetMapping("/realtime")
+    public Result<List<Map<String, Object>>> getRealtime(
+            @RequestParam(defaultValue = "1000") Integer limit) {
+        return Result.ok("获取成功", bloodOxygenService.getRealtime(limit));
+    }
 }
