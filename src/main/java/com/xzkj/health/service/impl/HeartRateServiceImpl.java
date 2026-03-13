@@ -44,21 +44,8 @@ public class HeartRateServiceImpl implements HeartRateService {
     }
 
     @Override
-    public List<Map<String, Object>> getRealtimeData(int limit) {
-        return heartRateMapper.getRealtimeData(limit);
-    }
-
-    @Override
     public List<Map<String, Object>> getDepartmentStats(String startDate, String endDate) {
         return heartRateMapper.getDepartmentStats(startDate, endDate);
-    }
-
-    @Override
-    public Map<String, Object> getAbnormalRecords(int page, int size) {
-        int offset = (page - 1) * size;
-        return MapValueUtil.buildPageResult(
-                heartRateMapper.getAbnormalRecords(offset, size),
-                heartRateMapper.countAbnormalRecords(), page, size);
     }
 
     @Override

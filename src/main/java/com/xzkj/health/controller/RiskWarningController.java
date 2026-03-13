@@ -4,7 +4,6 @@ import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.common.exception.BusinessException;
 import com.xzkj.health.service.RiskWarningService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,7 +12,6 @@ import java.util.*;
 /**
  * 风险预警控制器
  */
-@Slf4j
 @RestController
 @RequestMapping("/risk-warning")
 public class RiskWarningController {

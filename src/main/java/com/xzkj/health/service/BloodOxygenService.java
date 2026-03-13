@@ -25,13 +25,6 @@ public interface BloodOxygenService {
     List<Map<String, Object>> getBloodOxygenDistribution(String startDate, String endDate);
 
     /**
-     * 获取异常血氧记录
-     * @param page 页码
-     * @param size 每页条数
-     */
-    Map<String, Object> getAbnormalRecords(Integer page, Integer size);
-
-    /**
      * 获取TOP异常人员统计
      * @param limit 返回数量
      */
@@ -46,12 +39,6 @@ public interface BloodOxygenService {
      * 获取年龄段血氧分布
      */
     List<Map<String, Object>> getAgeDistribution();
-
-    /**
-     * 获取实时血氧数据
-     * @param limit 返回数量
-     */
-    List<Map<String, Object>> getRealtimeData(Integer limit);
 
     /**
      * 获取指定日期每小时平均血氧

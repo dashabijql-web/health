@@ -88,15 +88,6 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
     }
 
     @Override
-    public Map<String, Object> getAbnormalRecords(Integer page, Integer size) {
-        int offset = (page - 1) * size;
-
-        List<Map<String, Object>> records = bloodOxygenMapper.getAbnormalRecords(offset, size);
-        Integer total = bloodOxygenMapper.getAbnormalCount();
-        return MapValueUtil.buildPageResult(records, total != null ? total : 0, page, size);
-    }
-
-    @Override
     public List<Map<String, Object>> getTopUsers(Integer limit, String startDate, String endDate) {
         return MapValueUtil.orEmpty(bloodOxygenMapper.getTopUsers(limit, startDate, endDate));
     }
@@ -109,11 +100,6 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
     @Override
     public List<Map<String, Object>> getAgeDistribution() {
         return MapValueUtil.orEmpty(bloodOxygenMapper.getAgeDistribution());
-    }
-
-    @Override
-    public List<Map<String, Object>> getRealtimeData(Integer limit) {
-        return MapValueUtil.orEmpty(bloodOxygenMapper.getRealtimeData(limit));
     }
 
     @Override

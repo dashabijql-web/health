@@ -18,11 +18,7 @@ public interface HeartRateService {
 
     Map<String, Object> getHeartRateTrend(int days);
 
-    List<Map<String, Object>> getRealtimeData(int limit);
-
     List<Map<String, Object>> getDepartmentStats(String startDate, String endDate);
-
-    Map<String, Object> getAbnormalRecords(int page, int size);
 
     List<Map<String, Object>> getHourlyStats(String startDate, String endDate);
 }

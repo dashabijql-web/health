@@ -3,7 +3,6 @@ package com.xzkj.health.controller;
 import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.service.BloodOxygenService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,7 +12,6 @@ import java.util.Map;
 /**
  * 血氧监测控制器
  */
-@Slf4j
 @RestController
 @RequestMapping("/blood-oxygen")
 public class BloodOxygenController {
