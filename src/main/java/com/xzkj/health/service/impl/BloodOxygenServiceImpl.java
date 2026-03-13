@@ -36,7 +36,6 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
         stats.putIfAbsent("totalCount", 0);
         stats.putIfAbsent("normalRate", 0);
 
-        log.info("获取血氧统计概览: {}", stats);
         return stats;
     }
 
@@ -96,7 +95,6 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
             }
         }
 
-        log.info("获取血氧分布数据，总数: {}, 偏低: {}, 正常: {}, 偏高: {}", total, lowCount, normalCount, highCount);
         return result;
     }
 
@@ -113,8 +111,7 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
     public List<Map<String, Object>> getTopUsers(Integer limit, String startDate, String endDate) {
         try {
             List<Map<String, Object>> topUsers = bloodOxygenMapper.getTopUsers(limit, startDate, endDate);
-            log.info("获取TOP{}血氧异常人员成功，数量: {}", limit, topUsers != null ? topUsers.size() : 0);
-            return topUsers != null ? topUsers : new ArrayList<>();
+            return topUsers != null ? topUsers : Collections.emptyList();
         } catch (Exception e) {
             log.error("获取TOP用户失败", e);
             throw new RuntimeException("获取TOP用户失败: " + e.getMessage());
@@ -125,8 +122,7 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
     public List<Map<String, Object>> getDepartmentStats(String startDate, String endDate) {
         try {
             List<Map<String, Object>> deptStats = bloodOxygenMapper.getDepartmentStats(startDate, endDate);
-            log.info("获取部门统计成功，部门数: {}", deptStats != null ? deptStats.size() : 0);
-            return deptStats != null ? deptStats : new ArrayList<>();
+            return deptStats != null ? deptStats : Collections.emptyList();
         } catch (Exception e) {
             log.error("获取部门统计失败", e);
             throw new RuntimeException("获取部门统计失败: " + e.getMessage());
@@ -137,8 +133,7 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
     public List<Map<String, Object>> getAgeDistribution() {
         try {
             List<Map<String, Object>> ageData = bloodOxygenMapper.getAgeDistribution();
-            log.info("获取年龄段分布成功，分组数: {}", ageData != null ? ageData.size() : 0);
-            return ageData != null ? ageData : new ArrayList<>();
+            return ageData != null ? ageData : Collections.emptyList();
         } catch (Exception e) {
             log.error("获取年龄段分布失败", e);
             throw new RuntimeException("获取年龄段分布失败: " + e.getMessage());
@@ -149,8 +144,7 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
     public List<Map<String, Object>> getRealtimeData(Integer limit) {
         try {
             List<Map<String, Object>> realtimeData = bloodOxygenMapper.getRealtimeData(limit);
-            log.info("获取实时血氧数据成功，数量: {}", realtimeData != null ? realtimeData.size() : 0);
-            return realtimeData != null ? realtimeData : new ArrayList<>();
+            return realtimeData != null ? realtimeData : Collections.emptyList();
         } catch (Exception e) {
             log.error("获取实时数据失败", e);
             throw new RuntimeException("获取实时数据失败: " + e.getMessage());
@@ -161,8 +155,7 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
     public List<Map<String, Object>> getHourlyStats(String startDate, String endDate) {
         try {
             List<Map<String, Object>> data = bloodOxygenMapper.getHourlyStats(startDate, endDate);
-            log.info("获取血氧逐小时数据成功，{}~{}, count={}", startDate, endDate, data != null ? data.size() : 0);
-            return data != null ? data : new ArrayList<>();
+            return data != null ? data : Collections.emptyList();
         } catch (Exception e) {
             log.error("获取血氧逐小时数据失败", e);
             throw new RuntimeException("获取血氧逐小时数据失败: " + e.getMessage());

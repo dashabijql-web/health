@@ -23,9 +23,7 @@ public class HeartRateServiceImpl implements HeartRateService {
     @Override
     public Map<String, Object> getHeartRateOverview(String startDate, String endDate) {
         try {
-            Map<String, Object> stats = heartRateMapper.getHeartRateOverview(startDate, endDate);
-            log.info("获取心率概览成功: {}", stats);
-            return stats;
+            return heartRateMapper.getHeartRateOverview(startDate, endDate);
         } catch (Exception e) {
             log.error("获取心率概览失败", e);
             throw new RuntimeException("获取心率概览失败: " + e.getMessage());
@@ -35,9 +33,7 @@ public class HeartRateServiceImpl implements HeartRateService {
     @Override
     public List<Map<String, Object>> getTopUsers(int limit, String startDate, String endDate) {
         try {
-            List<Map<String, Object>> topUsers = heartRateMapper.getTopUsers(limit, startDate, endDate);
-            log.info("获取TOP{}用户成功，数量: {}", limit, topUsers.size());
-            return topUsers;
+            return heartRateMapper.getTopUsers(limit, startDate, endDate);
         } catch (Exception e) {
             log.error("获取TOP用户失败", e);
             throw new RuntimeException("获取TOP用户失败: " + e.getMessage());
@@ -47,9 +43,7 @@ public class HeartRateServiceImpl implements HeartRateService {
     @Override
     public List<Map<String, Object>> getAgeDistribution() {
         try {
-            List<Map<String, Object>> distribution = heartRateMapper.getAgeDistribution();
-            log.info("获取年龄段统计成功，分组数: {}", distribution.size());
-            return distribution;
+            return heartRateMapper.getAgeDistribution();
         } catch (Exception e) {
             log.error("获取年龄段统计失败", e);
             throw new RuntimeException("获取年龄段统计失败: " + e.getMessage());
@@ -59,9 +53,7 @@ public class HeartRateServiceImpl implements HeartRateService {
     @Override
     public List<Map<String, Object>> getHeartRateDistribution(String startDate, String endDate) {
         try {
-            List<Map<String, Object>> distribution = heartRateMapper.getHeartRateDistributionNew(startDate, endDate);
-            log.info("获取心率分布成功，分类数: {}", distribution.size());
-            return distribution;
+            return heartRateMapper.getHeartRateDistributionNew(startDate, endDate);
         } catch (Exception e) {
             log.error("获取心率分布失败", e);
             throw new RuntimeException("获取心率分布失败: " + e.getMessage());
@@ -82,9 +74,7 @@ public class HeartRateServiceImpl implements HeartRateService {
     @Override
     public List<Map<String, Object>> getRealtimeData(int limit) {
         try {
-            List<Map<String, Object>> realtimeList = heartRateMapper.getRealtimeData(limit);
-            log.info("获取实时数据成功，数量: {}", realtimeList.size());
-            return realtimeList;
+            return heartRateMapper.getRealtimeData(limit);
         } catch (Exception e) {
             log.error("获取实时数据失败", e);
             throw new RuntimeException("获取实时数据失败: " + e.getMessage());
@@ -94,9 +84,7 @@ public class HeartRateServiceImpl implements HeartRateService {
     @Override
     public List<Map<String, Object>> getDepartmentStats(String startDate, String endDate) {
         try {
-            List<Map<String, Object>> deptStats = heartRateMapper.getDepartmentStats(startDate, endDate);
-            log.info("获取部门统计成功，部门数: {}", deptStats.size());
-            return deptStats;
+            return heartRateMapper.getDepartmentStats(startDate, endDate);
         } catch (Exception e) {
             log.error("获取部门统计失败", e);
             throw new RuntimeException("获取部门统计失败: " + e.getMessage());
@@ -120,8 +108,7 @@ public class HeartRateServiceImpl implements HeartRateService {
     public List<Map<String, Object>> getHourlyStats(String startDate, String endDate) {
         try {
             List<Map<String, Object>> data = heartRateMapper.getHourlyStats(startDate, endDate);
-            log.info("获取心率逐小时数据成功，{}~{}, count={}", startDate, endDate, data != null ? data.size() : 0);
-            return data != null ? data : new ArrayList<>();
+            return data != null ? data : Collections.emptyList();
         } catch (Exception e) {
             log.error("获取心率逐小时数据失败", e);
             throw new RuntimeException("获取心率逐小时数据失败: " + e.getMessage());
