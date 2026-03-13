@@ -359,19 +359,7 @@ export default {
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.count)) : 1
     },
-    pagedList() {
-      let list = this.realtimeList
-      if (this.filterDept) {
-        list = list.filter(x => (x.deptName || x.dept_name) === this.filterDept)
-      }
-      const s = (this.currentPage - 1) * this.pageSize
-      return list.slice(s, s + this.pageSize)
-    },
-    totalPages() {
-      let list = this.realtimeList
-      if (this.filterDept) list = list.filter(x => (x.deptName || x.dept_name) === this.filterDept)
-      return Math.max(1, Math.ceil(list.length / this.pageSize))
-    },
+    /* pagedList / totalPages from chartPageMixin */
     boZones() {
       const list = this.realtimeList
       const total = list.length || 1

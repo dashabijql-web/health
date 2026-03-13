@@ -32,6 +32,20 @@ export default {
       if (this.activePeriod === 'day') return { startDate: today, endDate: today }
       if (this.activePeriod === 'week') return { startDate: dayjs().subtract(6, 'day').format('YYYY-MM-DD'), endDate: today }
       return { startDate: dayjs().subtract(29, 'day').format('YYYY-MM-DD'), endDate: today }
+    },
+    /** 经过部门筛选的实时列表（filterDept 为空时返回全量） */
+    filteredRealtimeList() {
+      const list = this.realtimeList || []
+      return this.filterDept
+        ? list.filter(x => (x.deptName || x.dept_name) === this.filterDept)
+        : list
+    },
+    pagedList() {
+      const s = (this.currentPage - 1) * this.pageSize
+      return this.filteredRealtimeList.slice(s, s + this.pageSize)
+    },
+    totalPages() {
+      return Math.max(1, Math.ceil(this.filteredRealtimeList.length / this.pageSize))
     }
   },
   mounted() {

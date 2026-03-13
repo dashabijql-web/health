@@ -314,13 +314,7 @@ export default {
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.avgPressure || 0)) : 1
     },
-    pagedList() {
-      const s = (this.currentPage - 1) * this.pageSize
-      return this.realtimeList.slice(s, s + this.pageSize)
-    },
-    totalPages() {
-      return Math.max(1, Math.ceil(this.realtimeList.length / this.pageSize))
-    },
+    /* pagedList / totalPages from chartPageMixin */
     psAnomalyList() {
       return this.realtimeList.filter(x => x.pressure >= 70)
     },
