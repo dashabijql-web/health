@@ -15,10 +15,6 @@ export function getPressureTopUsers(limit = 5, startDate, endDate) {
 export function getPressureDeptStats(startDate, endDate) {
   return request({ url: '/pressure/department-stats', method: 'get', params: { startDate, endDate } })
 }
-export function getPressureAbnormal(page = 1, size = 10) {
-  return request({ url: '/pressure/abnormal', method: 'get', params: { page, size } })
-}
-
 export function getPressureRealtime(limit = 1000) {
   return request({ url: '/pressure/realtime', method: 'get', params: { limit } })
 }

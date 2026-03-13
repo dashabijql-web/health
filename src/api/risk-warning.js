@@ -77,16 +77,6 @@ export function getDeptWarningStats(startDate, endDate) {
 }
 
 /**
- * 获取预警类型分布
- */
-export function getRiskWarningTypeDistribution() {
-  return request({
-    url: '/risk-warning/type-distribution',
-    method: 'get'
-  })
-}
-
-/**
  * 处理预警
  * @param {Number} id 预警ID
  * @param {Object} data 处理数据

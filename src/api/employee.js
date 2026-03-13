@@ -8,10 +8,6 @@ export function getEmployeeListDetail() {
   return request({ url: '/employee/list-detail', method: 'get' })
 }
 
-export function getEmployeeDetail(id) {
-  return request({ url: `/employee/detail/${id}`, method: 'get' })
-}
-
 export function getEmployeeStats() {
   return request({ url: '/employee/stats', method: 'get' })
 }

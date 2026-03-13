@@ -4,10 +4,6 @@ export function getDepartmentList(params) {
   return request({ url: '/department/list', method: 'get', params })
 }
 
-export function getDepartmentTree() {
-  return request({ url: '/department/tree', method: 'get' })
-}
-
 export function createDepartment(data) {
   return request({ url: '/department/create', method: 'post', data })
 }

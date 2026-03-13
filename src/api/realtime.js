@@ -71,21 +71,6 @@ export function getUserRealtimeData(userCode) {
 }
 
 /**
- * 获取实时告警列表（未处理的告警）
- *
- * 后端接口：GET /health/realtime/alerts
- * 返回：近期未处理的告警记录列表
- *
- * 使用场景：实时监控页告警栏
- */
-export function getRealtimeAlerts() {
-  return request({
-    url: '/realtime/alerts',
-    method: 'get'
-  })
-}
-
-/**
  * 获取设备实时统计数据（手表设备状态汇总）
  *
  * 后端接口：GET /health/realtime/statistics

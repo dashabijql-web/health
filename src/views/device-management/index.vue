@@ -344,7 +344,6 @@ import request from '@/utils/request'
 import { formatDate } from '@/utils'
 import {
   getOnlineDevices,
-  getBufferDataCount,
   transferBufferData,
   deleteBufferData,
   bindDeviceToUser,

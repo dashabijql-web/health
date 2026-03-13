@@ -174,47 +174,6 @@ export function getHealthRecords(params) {
 }
 
 /**
- * 获取单条健康记录详情
- *
- * 后端接口：GET /health/records/{id}
- *
- * @param {number} id - 健康记录的主键 ID
- * @returns {Promise}
- */
-export function getHealthRecordDetail(id) {
-  return request({
-    url: `/api/health/record/${id}`,
-    method: 'get'
-  })
-}
-
-/**
- * 导出健康记录为文件（Excel/CSV）
- *
- * 后端接口：GET /health/records/export
- * 注意：responseType: 'blob' 表示响应体是二进制数据（文件）
- *
- * 使用方式（在组件中）：
- *   const response = await exportHealthRecords({ startTime: '2024-01-01' })
- *   const url = window.URL.createObjectURL(new Blob([response]))
- *   const link = document.createElement('a')
- *   link.href = url
- *   link.download = '健康记录.xlsx'
- *   link.click()
- *
- * @param {Object} params - 导出范围参数（同 getHealthRecords）
- * @returns {Promise<Blob>} 文件二进制数据
- */
-export function exportHealthRecords(params) {
-  return request({
-    url: '/api/health/record/export',
-    method: 'get',
-    params,
-    responseType: 'blob'  // 告诉 Axios 不要将响应解析为 JSON，而是保留原始字节
-  })
-}
-
-/**
  * 获取各部门健康数据量统计
  *
  * 后端接口：GET /dashboard/dept-stats

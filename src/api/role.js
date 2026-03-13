@@ -45,17 +45,6 @@ export function getRoleStats() {
 }
 
 /**
- * 获取用户的角色列表
- * @param {Number} userId 用户ID
- */
-export function getUserRoles(userId) {
-  return request({
-    url: `/role/user-roles/${userId}`,
-    method: 'get'
-  })
-}
-
-/**
  * 获取所有可用角色
  */
 export function getAvailableRoles() {
