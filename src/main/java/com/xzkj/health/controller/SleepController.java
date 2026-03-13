@@ -1,5 +1,6 @@
 package com.xzkj.health.controller;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.service.SleepService;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +30,7 @@ public class SleepController {
     @GetMapping("/trend")
     public Result<Map<String, Object>> getTrend(
             @RequestParam(defaultValue = "7") Integer days) {
-        days = Math.max(1, Math.min(days, 365));
+        days = DateParamUtil.clampDays(days);
         return Result.ok("获取成功", sleepService.getSleepTrend(days));
     }
 
@@ -44,7 +45,7 @@ public class SleepController {
     public Result<Map<String, Object>> getInsufficient(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        size = Math.min(size, 200);
+        size = DateParamUtil.clampSize(size);
         return Result.ok("获取成功", sleepService.getInsufficientRecords(page, size));
     }
 

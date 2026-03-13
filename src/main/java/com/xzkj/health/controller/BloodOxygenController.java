@@ -34,7 +34,7 @@ public class BloodOxygenController {
     @GetMapping("/trend")
     public Result<Map<String, Object>> getTrend(
             @RequestParam(defaultValue = "30") Integer days) {
-        days = Math.max(1, Math.min(days, 365));
+        days = DateParamUtil.clampDays(days);
         return Result.ok("获取成功", bloodOxygenService.getBloodOxygenTrend(days));
     }
 
@@ -52,7 +52,7 @@ public class BloodOxygenController {
     public Result<Map<String, Object>> getAbnormal(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        size = Math.min(size, 200);
+        size = DateParamUtil.clampSize(size);
         return Result.ok("获取成功", bloodOxygenService.getAbnormalRecords(page, size));
     }
 

@@ -1,5 +1,6 @@
 package com.xzkj.health.controller;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.service.RealtimeService;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +31,7 @@ public class RealtimeController {
     public Result<Map<String, Object>> getOnlineUsers(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10000") Integer size) {
-        size = Math.min(size, 10000);
+        size = DateParamUtil.clampSize(size, 10000);
         return Result.ok("获取成功", realtimeService.getOnlineUsers(page, size));
     }
 

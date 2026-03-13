@@ -1,5 +1,6 @@
 package com.xzkj.health.controller;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.service.DashboardService;
 import com.xzkj.health.service.RealtimeService;
@@ -88,7 +89,7 @@ public class DashboardController {
     @GetMapping("/daily-trend")
     public Result<List<Map<String, Object>>> getDailyTrend(
             @RequestParam(defaultValue = "30") int days) {
-        days = Math.max(1, Math.min(days, 365));
+        days = DateParamUtil.clampDays(days);
         return Result.ok("获取成功", dashboardService.getDailyAnomalyRates(days));
     }
 
@@ -114,7 +115,7 @@ public class DashboardController {
     @GetMapping("/health-trend")
     public Result<Map<String, Object>> getHealthTrend(
             @RequestParam(defaultValue = "7") int days) {
-        days = Math.max(1, Math.min(days, 365));
+        days = DateParamUtil.clampDays(days);
         return Result.ok("获取成功", dashboardService.getDailyHealthTrend(days));
     }
 

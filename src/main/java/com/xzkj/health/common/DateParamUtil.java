@@ -21,6 +21,15 @@ public final class DateParamUtil {
         return date == null ? LocalDate.now().toString() : date;
     }
 
+    /** 限制分页大小，上限200 */
+    public static int clampSize(int size) { return Math.min(size, 200); }
+
+    /** 限制分页大小，自定义上限 */
+    public static int clampSize(int size, int max) { return Math.min(size, max); }
+
+    /** 限制天数范围 1~365 */
+    public static int clampDays(int days) { return Math.max(1, Math.min(days, 365)); }
+
     /** "2026-03-13" → "3.13" 短日期格式（用于趋势图 X 轴标签） */
     public static String shortDate(String fullDate) {
         if (fullDate == null) return "";

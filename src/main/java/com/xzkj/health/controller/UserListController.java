@@ -1,5 +1,6 @@
 package com.xzkj.health.controller;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.service.UserListService;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,7 @@ public class UserListController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
         try {
-            size = Math.min(size, 200);
+            size = DateParamUtil.clampSize(size);
             Map<String, Object> data = userListService.getUserList(keyword, status, deptId, page, size);
             return Result.ok("获取成功", data);
         } catch (Exception e) {

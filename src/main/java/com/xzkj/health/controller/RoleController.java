@@ -1,5 +1,6 @@
 package com.xzkj.health.controller;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.service.RoleService;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,7 @@ public class RoleController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
         try {
-            size = Math.min(size, 200);
+            size = DateParamUtil.clampSize(size);
             return Result.ok("获取成功", roleService.getRoleList(keyword, status, page, size));
         } catch (Exception e) {
             log.error("获取角色列表失败", e);
