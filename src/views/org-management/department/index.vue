@@ -177,7 +177,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { Timer, Search, Plus, Edit, Delete, OfficeBuilding, CircleCheck, CircleClose, User } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getDepartmentList, createDepartment, updateDepartment, deleteDepartment } from '@/api/department'
