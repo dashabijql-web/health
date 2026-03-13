@@ -116,8 +116,6 @@ public class HealthApplication extends SpringBootServletInitializer {
      */
     public static void main(String[] args) {
         SpringApplication.run(HealthApplication.class, args);
-        System.out.println("徐矿集团健康管理系统启动成功！");
-        System.out.println("访问地址: http://localhost:8080/health/api/health/record/health");
         log.info("=========================================");
         log.info("智能手表健康监测服务器启动成功!");
         log.info("HTTP管理端口: 8080 (访问: http://localhost:8080/health)");

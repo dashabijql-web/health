@@ -869,11 +869,6 @@ public class WatchDataHandler extends SimpleChannelInboundHandler<WatchMessage> 
         // 异步保存报警记录
         dataService.saveAlert(imei, alertType, alertData);
 
-        // TODO: 在这里添加实时报警通知逻辑（短信、推送通知、声光报警等）
-        // if ("SOS报警".equals(alertType) || "跌倒报警".equals(alertType)) {
-        //     notificationService.sendEmergencyAlert(imei, alertType);
-        // }
-
         // 发送确认响应（告知设备报警已收到）
         sendSimpleAck(ctx, msg);
     }

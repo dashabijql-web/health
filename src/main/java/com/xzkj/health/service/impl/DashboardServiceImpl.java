@@ -201,7 +201,9 @@ public class DashboardServiceImpl implements DashboardService {
             long diff = java.time.temporal.ChronoUnit.DAYS.between(
                     java.time.LocalDate.parse(s), java.time.LocalDate.parse(e)) + 1;
             days = (int) diff;
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.debug("日期范围解析失败，使用默认30天: {}", e.getMessage());
+        }
         List<Map<String, Object>> list = dashboardMapper.getDeptWarningWithTrend(s, e, days);
 
         List<Map<String, Object>> result = new ArrayList<>();

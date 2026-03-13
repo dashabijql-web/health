@@ -219,15 +219,6 @@ public class SleepService {
         return 0;
     }
 
-    //    private double getDoubleValue(Map<String, Object> map, String key) {
-//        Object value = map.get(key);
-//        if (value == null) return 0.0;
-//        if (value instanceof Double) return (Double) value;
-//        if (value instanceof Float) return ((Float) value).doubleValue();
-//        if (value instanceof Integer) return ((Integer) value).doubleValue();
-//        if (value instanceof Long) return ((Long) value).doubleValue();
-//        return 0.0;
-//    }
     private double getDoubleValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value == null) return 0.0;
@@ -235,7 +226,6 @@ public class SleepService {
         if (value instanceof Float) return ((Float) value).doubleValue();
         if (value instanceof Integer) return ((Integer) value).doubleValue();
         if (value instanceof Long) return ((Long) value).doubleValue();
-        // ⭐ 添加这一行
         if (value instanceof java.math.BigDecimal) return ((java.math.BigDecimal) value).doubleValue();
         return 0.0;
     }
