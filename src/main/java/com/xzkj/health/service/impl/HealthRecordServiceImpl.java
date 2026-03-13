@@ -9,6 +9,7 @@ import com.xzkj.health.service.HealthRecordService;
 import com.xzkj.health.util.TableNameUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -133,22 +134,36 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
     /**
      * 批量插入：按每条记录的 time 字段路由到对应月份表。
      * 若 time 为空，则使用当前月份表。
+     *
+     * 使用事务保证全部成功或全部回滚，防止部分失败导致数据丢失。
+     * 失败时抛出异常，RedisHealthBufferService 会保留 Redis buffer 等待重试。
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean batchInsert(List<HealthRecord> records) {
         if (records == null || records.isEmpty()) {
             return false;
         }
+        String tableName = TableNameUtil.healthRecordTable();
         int successCount = 0;
+
         for (HealthRecord record : records) {
-            String tableName = TableNameUtil.healthRecordTable();
             try {
                 int rows = baseMapper.insertToTable(tableName, record);
-                if (rows > 0) successCount++;
+                if (rows > 0) {
+                    successCount++;
+                } else {
+                    log.warn("[分表] 插入 {} 返回0行，可能主键冲突: userCode={}", tableName, record.getUserCode());
+                    throw new RuntimeException("插入失败，rows=0");
+                }
             } catch (Exception e) {
-                log.error("[分表] 批量插入 {} 失败: {}", tableName, e.getMessage(), e);
+                log.error("[分表] 批量插入 {} 失败: {}, userCode={}, 错误={}",
+                          tableName, e.getClass().getSimpleName(), record.getUserCode(), e.getMessage());
+                throw e; // 事务回滚，确保全部成功或全部失败
             }
         }
-        return successCount > 0;
+
+        log.info("[分表] 批量插入 {} 成功: {}条", tableName, successCount);
+        return true;
     }
 }
