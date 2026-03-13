@@ -1,14 +1,13 @@
 package com.xzkj.health.service.impl;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.mapper.HeartRateMapper;
 import com.xzkj.health.service.HeartRateService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 心率监测服务实现 - 增强版
@@ -79,15 +78,7 @@ public class HeartRateServiceImpl implements HeartRateService {
 
             for (Map<String, Object> item : trendList) {
                 String date = (String) item.get("date");
-                if (date != null && date.length() >= 10) {
-                    // 转换格式: 2023-08-13 -> 8.13
-                    String[] parts = date.split("-");
-                    if (parts.length >= 3) {
-                        dates.add(Integer.parseInt(parts[1]) + "." + Integer.parseInt(parts[2]));
-                    }
-                } else {
-                    dates.add(date);
-                }
+                dates.add(DateParamUtil.shortDate(date));
 
                 Number avg = (Number) item.get("avgHeartRate");
                 values.add(avg != null ? avg.intValue() : 0);

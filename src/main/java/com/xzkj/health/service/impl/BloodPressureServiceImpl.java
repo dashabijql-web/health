@@ -1,5 +1,6 @@
 package com.xzkj.health.service.impl;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.mapper.BloodPressureMapper;
 import com.xzkj.health.service.BloodPressureService;
 import lombok.extern.slf4j.Slf4j;
@@ -37,14 +38,7 @@ public class BloodPressureServiceImpl implements BloodPressureService {
 
             for (Map<String, Object> row : rows) {
                 String date = (String) row.get("date");
-                if (date != null && date.length() >= 10) {
-                    String[] parts = date.split("-");
-                    if (parts.length >= 3) {
-                        dates.add(Integer.parseInt(parts[1]) + "." + Integer.parseInt(parts[2]));
-                    }
-                } else {
-                    dates.add(date);
-                }
+                dates.add(DateParamUtil.shortDate(date));
                 Number sys = (Number) row.get("avgSystolic");
                 Number dia = (Number) row.get("avgDiastolic");
                 systolicValues.add(sys != null ? sys.intValue() : 0);

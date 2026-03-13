@@ -20,4 +20,14 @@ public final class DateParamUtil {
     public static String today(String date) {
         return date == null ? LocalDate.now().toString() : date;
     }
+
+    /** "2026-03-13" → "3.13" 短日期格式（用于趋势图 X 轴标签） */
+    public static String shortDate(String fullDate) {
+        if (fullDate == null) return "";
+        String[] parts = fullDate.split("-");
+        if (parts.length >= 3) {
+            return Integer.parseInt(parts[1]) + "." + Integer.parseInt(parts[2]);
+        }
+        return fullDate;
+    }
 }

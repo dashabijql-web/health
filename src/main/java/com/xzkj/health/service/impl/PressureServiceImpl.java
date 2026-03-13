@@ -1,5 +1,6 @@
 package com.xzkj.health.service.impl;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.mapper.PressureMapper;
 import com.xzkj.health.service.PressureService;
 import lombok.extern.slf4j.Slf4j;
@@ -34,12 +35,7 @@ public class PressureServiceImpl implements PressureService {
             List<Integer> values = new ArrayList<>();
             for (Map<String, Object> row : rows) {
                 String date = (String) row.get("date");
-                if (date != null && date.length() >= 10) {
-                    String[] parts = date.split("-");
-                    dates.add(Integer.parseInt(parts[1]) + "." + Integer.parseInt(parts[2]));
-                } else {
-                    dates.add(date);
-                }
+                dates.add(DateParamUtil.shortDate(date));
                 Number v = (Number) row.get("avgPressure");
                 values.add(v != null ? v.intValue() : 0);
             }

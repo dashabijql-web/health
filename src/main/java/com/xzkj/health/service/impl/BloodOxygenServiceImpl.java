@@ -1,14 +1,13 @@
 package com.xzkj.health.service.impl;
 
+import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.mapper.BloodOxygenMapper;
 import com.xzkj.health.service.BloodOxygenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 血氧监测服务实现
@@ -51,15 +50,7 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
         if (trendData != null && !trendData.isEmpty()) {
             for (Map<String, Object> item : trendData) {
                 String date = (String) item.get("date");
-                if (date != null && date.length() >= 10) {
-                    // 转换格式: 2023-08-13 -> 8.13
-                    String[] parts = date.split("-");
-                    if (parts.length >= 3) {
-                        dates.add(Integer.parseInt(parts[1]) + "." + Integer.parseInt(parts[2]));
-                    }
-                } else {
-                    dates.add(date);
-                }
+                dates.add(DateParamUtil.shortDate(date));
 
                 Object avg = item.get("avgBloodOxygen");
                 values.add(avg != null ? ((Number) avg).intValue() : 0);
