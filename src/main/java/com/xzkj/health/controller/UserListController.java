@@ -28,6 +28,7 @@ public class UserListController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
         try {
+            size = Math.min(size, 200);
             Map<String, Object> data = userListService.getUserList(keyword, status, deptId, page, size);
             return Result.ok("获取成功", data);
         } catch (Exception e) {

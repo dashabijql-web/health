@@ -39,6 +39,7 @@ public class RiskWarningController {
             @RequestParam(required = false) String userCode,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
+        size = Math.min(size, 200);
         return Result.ok("获取成功", riskWarningService.getWarningList(level, handled, userCode, page, size));
     }
 

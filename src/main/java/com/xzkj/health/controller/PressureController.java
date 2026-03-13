@@ -81,6 +81,7 @@ public class PressureController {
     public Result<Map<String, Object>> getAbnormal(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
+        size = Math.min(size, 200);
         return Result.ok("获取成功", pressureService.getAbnormalRecords(page, size));
     }
 }

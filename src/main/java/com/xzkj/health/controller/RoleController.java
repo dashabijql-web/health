@@ -27,6 +27,7 @@ public class RoleController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
         try {
+            size = Math.min(size, 200);
             return Result.ok("获取成功", roleService.getRoleList(keyword, status, page, size));
         } catch (Exception e) {
             log.error("获取角色列表失败", e);

@@ -41,7 +41,7 @@ public class HealthRecordController {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
 
-        int effectiveSize = (pageSize != null) ? pageSize : size;
+        int effectiveSize = Math.min((pageSize != null) ? pageSize : size, 200);
         Page<HealthRecord> page = new Page<>(current, effectiveSize);
         IPage<HealthRecord> pageResult = healthRecordService.getPageFiltered(page, userCode, startTime, endTime);
 
