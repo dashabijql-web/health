@@ -2,40 +2,19 @@ package com.xzkj.health.service;
 
 import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.SleepMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
  * 睡眠监测Service
  */
-@Slf4j
 @Service
 public class SleepService {
 
     @Autowired
     private SleepMapper sleepMapper;
-
-    /**
-     * 获取睡眠统计概览
-     */
-    public Map<String, Object> getSleepStats() {
-        Map<String, Object> stats = sleepMapper.getSleepStats();
-        if (stats == null) stats = new HashMap<>();
-
-        // 计算良好睡眠率
-        long totalCount = MapValueUtil.getLong(stats, "totalCount");
-        long goodSleepCount = MapValueUtil.getLong(stats, "goodSleepCount");
-
-        int goodSleepRate = totalCount > 0 ? (int) (goodSleepCount * 100 / totalCount) : 0;
-        stats.put("goodSleepRate", goodSleepRate);
-
-        return stats;
-    }
 
     /**
      * 获取睡眠趋势数据
@@ -79,31 +58,6 @@ public class SleepService {
         }
 
         return result;
-    }
-
-    /**
-     * 获取睡眠不足记录
-     */
-    public Map<String, Object> getInsufficientRecords(int page, int size) {
-        int offset = (page - 1) * size;
-
-        List<Map<String, Object>> list = sleepMapper.getInsufficientRecords(offset, size);
-        int total = sleepMapper.countInsufficientRecords();
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("list", list);
-        result.put("total", total);
-        result.put("page", page);
-        result.put("size", size);
-
-        return result;
-    }
-
-    /**
-     * 获取睡眠详细记录
-     */
-    public List<Map<String, Object>> getSleepRecords(String startDate, String endDate) {
-        return sleepMapper.getSleepRecords(startDate, endDate);
     }
 
     /**
