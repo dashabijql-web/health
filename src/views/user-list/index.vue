@@ -312,6 +312,7 @@ import {
 } from '@/api/user'
 import { getAvailableRoles } from '@/api/role'
 import { getDepartmentList } from '@/api/department'
+import { formatDate } from '@/utils'
 
 const emptyForm = () => ({
   id: null,
@@ -591,10 +592,7 @@ export default {
       this.$refs.userFormRef?.resetFields()
     },
 
-    formatDate(date) {
-      if (!date) return '-'
-      return new Date(date).toLocaleString('zh-CN')
-    }
+    formatDate
   }
 }
 </script>

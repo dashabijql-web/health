@@ -341,6 +341,7 @@ import { ref, reactive, onMounted, computed, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Monitor, Timer, CircleCheck, Connection, Document, Link, Unlock, Upload, Delete, ChatDotRound, Search } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { formatDate } from '@/utils'
 import {
   getOnlineDevices,
   getBufferDataCount,
@@ -699,14 +700,6 @@ const handleDeleteBuffer = (row) => {
   }).catch(() => {
     // 取消操作
   })
-}
-
-/**
- * 格式化日期
- */
-const formatDate = (date) => {
-  if (!date) return '-'
-  return new Date(date).toLocaleString('zh-CN')
 }
 
 /**

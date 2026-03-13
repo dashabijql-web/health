@@ -207,6 +207,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Timer, Search, Refresh, Edit, Bell, WarningFilled, WarnTriangleFilled, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { formatDate } from '@/utils'
 import { getRiskWarningList, getRiskWarningOverview, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
 
 const currentTime = ref('')
@@ -263,7 +264,6 @@ const typeTag = t => typeMap[t]?.t||''
 const levelMap = { critical:{l:'危急',t:'danger'}, warning:{l:'预警',t:'warning'}, info:{l:'提示',t:'info'} }
 const levelLabel = l => levelMap[l]?.l||l||'-'
 const levelTag = l => levelMap[l]?.t||'info'
-const formatDate = d => d ? new Date(d).toLocaleString('zh-CN') : '-'
 
 // Detail drawer
 const detailVisible = ref(false)

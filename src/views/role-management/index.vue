@@ -273,6 +273,7 @@ import {
   createRole, updateRole, deleteRole,
   getPermissionTree, getRolePermissions, assignPermissions
 } from '@/api/role'
+import { formatDate } from '@/utils'
 
 const emptyForm = () => ({
   id: null,
@@ -601,10 +602,7 @@ export default {
       this.$refs.roleFormRef?.resetFields()
     },
 
-    formatDate(date) {
-      if (!date) return '-'
-      return new Date(date).toLocaleString('zh-CN')
-    }
+    formatDate
   }
 }
 </script>
