@@ -292,6 +292,7 @@ import {
   getBloodOxygenDeptStats,
   getHourlyBloodOxygen
 } from '@/api/blood-oxygen'
+import { spo2Level, SPO2 } from '@/constants/health-thresholds'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, ageGrid, barLabel } from '@/utils/echarts-config'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
@@ -644,8 +645,8 @@ export default {
           markLine: {
             silent: true, symbol: 'none',
             data: [
-              { yAxis: 90, lineStyle: { color: '#ff5252', type: 'dashed', width: 1 }, label: { color: '#ff5252', fontSize: 10, formatter: '危险 90%' } },
-              { yAxis: 95, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '正常 95%' } }
+              { yAxis: SPO2.DANGER, lineStyle: { color: '#ff5252', type: 'dashed', width: 1 }, label: { color: '#ff5252', fontSize: 10, formatter: '危险 ' + SPO2.DANGER + '%' } },
+              { yAxis: SPO2.LOW, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '正常 ' + SPO2.LOW + '%' } }
             ]
           }
         }]
@@ -699,25 +700,17 @@ export default {
           markLine: {
             silent: true, symbol: 'none',
             data: [
-              { yAxis: 95, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '正常下限 95%' } },
-              { yAxis: 90, lineStyle: { color: '#ff5252', type: 'dashed', width: 1 }, label: { color: '#ff5252', fontSize: 10, formatter: '危险 90%' } }
+              { yAxis: SPO2.LOW, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '正常下限 ' + SPO2.LOW + '%' } },
+              { yAxis: SPO2.DANGER, lineStyle: { color: '#ff5252', type: 'dashed', width: 1 }, label: { color: '#ff5252', fontSize: 10, formatter: '危险 ' + SPO2.DANGER + '%' } }
             ]
           }
         }]
       })
     },
 
-    boLevel(v) { return v < 90 ? 'danger' : v < 95 ? 'low' : v >= 99 ? 'excellent' : 'normal' },
+    boLevel: spo2Level,
 
-    setPageSize() {
-      const el = this.$refs.listRef; if (!el) return
-      const ROW_H = 27  // bo-rt-row: 6+6 padding + ~14px line + 1px margin
-      const n = Math.max(10, Math.floor(el.clientHeight / ROW_H))
-      if (n !== this.pageSize) {
-        this.pageSize = n
-        this.currentPage = 1
-      }
-    },
+    // setPageSize → chartPageMixin
   }
 }
 </script>

@@ -302,6 +302,7 @@ import {
   getHeartRateDeptStats,
   getHourlyHeartRate
 } from '@/api/heart-rate'
+import { hrLevel, HR } from '@/constants/health-thresholds'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, ageGrid, barLabel } from '@/utils/echarts-config'
@@ -630,8 +631,8 @@ export default {
           markLine: {
             silent: true, symbol: 'none',
             data: [
-              { yAxis: 120, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '偏高 120' } },
-              { yAxis: 55,  lineStyle: { color: '#4FC3F7', type: 'dashed', width: 1 }, label: { color: '#4FC3F7', fontSize: 10, formatter: '偏低 55' } }
+              { yAxis: HR.HIGH, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '偏高 ' + HR.HIGH } },
+              { yAxis: HR.LOW,  lineStyle: { color: '#4FC3F7', type: 'dashed', width: 1 }, label: { color: '#4FC3F7', fontSize: 10, formatter: '偏低 ' + HR.LOW } }
             ]
           }
         }]
@@ -703,25 +704,17 @@ export default {
           markLine: {
             silent: true, symbol: 'none',
             data: [
-              { yAxis: 120, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '偏高 120' } },
-              { yAxis: 55,  lineStyle: { color: '#4FC3F7', type: 'dashed', width: 1 }, label: { color: '#4FC3F7', fontSize: 10, formatter: '偏低 55' } }
+              { yAxis: HR.HIGH, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '偏高 ' + HR.HIGH } },
+              { yAxis: HR.LOW,  lineStyle: { color: '#4FC3F7', type: 'dashed', width: 1 }, label: { color: '#4FC3F7', fontSize: 10, formatter: '偏低 ' + HR.LOW } }
             ]
           }
         }]
       })
     },
 
-    hrLevel(v) { return v > 120 ? 'high' : v < 55 ? 'low' : 'normal' },
+    hrLevel,
 
-    setPageSize() {
-      const el = this.$refs.listRef; if (!el) return
-      const ROW_H = 27  // hr-rt-row: 6+6 padding + ~14px line + 1px margin
-      const n = Math.max(10, Math.floor(el.clientHeight / ROW_H))
-      if (n !== this.pageSize) {
-        this.pageSize = n
-        this.currentPage = 1
-      }
-    },
+    // setPageSize → chartPageMixin
   }
 }
 </script>

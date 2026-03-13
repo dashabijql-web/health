@@ -90,6 +90,15 @@ export default {
         query: code ? { empCode: code } : { name: item.userName }
       })
     },
+    /** 根据容器高度自动计算分页大小 */
+    setPageSize(rowH = 27) {
+      const el = this.$refs.listRef; if (!el) return
+      const n = Math.max(10, Math.floor(el.clientHeight / rowH))
+      if (n !== this.pageSize) {
+        this.pageSize = n
+        this.currentPage = 1
+      }
+    },
     showDetail(item) {
       this.detailItem = item
       this.detailVisible = true

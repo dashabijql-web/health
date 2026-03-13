@@ -604,15 +604,7 @@ export default {
 
 
 
-    setPageSize() {
-      const el = this.$refs.listRef; if (!el) return
-      const ROW_H = 27
-      const n = Math.max(10, Math.floor(el.clientHeight / ROW_H))
-      if (n !== this.pageSize) {
-        this.pageSize = n
-        this.currentPage = 1
-      }
-    },
+    // setPageSize → chartPageMixin
 
   }
 }
