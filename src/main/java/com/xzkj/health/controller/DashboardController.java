@@ -55,7 +55,10 @@ public class DashboardController {
             @RequestParam(required = false) String endTime) {
         Map<String, Object> result = new HashMap<>();
         result.put("stats",        dashboardService.getDeviceStats(startTime, endTime));
-        result.put("warningRates", dashboardService.getWarningRates(startTime, endTime).getOrDefault("warningRates", Collections.emptyList()));
+        Map<String, Object> ratesResult = dashboardService.getWarningRates(startTime, endTime);
+        result.put("warningRates", ratesResult != null
+                ? ratesResult.getOrDefault("warningRates", Collections.emptyList())
+                : Collections.emptyList());
         return Result.ok("获取成功", result);
     }
 
@@ -85,6 +88,7 @@ public class DashboardController {
     @GetMapping("/daily-trend")
     public Result<List<Map<String, Object>>> getDailyTrend(
             @RequestParam(defaultValue = "30") int days) {
+        days = Math.max(1, Math.min(days, 365));
         return Result.ok("获取成功", dashboardService.getDailyAnomalyRates(days));
     }
 
@@ -110,6 +114,7 @@ public class DashboardController {
     @GetMapping("/health-trend")
     public Result<Map<String, Object>> getHealthTrend(
             @RequestParam(defaultValue = "7") int days) {
+        days = Math.max(1, Math.min(days, 365));
         return Result.ok("获取成功", dashboardService.getDailyHealthTrend(days));
     }
 

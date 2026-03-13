@@ -24,8 +24,5 @@ public interface HeartRateService {
 
     Map<String, Object> getAbnormalRecords(int page, int size);
 
-    @Deprecated
-    Map<String, Object> getHeartRateStats();
-
     List<Map<String, Object>> getHourlyStats(String startDate, String endDate);
 }

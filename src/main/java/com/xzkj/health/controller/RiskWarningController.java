@@ -46,6 +46,7 @@ public class RiskWarningController {
     @GetMapping("/trend")
     public Result<Map<String, Object>> getTrend(
             @RequestParam(defaultValue = "30") Integer days) {
+        days = Math.max(1, Math.min(days, 365));
         return Result.ok("获取成功", riskWarningService.getWarningTrend(days));
     }
 
@@ -70,8 +71,10 @@ public class RiskWarningController {
     public Result<String> handleWarning(
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, Object> params) {
-        String handleBy = params != null ? (String) params.get("handleBy") : "system";
-        String handleRemark = params != null ? (String) params.get("handleRemark") : "";
+        String handleBy = params != null && params.get("handleBy") instanceof String
+                ? (String) params.get("handleBy") : "system";
+        String handleRemark = params != null && params.get("handleRemark") instanceof String
+                ? (String) params.get("handleRemark") : "";
         boolean success = riskWarningService.handleWarning(id, handleBy, handleRemark);
         if (!success) {
             throw new BusinessException("处理失败，请确认预警ID是否存在");

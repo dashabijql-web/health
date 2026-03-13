@@ -67,6 +67,7 @@ public class HeartRateController {
     @GetMapping("/trend")
     public Result<Map<String, Object>> getTrend(
             @RequestParam(defaultValue = "30") Integer days) {
+        days = Math.max(1, Math.min(days, 365));
         return Result.ok("获取成功", heartRateService.getHeartRateTrend(days));
     }
 

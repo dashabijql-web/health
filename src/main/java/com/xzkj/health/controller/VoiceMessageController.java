@@ -35,7 +35,10 @@ public class VoiceMessageController {
      * { "imei": "...", "templateId": "evacuate" }
      */
     @PostMapping("/send")
-    public Result<Boolean> sendVoice(@RequestBody Map<String, String> body) {
+    public Result<Boolean> sendVoice(@RequestBody(required = false) Map<String, String> body) {
+        if (body == null || body.isEmpty()) {
+            return Result.error("请求体不能为空");
+        }
         String imei       = body.get("imei");
         String templateId = body.get("templateId");
 

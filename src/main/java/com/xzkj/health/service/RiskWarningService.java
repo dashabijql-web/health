@@ -173,6 +173,7 @@ public class RiskWarningService {
         Map<String, List<Long>> tableToIds = new HashMap<>();
         for (Map<String, Object> rec : records) {
             Long recId = toLong(rec.get("id"));
+            if (recId == null) continue;
             LocalDateTime createTime = parseDateTime(rec.get("create_time"));
             if (createTime == null) continue;
             String tableName = TableNameUtil.warningRecordTable(createTime);

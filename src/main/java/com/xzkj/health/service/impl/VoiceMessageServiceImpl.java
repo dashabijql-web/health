@@ -100,6 +100,7 @@ public class VoiceMessageServiceImpl implements VoiceMessageService {
 
             // 包间延迟：约 128ms/包（1024字节 @ 8kHz 8-bit = 128ms 音频）
             try { Thread.sleep(100); } catch (InterruptedException e) {
+                log.warn("语音推送被中断: imei={}, seq={}/{}", imei, i + 1, totalPackets);
                 Thread.currentThread().interrupt();
                 return;
             }

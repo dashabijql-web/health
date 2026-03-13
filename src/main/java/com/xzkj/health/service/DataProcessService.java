@@ -166,7 +166,7 @@ public class DataProcessService {
             buffer.setIsTransferred(false);
 
             deviceDataBufferService.save(buffer);
-            log.info("数据已暂存到缓冲表: IMEI={}, 类型={}, 数据={}", imei, dataType, dataMap);
+            log.debug("数据已暂存到缓冲表: IMEI={}, 类型={}, 数据={}", imei, dataType, dataMap);
         } catch (Exception e) {
             log.error("保存到缓冲表失败: IMEI={}, 类型={}", imei, dataType, e);
         }
@@ -213,12 +213,12 @@ public class DataProcessService {
             record.setTime(now());
             redisHealthBufferService.push(record);
 
-            log.info("数据已推入Redis缓冲: IMEI={}, userCode={}, 数据={}",
+            log.debug("数据已推入Redis缓冲: IMEI={}, userCode={}, 数据={}",
                     imei, record.getUserCode(), dataMap);
 
             // 检查健康数据并生成预警（使用员工工种对应的 risk_level 阈值）
-            Integer riskLevel = empInfo.get("riskLevel") != null
-                    ? ((Number) empInfo.get("riskLevel")).intValue() : null;
+            Object rlObj = empInfo.get("riskLevel");
+            Integer riskLevel = rlObj instanceof Number ? ((Number) rlObj).intValue() : null;
             checkHealthDataAndGenerateWarnings(userCode, record, riskLevel);
         } catch (Exception e) {
             log.error("保存到健康记录失败: IMEI={}", imei, e);
@@ -541,7 +541,7 @@ public class DataProcessService {
                 saveToHealthRecord(imei, currentBind, dataMap);
             }
 
-            log.info("睡眠数据已保存: IMEI={}, 深睡={}分钟, 浅睡={}分钟, 总计={}分钟",
+            log.debug("睡眠数据已保存: IMEI={}, 深睡={}分钟, 浅睡={}分钟, 总计={}分钟",
                     imei, deep, light, totalSleep);
         } catch (Exception e) {
             log.error("保存睡眠数据失败", e);

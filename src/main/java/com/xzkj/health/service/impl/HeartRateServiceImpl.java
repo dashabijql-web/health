@@ -155,14 +155,6 @@ public class HeartRateServiceImpl implements HeartRateService {
     }
 
     @Override
-    @Deprecated
-    public Map<String, Object> getHeartRateStats() {
-        return getHeartRateOverview(
-            java.time.LocalDate.now().minusDays(29).toString(),
-            java.time.LocalDate.now().toString());
-    }
-
-    @Override
     public List<Map<String, Object>> getHourlyStats(String startDate, String endDate) {
         try {
             List<Map<String, Object>> data = heartRateMapper.getHourlyStats(startDate, endDate);
