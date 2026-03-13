@@ -66,6 +66,31 @@ public final class MapValueUtil {
         for (String key : keys) target.put(key, getInt(source, key));
     }
 
+    /** 空安全：list 为 null 时返回空列表 */
+    public static <T> List<T> orEmpty(List<T> list) {
+        return list != null ? list : Collections.emptyList();
+    }
+
+    /** 双系列趋势数据（如血压的收缩压/舒张压） */
+    public static Map<String, Object> convertDualTrendData(
+            List<Map<String, Object>> rows, String key1, String name1, String key2, String name2) {
+        List<String> dates = new ArrayList<>();
+        List<Integer> v1 = new ArrayList<>(), v2 = new ArrayList<>();
+        if (rows != null) {
+            for (Map<String, Object> row : rows) {
+                dates.add(DateParamUtil.shortDate((String) row.get("date")));
+                Number n1 = (Number) row.get(key1), n2 = (Number) row.get(key2);
+                v1.add(n1 != null ? n1.intValue() : 0);
+                v2.add(n2 != null ? n2.intValue() : 0);
+            }
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("dates", dates);
+        result.put(name1, v1);
+        result.put(name2, v2);
+        return result;
+    }
+
     public static Long toLong(Object value) {
         if (value == null) return null;
         if (value instanceof Number) return ((Number) value).longValue();

@@ -22,21 +22,12 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
 
     @Override
     public Map<String, Object> getBloodOxygenStats(String startDate, String endDate) {
-        Map<String, Object> stats = bloodOxygenMapper.getBloodOxygenStats(startDate, endDate);
-
-        // 处理null值，设置默认值
-        if (stats == null) {
-            stats = new HashMap<>();
-        }
-        stats.putIfAbsent("avgBloodOxygen", 0);
-        stats.putIfAbsent("maxBloodOxygen", 0);
-        stats.putIfAbsent("minBloodOxygen", 0);
-        stats.putIfAbsent("normalCount", 0);
-        stats.putIfAbsent("abnormalCount", 0);
-        stats.putIfAbsent("totalCount", 0);
-        stats.putIfAbsent("normalRate", 0);
-
-        return stats;
+        Map<String, Object> data = bloodOxygenMapper.getBloodOxygenStats(startDate, endDate);
+        Map<String, Object> result = new HashMap<>();
+        MapValueUtil.copyIntFields(data, result,
+                "avgBloodOxygen", "maxBloodOxygen", "minBloodOxygen",
+                "normalCount", "abnormalCount", "totalCount", "normalRate");
+        return result;
     }
 
     @Override
@@ -109,56 +100,26 @@ public class BloodOxygenServiceImpl implements BloodOxygenService {
 
     @Override
     public List<Map<String, Object>> getTopUsers(Integer limit, String startDate, String endDate) {
-        try {
-            List<Map<String, Object>> topUsers = bloodOxygenMapper.getTopUsers(limit, startDate, endDate);
-            return topUsers != null ? topUsers : Collections.emptyList();
-        } catch (Exception e) {
-            log.error("获取TOP用户失败", e);
-            throw new RuntimeException("获取TOP用户失败: " + e.getMessage());
-        }
+        return MapValueUtil.orEmpty(bloodOxygenMapper.getTopUsers(limit, startDate, endDate));
     }
 
     @Override
     public List<Map<String, Object>> getDepartmentStats(String startDate, String endDate) {
-        try {
-            List<Map<String, Object>> deptStats = bloodOxygenMapper.getDepartmentStats(startDate, endDate);
-            return deptStats != null ? deptStats : Collections.emptyList();
-        } catch (Exception e) {
-            log.error("获取部门统计失败", e);
-            throw new RuntimeException("获取部门统计失败: " + e.getMessage());
-        }
+        return MapValueUtil.orEmpty(bloodOxygenMapper.getDepartmentStats(startDate, endDate));
     }
 
     @Override
     public List<Map<String, Object>> getAgeDistribution() {
-        try {
-            List<Map<String, Object>> ageData = bloodOxygenMapper.getAgeDistribution();
-            return ageData != null ? ageData : Collections.emptyList();
-        } catch (Exception e) {
-            log.error("获取年龄段分布失败", e);
-            throw new RuntimeException("获取年龄段分布失败: " + e.getMessage());
-        }
+        return MapValueUtil.orEmpty(bloodOxygenMapper.getAgeDistribution());
     }
 
     @Override
     public List<Map<String, Object>> getRealtimeData(Integer limit) {
-        try {
-            List<Map<String, Object>> realtimeData = bloodOxygenMapper.getRealtimeData(limit);
-            return realtimeData != null ? realtimeData : Collections.emptyList();
-        } catch (Exception e) {
-            log.error("获取实时数据失败", e);
-            throw new RuntimeException("获取实时数据失败: " + e.getMessage());
-        }
+        return MapValueUtil.orEmpty(bloodOxygenMapper.getRealtimeData(limit));
     }
 
     @Override
     public List<Map<String, Object>> getHourlyStats(String startDate, String endDate) {
-        try {
-            List<Map<String, Object>> data = bloodOxygenMapper.getHourlyStats(startDate, endDate);
-            return data != null ? data : Collections.emptyList();
-        } catch (Exception e) {
-            log.error("获取血氧逐小时数据失败", e);
-            throw new RuntimeException("获取血氧逐小时数据失败: " + e.getMessage());
-        }
+        return MapValueUtil.orEmpty(bloodOxygenMapper.getHourlyStats(startDate, endDate));
     }
 }

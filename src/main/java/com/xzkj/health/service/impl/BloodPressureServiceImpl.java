@@ -1,6 +1,5 @@
 package com.xzkj.health.service.impl;
 
-import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.BloodPressureMapper;
 import com.xzkj.health.service.BloodPressureService;
@@ -29,31 +28,9 @@ public class BloodPressureServiceImpl implements BloodPressureService {
 
     @Override
     public Map<String, Object> getTrend(int days) {
-        try {
-            List<Map<String, Object>> rows = bloodPressureMapper.getTrend(days);
-
-            List<String> dates = new ArrayList<>();
-            List<Integer> systolicValues = new ArrayList<>();
-            List<Integer> diastolicValues = new ArrayList<>();
-
-            for (Map<String, Object> row : rows) {
-                String date = (String) row.get("date");
-                dates.add(DateParamUtil.shortDate(date));
-                Number sys = (Number) row.get("avgSystolic");
-                Number dia = (Number) row.get("avgDiastolic");
-                systolicValues.add(sys != null ? sys.intValue() : 0);
-                diastolicValues.add(dia != null ? dia.intValue() : 0);
-            }
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("dates", dates);
-            result.put("systolicValues", systolicValues);
-            result.put("diastolicValues", diastolicValues);
-            return result;
-        } catch (Exception e) {
-            log.error("获取血压趋势失败", e);
-            throw new RuntimeException("获取血压趋势失败: " + e.getMessage());
-        }
+        List<Map<String, Object>> rows = bloodPressureMapper.getTrend(days);
+        return MapValueUtil.convertDualTrendData(rows,
+                "avgSystolic", "systolicValues", "avgDiastolic", "diastolicValues");
     }
 
     @Override
