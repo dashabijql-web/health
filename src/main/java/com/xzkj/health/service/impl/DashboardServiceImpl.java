@@ -49,12 +49,8 @@ public class DashboardServiceImpl implements DashboardService {
         Map<String, Object> data = dashboardMapper.getCountsByRange(s, e);
 
         Map<String, Object> result = new HashMap<>();
-        result.put("heartRate",   MapValueUtil.getInt(data, "heartRate"));
-        result.put("bloodOxygen", MapValueUtil.getInt(data, "bloodOxygen"));
-        result.put("sleep",       MapValueUtil.getInt(data, "sleep"));
-        result.put("steps",       MapValueUtil.getInt(data, "steps"));
-        result.put("temperature", MapValueUtil.getInt(data, "temperature"));
-        result.put("pressure",    MapValueUtil.getInt(data, "pressure"));
+        MapValueUtil.copyIntFields(data, result,
+                "heartRate", "bloodOxygen", "sleep", "steps", "temperature", "pressure");
         return result;
     }
 
@@ -65,15 +61,11 @@ public class DashboardServiceImpl implements DashboardService {
         Map<String, Object> data = dashboardMapper.getAverageByRange(s, e);
 
         Map<String, Object> result = new HashMap<>();
+        MapValueUtil.copyIntFields(data, result,
+                "avgPressure", "avgBloodOxygen", "avgHeartRate", "avgSteps",
+                "avgBloodPressureHigh", "avgBloodPressureLow", "avgCalories");
         result.put("avgSleep",       round(MapValueUtil.getDouble(data, "avgSleep"), 1));
-        result.put("avgPressure",    MapValueUtil.getInt(data, "avgPressure"));
-        result.put("avgBloodOxygen", MapValueUtil.getInt(data, "avgBloodOxygen"));
-        result.put("avgHeartRate",   MapValueUtil.getInt(data, "avgHeartRate"));
-        result.put("avgSteps",       MapValueUtil.getInt(data, "avgSteps"));
         result.put("avgTemperature", round(MapValueUtil.getDouble(data, "avgTemperature"), 1));
-        result.put("avgBloodPressureHigh", MapValueUtil.getInt(data, "avgBloodPressureHigh"));
-        result.put("avgBloodPressureLow",  MapValueUtil.getInt(data, "avgBloodPressureLow"));
-        result.put("avgCalories", MapValueUtil.getInt(data, "avgCalories"));
         return result;
     }
 
@@ -101,12 +93,8 @@ public class DashboardServiceImpl implements DashboardService {
         Map<String, Object> data = dashboardMapper.getDeviceStatsByRange(s, e);
 
         Map<String, Object> result = new HashMap<>();
-        result.put("total",        MapValueUtil.getInt(data, "total"));
-        result.put("boundDevices", MapValueUtil.getInt(data, "boundDevices"));
-        result.put("activeRate",   MapValueUtil.getInt(data, "activeRate"));
-        result.put("usageRate",    MapValueUtil.getInt(data, "usageRate"));
-        result.put("warningRate",  MapValueUtil.getInt(data, "warningRate"));
-        result.put("lowBattery",   MapValueUtil.getInt(data, "lowBattery"));
+        MapValueUtil.copyIntFields(data, result,
+                "total", "boundDevices", "activeRate", "usageRate", "warningRate", "lowBattery");
         return result;
     }
 
@@ -184,13 +172,7 @@ public class DashboardServiceImpl implements DashboardService {
     public List<Map<String, Object>> getDailyAnomalyRates(int days) {
         String startDate = LocalDate.now().minusDays(days - 1).format(DATE_FMT);
         String endDate   = LocalDate.now().format(DATE_FMT);
-        List<Map<String, Object>> result = dashboardMapper.getDailyAnomalyRates(startDate, endDate);
-        if (!result.isEmpty()) {
-            log.info("[dailyTrend] days={}, startDate={}, rows={}, first={}", days, startDate, result.size(), result.get(0));
-        } else {
-            log.warn("[dailyTrend] days={}, startDate={}, NO DATA returned", days, startDate);
-        }
-        return result;
+        return dashboardMapper.getDailyAnomalyRates(startDate, endDate);
     }
 
     @Override

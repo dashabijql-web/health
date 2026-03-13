@@ -61,6 +61,11 @@ public final class MapValueUtil {
         return result;
     }
 
+    /** 批量将 source 中 int 类型字段复制到 target（key 保持一致） */
+    public static void copyIntFields(Map<String, Object> source, Map<String, Object> target, String... keys) {
+        for (String key : keys) target.put(key, getInt(source, key));
+    }
+
     public static Long toLong(Object value) {
         if (value == null) return null;
         if (value instanceof Number) return ((Number) value).longValue();
