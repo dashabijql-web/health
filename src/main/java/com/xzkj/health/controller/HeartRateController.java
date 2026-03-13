@@ -40,15 +40,9 @@ public class HeartRateController {
     }
 
     /** 获取年龄段心率统计 */
-    @GetMapping("/age-distribution")
-    public Result<List<Map<String, Object>>> getAgeDistribution() {
-        return Result.ok("获取成功", heartRateService.getAgeDistribution());
-    }
-
-    /** 获取年龄段心率统计（兼容别名接口） */
     @GetMapping("/age-stats")
     public Result<List<Map<String, Object>>> getAgeStats() {
-        return getAgeDistribution();
+        return Result.ok("获取成功", heartRateService.getAgeDistribution());
     }
 
     /** 获取心率分布统计（偏低/正常/偏高） */
