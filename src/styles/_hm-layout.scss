@@ -1,0 +1,96 @@
+// Health-Monitor 共享布局 mixin
+// 用法：@include hm-body('hr'); @include hm-panel('hr'); 等
+// 所有 mixin 以页面前缀 $p 为参数，生成 .#{$p}-xxx 类名
+
+@mixin hm-body($p, $gap: 10px, $pad: 10px) {
+  .#{$p}-bd {
+    flex: 1; display: flex; gap: $gap; padding: $pad;
+    overflow-y: auto; overflow-x: hidden; min-height: 0;
+  }
+}
+
+@mixin hm-main($p, $gap: 10px) {
+  .#{$p}-main {
+    flex: 1; display: flex; flex-direction: column; gap: $gap; min-width: 0;
+    overflow-y: auto; overflow-x: hidden;
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
+    &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
+  }
+}
+
+@mixin hm-panel($p) {
+  .#{$p}-panel {
+    background: $panel; border: 1px solid $border; border-radius: 10px;
+    display: flex; flex-direction: column; overflow: hidden; backdrop-filter: blur(8px);
+  }
+  .#{$p}-ph-title { font-size: 13px; font-weight: 600; color: $white; letter-spacing: 1px; }
+  .#{$p}-pc { flex: 1; min-height: 0; padding: 6px; }
+  .#{$p}-rt-total { margin-left: auto; font-size: 11px; color: $dim; }
+  .#{$p}-ph-legend { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .#{$p}-leg-dot { width: 8px; height: 8px; border-radius: 2px; }
+  .#{$p}-leg-txt { font-size: 11px; color: $dim; }
+  .#{$p}-trend-tags { margin-left: 12px; display: flex; gap: 10px; }
+  .#{$p}-tag { font-size: 10px; padding: 2px 6px; border-radius: 3px; border: 1px solid; }
+}
+
+@mixin hm-overview($p) {
+  .#{$p}-overview-body {
+    flex: 1; min-height: 0;
+    display: flex; align-items: center; padding: 8px 14px; gap: 14px;
+  }
+  .#{$p}-gauge-wrap  { width: 120px; height: 108px; flex-shrink: 0; position: relative; }
+  .#{$p}-gauge-chart { width: 100%; height: 100%; }
+  .#{$p}-gauge-center {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    text-align: center; pointer-events: none;
+  }
+  .#{$p}-gauge-val { font-size: 22px; font-weight: 700; color: $accent; font-family: 'Consolas', monospace; line-height: 1; }
+  .#{$p}-gauge-sub { font-size: 10px; color: $dim; margin-top: 1px; white-space: nowrap; }
+}
+
+@mixin hm-kpi-cards($p) {
+  .#{$p}-kpi-cards {
+    flex: 1; display: grid;
+    grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 7px;
+  }
+  .#{$p}-kpi-card {
+    background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.1);
+    border-radius: 7px; padding: 7px 10px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .#{$p}-kpi-card-val   { font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
+  .#{$p}-kpi-card-unit  { font-size: 10px; color: $dim; font-weight: normal; font-family: sans-serif; margin-left: 1px; }
+  .#{$p}-kpi-card-label { font-size: 10px; color: $dim; margin-top: 2px; }
+}
+
+@mixin hm-range-info($p) {
+  .#{$p}-range-info {
+    width: 168px; flex-shrink: 0;
+    background: rgba(0,212,255,0.03); border: 1px solid rgba(0,212,255,0.1);
+    border-radius: 8px; padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .#{$p}-range-title { font-size: 11px; color: $dim; font-weight: 600; margin-bottom: 3px; letter-spacing: 0.5px; }
+  .#{$p}-range-item  { display: flex; align-items: center; gap: 6px; }
+  .#{$p}-range-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .#{$p}-range-name  { font-size: 10px; width: 38px; flex-shrink: 0; }
+  .#{$p}-range-val   { font-size: 10px; color: $dim; font-family: 'Consolas', monospace; }
+}
+
+@mixin hm-pagination($p) {
+  .#{$p}-rt-pg {
+    height: 36px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    border-top: 1px solid rgba(0,212,255,0.1);
+  }
+  .#{$p}-pg-btn {
+    height: 22px; padding: 0 7px;
+    background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.18);
+    border-radius: 3px; color: $accent; font-size: 12px; cursor: pointer;
+    transition: background 0.2s;
+    &:hover:not(:disabled) { background: rgba(0,212,255,0.16); }
+    &:disabled { opacity: 0.28; cursor: not-allowed; }
+  }
+  .#{$p}-pg-info { font-size: 11px; color: $dim; margin: 0 4px; }
+}

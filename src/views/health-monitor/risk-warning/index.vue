@@ -791,6 +791,11 @@ export default {
 
 <style lang="scss" scoped>
 @import '@/styles/hm-vars';
+@import '@/styles/hm-layout';
+
+@include hm-body('rw', $gap: 8px, $pad: 8px 12px);
+@include hm-main('rw', $gap: 8px);
+@include hm-panel('rw');
 
 .rw-root {
   width: 100%;
@@ -819,8 +824,7 @@ export default {
 .rw-kpi-l { font-size:11px; color:$dim; margin-top:2px; white-space:nowrap; }
 .rw-hd-time { flex-shrink:0; font-family:'Consolas',monospace; font-size:13px; color:$dim; }
 
-/* Body */
-.rw-bd { flex:1; display:flex; gap:8px; padding:8px 12px 8px 12px; overflow-y:auto; overflow-x:hidden; min-height:0; }
+/* Body（hm-body mixin） */
 
 /* Aside */
 .rw-aside { width:320px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
@@ -834,24 +838,13 @@ export default {
 .rw-stat-bar { height:100%; border-radius:3px; transition:width .8s ease; opacity:.85; }
 .rw-stat-val { font-size:13px; font-weight:700; font-family:'Consolas',monospace; width:32px; text-align:right; flex-shrink:0; }
 
-/* Main */
-.rw-main {
-  flex:1; display:flex; flex-direction:column; gap:8px; min-width:0;
-  overflow-y: auto; overflow-x: hidden;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
-  &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
-}
+/* Main（hm-main mixin） */
 .rw-panel-trend { height:260px; flex-shrink:0; }
 .rw-panel-list  { flex:1; min-height:0; }
 
-/* Panel */
-.rw-panel { background:$panel; border:1px solid $border; border-radius:10px; display:flex; flex-direction:column; overflow:hidden; backdrop-filter:blur(8px); }
+/* Panel（hm-panel mixin + 页面特有） */
 .rw-ph { height:36px; flex-shrink:0; display:flex; align-items:center; gap:8px; padding:0 12px; border-bottom:1px solid rgba(0,212,255,.09); background:rgba(0,212,255,.035); }
 .rw-ph-bar { width:3px; height:14px; background:linear-gradient(180deg,#ef4444,rgba(239,68,68,.3)); border-radius:2px; box-shadow:0 0 6px rgba(239,68,68,.7); flex-shrink:0; }
-.rw-ph-title { font-size:13px; font-weight:600; color:$white; letter-spacing:1px; flex-shrink:0; }
-.rw-pc { flex:1; min-height:0; padding:6px; }
-.rw-rt-total { font-size:11px; color:$dim; flex-shrink:0; }
 
 /* FIX ⑤: 筛选栏 */
 .rw-filter-bar { margin-left:auto; display:flex; align-items:center; gap:6px; }

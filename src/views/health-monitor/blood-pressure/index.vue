@@ -677,7 +677,14 @@ export default {
 
 <style lang="scss" scoped>
 @import '@/styles/hm-vars';
+@import '@/styles/hm-layout';
 $purple: #a78bfa;
+
+@include hm-body('bp');
+@include hm-main('bp');
+@include hm-panel('bp');
+@include hm-kpi-cards('bp');
+@include hm-pagination('bp');
 $sky:    #38bdf8;
 
 // ── Root：自适应视口高度 ──
@@ -766,10 +773,7 @@ $sky:    #38bdf8;
   &.is-active { color: $bg; background: $purple; font-weight: 700; }
 }
 
-// ── Body ──
-.bp-bd {
-  flex: 1; display: flex; gap: 10px; padding: 10px; overflow-y: auto; overflow-x: hidden; min-height: 0;
-}
+// ── Body（hm-body mixin） ──
 
 // ── Aside（左侧）──
 .bp-aside {
@@ -779,14 +783,7 @@ $sky:    #38bdf8;
 .bp-aside-top { height: 200px; flex-shrink: 0; }
 .bp-aside-bot { flex: 1; }
 
-// ── Main（中间）──
-.bp-main {
-  flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;
-  overflow-y: auto; overflow-x: hidden;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
-  &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
-}
+// ── Main（hm-main mixin） ──
 .bp-overview-panel { height: 162px; flex-shrink: 0; }
 .bp-mid-row {
   height: 185px; flex-shrink: 0; display: flex; gap: 10px;
@@ -800,17 +797,7 @@ $sky:    #38bdf8;
 // ── Right list ──
 .bp-rtlist { width: 272px; flex-shrink: 0; }
 
-// ── Panel 通用 ──
-.bp-panel {
-  background: $panel;
-  border: 1px solid $border;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  backdrop-filter: blur(8px);
-}
-
+// ── Panel（hm-panel mixin + 页面特有） ──
 .bp-ph {
   height: 38px; flex-shrink: 0;
   display: flex; align-items: center; gap: 8px; padding: 0 12px;
@@ -823,15 +810,7 @@ $sky:    #38bdf8;
   border-radius: 2px;
   box-shadow: 0 0 6px rgba(167,139,250,0.7);
 }
-.bp-ph-title { font-size: 13px; font-weight: 600; color: $white; letter-spacing: 1px; }
-.bp-rt-total { margin-left: auto; font-size: 11px; color: $dim; }
-.bp-ph-legend { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.bp-leg-dot { width: 8px; height: 8px; border-radius: 2px; }
-.bp-leg-txt { font-size: 11px; color: $dim; }
-.bp-trend-tags { margin-left: 12px; display: flex; gap: 10px; }
-.bp-tag { font-size: 10px; padding: 2px 6px; border-radius: 3px; border: 1px solid; }
-
-.bp-pc { flex: 1; min-height: 0; padding: 6px; }
+// ph-title, rt-total, ph-legend, leg-dot, leg-txt, trend-tags, tag, pc → hm-panel mixin
 
 // ── TOP5 紧凑列表 ──
 .bp-top5-empty { padding: 20px 0; text-align: center; color: rgba(167,139,250,0.5); font-size: 12px; }
@@ -876,24 +855,11 @@ $sky:    #38bdf8;
 .bp-dual-sub   { font-size: 10px; color: $dim; margin-top: 2px; }
 .bp-dual-sep   { font-size: 28px; color: $dim; align-self: center; padding-bottom: 6px; }
 
-// 5个 KPI 小卡片，2行3列
-.bp-kpi-cards {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 7px;
-}
+// kpi-cards → hm-kpi-cards mixin + purple overrides
 .bp-kpi-card {
   background: rgba(167,139,250,0.04);
   border: 1px solid rgba(167,139,250,0.1);
-  border-radius: 7px;
-  padding: 7px 10px;
-  display: flex; flex-direction: column; justify-content: center;
 }
-.bp-kpi-card-val   { font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
-.bp-kpi-card-unit  { font-size: 10px; color: $dim; font-weight: normal; font-family: sans-serif; margin-left: 1px; }
-.bp-kpi-card-label { font-size: 10px; color: $dim; margin-top: 2px; }
 
 // 血压等级说明
 .bp-grade-info {
@@ -1045,18 +1011,11 @@ $sky:    #38bdf8;
   &.danger { background: rgba(255,82,82,0.13);  color: #ff5252; border: 1px solid rgba(255,82,82,0.28); }
 }
 
-.bp-rt-pg {
-  height: 36px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  border-top: 1px solid rgba(0,212,255,0.1);
-}
+// pagination → hm-pagination mixin + purple overrides
 .bp-pg-btn {
-  height: 22px; padding: 0 7px;
-  background: rgba(167,139,250,0.07); border: 1px solid rgba(167,139,250,0.18);
-  border-radius: 3px; color: $purple; font-size: 12px; cursor: pointer;
-  transition: background 0.2s;
+  background: rgba(167,139,250,0.07); border-color: rgba(167,139,250,0.18);
+  color: $purple;
   &:hover:not(:disabled) { background: rgba(167,139,250,0.16); }
-  &:disabled { opacity: 0.28; cursor: not-allowed; }
 }
 .bp-pg-info { font-size: 12px; color: $purple; min-width: 44px; text-align: center; }
 </style>

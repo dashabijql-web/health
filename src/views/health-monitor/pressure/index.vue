@@ -694,7 +694,16 @@ export default {
 <style lang="scss" scoped>
 $accent: #fb923c;
 @import '@/styles/hm-vars';
+@import '@/styles/hm-layout';
 $cyan:   #00d4ff;
+
+@include hm-body('ps');
+@include hm-main('ps');
+@include hm-panel('ps');
+@include hm-overview('ps');
+@include hm-kpi-cards('ps');
+@include hm-range-info('ps');
+@include hm-pagination('ps');
 
 // ── Root ──
 .ps-root {
@@ -782,10 +791,7 @@ $cyan:   #00d4ff;
   &.is-active { color: $bg; background: $accent; font-weight: 700; }
 }
 
-// ── Body ──
-.ps-bd {
-  flex: 1; display: flex; gap: 10px; padding: 10px; overflow-y: auto; overflow-x: hidden; min-height: 0;
-}
+// ── Body（hm-body mixin） ──
 
 // ── Aside（左侧）──
 .ps-aside {
@@ -824,14 +830,7 @@ $cyan:   #00d4ff;
 .ps-top5-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
 .ps-top5-val { font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; width: 26px; text-align: right; flex-shrink: 0; }
 
-// ── Main（中间）──
-.ps-main {
-  flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;
-  overflow-y: auto; overflow-x: hidden;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
-  &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
-}
+// ── Main（hm-main mixin） ──
 .ps-overview-panel { height: 162px; flex-shrink: 0; }
 .ps-mid-row        { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }
 .ps-panel-hourly   { flex: 1; }
@@ -840,17 +839,7 @@ $cyan:   #00d4ff;
 // ── Right list ──
 .ps-rtlist { width: 272px; flex-shrink: 0; }
 
-// ── Panel 通用 ──
-.ps-panel {
-  background: $panel;
-  border: 1px solid $border;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  backdrop-filter: blur(8px);
-}
-
+// ── Panel（hm-panel mixin + 页面特有） ──
 .ps-ph {
   height: 38px; flex-shrink: 0;
   display: flex; align-items: center; gap: 8px; padding: 0 12px;
@@ -863,35 +852,11 @@ $cyan:   #00d4ff;
   border-radius: 2px;
   box-shadow: 0 0 6px rgba(251,146,60,0.7);
 }
-.ps-ph-title { font-size: 13px; font-weight: 600; color: $white; letter-spacing: 1px; }
-.ps-rt-total { margin-left: auto; font-size: 11px; color: $dim; }
+// ph-title, rt-total, trend-tags, tag, pc → hm-panel mixin
 
-.ps-trend-tags { margin-left: 12px; display: flex; gap: 10px; }
-.ps-tag { font-size: 10px; padding: 2px 6px; border-radius: 3px; border: 1px solid; }
-
-.ps-pc { flex: 1; min-height: 0; padding: 6px; }
-
-// ── 概况主体 ──
-.ps-overview-body {
-  flex: 1; min-height: 0;
-  display: flex; align-items: center; padding: 8px 14px; gap: 14px;
-}
-.ps-gauge-wrap { width: 120px; height: 108px; flex-shrink: 0; position: relative; }
-.ps-gauge-chart { width: 100%; height: 100%; }
-.ps-gauge-center {
-  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-  text-align: center; pointer-events: none;
-}
-.ps-gauge-val { font-size: 22px; font-weight: 700; color: $accent; font-family: 'Consolas', monospace; line-height: 1; }
-.ps-gauge-sub { font-size: 10px; color: $dim; margin-top: 1px; white-space: nowrap; }
-
-// KPI 小卡片 2行3列
+// overview + kpi-cards → hm-overview + hm-kpi-cards mixins
+// KPI 小卡片 orange overrides
 .ps-kpi-cards {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 7px;
 }
 .ps-kpi-card {
   background: rgba(251,146,60,0.04);
@@ -900,24 +865,10 @@ $cyan:   #00d4ff;
   padding: 7px 10px;
   display: flex; flex-direction: column; justify-content: center;
 }
-.ps-kpi-card-val   { font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
-.ps-kpi-card-unit  { font-size: 10px; color: $dim; font-weight: normal; font-family: sans-serif; margin-left: 1px; }
-.ps-kpi-card-label { font-size: 10px; color: $dim; margin-top: 2px; }
-
-// 压力等级说明
-.ps-range-info {
-  width: 168px; flex-shrink: 0;
-  background: rgba(251,146,60,0.03);
-  border: 1px solid rgba(251,146,60,0.1);
-  border-radius: 8px;
-  padding: 8px 10px;
-  display: flex; flex-direction: column; gap: 4px;
-}
-.ps-range-title { font-size: 11px; color: $dim; font-weight: 600; margin-bottom: 3px; letter-spacing: 0.5px; }
-.ps-range-item  { display: flex; align-items: center; gap: 6px; }
-.ps-range-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.ps-range-name  { font-size: 10px; width: 78px; flex-shrink: 0; }
-.ps-range-val   { font-size: 10px; color: $dim; font-family: 'Consolas', monospace; }
+// kpi-card-val, kpi-card-unit, kpi-card-label → hm-kpi-cards mixin
+// 压力等级说明 - ps uses orange colors + wider name, override mixin defaults
+.ps-range-info { background: rgba(251,146,60,0.03); border-color: rgba(251,146,60,0.1); }
+.ps-range-name { width: 78px; }
 
 // ── 分布图 ──
 .ps-dist-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
@@ -970,18 +921,12 @@ $cyan:   #00d4ff;
 }
 .ps-rt-time { font-size: 10px; color: $dim; }
 
-.ps-rt-pg {
-  height: 36px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  border-top: 1px solid rgba(251,146,60,0.1);
-}
+// pagination → hm-pagination mixin + orange overrides
+.ps-rt-pg { border-top-color: rgba(251,146,60,0.1); }
 .ps-pg-btn {
-  height: 22px; padding: 0 7px;
-  background: rgba(251,146,60,0.07); border: 1px solid rgba(251,146,60,0.18);
-  border-radius: 3px; color: $accent; font-size: 12px; cursor: pointer;
-  transition: background 0.2s;
+  background: rgba(251,146,60,0.07); border-color: rgba(251,146,60,0.18);
+  color: $accent;
   &:hover:not(:disabled) { background: rgba(251,146,60,0.16); }
-  &:disabled { opacity: 0.28; cursor: not-allowed; }
 }
 .ps-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; }
 

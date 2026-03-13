@@ -705,7 +705,12 @@ export default {
 $border: rgba(167,139,250,0.14);
 $accent: #a78bfa;
 @import '@/styles/hm-vars';
+@import '@/styles/hm-layout';
 $cyan:   #00d4ff;
+
+@include hm-body('sl', $gap: 8px, $pad: 8px);
+@include hm-main('sl', $gap: 8px);
+@include hm-panel('sl');
 
 /* ── Root ── */
 .sl-root {
@@ -751,8 +756,7 @@ $cyan:   #00d4ff;
 .sl-kpi-l   { font-size: 11px; color: $dim; margin-top: 2px; white-space: nowrap; }
 .sl-hd-time { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: $dim; }
 
-/* ── Body ── */
-.sl-bd { flex: 1; display: flex; gap: 8px; padding: 8px; overflow-y: auto; overflow-x: hidden; min-height: 0; }
+/* ── Body（hm-body mixin） ── */
 
 /* ── Aside ── */
 .sl-aside { width: 304px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -787,11 +791,7 @@ $cyan:   #00d4ff;
 /* 异常预警 */
 .sl-alert-panel { flex: 1; min-height: 0; }
 
-/* ── Panel shared ── */
-.sl-panel {
-  background: $panel; border: 1px solid $border; border-radius: 10px;
-  display: flex; flex-direction: column; overflow: hidden; backdrop-filter: blur(8px);
-}
+/* ── Panel（hm-panel mixin + 页面特有） ── */
 .sl-ph {
   height: 38px; flex-shrink: 0;
   display: flex; align-items: center; gap: 8px; padding: 0 12px;
@@ -799,12 +799,9 @@ $cyan:   #00d4ff;
   background: rgba(167,139,250,0.03);
 }
 .sl-ph-bar   { width: 3px; height: 14px; background: linear-gradient(180deg,$accent,rgba(167,139,250,0.25)); border-radius: 2px; box-shadow: 0 0 7px rgba(167,139,250,0.8); }
-.sl-ph-title { font-size: 13px; font-weight: 600; color: $white; letter-spacing: 1px; }
+// ph-title, rt-total, trend-tags, tag, pc → hm-panel mixin
 .sl-ph-sub   { margin-left: auto; font-size: 11px; color: $dim; }
-.sl-rt-total { margin-left: auto; font-size: 11px; color: $dim; }
-.sl-trend-tags { margin-left: auto; display: flex; gap: 8px; }
-.sl-tag { font-size: 10px; padding: 2px 6px; border-radius: 3px; border: 1px solid; }
-.sl-pc  { flex: 1; min-height: 0; padding: 6px; }
+.sl-trend-tags { margin-left: auto; } // override mixin margin-left: 12px
 
 /* ── 睡眠阶段 ── */
 .sl-stage-body   { flex: 1; display: flex; align-items: center; gap: 8px; padding: 6px 10px; min-height: 0; }
@@ -817,14 +814,7 @@ $cyan:   #00d4ff;
 .sl-stage-bar    { height: 100%; border-radius: 3px; transition: width 0.8s ease; opacity: 0.85; }
 .sl-stage-pct    { font-size: 12px; font-weight: 700; font-family: 'Consolas', monospace; width: 30px; text-align: right; }
 
-/* ── Main ── */
-.sl-main      {
-  flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0;
-  overflow-y: auto; overflow-x: hidden;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
-  &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
-}
+/* ── Main（hm-main mixin） ── */
 .sl-trend-panel { flex: 0 0 390px; }
 .sl-mid-row   { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
 .sl-mid-top   { flex: 0 0 48%; display: flex; gap: 8px; min-height: 0; }

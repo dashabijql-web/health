@@ -816,6 +816,15 @@ export default {
 
 <style lang="scss" scoped>
 @import '@/styles/hm-vars';
+@import '@/styles/hm-layout';
+
+@include hm-body('bo');
+@include hm-main('bo');
+@include hm-panel('bo');
+@include hm-overview('bo');
+@include hm-kpi-cards('bo');
+@include hm-range-info('bo');
+@include hm-pagination('bo');
 
 .bo-root {
   width: 100%;
@@ -861,22 +870,14 @@ export default {
 .bo-kpi-l    { font-size: 11px; color: $dim; margin-top: 2px; white-space: nowrap; }
 .bo-hd-time  { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: $dim; }
 
-/* ── Body ── */
-.bo-bd { flex: 1; display: flex; gap: 10px; padding: 10px; overflow-y: auto; overflow-x: hidden; min-height: 0; }
+/* ── Body（hm-body mixin） ── */
 
 /* ── Aside ── */
 .bo-aside       { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
 .bo-aside-top   { height: 190px; flex-shrink: 0; }
 .bo-aside-bot   { flex: 1; }
 
-/* ── Main ── */
-.bo-main        {
-  flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;
-  overflow-y: auto; overflow-x: hidden;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
-  &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
-}
+/* ── Main（hm-main mixin） ── */
 .bo-overview-panel { height: 162px; flex-shrink: 0; }
 .bo-mid-row     { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }
 .bo-panel-age   { flex: 0 0 340px; }
@@ -887,11 +888,7 @@ export default {
 /* ── Rtlist ── */
 .bo-rtlist { width: 272px; flex-shrink: 0; }
 
-/* ── Panel ── */
-.bo-panel {
-  background: $panel; border: 1px solid $border; border-radius: 10px;
-  display: flex; flex-direction: column; overflow: hidden; backdrop-filter: blur(8px);
-}
+/* ── Panel（hm-panel mixin + 页面特有） ── */
 .bo-ph {
   height: 38px; flex-shrink: 0;
   display: flex; align-items: center; gap: 8px; padding: 0 12px;
@@ -899,11 +896,7 @@ export default {
   background: rgba(0,212,255,0.035);
 }
 .bo-ph-bar { width: 3px; height: 14px; background: linear-gradient(180deg,$accent,rgba(0,212,255,0.3)); border-radius: 2px; box-shadow: 0 0 6px rgba(0,212,255,0.7); }
-.bo-ph-title { font-size: 13px; font-weight: 600; color: $white; letter-spacing: 1px; }
-.bo-rt-total { margin-left: auto; font-size: 11px; color: $dim; }
-.bo-ph-legend { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.bo-leg-dot   { width: 8px; height: 8px; border-radius: 2px; }
-.bo-leg-txt   { font-size: 11px; color: $dim; }
+// ph-title, rt-total, ph-legend, leg-dot, leg-txt → hm-panel mixin
 .bo-period-tabs {
   display: flex;
   background: rgba(0,212,255,0.06);
@@ -921,9 +914,7 @@ export default {
   &:hover { color: $white; background: rgba(0,212,255,0.1); }
   &.is-active { color: $bg; background: $accent; font-weight: 700; }
 }
-.bo-trend-tags { margin-left: 12px; display: flex; gap: 10px; }
-.bo-tag { font-size: 10px; padding: 2px 6px; border-radius: 3px; border: 1px solid; }
-.bo-pc  { flex: 1; min-height: 0; padding: 6px; }
+// trend-tags, tag, pc → hm-panel mixin
 
 /* ── TOP5 ── */
 .bo-top5-empty { padding: 20px 0; text-align: center; color: rgba(126,184,247,0.5); font-size: 12px; }
@@ -942,29 +933,7 @@ export default {
 .bo-top5-bar     { height: 100%; border-radius: 3px; background: linear-gradient(90deg,$accent,#0066cc); transition: width 0.8s ease; }
 .bo-top5-val     { font-size: 13px; font-weight: 700; color: $accent; font-family: 'Consolas', monospace; width: 22px; text-align: right; flex-shrink: 0; }
 
-/* ── 概况 ── */
-.bo-overview-body { flex: 1; min-height: 0; display: flex; align-items: center; padding: 8px 14px; gap: 14px; }
-.bo-gauge-wrap  { width: 120px; height: 108px; flex-shrink: 0; position: relative; }
-.bo-gauge-chart { width: 100%; height: 100%; }
-.bo-gauge-center{ position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; }
-.bo-gauge-val   { font-size: 22px; font-weight: 700; color: $accent; font-family: 'Consolas', monospace; line-height: 1; }
-.bo-gauge-sub   { font-size: 10px; color: $dim; margin-top: 1px; white-space: nowrap; }
-
-.bo-kpi-cards {
-  flex: 1; display: grid;
-  grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 7px;
-}
-.bo-kpi-card { background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.1); border-radius: 7px; padding: 7px 10px; display: flex; flex-direction: column; justify-content: center; }
-.bo-kpi-card-val   { font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
-.bo-kpi-card-unit  { font-size: 10px; color: $dim; font-weight: normal; font-family: sans-serif; margin-left: 1px; }
-.bo-kpi-card-label { font-size: 10px; color: $dim; margin-top: 2px; }
-
-.bo-range-info  { width: 168px; flex-shrink: 0; background: rgba(0,212,255,0.03); border: 1px solid rgba(0,212,255,0.1); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
-.bo-range-title { font-size: 11px; color: $dim; font-weight: 600; margin-bottom: 3px; letter-spacing: 0.5px; }
-.bo-range-item  { display: flex; align-items: center; gap: 6px; }
-.bo-range-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.bo-range-name  { font-size: 10px; width: 38px; flex-shrink: 0; }
-.bo-range-val   { font-size: 10px; color: $dim; font-family: 'Consolas', monospace; }
+// 概况 / kpi-cards / range-info → hm-overview + hm-kpi-cards + hm-range-info mixins
 
 /* ── 分布 ── */
 .bo-dist-body   { flex: 1; min-height: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
@@ -1018,19 +987,8 @@ export default {
 }
 .bo-rt-time { font-size: 10px; color: $dim; }
 
-.bo-rt-pg {
-  height: 36px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  border-top: 1px solid rgba(0,212,255,0.1);
-}
-.bo-pg-btn {
-  height: 22px; padding: 0 7px;
-  background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.18);
-  border-radius: 3px; color: $accent; font-size: 12px; cursor: pointer; transition: background 0.2s;
-  &:hover:not(:disabled) { background: rgba(0,212,255,0.16); }
-  &:disabled { opacity: 0.28; cursor: not-allowed; }
-}
-.bo-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; }
+// pagination → hm-pagination mixin
+.bo-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; } // override mixin
 
 // ── 血氧分布统计面板 ──
 .bo-panel-dist-stat { flex-shrink: 0; }

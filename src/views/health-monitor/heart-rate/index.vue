@@ -826,6 +826,15 @@ export default {
 
 <style lang="scss" scoped>
 @import '@/styles/hm-vars';
+@import '@/styles/hm-layout';
+
+@include hm-body('hr');
+@include hm-main('hr');
+@include hm-panel('hr');
+@include hm-overview('hr');
+@include hm-kpi-cards('hr');
+@include hm-range-info('hr');
+@include hm-pagination('hr');
 
 // ── Root：自适应视口高度 ──
 .hr-root {
@@ -889,10 +898,7 @@ export default {
 .hr-kpi-l { font-size: 11px; color: $dim; margin-top: 2px; white-space: nowrap; }
 .hr-hd-time { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: $dim; }
 
-// ── Body ──
-.hr-bd {
-  flex: 1; display: flex; gap: 10px; padding: 10px; overflow-y: auto; overflow-x: hidden; min-height: 0;
-}
+// ── Body（hm-body mixin） ──
 
 // ── Aside（左侧：TOP5紧凑列表 + 部门图）──
 .hr-aside {
@@ -931,19 +937,9 @@ export default {
 .hr-top5-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #00d4ff, #0066cc); transition: width 0.8s ease; }
 .hr-top5-val { font-size: 13px; font-weight: 700; color: #00d4ff; font-family: 'Consolas', monospace; width: 22px; text-align: right; flex-shrink: 0; }
 
-// 部门图 panel header legend
-.hr-ph-legend { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.hr-leg-dot { width: 8px; height: 8px; border-radius: 2px; }
-.hr-leg-txt { font-size: 11px; color: $dim; }
+// panel header legend → hm-panel mixin
 
-// ── Main（中间）──
-.hr-main {
-  flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;
-  overflow-y: auto; overflow-x: hidden;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
-  &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
-}
+// ── Main（hm-main mixin） ──
 .hr-overview-panel { height: 162px; flex-shrink: 0; }
 .hr-mid-row        { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }
 .hr-panel-age      { flex: 0 0 340px; }
@@ -954,17 +950,7 @@ export default {
 // ── Right list ──
 .hr-rtlist { width: 272px; flex-shrink: 0; }
 
-// ── Panel 通用 ──
-.hr-panel {
-  background: $panel;
-  border: 1px solid $border;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  backdrop-filter: blur(8px);
-}
-
+// ── Panel（hm-panel mixin + 页面特有） ──
 .hr-ph {
   height: 38px; flex-shrink: 0;
   display: flex; align-items: center; gap: 8px; padding: 0 12px;
@@ -977,8 +963,6 @@ export default {
   border-radius: 2px;
   box-shadow: 0 0 6px rgba(0,212,255,0.7);
 }
-.hr-ph-title { font-size: 13px; font-weight: 600; color: $white; letter-spacing: 1px; }
-.hr-rt-total { margin-left: auto; font-size: 11px; color: $dim; }
 .hr-period-tabs {
   display: flex;
   background: rgba(0,212,255,0.06);
@@ -996,58 +980,8 @@ export default {
   &:hover { color: $white; background: rgba(0,212,255,0.1); }
   &.is-active { color: $bg; background: $accent; font-weight: 700; }
 }
-.hr-trend-tags { margin-left: 12px; display: flex; gap: 10px; }
-.hr-tag { font-size: 10px; padding: 2px 6px; border-radius: 3px; border: 1px solid; }
-
-.hr-pc { flex: 1; min-height: 0; padding: 6px; }
-
-// ── 概况主体：仪表盘 + KPI卡 + 区间说明 ──
-.hr-overview-body {
-  flex: 1; min-height: 0;
-  display: flex; align-items: center; padding: 8px 14px; gap: 14px;
-}
-.hr-gauge-wrap { width: 120px; height: 108px; flex-shrink: 0; position: relative; }
-.hr-gauge-chart { width: 100%; height: 100%; }
-.hr-gauge-center {
-  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-  text-align: center; pointer-events: none;
-}
-.hr-gauge-val  { font-size: 22px; font-weight: 700; color: $accent; font-family: 'Consolas', monospace; line-height: 1; }
-.hr-gauge-sub  { font-size: 10px; color: $dim; margin-top: 1px; white-space: nowrap; }
-
-// 6个 KPI 小卡片，2行3列
-.hr-kpi-cards {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 7px;
-}
-.hr-kpi-card {
-  background: rgba(0,212,255,0.04);
-  border: 1px solid rgba(0,212,255,0.1);
-  border-radius: 7px;
-  padding: 7px 10px;
-  display: flex; flex-direction: column; justify-content: center;
-}
-.hr-kpi-card-val   { font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
-.hr-kpi-card-unit  { font-size: 10px; color: $dim; font-weight: normal; font-family: sans-serif; margin-left: 1px; }
-.hr-kpi-card-label { font-size: 10px; color: $dim; margin-top: 2px; }
-
-// 心率区间说明
-.hr-range-info {
-  width: 168px; flex-shrink: 0;
-  background: rgba(0,212,255,0.03);
-  border: 1px solid rgba(0,212,255,0.1);
-  border-radius: 8px;
-  padding: 8px 10px;
-  display: flex; flex-direction: column; gap: 4px;
-}
-.hr-range-title { font-size: 11px; color: $dim; font-weight: 600; margin-bottom: 3px; letter-spacing: 0.5px; }
-.hr-range-item  { display: flex; align-items: center; gap: 6px; }
-.hr-range-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.hr-range-name  { font-size: 10px; width: 78px; flex-shrink: 0; }
-.hr-range-val   { font-size: 10px; color: $dim; font-family: 'Consolas', monospace; }
+// overview/kpi-cards/range-info → hm-overview + hm-kpi-cards + hm-range-info mixins
+.hr-range-name { width: 78px; } // override mixin default 38px
 
 // ── 分布图 ──
 .hr-dist-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
@@ -1099,20 +1033,8 @@ export default {
 }
 .hr-rt-time { font-size: 10px; color: $dim; }
 
-.hr-rt-pg {
-  height: 36px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  border-top: 1px solid rgba(0,212,255,0.1);
-}
-.hr-pg-btn {
-  height: 22px; padding: 0 7px;
-  background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.18);
-  border-radius: 3px; color: $accent; font-size: 12px; cursor: pointer;
-  transition: background 0.2s;
-  &:hover:not(:disabled) { background: rgba(0,212,255,0.16); }
-  &:disabled { opacity: 0.28; cursor: not-allowed; }
-}
-.hr-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; }
+// pagination → hm-pagination mixin
+.hr-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; } // override mixin
 
 // ── 异常明细面板 ──
 .hr-panel-anomaly { flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
