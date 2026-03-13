@@ -772,9 +772,8 @@ export default {
   border-radius: 50%;
   background: $accent;
   box-shadow: 0 0 8px $accent;
-  animation: hrPulse 2s ease-in-out infinite;
+  animation: hmPulse 2s ease-in-out infinite;
 }
-@keyframes hrPulse { 0%,100% { opacity:1; transform:scale(1) } 50% { opacity:0.45; transform:scale(0.75) } }
 
 .hr-hd-title {
   font-size: 20px; font-weight: 700; color: $white; margin: 0;

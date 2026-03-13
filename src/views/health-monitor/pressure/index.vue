@@ -666,9 +666,8 @@ $cyan:   #00d4ff;
   border-radius: 50%;
   background: $accent;
   box-shadow: 0 0 8px $accent;
-  animation: psPulse 2s ease-in-out infinite;
+  animation: hmPulse 2s ease-in-out infinite;
 }
-@keyframes psPulse { 0%,100% { opacity:1; transform:scale(1) } 50% { opacity:0.45; transform:scale(0.75) } }
 
 .ps-hd-title {
   font-size: 20px; font-weight: 700; color: $white; margin: 0;

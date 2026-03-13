@@ -728,9 +728,8 @@ $cyan:   #00d4ff;
 .sl-live-dot {
   width: 9px; height: 9px; border-radius: 50%;
   background: $accent; box-shadow: 0 0 8px $accent;
-  animation: slPulse 2.5s ease-in-out infinite;
+  animation: hmPulse 2.5s ease-in-out infinite;
 }
-@keyframes slPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.75)} }
 .sl-hd-title { font-size: 20px; font-weight: 700; color: $white; margin: 0; letter-spacing: 2px; text-shadow: 0 0 14px rgba(167,139,250,0.5); }
 .sl-hd-date  { font-size: 12px; color: $accent; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.25); border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
 .sl-hd-kpis  { flex: 1; display: flex; justify-content: center; }

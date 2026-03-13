@@ -802,8 +802,7 @@ export default {
 /* Header */
 .rw-hd { height:52px; flex-shrink:0; display:flex; align-items:center; padding:0 20px; gap:16px; background:rgba(0,6,24,.65); border-bottom:1px solid $border; }
 .rw-hd-left { display:flex; align-items:center; gap:10px; flex-shrink:0; }
-.rw-live-dot { width:9px; height:9px; border-radius:50%; background:#ef4444; box-shadow:0 0 8px #ef4444; animation:rwPulse 2s ease-in-out infinite; }
-@keyframes rwPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(.75)} }
+.rw-live-dot { width:9px; height:9px; border-radius:50%; background:#ef4444; box-shadow:0 0 8px #ef4444; animation:hmPulse 2s ease-in-out infinite; }
 .rw-hd-title { font-size:20px; font-weight:700; color:$white; margin:0; letter-spacing:2px; text-shadow:0 0 14px rgba(239,68,68,.45); }
 .rw-hd-kpis { flex:1; display:flex; justify-content:center; }
 .rw-kpi { display:flex; flex-direction:column; align-items:center; padding:0 20px; border-right:1px solid $border; &:first-child{border-left:1px solid $border;} }

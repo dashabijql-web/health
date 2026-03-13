@@ -2,6 +2,12 @@
 // 用法：@include hm-body('hr'); @include hm-panel('hr'); 等
 // 所有 mixin 以页面前缀 $p 为参数，生成 .#{$p}-xxx 类名
 
+// 共享脉冲动画 — 各页面 .xx-live-dot 引用此 keyframes
+@keyframes hmPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.75); }
+}
+
 @mixin hm-body($p, $gap: 10px, $pad: 10px) {
   .#{$p}-bd {
     flex: 1; display: flex; gap: $gap; padding: $pad;
@@ -76,6 +82,35 @@
   .#{$p}-range-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .#{$p}-range-name  { font-size: 10px; width: 38px; flex-shrink: 0; }
   .#{$p}-range-val   { font-size: 10px; color: $dim; font-family: 'Consolas', monospace; }
+}
+
+@mixin hm-pulse($p, $dur: 2s) {
+  .#{$p}-live-dot { animation: hmPulse $dur ease-in-out infinite; }
+}
+
+@mixin hm-empty($p) {
+  .#{$p}-top5-empty {
+    padding: 20px 0; text-align: center; font-size: 12px;
+    color: rgba(126,184,247,0.5);
+  }
+  .#{$p}-anomaly-empty {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: rgba(82,196,26,0.8); padding: 10px;
+  }
+}
+
+@mixin hm-rt-row($p, $cols: 64px 46px 40px 1fr, $hover: rgba(0,212,255,0.055)) {
+  .#{$p}-rt-row {
+    display: grid; grid-template-columns: $cols;
+    gap: 6px; padding: 6px 4px; margin-bottom: 1px;
+    border-radius: 5px; align-items: center;
+    border-left: 2px solid transparent;
+    transition: background 0.2s;
+    &:hover { background: $hover; }
+  }
+  .#{$p}-rt-name { font-size: 12px; color: $white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .#{$p}-rt-val  { font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; }
+  .#{$p}-rt-time { font-size: 10px; color: $dim; }
 }
 
 @mixin hm-pagination($p) {

@@ -758,9 +758,8 @@ export default {
 .bo-live-dot {
   width: 9px; height: 9px; border-radius: 50%;
   background: $accent; box-shadow: 0 0 8px $accent;
-  animation: boPulse 2s ease-in-out infinite;
+  animation: hmPulse 2s ease-in-out infinite;
 }
-@keyframes boPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.45;transform:scale(0.75)} }
 .bo-hd-title { font-size: 20px; font-weight: 700; color: $white; margin: 0; letter-spacing: 2px; text-shadow: 0 0 14px rgba(0,212,255,0.45); }
 .bo-hd-kpis  { flex: 1; display: flex; justify-content: center; }
 .bo-kpi {
