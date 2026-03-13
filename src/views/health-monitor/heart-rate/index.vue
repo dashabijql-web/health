@@ -360,9 +360,6 @@ export default {
         { label: '心率范围',   val: o.minHeartRate && o.maxHeartRate ? `${o.minHeartRate}~${o.maxHeartRate}` : '--', unit: '', color: '#a78bfa' }
       ]
     },
-    // 保留旧 computed 避免影响其他逻辑
-    ovLeftCards() { return [] },
-    ovRightCards() { return [] },
     overviewTitle() {
       return { day: '今日心率概况', week: '近7日心率概况', month: '近30日心率概况' }[this.activePeriod]
     },

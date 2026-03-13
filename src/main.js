@@ -82,17 +82,7 @@ import './permission'
 // 必须在 permission.js 之后引入（心跳依赖路由守卫已就绪）
 import './heartbeat'
 
-// ─── API 模块（全局挂载）──────────────────────────────────────────
-// 将所有 API 函数集中在一个对象中，挂载到 Vue 全局属性
-// 在组件中可以直接用：this.$API.healthApi.getDashboardOverview()
-// 避免每个组件都要单独 import API 函数
-import API from '@/api'
-
-// ─── 全局自定义组件 ──────────────────────────────────────────────
-// CategorySelect：分类选择器（级联下拉，用于商品/科室分类）
-import CategorySelect from '@/components/CategorySelect/index.vue'
-// HintButton：带提示的按钮（hover 时显示 tooltip）
-import HintButton from '@/components/HintButton/index.vue'
+// ─── 全局自定义组件（已清理未使用的 CategorySelect / HintButton）──
 
 // ════════════════════════════════════════════════════════════════
 // 创建并配置 Vue 应用实例
@@ -118,15 +108,6 @@ app.use(store)
 //    安装后组件内可以用 this.$router（路由跳转）、this.$route（当前路由信息）
 app.use(router)
 
-// 6. 挂载 API 到全局属性
-//    组件内通过 this.$API.xxx 调用，等同于全局变量但更规范
-app.config.globalProperties.$API = API
-
-// 7. 注册全局组件
-//    注册后在任何 .vue 文件的模板中都可以直接使用这些组件，无需 import
-app.component('CategorySelect', CategorySelect)
-app.component('HintButton', HintButton)
-
-// 8. 将 Vue 应用挂载到 public/index.html 中 id="app" 的 div 元素
+// 6. 将 Vue 应用挂载到 public/index.html 中 id="app" 的 div 元素
 //    挂载后，Vue 接管该 div 内的所有 DOM，开始渲染
 app.mount('#app')

@@ -64,6 +64,18 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       include: ['@vue/shared', 'element-plus', 'vue', 'vue-router', 'vuex']
     },
+    build: {
+      chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-vue': ['vue', 'vue-router', 'vuex'],
+            'vendor-element': ['element-plus', '@element-plus/icons-vue'],
+            'vendor-echarts': ['echarts'],
+          }
+        }
+      }
+    },
     server: {
       host: '0.0.0.0', // 监听所有网卡（允许局域网内其他设备访问 http://本机IP:9528）
       port: 9528,       // 前端开发服务器端口
