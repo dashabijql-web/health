@@ -257,6 +257,7 @@ import {
   getPressureHourly
 } from '@/api/pressure'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
+import { initChart, distOption, gaugeOption } from '@/utils/chart-helpers'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
 
@@ -427,38 +428,11 @@ export default {
     // ── ECharts ──
 
     initGauge() {
-      const el = this.$refs.gaugeRef; if (!el) return
-      if (this.charts.gauge) this.charts.gauge.dispose()
-      const c = echarts.init(el); this.charts.gauge = c
-      const v = this.overview.avgPressure || 0
-      c.setOption({
-        series: [{
-          type: 'gauge',
-          startAngle: 225, endAngle: -45,
-          radius: '90%', center: ['50%', '58%'],
-          min: 0, max: 100,
-          axisLine: {
-            lineStyle: {
-              width: 16,
-              color: [
-                [0.50, '#4FC3F7'],
-                [0.70, '#52c41a'],
-                [0.85, '#FFB84D'],
-                [1.00, '#ff5252']
-              ]
-            }
-          },
-          pointer: {
-            length: '60%', width: 6,
-            itemStyle: { color: '#fb923c', shadowBlur: 14, shadowColor: 'rgba(251,146,60,0.8)' }
-          },
-          axisTick:  { length: 5,  distance: -22, lineStyle: { color: 'rgba(251,146,60,0.25)', width: 1 } },
-          splitLine: { length: 10, distance: -22, lineStyle: { color: 'rgba(251,146,60,0.45)', width: 2 } },
-          axisLabel: { color: '#8ba6c8', fontSize: 10, distance: -28 },
-          detail:    { show: false },
-          data:      [{ value: v }]
-        }]
-      })
+      const c = initChart(this.charts, 'gauge', this.$refs.gaugeRef)
+      if (c) c.setOption(gaugeOption(this.overview.avgPressure || 0, {
+        max: 100, pointer: '#fb923c',
+        colors: [[0.50,'#4FC3F7'],[0.70,'#52c41a'],[0.85,'#FFB84D'],[1,'#ff5252']]
+      }))
     },
 
     initDept(data) {
@@ -494,22 +468,8 @@ export default {
     },
 
     initDist(data) {
-      const el = this.$refs.distRef; if (!el) return
-      if (this.charts.dist) this.charts.dist.dispose()
-      const c = echarts.init(el); this.charts.dist = c
-      c.setOption({
-        backgroundColor: 'transparent',
-        series: [{
-          type: 'pie', radius: ['52%', '80%'], center: ['50%', '50%'],
-          label: { show: false }, labelLine: { show: false },
-          data: data.length
-            ? data.map(x => ({
-                value: x.value, name: x.name,
-                itemStyle: { color: x.color, borderRadius: 4, shadowColor: x.color + '66', shadowBlur: 10 }
-              }))
-            : [{ name: '暂无数据', value: 1, itemStyle: { color: '#1e3a5f' } }]
-        }]
-      })
+      const c = initChart(this.charts, 'dist', this.$refs.distRef)
+      if (c) c.setOption(distOption(data))
     },
 
     renderHourly(vals) {

@@ -293,6 +293,7 @@ import {
   getHourlyBloodOxygen
 } from '@/api/blood-oxygen'
 import { spo2Level, SPO2 } from '@/constants/health-thresholds'
+import { initChart, distOption, gaugeOption } from '@/utils/chart-helpers'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, ageGrid, barLabel } from '@/utils/echarts-config'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
@@ -471,24 +472,10 @@ export default {
 
     // ── 仪表盘（80-100%）──
     initGauge() {
-      const el = this.$refs.gaugeRef; if (!el) return
-      if (this.charts.gauge) this.charts.gauge.dispose()
-      const c = echarts.init(el); this.charts.gauge = c
-      const v = this.overview.avgBloodOxygen || 0
-      c.setOption({
-        series: [{
-          type: 'gauge', startAngle: 225, endAngle: -45,
-          radius: '90%', center: ['50%', '58%'],
-          min: 80, max: 100,
-          axisLine: { lineStyle: { width: 14, color: [[0.5,'#ff5252'],[0.75,'#FFB84D'],[0.95,'#52c41a'],[1,'#4FC3F7']] } },
-          pointer: { length: '60%', width: 6, itemStyle: { color: '#00d4ff', shadowBlur: 14, shadowColor: 'rgba(0,212,255,0.8)' } },
-          axisTick: { length: 5, distance: -20, lineStyle: { color: 'rgba(0,212,255,0.25)', width: 1 } },
-          splitLine: { length: 10, distance: -20, lineStyle: { color: 'rgba(0,212,255,0.45)', width: 2 } },
-          axisLabel: { color: '#8ba6c8', fontSize: 9, distance: -28 },
-          detail: { show: false },
-          data: [{ value: v }]
-        }]
-      })
+      const c = initChart(this.charts, 'gauge', this.$refs.gaugeRef)
+      if (c) c.setOption(gaugeOption(this.overview.avgBloodOxygen || 0, {
+        min: 80, max: 100, colors: [[0.5,'#ff5252'],[0.75,'#FFB84D'],[0.95,'#52c41a'],[1,'#4FC3F7']]
+      }))
     },
 
     // ── 部门统计（血氧：偏低+偏高）──
@@ -584,22 +571,9 @@ export default {
       })
     },
 
-    // ── 分布环形图 ──
     initDist(data) {
-      const el = this.$refs.distRef; if (!el) return
-      if (this.charts.dist) this.charts.dist.dispose()
-      const c = echarts.init(el); this.charts.dist = c
-      c.setOption({
-        backgroundColor: 'transparent',
-        series: [{
-          type: 'pie', radius: ['52%', '80%'], center: ['50%', '50%'],
-          label: { show: false }, labelLine: { show: false },
-          data: data.map(x => ({
-            value: x.value, name: x.name,
-            itemStyle: { color: x.color, borderRadius: 4, shadowColor: x.color + '66', shadowBlur: 10 }
-          }))
-        }]
-      })
+      const c = initChart(this.charts, 'dist', this.$refs.distRef)
+      if (c) c.setOption(distOption(data))
     },
 
     // ── 趋势折线图 ──

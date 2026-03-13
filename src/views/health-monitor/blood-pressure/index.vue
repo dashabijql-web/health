@@ -279,6 +279,7 @@ import {
   getBPHourly
 } from '@/api/blood-pressure'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
+import { initChart, distOption } from '@/utils/chart-helpers'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
 
@@ -482,19 +483,8 @@ export default {
     },
 
     initDistChart(data) {
-      const el = this.$refs.distRef; if (!el) return
-      if (this.charts.dist) this.charts.dist.dispose()
-      const c = echarts.init(el); this.charts.dist = c
-      c.setOption({
-        backgroundColor: 'transparent',
-        series: [{
-          type: 'pie', radius: ['52%', '80%'], center: ['50%', '50%'],
-          label: { show: false }, labelLine: { show: false },
-          data: data.length
-            ? data.map(x => ({ value: x.value, name: x.name, itemStyle: { color: x.color, borderRadius: 4, shadowColor: x.color + '66', shadowBlur: 10 } }))
-            : [{ name: '暂无数据', value: 1, itemStyle: { color: '#1e3a5f' } }]
-        }]
-      })
+      const c = initChart(this.charts, 'dist', this.$refs.distRef)
+      if (c) c.setOption(distOption(data))
     },
 
     initTrendChart(dates, sysVals, diaVals) {
