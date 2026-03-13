@@ -308,16 +308,13 @@ export default {
         avgBloodOxygen: 0,
         avgSteps: 0,
         avgTemperature: 0,
-        avgSleep: 0,
         avgBloodPressureHigh: 0,
-        avgBloodPressureLow: 0,
         avgPressure: 0,
         todayWarningCount: 0
       },
       statistics: {
         onlineUsers: 0,
         totalUsers: 0,
-        weekRecords: 0,
         todayRecords: 0,
         onlineRate: 0,
         normalRate: 0
@@ -328,7 +325,6 @@ export default {
       deptList: [],
       currentPage: 1,
       pageSize: 20,
-      tableHeight: 600,
       autoScrollEnabled: true,
       scrollPaused: false,
       refreshTimer: null,

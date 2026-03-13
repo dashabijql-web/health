@@ -244,6 +244,7 @@
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getDeptWarningStats } from '@/api/risk-warning'
+import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, barLabel } from '@/utils/echarts-config'
 import { getHealthRecords } from '@/api/health'
 import { getOnlineUsers } from '@/api/realtime'
 import chartPageMixin from '@/mixins/chartPage'
@@ -438,10 +439,10 @@ export default {
       if(this.charts.trend) this.charts.trend.dispose()
       const c=echarts.init(el); this.charts.trend=c
       const {dates,series}=this.trendData
-      if(!dates.length){ c.setOption({backgroundColor:'transparent',graphic:[{type:'text',left:'center',top:'middle',style:{text:'暂无趋势数据',fill:'#8ba6c8',fontSize:14}}]}); return }
+      if(!dates.length){ c.setOption(emptyOption('暂无趋势数据')); return }
       c.setOption({
         backgroundColor:'transparent',
-        tooltip:{trigger:'axis',backgroundColor:'rgba(8,13,35,0.92)',borderColor:'rgba(0,212,255,0.25)',textStyle:{color:'#e0f0ff',fontSize:12}},
+        tooltip:chartTooltip(),
         legend:{data:['心率','血氧','体温','压力'],right:10,top:4,textStyle:{color:'#8ba6c8',fontSize:11},itemWidth:16,itemHeight:8},
         grid:{left:'4%',right:'4%',top:'12%',bottom:'10%',containLabel:true},
         xAxis:{type:'category',data:dates,boundaryGap:false,axisLine:{lineStyle:{color:'rgba(0,212,255,0.18)'}},axisTick:{show:false},axisLabel:{color:'#8ba6c8',fontSize:10,interval:4}},
@@ -459,7 +460,7 @@ export default {
       const el=this.$refs.deptRef; if(!el) return
       if(this.charts.dept) this.charts.dept.dispose()
       const c=echarts.init(el); this.charts.dept=c
-      if(!this.deptData.length){ c.setOption({backgroundColor:'transparent',graphic:[{type:'text',left:'center',top:'middle',style:{text:'暂无数据',fill:'#8ba6c8',fontSize:14}}]}); return }
+      if(!this.deptData.length){ c.setOption(emptyOption()); return }
       const names=this.deptData.map(d=>d.deptName)
       // FIX ④: 动态左侧留白防截断
       const maxLen=Math.max(...names.map(n=>n.length))
@@ -485,7 +486,7 @@ export default {
       if(this.charts.trend) this.charts.trend.dispose()
       const c=echarts.init(el); this.charts.trend=c
       const total=this.warningStats.reduce((s,x)=>s+x.value,0)
-      if(!total){ c.setOption({backgroundColor:'transparent',graphic:[{type:'text',left:'center',top:'middle',style:{text:'今日暂无预警数据',fill:'#8ba6c8',fontSize:14}}]}); return }
+      if(!total){ c.setOption(emptyOption('今日暂无预警数据')); return }
       c.setOption({
         backgroundColor:'transparent',
         tooltip:{trigger:'axis',axisPointer:{type:'shadow'},backgroundColor:'rgba(8,13,35,0.92)',borderColor:'rgba(0,212,255,0.25)',textStyle:{color:'#e0f0ff',fontSize:12},formatter:p=>`${p[0].name}：<b style="color:${this.warningStats[p[0].dataIndex]?.color||'#00d4ff'}">${p[0].value}</b> 次`},
@@ -503,7 +504,7 @@ export default {
       const c = echarts.init(el); this.charts.donut = c
       const total = this.warningStats.reduce((s,x)=>s+x.value,0)
       if(!total) {
-        c.setOption({backgroundColor:'transparent',graphic:[{type:'text',left:'center',top:'middle',style:{text:'暂无数据',fill:'#8ba6c8',fontSize:12}}]})
+        c.setOption(emptyOption('暂无数据', 12))
         return
       }
       c.setOption({

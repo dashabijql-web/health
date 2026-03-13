@@ -278,6 +278,7 @@ import {
   getBPRealtime,
   getBPHourly
 } from '@/api/blood-pressure'
+import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
 import chartPageMixin from '@/mixins/chartPage'
 
 export default {
@@ -474,37 +475,26 @@ export default {
       const el = this.$refs.deptRef; if (!el) return
       if (this.charts.dept) this.charts.dept.dispose()
       const c = echarts.init(el); this.charts.dept = c
-      if (!data.length) {
-        c.setOption({ backgroundColor: 'transparent', graphic: [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无数据', fill: '#8ba6c8', fontSize: 14 } }] })
-        return
-      }
+      if (!data.length) { c.setOption(emptyOption()); return }
       const d = data.slice(0, 12)
       c.setOption({
         backgroundColor: 'transparent',
         legend: { data: ['收缩压','舒张压'], right: 10, top: 6, textStyle: { color: '#8ba6c8', fontSize: 11 }, itemWidth: 10, itemHeight: 10, icon: 'rect' },
-        grid: { left: '26%', right: '8%', top: '14%', bottom: '6%' },
-        xAxis: {
-          type: 'value', axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.07)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 10 }
-        },
-        yAxis: {
-          type: 'category', data: d.map(x => x.deptName), inverse: true,
-          axisLine: { show: false }, axisTick: { show: false },
-          axisLabel: { color: '#a8c5e6', fontSize: 11 }
-        },
+        grid: { ...deptGrid(), top: '14%' },
+        xAxis: valueAxis(),
+        yAxis: { ...categoryAxis(d.map(x => x.deptName), { show: false }), inverse: true },
         series: [
           {
             name: '收缩压', type: 'bar', stack: 'none', barWidth: '35%',
             data: d.map(x => x.avgSystolic || 0),
             itemStyle: { color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: '#a78bfa' }, { offset: 1, color: '#7c3aed' }]) },
-            label: { show: true, position: 'inside', color: '#fff', fontSize: 10, formatter: p => p.value > 0 ? p.value : '' }
+            label: barLabel()
           },
           {
             name: '舒张压', type: 'bar', stack: 'none', barWidth: '35%',
             data: d.map(x => x.avgDiastolic || 0),
             itemStyle: { color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: '#38bdf8' }, { offset: 1, color: '#0284c7' }]), borderRadius: [0, 4, 4, 0] },
-            label: { show: true, position: 'inside', color: '#fff', fontSize: 10, formatter: p => p.value > 0 ? p.value : '' }
+            label: barLabel()
           }
         ]
       })
@@ -534,35 +524,20 @@ export default {
       const fbDates = Array.from({ length: 30 }, (_, i) => dayjs().subtract(29 - i, 'day').format('MM/DD'))
       c.setOption({
         backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(8,13,35,0.92)', borderColor: 'rgba(0,212,255,0.25)',
-          textStyle: { color: '#e0f0ff', fontSize: 12 },
-          formatter: p => {
+        tooltip: chartTooltip(p => {
             const sys = p.find(x => x.seriesName === '收缩压')
             const dia = p.find(x => x.seriesName === '舒张压')
             return `${p[0].name}<br/>` +
               (sys ? `收缩压：<b style="color:#a78bfa">${sys.value || '--'}</b> mmHg<br/>` : '') +
               (dia ? `舒张压：<b style="color:#38bdf8">${dia.value || '--'}</b> mmHg` : '')
-          }
-        },
+          }),
         legend: {
           data: ['收缩压', '舒张压'], right: 10, top: 4,
           textStyle: { color: '#8ba6c8', fontSize: 11 }, itemWidth: 14, itemHeight: 3
         },
-        grid: { left: '5%', right: '5%', top: '16%', bottom: '12%', containLabel: true },
-        xAxis: {
-          type: 'category', data: isEmpty ? fbDates : dates, boundaryGap: false,
-          axisLine: { lineStyle: { color: 'rgba(0,212,255,0.18)' } }, axisTick: { show: false },
-          axisLabel: { color: '#8ba6c8', fontSize: 10, interval: Math.floor((isEmpty ? fbDates : dates).length / 6) }
-        },
-        yAxis: {
-          type: 'value', name: 'mmHg',
-          axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.07)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 10 },
-          min: v => Math.max(0, Math.floor(v.min - 8)), max: v => Math.ceil(v.max + 8)
-        },
+        grid: { ...trendGrid(), right: '5%', top: '16%' },
+        xAxis: { ...categoryAxis(isEmpty ? fbDates : dates, { fontSize: 10, interval: Math.floor((isEmpty ? fbDates : dates).length / 6) }), boundaryGap: false },
+        yAxis: valueAxis({ name: 'mmHg', min: v => Math.max(0, Math.floor(v.min - 8)), max: v => Math.ceil(v.max + 8) }),
         series: [
           {
             name: '收缩压', type: 'line', data: isEmpty ? [] : sysVals,
@@ -595,34 +570,20 @@ export default {
       const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
       c.setOption({
         backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(8,13,35,0.9)', borderColor: 'rgba(0,212,255,0.25)',
-          textStyle: { color: '#e0f0ff', fontSize: 11 },
-          formatter: p => {
+        tooltip: chartTooltip(p => {
             const sys = p.find(x => x.seriesName === '收缩压')
             const dia = p.find(x => x.seriesName === '舒张压')
             return `${p[0].name}<br/>` +
               `收缩压：<b style="color:#a78bfa">${sys?.value ?? '--'}</b> mmHg<br/>` +
               `舒张压：<b style="color:#38bdf8">${dia?.value ?? '--'}</b> mmHg`
-          }
-        },
+          }),
         legend: {
           data: ['收缩压', '舒张压'], right: 4, top: 2,
           textStyle: { color: '#8ba6c8', fontSize: 10 }, itemWidth: 12, itemHeight: 3
         },
-        grid: { left: '8%', right: '2%', top: '18%', bottom: '16%', containLabel: true },
-        xAxis: {
-          type: 'category', data: hours, boundaryGap: false,
-          axisLine: { lineStyle: { color: 'rgba(0,212,255,0.15)' } }, axisTick: { show: false },
-          axisLabel: { color: '#8ba6c8', fontSize: 9, interval: 3 }
-        },
-        yAxis: {
-          type: 'value', axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.06)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 9 },
-          min: v => v.min > 0 ? v.min - 8 : 50, max: v => v.max > 0 ? v.max + 8 : 160
-        },
+        grid: { ...hourlyGrid(), top: '18%' },
+        xAxis: { ...categoryAxis(hours, { fontSize: 9, interval: 3, lineColor: 'rgba(0,212,255,0.15)' }), boundaryGap: false },
+        yAxis: valueAxis({ fontSize: 9, splitColor: 'rgba(0,212,255,0.06)', min: v => v.min > 0 ? v.min - 8 : 50, max: v => v.max > 0 ? v.max + 8 : 160 }),
         series: [
           {
             name: '收缩压', type: 'line', data: sysVals,

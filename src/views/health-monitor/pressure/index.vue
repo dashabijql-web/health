@@ -256,6 +256,7 @@ import {
   getPressureRealtime,
   getPressureHourly
 } from '@/api/pressure'
+import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
 import chartPageMixin from '@/mixins/chartPage'
 
 export default {
@@ -483,31 +484,13 @@ export default {
       const el = this.$refs.deptRef; if (!el) return
       if (this.charts.dept) this.charts.dept.dispose()
       const c = echarts.init(el); this.charts.dept = c
-      if (!data.length) {
-        c.setOption({
-          backgroundColor: 'transparent',
-          graphic: [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无数据', fill: '#8ba6c8', fontSize: 14 } }]
-        })
-        return
-      }
+      if (!data.length) { c.setOption(emptyOption()); return }
       const d = data.slice(0, 10)
       c.setOption({
         backgroundColor: 'transparent',
-        grid: { left: '26%', right: '8%', top: '8%', bottom: '6%' },
-        xAxis: {
-          type: 'value',
-          axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.07)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 10 },
-          min: 0, max: 100
-        },
-        yAxis: {
-          type: 'category',
-          data: d.map(x => x.deptName),
-          inverse: true,
-          axisLine: { show: false }, axisTick: { show: false },
-          axisLabel: { color: '#a8c5e6', fontSize: 11 }
-        },
+        grid: { ...deptGrid(), top: '8%' },
+        xAxis: { ...valueAxis(), min: 0, max: 100 },
+        yAxis: { ...categoryAxis(d.map(x => x.deptName), { show: false }), inverse: true },
         series: [{
           name: '平均压力', type: 'bar', barWidth: '46%',
           data: d.map(x => ({
@@ -520,10 +503,7 @@ export default {
               borderRadius: [0, 4, 4, 0]
             }
           })),
-          label: {
-            show: true, position: 'inside', color: '#fff', fontSize: 10,
-            formatter: p => p.value > 0 ? p.value : ''
-          },
+          label: barLabel(),
           markLine: {
             silent: true, lineStyle: { color: '#FFB84D55', type: 'dashed' },
             data: [{ xAxis: 70, name: '偏高线' }]
@@ -558,26 +538,12 @@ export default {
       const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
       c.setOption({
         backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(8,13,35,0.9)', borderColor: 'rgba(251,146,60,0.25)',
-          textStyle: { color: '#e0f0ff', fontSize: 11 },
-          formatter: p => p[0].value != null
+        tooltip: chartTooltip(p => p[0].value != null
             ? `${p[0].name}<br/>压力指数：<b style="color:#fb923c">${p[0].value}</b>`
-            : `${p[0].name}<br/>暂无数据`
-        },
-        grid: { left: '8%', right: '2%', top: '14%', bottom: '16%', containLabel: true },
-        xAxis: {
-          type: 'category', data: hours, boundaryGap: false,
-          axisLine: { lineStyle: { color: 'rgba(251,146,60,0.15)' } }, axisTick: { show: false },
-          axisLabel: { color: '#8ba6c8', fontSize: 9, interval: 3 }
-        },
-        yAxis: {
-          type: 'value', min: 0, max: 100,
-          axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(251,146,60,0.06)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 9 }
-        },
+            : `${p[0].name}<br/>暂无数据`),
+        grid: hourlyGrid(),
+        xAxis: { ...categoryAxis(hours, { fontSize: 9, interval: 3, lineColor: 'rgba(251,146,60,0.15)' }), boundaryGap: false },
+        yAxis: { ...valueAxis({ fontSize: 9, splitColor: 'rgba(251,146,60,0.06)' }), min: 0, max: 100 },
         series: [{
           type: 'line', data: vals, smooth: true, symbol: 'none', connectNulls: false,
           lineStyle: { color: '#fb923c', width: 2 },
@@ -600,33 +566,13 @@ export default {
       const el = this.$refs.hourlyRef; if (!el) return
       if (this.charts.hourly) this.charts.hourly.dispose()
       const c = echarts.init(el); this.charts.hourly = c
-      if (!dates.length) {
-        c.setOption({
-          backgroundColor: 'transparent',
-          graphic: [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无数据', fill: '#8ba6c8', fontSize: 13 } }]
-        })
-        return
-      }
+      if (!dates.length) { c.setOption(emptyOption('暂无数据', 13)); return }
       c.setOption({
         backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(8,13,35,0.9)', borderColor: 'rgba(251,146,60,0.25)',
-          textStyle: { color: '#e0f0ff', fontSize: 11 },
-          formatter: p => `${p[0].name}<br/>压力指数：<b style="color:#fb923c">${p[0].value}</b>`
-        },
-        grid: { left: '8%', right: '2%', top: '14%', bottom: '16%', containLabel: true },
-        xAxis: {
-          type: 'category', data: dates, boundaryGap: true,
-          axisLine: { lineStyle: { color: 'rgba(251,146,60,0.15)' } }, axisTick: { show: false },
-          axisLabel: { color: '#8ba6c8', fontSize: 9, interval: Math.floor(dates.length / 5) }
-        },
-        yAxis: {
-          type: 'value', min: 0, max: 100,
-          axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(251,146,60,0.06)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 9 }
-        },
+        tooltip: chartTooltip(p => `${p[0].name}<br/>压力指数：<b style="color:#fb923c">${p[0].value}</b>`),
+        grid: hourlyGrid(),
+        xAxis: { ...categoryAxis(dates, { fontSize: 9, interval: Math.floor(dates.length / 5), lineColor: 'rgba(251,146,60,0.15)' }), boundaryGap: true },
+        yAxis: { ...valueAxis({ fontSize: 9, splitColor: 'rgba(251,146,60,0.06)' }), min: 0, max: 100 },
         series: [{
           type: 'bar', data: vals, barMaxWidth: 14,
           itemStyle: {

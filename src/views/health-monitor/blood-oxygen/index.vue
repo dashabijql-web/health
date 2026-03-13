@@ -292,6 +292,7 @@ import {
   getBloodOxygenDeptStats,
   getHourlyBloodOxygen
 } from '@/api/blood-oxygen'
+import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, ageGrid, barLabel } from '@/utils/echarts-config'
 import chartPageMixin from '@/mixins/chartPage'
 
 export default {
@@ -519,10 +520,7 @@ export default {
       const el = this.$refs.deptRef; if (!el) return
       if (this.charts.dept) this.charts.dept.dispose()
       const c = echarts.init(el); this.charts.dept = c
-      if (!data.length) {
-        c.setOption({ backgroundColor: 'transparent', graphic: [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无数据', fill: '#8ba6c8', fontSize: 14 } }] })
-        return
-      }
+      if (!data.length) { c.setOption(emptyOption()); return }
       const d = data.map(x => ({
         deptName: x.deptName || x.name,
         lowCount: x.lowCount || 0,
@@ -530,25 +528,17 @@ export default {
       }))
       c.setOption({
         backgroundColor: 'transparent',
-        grid: { left: '26%', right: '8%', top: '10%', bottom: '6%' },
-        xAxis: {
-          type: 'value', axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.07)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 10 }
-        },
-        yAxis: {
-          type: 'category', data: d.map(x => x.deptName), inverse: true,
-          axisLine: { show: false }, axisTick: { show: false },
-          axisLabel: { color: '#a8c5e6', fontSize: 11 }
-        },
+        grid: deptGrid(),
+        xAxis: valueAxis(),
+        yAxis: { ...categoryAxis(d.map(x => x.deptName), { show: false }), inverse: true },
         series: [
           { name:'偏低', type:'bar', stack:'total', barWidth:'46%', data: d.map(x => x.lowCount),
             itemStyle: { color: new echarts.graphic.LinearGradient(1,0,0,0,[{offset:0,color:'#FFB84D'},{offset:1,color:'#FFA726'}]) },
-            label: { show: true, position:'inside', color:'#fff', fontSize:10, formatter: p => p.value > 0 ? p.value : '' }
+            label: barLabel()
           },
           { name:'偏高', type:'bar', stack:'total', barWidth:'46%', data: d.map(x => x.highCount),
             itemStyle: { color: new echarts.graphic.LinearGradient(1,0,0,0,[{offset:0,color:'#4FC3F7'},{offset:1,color:'#29B6F6'}]), borderRadius:[0,4,4,0] },
-            label: { show: true, position:'inside', color:'#fff', fontSize:10, formatter: p => p.value > 0 ? p.value : '' }
+            label: barLabel()
           }
         ]
       })
@@ -571,19 +561,9 @@ export default {
       const d = data.length ? data : fb
       c.setOption({
         backgroundColor: 'transparent',
-        grid: { left: '10%', right: '4%', top: '16%', bottom: '16%' },
-        xAxis: {
-          type: 'category', data: d.map(x => x.ageRange),
-          axisLine: { lineStyle: { color: 'rgba(0,212,255,0.18)' } }, axisTick: { show: false },
-          axisLabel: { color: '#a8c5e6', fontSize: 11 }
-        },
-        yAxis: {
-          type: 'value', name: '%', nameTextStyle: { color: '#8ba6c8', fontSize: 10 },
-          axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.07)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 10 },
-          min: v => Math.max(80, v.min - 2), max: v => Math.min(100, v.max + 1)
-        },
+        grid: ageGrid(),
+        xAxis: categoryAxis(d.map(x => x.ageRange)),
+        yAxis: valueAxis({ name: '%', min: v => Math.max(80, v.min - 2), max: v => Math.min(100, v.max + 1) }),
         series: [{
           type: 'bar', data: d.map(x => x.avgBloodOxygen), barWidth: '46%',
           itemStyle: {
@@ -605,27 +585,15 @@ export default {
       const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
       c.setOption({
         backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(8,13,35,0.9)', borderColor: 'rgba(0,212,255,0.25)',
-          textStyle: { color: '#e0f0ff', fontSize: 11 },
-          formatter: p => p[0].value != null
+        tooltip: chartTooltip(p => p[0].value != null
             ? `${p[0].name}<br/>血氧：<b style="color:#00d4ff">${p[0].value}%</b>`
-            : `${p[0].name}<br/>暂无数据`
-        },
-        grid: { left: '8%', right: '2%', top: '14%', bottom: '16%', containLabel: true },
-        xAxis: {
-          type: 'category', data: hours, boundaryGap: false,
-          axisLine: { lineStyle: { color: 'rgba(0,212,255,0.15)' } }, axisTick: { show: false },
-          axisLabel: { color: '#8ba6c8', fontSize: 9, interval: 3 }
-        },
-        yAxis: {
-          type: 'value', axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.06)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 9, formatter: v => v + '%' },
+            : `${p[0].name}<br/>暂无数据`),
+        grid: hourlyGrid(),
+        xAxis: { ...categoryAxis(hours, { fontSize: 9, interval: 3, lineColor: 'rgba(0,212,255,0.15)' }), boundaryGap: false },
+        yAxis: { ...valueAxis({ fontSize: 9, splitColor: 'rgba(0,212,255,0.06)',
           min: v => v.min > 0 ? Math.max(80, v.min - 2) : 90,
           max: v => v.max > 0 ? Math.min(100, v.max + 1) : 100
-        },
+        }), axisLabel: { color: '#8ba6c8', fontSize: 9, formatter: v => v + '%' } },
         series: [{
           type: 'line', data: vals, smooth: true, symbol: 'none', connectNulls: false,
           lineStyle: { color: '#00d4ff', width: 1.5 },
@@ -668,24 +636,11 @@ export default {
       const vals  = data.values || new Array(dates.length).fill(0)
       c.setOption({
         backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(8,13,35,0.92)', borderColor: 'rgba(0,212,255,0.25)',
-          textStyle: { color: '#e0f0ff', fontSize: 12 },
-          formatter: p => `${p[0].name}<br/>平均血氧：<b style="color:#00d4ff">${p[0].value}%</b>`
-        },
-        grid: { left: '5%', right: '3%', top: '12%', bottom: '12%', containLabel: true },
-        xAxis: {
-          type: 'category', data: dates, boundaryGap: false,
-          axisLine: { lineStyle: { color: 'rgba(0,212,255,0.18)' } }, axisTick: { show: false },
-          axisLabel: { color: '#8ba6c8', fontSize: 10, interval: 4 }
-        },
-        yAxis: {
-          type: 'value', axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.07)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 10, formatter: v => v + '%' },
-          min: v => Math.max(80, v.min - 2), max: v => Math.min(100, v.max + 2)
-        },
+        tooltip: chartTooltip(p => `${p[0].name}<br/>平均血氧：<b style="color:#00d4ff">${p[0].value}%</b>`),
+        grid: trendGrid(),
+        xAxis: { ...categoryAxis(dates, { fontSize: 10, interval: 4 }), boundaryGap: false },
+        yAxis: { ...valueAxis({ min: v => Math.max(80, v.min - 2), max: v => Math.min(100, v.max + 2) }),
+          axisLabel: { color: '#8ba6c8', fontSize: 10, formatter: v => v + '%' } },
         series: [{
           type: 'line', data: vals, smooth: true, symbol: 'none',
           lineStyle: { color: '#00d4ff', width: 2 },
@@ -714,31 +669,16 @@ export default {
       const el = this.$refs.hourlyRef; if (!el) return
       if (this.charts.hourly) this.charts.hourly.dispose()
       const c = echarts.init(el); this.charts.hourly = c
-      if (!dates.length) {
-        c.setOption({ backgroundColor: 'transparent', graphic: [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无数据', fill: '#8ba6c8', fontSize: 13 } }] })
-        return
-      }
+      if (!dates.length) { c.setOption(emptyOption('暂无数据', 13)); return }
       c.setOption({
         backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(8,13,35,0.9)', borderColor: 'rgba(0,212,255,0.25)',
-          textStyle: { color: '#e0f0ff', fontSize: 11 },
-          formatter: p => `${p[0].name}<br/>血氧：<b style="color:#a78bfa">${p[0].value}%</b>`
-        },
-        grid: { left: '8%', right: '2%', top: '14%', bottom: '16%', containLabel: true },
-        xAxis: {
-          type: 'category', data: dates, boundaryGap: true,
-          axisLine: { lineStyle: { color: 'rgba(0,212,255,0.15)' } }, axisTick: { show: false },
-          axisLabel: { color: '#8ba6c8', fontSize: 9, interval: Math.floor(dates.length / 5) }
-        },
-        yAxis: {
-          type: 'value', axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.06)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 9, formatter: v => v + '%' },
+        tooltip: chartTooltip(p => `${p[0].name}<br/>血氧：<b style="color:#a78bfa">${p[0].value}%</b>`),
+        grid: hourlyGrid(),
+        xAxis: { ...categoryAxis(dates, { fontSize: 9, interval: Math.floor(dates.length / 5), lineColor: 'rgba(0,212,255,0.15)' }), boundaryGap: true },
+        yAxis: { ...valueAxis({ fontSize: 9, splitColor: 'rgba(0,212,255,0.06)',
           min: v => v.min > 0 ? Math.max(80, v.min - 2) : 90,
           max: v => v.max > 0 ? Math.min(100, v.max + 1) : 100
-        },
+        }), axisLabel: { color: '#8ba6c8', fontSize: 9, formatter: v => v + '%' } },
         series: [{
           type: 'bar', data: vals, barMaxWidth: 14,
           itemStyle: {
@@ -763,26 +703,13 @@ export default {
       const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
       c.setOption({
         backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(8,13,35,0.92)', borderColor: 'rgba(0,212,255,0.25)',
-          textStyle: { color: '#e0f0ff', fontSize: 12 },
-          formatter: p => p[0].value != null
+        tooltip: chartTooltip(p => p[0].value != null
             ? `${p[0].name}<br/>血氧：<b style="color:#00d4ff">${p[0].value}%</b>`
-            : `${p[0].name}<br/>暂无数据`
-        },
-        grid: { left: '5%', right: '3%', top: '12%', bottom: '12%', containLabel: true },
-        xAxis: {
-          type: 'category', data: hours, boundaryGap: false,
-          axisLine: { lineStyle: { color: 'rgba(0,212,255,0.18)' } }, axisTick: { show: false },
-          axisLabel: { color: '#8ba6c8', fontSize: 10, interval: 3 }
-        },
-        yAxis: {
-          type: 'value', axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: 'rgba(0,212,255,0.07)', type: 'dashed' } },
-          axisLabel: { color: '#8ba6c8', fontSize: 10, formatter: v => v + '%' },
-          min: 90, max: 100
-        },
+            : `${p[0].name}<br/>暂无数据`),
+        grid: trendGrid(),
+        xAxis: { ...categoryAxis(hours, { fontSize: 10, interval: 3 }), boundaryGap: false },
+        yAxis: { ...valueAxis({ min: 90, max: 100 }),
+          axisLabel: { color: '#8ba6c8', fontSize: 10, formatter: v => v + '%' } },
         series: [{
           type: 'line', data: vals, smooth: true, symbol: 'none', connectNulls: false,
           lineStyle: { color: '#00d4ff', width: 2 },

@@ -264,6 +264,7 @@
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { getSleepPageData, getSleepTrend, getSleepQualityDistribution } from '@/api/sleep'
+import { emptyOption, chartTooltip, trendGrid, hourlyGrid } from '@/utils/echarts-config'
 import { getDepartmentList } from '@/api/department'
 import chartPageMixin from '@/mixins/chartPage'
 
@@ -610,10 +611,7 @@ export default {
       if (this.charts.bedtime) this.charts.bedtime.dispose()
       const c = echarts.init(el); this.charts.bedtime = c
       this.lateBedPct = 0
-      c.setOption({
-        backgroundColor: 'transparent',
-        graphic: [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无数据', fill: '#4a6080', fontSize: 13 } }]
-      })
+      c.setOption(emptyOption('暂无数据', 13))
     },
 
     // ── 各部门睡眠数据上传率（竖向柱状图，部门数据来自 /department/list 接口）──
@@ -622,7 +620,7 @@ export default {
       if (this.charts.dept) this.charts.dept.dispose()
       const c = echarts.init(el); this.charts.dept = c
       if (!data || !data.length) {
-        c.setOption({ backgroundColor: 'transparent', graphic: [{ type: 'text', left: 'center', top: 'middle', style: { text: '暂无数据', fill: '#8ba6c8', fontSize: 14 } }] })
+        c.setOption(emptyOption())
         return
       }
       const list = data
