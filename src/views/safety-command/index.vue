@@ -448,7 +448,14 @@ const warningTrend = ref([])
 const riskPersons = ref([])
 const areas = ref([])
 const departments = ref([])
-let warningRecords = []
+/** 处理预警列表数据（fetchCritical 和 fetchAllData 共用） */
+const processWarningData = (raw) => {
+  const records = Array.isArray(raw) ? raw : (raw.records || raw.list || [])
+  events.value = records.map(mapWarningToEvent)
+  riskPersons.value = buildRiskPersons(records)
+  stats.value.sos  = events.value.filter(e => e.eventType === 'sos').length
+  stats.value.fall = events.value.filter(e => e.eventType === 'fall').length
+}
 
 // ── KPI 数字跳动动画 ──────────────────────────────────────────────────────────
 const displayKPIs = reactive({ critical: 0, pending: 0, online: 0, rate: 0, anomaly: 0 })
@@ -604,7 +611,7 @@ const trendPath = computed(() => {
     y: Math.round(H - padB - (cnt / maxVal) * (H - padT - padB))
   }))
   const line = 'M' + pts.map(p => `${p.x},${p.y}`).join(' L ')
-  return { line, area: `${line} L${W},${H} L0,${H} Z`, pts, lastX: pts[pts.length - 1]?.x, lastY: pts[pts.length - 1]?.y }
+  return { line, area: `${line} L${W},${H} L0,${H} Z`, pts }
 })
 const trend7dayTotal = computed(() => warningTrend.value.reduce((s, d) => s + (d.count || d.cnt || 0), 0))
 const trendChange = computed(() => {
@@ -693,12 +700,7 @@ const fetchCritical = async () => {
     const [r0, r1] = await Promise.allSettled([getRiskWarningOverview(), getRiskWarningList({ handled: false, page: 1, size: 50 })])
     // 先处理事件列表，从实际事件中推导 sos/fall 数量
     if (r1.status === 'fulfilled' && r1.value?.data) {
-      const raw = r1.value.data; const records = Array.isArray(raw) ? raw : (raw.records || raw.list || [])
-      events.value = records.map(mapWarningToEvent)
-      riskPersons.value = buildRiskPersons(records)
-      warningRecords = records
-      stats.value.sos  = events.value.filter(e => e.eventType === 'sos').length
-      stats.value.fall = events.value.filter(e => e.eventType === 'fall').length
+      processWarningData(r1.value.data)
     }
     // 从总览获取处理计数和异常总数（不覆盖 sos/fall，overview 无此字段）
     if (r0.status === 'fulfilled' && r0.value?.data) {
@@ -735,12 +737,7 @@ const fetchAllData = async () => {
     ])
     // 先处理事件列表(results[1])，从实际事件推导 sos/fall，避免被 results[0] 覆盖
     if (results[1].status === 'fulfilled' && results[1].value?.data) {
-      const raw = results[1].value.data; const records = Array.isArray(raw) ? raw : (raw.records || raw.list || [])
-      events.value = records.map(mapWarningToEvent)
-      riskPersons.value = buildRiskPersons(records)
-      warningRecords = records
-      stats.value.sos  = events.value.filter(e => e.eventType === 'sos').length
-      stats.value.fall = events.value.filter(e => e.eventType === 'fall').length
+      processWarningData(results[1].value.data)
     }
     // overview 不含 sosCount/fallCount，只取通用统计字段
     if (results[0].status === 'fulfilled' && results[0].value?.data) {
