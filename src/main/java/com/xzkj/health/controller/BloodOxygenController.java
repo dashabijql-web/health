@@ -47,15 +47,6 @@ public class BloodOxygenController {
         return Result.ok("获取成功", bloodOxygenService.getBloodOxygenDistribution(d[0], d[1]));
     }
 
-    /** 获取异常血氧记录（分页） */
-    @GetMapping("/abnormal")
-    public Result<Map<String, Object>> getAbnormal(
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
-        size = DateParamUtil.clampSize(size);
-        return Result.ok("获取成功", bloodOxygenService.getAbnormalRecords(page, size));
-    }
-
     /** 获取 TOP N 血氧异常人员 */
     @GetMapping("/top-users")
     public Result<List<Map<String, Object>>> getTopUsers(
@@ -79,13 +70,6 @@ public class BloodOxygenController {
     @GetMapping("/age-stats")
     public Result<List<Map<String, Object>>> getAgeStats() {
         return Result.ok("获取成功", bloodOxygenService.getAgeDistribution());
-    }
-
-    /** 获取实时血氧数据 */
-    @GetMapping("/realtime")
-    public Result<List<Map<String, Object>>> getRealtime(
-            @RequestParam(defaultValue = "20") Integer limit) {
-        return Result.ok("获取成功", bloodOxygenService.getRealtimeData(limit));
     }
 
     /** 获取逐小时平均血氧（支持单日或日期范围） */

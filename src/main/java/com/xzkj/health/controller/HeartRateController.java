@@ -62,13 +62,6 @@ public class HeartRateController {
         return Result.ok("获取成功", heartRateService.getHeartRateTrend(days));
     }
 
-    /** 获取实时心率数据 */
-    @GetMapping("/realtime")
-    public Result<List<Map<String, Object>>> getRealtime(
-            @RequestParam(defaultValue = "20") Integer limit) {
-        return Result.ok("获取成功", heartRateService.getRealtimeData(limit));
-    }
-
     /** 获取部门心率统计 */
     @GetMapping("/department-stats")
     public Result<List<Map<String, Object>>> getDepartmentStats(
@@ -76,15 +69,6 @@ public class HeartRateController {
             @RequestParam(required = false) String endDate) {
         String[] d = DateParamUtil.range30(startDate, endDate);
         return Result.ok("获取成功", heartRateService.getDepartmentStats(d[0], d[1]));
-    }
-
-    /** 获取异常心率记录（分页） */
-    @GetMapping("/abnormal")
-    public Result<Map<String, Object>> getAbnormal(
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
-        size = DateParamUtil.clampSize(size);
-        return Result.ok("获取成功", heartRateService.getAbnormalRecords(page, size));
     }
 
     /** 获取逐小时平均心率（支持单日或日期范围） */
