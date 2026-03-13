@@ -1,0 +1,91 @@
+package com.xzkj.health.controller;
+
+import com.xzkj.health.common.Result;
+import com.xzkj.health.common.exception.BusinessException;
+import com.xzkj.health.service.RiskWarningService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.*;
+
+/**
+ * 风险预警控制器
+ */
+@Slf4j
+@RestController
+@RequestMapping("/risk-warning")
+public class RiskWarningController {
+
+    @Autowired
+    private RiskWarningService riskWarningService;
+
+    /** 获取风险预警统计概览 */
+    @GetMapping("/overview")
+    public Result<Map<String, Object>> getOverview(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
+        if (endDate == null) endDate = LocalDate.now().toString();
+        return Result.ok("获取成功", riskWarningService.getWarningStats(startDate, endDate));
+    }
+
+    /** 获取预警列表（分页+过滤） */
+    @GetMapping("/list")
+    public Result<Map<String, Object>> getList(
+            @RequestParam(required = false) String level,
+            @RequestParam(required = false) Boolean handled,
+            @RequestParam(required = false) String userCode,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer size) {
+        return Result.ok("获取成功", riskWarningService.getWarningList(level, handled, userCode, page, size));
+    }
+
+    /** 获取预警趋势（按类型分组） */
+    @GetMapping("/trend")
+    public Result<Map<String, Object>> getTrend(
+            @RequestParam(defaultValue = "30") Integer days) {
+        return Result.ok("获取成功", riskWarningService.getWarningTrend(days));
+    }
+
+    /** 获取各部门预警统计 */
+    @GetMapping("/dept-stats")
+    public Result<List<Map<String, Object>>> getDeptStats(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        if (startDate == null) startDate = LocalDate.now().minusDays(29).toString();
+        if (endDate == null) endDate = LocalDate.now().toString();
+        return Result.ok("获取成功", riskWarningService.getDeptWarningStats(startDate, endDate));
+    }
+
+    /** 获取预警类型分布 */
+    @GetMapping("/type-distribution")
+    public Result<List<Map<String, Object>>> getTypeDistribution() {
+        return Result.ok("获取成功", riskWarningService.getTypeDistribution());
+    }
+
+    /** 处理单条预警 */
+    @PostMapping("/handle/{id}")
+    public Result<String> handleWarning(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> params) {
+        String handleBy = params != null ? (String) params.get("handleBy") : "system";
+        String handleRemark = params != null ? (String) params.get("handleRemark") : "";
+        boolean success = riskWarningService.handleWarning(id, handleBy, handleRemark);
+        if (!success) {
+            throw new BusinessException("处理失败，请确认预警ID是否存在");
+        }
+        return Result.ok("处理成功");
+    }
+
+    /** 批量处理预警 */
+    @PostMapping("/handle-batch")
+    public Result<String> handleBatch(@RequestBody List<Long> ids) {
+        boolean success = riskWarningService.handleBatch(ids, "system");
+        if (!success) {
+            throw new BusinessException("批量处理失败");
+        }
+        return Result.ok("处理成功");
+    }
+}

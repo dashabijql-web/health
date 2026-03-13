@@ -1,0 +1,37 @@
+package com.xzkj.health.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.xzkj.health.model.entity.Employee;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
+import java.util.Map;
+
+@Mapper
+public interface EmployeeMapper extends BaseMapper<Employee> {
+
+    @Select("SELECT e.id, e.emp_name AS empName, e.emp_code AS empCode, " +
+            "e.gender, e.phone, e.dept_id AS deptId, e.job_type_id AS jobTypeId, " +
+            "e.birth_date AS birthDate, e.hire_date AS hireDate, " +
+            "e.height, e.weight, e.blood_type AS bloodType, e.status, " +
+            "e.emergency_contact AS emergencyContact, " +
+            "e.emergency_phone AS emergencyPhone, " +
+            "d.dept_name AS deptName, j.type_name AS jobTypeName " +
+            "FROM employee e " +
+            "LEFT JOIN department d ON e.dept_id = d.id " +
+            "LEFT JOIN job_type j ON e.job_type_id = j.id " +
+            "ORDER BY e.id DESC")
+    List<Map<String, Object>> getEmployeeListWithDept();
+
+    @Select("SELECT COUNT(*) AS totalCount, " +
+            "SUM(CASE WHEN status = 0 OR status IS NULL THEN 1 ELSE 0 END) AS activeCount, " +
+            "SUM(CASE WHEN gender = 1 THEN 1 ELSE 0 END) AS maleCount, " +
+            "SUM(CASE WHEN gender = 2 THEN 1 ELSE 0 END) AS femaleCount " +
+            "FROM employee")
+    Map<String, Object> getEmployeeStats();
+
+    @Select("SELECT COUNT(DISTINCT user_code) FROM v_health_record " +
+            "WHERE CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)")
+    long getTodayOnlineCount();
+}

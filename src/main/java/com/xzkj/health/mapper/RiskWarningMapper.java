@@ -1,0 +1,260 @@
+package com.xzkj.health.mapper;
+
+import org.apache.ibatis.annotations.*;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 风险预警Mapper
+ *
+ * 分表适配（v4）：
+ *   - 所有读取（SELECT）改为查 v_warning_record 视图（UNION ALL 所有月份表）
+ *   - 写入（INSERT）使用 insertToWarningTable()，路由到当前月份表
+ *   - 更新（UPDATE）先从视图查出 create_time，再路由到对应月份表更新
+ */
+@Mapper
+public interface RiskWarningMapper {
+
+    // ─── 写入：动态月份表 ─────────────────────────────────────────────
+
+    /**
+     * 向指定月份表插入一条预警记录。
+     * 由 DataProcessService 或业务 Service 调用，tableName 由 TableNameUtil 计算。
+     * ${tableName} 由内部工具类生成，格式固定，不存在注入风险。
+     */
+    @Insert("INSERT INTO ${tableName} " +
+            "(user_code, warning_type, indicator_name, indicator_value, warning_level, create_time) " +
+            "VALUES " +
+            "(#{userCode}, #{warningType}, #{indicatorName}, #{indicatorValue}, #{warningLevel}, GETDATE())")
+    int insertToWarningTable(
+            @Param("tableName")      String tableName,
+            @Param("userCode")       String userCode,
+            @Param("warningType")    String warningType,
+            @Param("indicatorName")  String indicatorName,
+            @Param("indicatorValue") String indicatorValue,
+            @Param("warningLevel")   String warningLevel
+    );
+
+    // ─── 查询 create_time（用于更新路由） ────────────────────────────
+
+    /**
+     * 根据 id 从视图查出 create_time（用于 handleWarning/handleBatch 的月份路由）。
+     * 若同一 id 在多个月份表中存在（极少情况），取最新的一条。
+     */
+    @Select("SELECT TOP 1 id, create_time FROM v_warning_record WHERE id = #{id} ORDER BY create_time DESC")
+    Map<String, Object> selectCreateTimeById(@Param("id") Long id);
+
+    /**
+     * 根据多个 id 从视图查出各自的 create_time（用于 handleBatch 的月份路由）。
+     */
+    @Select("<script>" +
+            "SELECT id, create_time FROM v_warning_record WHERE id IN " +
+            "<foreach collection='ids' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</script>")
+    List<Map<String, Object>> selectCreateTimesByIds(@Param("ids") List<Long> ids);
+
+    // ─── 更新：指定月份表 ─────────────────────────────────────────────
+
+    /**
+     * 在指定月份表中处理（标记已处理）一条预警。
+     * tableName 由 RiskWarningService 根据 create_time 计算。
+     */
+    @Update("UPDATE ${tableName} " +
+            "SET is_handled = 1, " +
+            "handle_time = GETDATE(), " +
+            "handle_by = #{handleBy}, " +
+            "remark = #{handleRemark} " +
+            "WHERE id = #{id}")
+    int handleWarningInTable(
+            @Param("tableName")    String tableName,
+            @Param("id")           Long id,
+            @Param("handleBy")     String handleBy,
+            @Param("handleRemark") String handleRemark
+    );
+
+    /**
+     * 在指定月份表中批量处理预警。
+     * tableName 由 RiskWarningService 按月分组后调用。
+     */
+    @Update("<script>" +
+            "UPDATE ${tableName} " +
+            "SET is_handled = 1, handle_time = GETDATE(), handle_by = #{handleBy} " +
+            "WHERE id IN " +
+            "<foreach collection='ids' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</script>")
+    int handleBatchInTable(
+            @Param("tableName") String tableName,
+            @Param("ids")       List<Long> ids,
+            @Param("handleBy")  String handleBy
+    );
+
+    // ─── 更新：原始表回退（处理分表前的历史数据）────────────────────────
+
+    /**
+     * 在原始 warning_record 表中处理单条预警（分表前的历史数据回退）。
+     * 仅当 handleWarningInTable 影响0行时才调用。
+     */
+    @Update("UPDATE warning_record " +
+            "SET is_handled = 1, handle_time = GETDATE(), handle_by = #{handleBy}, remark = #{handleRemark} " +
+            "WHERE id = #{id}")
+    int handleWarningOriginal(@Param("id") Long id,
+                              @Param("handleBy") String handleBy,
+                              @Param("handleRemark") String handleRemark);
+
+    /**
+     * 在原始 warning_record 表中批量处理预警（分表前的历史数据回退）。
+     */
+    @Update("<script>" +
+            "UPDATE warning_record SET is_handled = 1, handle_time = GETDATE(), handle_by = #{handleBy} " +
+            "WHERE id IN " +
+            "<foreach collection='ids' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</script>")
+    int handleBatchOriginal(@Param("ids") List<Long> ids, @Param("handleBy") String handleBy);
+
+    // ─── 读取：通过视图 v_warning_record ────────────────────────────
+
+    /**
+     * 获取当天各类型预警统计（查 v_warning_record 视图）
+     */
+    @Select("SELECT " +
+            "SUM(CASE WHEN warning_type LIKE '%心率%' THEN 1 ELSE 0 END)  AS heartRateCount, " +
+            "SUM(CASE WHEN warning_type LIKE '%睡眠%' THEN 1 ELSE 0 END)  AS sleepCount, " +
+            "SUM(CASE WHEN warning_type LIKE '%血氧%' THEN 1 ELSE 0 END)  AS bloodOxygenCount, " +
+            "SUM(CASE WHEN warning_type LIKE '%体温%' THEN 1 ELSE 0 END)  AS temperatureCount, " +
+            "SUM(CASE WHEN warning_type LIKE '%压力%' THEN 1 ELSE 0 END)  AS pressureCount, " +
+            "COUNT(*) AS totalWarnings, " +
+            "SUM(CASE WHEN is_handled = 1 THEN 1 ELSE 0 END) AS handledWarnings, " +
+            "SUM(CASE WHEN is_handled = 0 THEN 1 ELSE 0 END) AS pendingWarnings, " +
+            "SUM(CASE WHEN warning_level IN ('高','危险') THEN 1 ELSE 0 END) AS dangerCount, " +
+            "SUM(CASE WHEN warning_level IN ('中','警告') THEN 1 ELSE 0 END) AS warningCount, " +
+            "CAST(CASE WHEN COUNT(*) > 0 " +
+            "     THEN SUM(CASE WHEN is_handled = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) " +
+            "     ELSE 0 END AS INT) AS handledRate " +
+            "FROM v_warning_record " +
+            "WHERE create_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND   create_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
+    Map<String, Object> getWarningOverview(@Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    /**
+     * 获取预警列表（分页），查 v_warning_record 视图
+     */
+    @Select("<script>" +
+            "SELECT " +
+            "wr.id, " +
+            "ISNULL(e.emp_name, wr.user_code) AS userName, " +
+            "wr.user_code AS userCode, " +
+            "ISNULL(d.dept_name, '未知部门') AS deptName, " +
+            "wr.warning_type  AS warningType, " +
+            "wr.warning_level AS warningLevel, " +
+            "wr.indicator_value AS warningValue, " +
+            "wr.indicator_name  AS indicatorName, " +
+            "wr.is_handled AS handled, " +
+            "wr.create_time AS createTime " +
+            "FROM v_warning_record wr " +
+            "LEFT JOIN employee e ON wr.user_code = e.emp_code " +
+            "LEFT JOIN department d ON e.dept_id = d.id " +
+            "WHERE wr.create_time >= DATEADD(DAY, -30, GETDATE()) " +
+            "<if test='userCode != null and userCode != \"\"'> " +
+            "AND wr.user_code = #{userCode} " +
+            "</if> " +
+            "<if test='level != null and level != \"\"'> " +
+            "AND wr.warning_level = #{level} " +
+            "</if> " +
+            "<if test='handled != null'> " +
+            "AND wr.is_handled = #{handled} " +
+            "</if> " +
+            "ORDER BY wr.create_time DESC " +
+            "OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY" +
+            "</script>")
+    List<Map<String, Object>> getWarningList(
+            @Param("level") String level,
+            @Param("handled") Boolean handled,
+            @Param("userCode") String userCode,
+            @Param("offset") int offset,
+            @Param("size") int size);
+
+    /**
+     * 获取预警总数（查 v_warning_record 视图）
+     */
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM v_warning_record " +
+            "WHERE create_time >= DATEADD(DAY, -30, GETDATE()) " +
+            "<if test='userCode != null and userCode != \"\"'> " +
+            "AND user_code = #{userCode} " +
+            "</if> " +
+            "<if test='level != null and level != \"\"'> " +
+            "AND warning_level = #{level} " +
+            "</if> " +
+            "<if test='handled != null'> " +
+            "AND is_handled = #{handled} " +
+            "</if>" +
+            "</script>")
+    int countWarnings(@Param("level") String level, @Param("handled") Boolean handled, @Param("userCode") String userCode);
+
+    /**
+     * 获取预警趋势数据（按类型分组），查 v_warning_record 视图
+     */
+    @Select("SELECT " +
+            "CONVERT(VARCHAR(10), create_time, 23) AS date, " +
+            "SUM(CASE WHEN warning_type LIKE '%心率%' THEN 1 ELSE 0 END)  AS heartRate, " +
+            "SUM(CASE WHEN warning_type LIKE '%血氧%' THEN 1 ELSE 0 END)  AS bloodOxygen, " +
+            "SUM(CASE WHEN warning_type LIKE '%睡眠%' THEN 1 ELSE 0 END)  AS sleep, " +
+            "SUM(CASE WHEN warning_type LIKE '%体温%' THEN 1 ELSE 0 END)  AS temperature, " +
+            "SUM(CASE WHEN warning_type LIKE '%压力%' THEN 1 ELSE 0 END)  AS pressure " +
+            "FROM v_warning_record " +
+            "WHERE create_time >= DATEADD(DAY, -#{days}, GETDATE()) " +
+            "GROUP BY CONVERT(VARCHAR(10), create_time, 23) " +
+            "ORDER BY date")
+    List<Map<String, Object>> getWarningTrendByType(@Param("days") int days);
+
+    /**
+     * 获取各部门预警统计（查 v_warning_record + v_health_record 视图）
+     */
+    @Select("SELECT " +
+            "d.dept_name AS deptName, " +
+            "SUM(CASE WHEN wr.warning_type LIKE '%心率%' THEN 1 ELSE 0 END) AS heartRate, " +
+            "SUM(CASE WHEN wr.warning_type LIKE '%血氧%' THEN 1 ELSE 0 END) AS bloodOxygen, " +
+            "SUM(CASE WHEN wr.warning_type LIKE '%睡眠%' THEN 1 ELSE 0 END) AS sleep, " +
+            "SUM(CASE WHEN wr.warning_type LIKE '%体温%' THEN 1 ELSE 0 END) AS temperature, " +
+            "SUM(CASE WHEN wr.warning_type LIKE '%压力%' THEN 1 ELSE 0 END) AS pressure, " +
+            "COUNT(*) AS total " +
+            "FROM v_warning_record wr " +
+            "INNER JOIN employee e ON wr.user_code = e.emp_code " +
+            "INNER JOIN department d ON e.dept_id = d.id " +
+            "WHERE wr.create_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND wr.create_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            "GROUP BY d.dept_name " +
+            "ORDER BY total DESC")
+    List<Map<String, Object>> getDeptWarningStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    /**
+     * 获取预警类型分布（查 v_warning_record 视图）
+     */
+    @Select("SELECT " +
+            "warning_type AS type, " +
+            "COUNT(*) AS count " +
+            "FROM v_warning_record " +
+            "WHERE create_time >= DATEADD(DAY, -30, GETDATE()) " +
+            "GROUP BY warning_type " +
+            "ORDER BY count DESC")
+    List<Map<String, Object>> getTypeDistribution();
+
+    /**
+     * 查询最近 N 分钟内同用户同指标的未处理预警数量（用于去重）
+     */
+    @Select("SELECT COUNT(*) FROM v_warning_record " +
+            "WHERE user_code = #{userCode} " +
+            "AND indicator_name = #{indicatorName} " +
+            "AND create_time >= DATEADD(MINUTE, -#{minutes}, GETDATE()) " +
+            "AND is_handled = 0")
+    int countRecentWarning(@Param("userCode") String userCode,
+                           @Param("indicatorName") String indicatorName,
+                           @Param("minutes") int minutes);
+}
