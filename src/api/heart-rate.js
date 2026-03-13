@@ -38,7 +38,7 @@ export function getHeartRateDistribution(startDate, endDate) {
  * 获取TOP用户心率数据
  * @param {Number} limit 返回数量，默认5
  */
-export function getTopUsers(limit = 5, startDate, endDate) {
+export function getHeartRateTopUsers(limit = 5, startDate, endDate) {
   return request({
     url: '/heart-rate/top-users',
     method: 'get',
@@ -49,7 +49,7 @@ export function getTopUsers(limit = 5, startDate, endDate) {
 /**
  * 获取部门心率异常统计
  */
-export function getDeptAbnormalStats(startDate, endDate) {
+export function getHeartRateDeptStats(startDate, endDate) {
   return request({
     url: '/heart-rate/department-stats',
     method: 'get',

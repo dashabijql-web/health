@@ -246,9 +246,11 @@ import dayjs from 'dayjs'
 import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getDeptWarningStats } from '@/api/risk-warning'
 import { getHealthRecords } from '@/api/health'
 import { getOnlineUsers } from '@/api/realtime'
+import chartPageMixin from '@/mixins/chartPage'
 
 export default {
   name: 'RiskWarning',
+  mixins: [chartPageMixin],
   data() {
     return {
       currentTime: '',
@@ -269,7 +271,7 @@ export default {
       activePeriod: 'month',
       periodOptions: [{ label: '当日', value: 'day' }, { label: '近7日', value: 'week' }, { label: '近30日', value: 'month' }],
       charts: {},
-      clockTimer: null, refreshTimer: null, scrollTimer: null, resizeTimer: null,
+      refreshTimer: null,
       detailVisible: false, detailRow: null,
       autoScrollPaused: false,
       scrollTop: 0,
@@ -301,12 +303,6 @@ export default {
     },
     statTitle()  { return { day:'今日预警统计', week:'近7日预警统计', month:'近30日预警统计' }[this.activePeriod] },
     trendTitle() { return { day:'今日预警分布', week:'近7天预警趋势', month:'近30天预警趋势' }[this.activePeriod] },
-    periodRange() {
-      const today = dayjs().format('YYYY-MM-DD')
-      if (this.activePeriod === 'day')  return { startDate: today, endDate: today }
-      if (this.activePeriod === 'week') return { startDate: dayjs().subtract(6,'day').format('YYYY-MM-DD'), endDate: today }
-      return { startDate: dayjs().subtract(29,'day').format('YYYY-MM-DD'), endDate: today }
-    },
     statMax() { return Math.max(1, ...this.warningStats.map(x => x.value)) },
     // FIX ⑤: 筛选
     filteredList() {
@@ -372,22 +368,15 @@ export default {
     }
   },
   mounted() {
-    this.initClock(); this.fetchData(); 
-    window.addEventListener('resize', this.handleResize)
+    this.initClock(); this.fetchData()
     this.$nextTick(() => this.startAutoScroll())
     this.refreshTimer = setInterval(() => this.fetchData(), 30000)
   },
   beforeUnmount() {
-    clearInterval(this.clockTimer); clearInterval(this.refreshTimer)
-    clearInterval(this.scrollTimer); clearTimeout(this.resizeTimer)
-    window.removeEventListener('resize', this.handleResize)
+    clearInterval(this.refreshTimer)
     Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
-    initClock() {
-      const tick = () => { this.currentTime = dayjs().format('YYYY年MM月DD日 HH:mm:ss') }
-      tick(); this.clockTimer = setInterval(tick, 1000)
-    },
     async fetchData() {
       await Promise.allSettled([this.loadStats(), this.loadTrend(), this.loadDept(), this.loadList(), this.loadOnlineUsers()])
       this.$nextTick(() => this.initDonutChart())

@@ -265,8 +265,10 @@ import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { getSleepPageData, getSleepTrend, getSleepQualityDistribution } from '@/api/sleep'
 import { getDepartmentList } from '@/api/department'
+import chartPageMixin from '@/mixins/chartPage'
 
 export default {
+  mixins: [chartPageMixin],
   name: 'SleepAnalysis',
   data() {
     return {
@@ -297,7 +299,7 @@ export default {
       currentPage: 1,
       pageSize: 20,
       charts: {},
-      clockTimer: null, refreshTimer: null, scrollTimer: null, resizeTimer: null,
+      refreshTimer: null,
       recordDialog: { visible: false, item: null }
     }
   },
@@ -332,8 +334,6 @@ export default {
     this.initClock()
     this.yesterdayDate = dayjs().subtract(1, 'day').format('MM月DD日')
     this.fetchData()
-    
-    window.addEventListener('resize', this.handleResize)
     this.$nextTick(() => {
       this.startAutoScroll()
       this.initBedtime()
@@ -341,19 +341,10 @@ export default {
     this.refreshTimer = setInterval(() => this.fetchData(), 60000)
   },
   beforeUnmount() {
-    clearInterval(this.clockTimer)
     clearInterval(this.refreshTimer)
-    clearInterval(this.scrollTimer)
-    clearTimeout(this.resizeTimer)
-    window.removeEventListener('resize', this.handleResize)
     Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
-    initClock() {
-      const tick = () => { this.currentTime = dayjs().format('YYYY年MM月DD日 HH:mm:ss') }
-      tick(); this.clockTimer = setInterval(tick, 1000)
-    },
-
     async fetchData() {
       await Promise.allSettled([
         this.loadPageData(),
@@ -699,7 +690,6 @@ export default {
       if (s >= 40) return 'sc-fair'
       return 'sc-poor'
     },
-    fmtTime(ts) { return ts ? dayjs(ts).format('MM-DD HH:mm') : '' },
 
     // ── 记录详情弹窗 ──
     openRecordDialog(item) {
@@ -707,23 +697,6 @@ export default {
       this.recordDialog.visible = true
     },
 
-    handleResize() {
-      clearTimeout(this.resizeTimer)
-      this.resizeTimer = setTimeout(() => {
-        
-        this.$nextTick(() => Object.values(this.charts).forEach(c => c?.resize?.()))
-      }, 200)
-    },
-    startAutoScroll() {
-      const el = this.$refs.listRef; if (!el) return
-      let top = 0
-      this.scrollTimer = setInterval(() => {
-        const max = el.scrollHeight - el.clientHeight
-        if (max <= 0) return
-        if (top >= max) { setTimeout(() => { top = 0; el.scrollTop = 0 }, 1500) }
-        else { top += 1; el.scrollTop = top }
-      }, 40)
-    }
   }
 }
 </script>

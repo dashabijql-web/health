@@ -256,9 +256,11 @@ import {
   getPressureRealtime,
   getPressureHourly
 } from '@/api/pressure'
+import chartPageMixin from '@/mixins/chartPage'
 
 export default {
   name: 'PressureAnalysis',
+  mixins: [chartPageMixin],
   data() {
     return {
       currentTime: '',
@@ -282,10 +284,7 @@ export default {
         { label: '高压 (危险)',   range: '≥ 85',      color: '#ff5252' }
       ],
       charts: {},
-      clockTimer: null,
       refreshTimer: null,
-      scrollTimer: null,
-      resizeTimer: null
     }
   },
   computed: {
@@ -314,12 +313,6 @@ export default {
     },
     hourlyTitle() {
       return { day: '今日24小时压力波动', week: '近7日每日均值', month: '近30日每日均值' }[this.activePeriod]
-    },
-    periodRange() {
-      const today = dayjs().format('YYYY-MM-DD')
-      if (this.activePeriod === 'day')   return { startDate: today, endDate: today }
-      if (this.activePeriod === 'week')  return { startDate: dayjs().subtract(6,  'day').format('YYYY-MM-DD'), endDate: today }
-      return { startDate: dayjs().subtract(29, 'day').format('YYYY-MM-DD'), endDate: today }
     },
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.avgPressure || 0)) : 1
@@ -353,28 +346,14 @@ export default {
   mounted() {
     this.initClock()
     this.fetchData()
-    
-    window.addEventListener('resize', this.handleResize)
     this.$nextTick(() => this.startAutoScroll())
-    this.refreshTimer = setInterval(() => {
-      this.loadRealtime()
-    }, 30000)
+    this.refreshTimer = setInterval(() => this.loadRealtime(), 30000)
   },
   beforeUnmount() {
-    clearInterval(this.clockTimer)
     clearInterval(this.refreshTimer)
-    clearInterval(this.scrollTimer)
-    clearTimeout(this.resizeTimer)
-    window.removeEventListener('resize', this.handleResize)
     Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
-    initClock() {
-      const tick = () => { this.currentTime = dayjs().format('YYYY年MM月DD日 HH:mm:ss') }
-      tick()
-      this.clockTimer = setInterval(tick, 1000)
-    },
-
     async fetchData() {
       await Promise.allSettled([
         this.loadOverview(),
@@ -695,15 +674,7 @@ export default {
       return '#4FC3F7'
     },
 
-    fmtTime(ts) { return ts ? dayjs(ts).format('MM-DD HH:mm') : '' },
 
-    goToPortrait(item) {
-      if (item.userCode || item.empCode) {
-        this.$router.push({ path: '/personnel-management/health-portrait', query: { empCode: item.userCode || item.empCode } })
-      } else {
-        this.$router.push({ path: '/personnel-management/health-portrait', query: { name: item.userName } })
-      }
-    },
 
 
     setPageSize() {
@@ -716,24 +687,6 @@ export default {
       }
     },
 
-    handleResize() {
-      clearTimeout(this.resizeTimer)
-      this.resizeTimer = setTimeout(() => {
-        
-        this.$nextTick(() => Object.values(this.charts).forEach(c => c && c.resize && c.resize()))
-      }, 200)
-    },
-
-    startAutoScroll() {
-      const el = this.$refs.listRef; if (!el) return
-      let top = 0
-      this.scrollTimer = setInterval(() => {
-        const max = el.scrollHeight - el.clientHeight
-        if (max <= 0) return
-        if (top >= max) { setTimeout(() => { top = 0; el.scrollTop = 0 }, 1500) }
-        else { top += 1; el.scrollTop = top }
-      }, 40)
-    }
   }
 }
 </script>

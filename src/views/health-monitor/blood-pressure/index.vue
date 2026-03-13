@@ -278,9 +278,11 @@ import {
   getBPRealtime,
   getBPHourly
 } from '@/api/blood-pressure'
+import chartPageMixin from '@/mixins/chartPage'
 
 export default {
   name: 'BloodPressureAnalysis',
+  mixins: [chartPageMixin],
   data() {
     return {
       currentTime: '',
@@ -307,10 +309,7 @@ export default {
         { label: '近30日',value: 'month' }
       ],
       charts: {},
-      clockTimer: null,
-      refreshTimer: null,
-      scrollTimer: null,
-      resizeTimer: null
+      refreshTimer: null
     }
   },
   computed: {
@@ -339,12 +338,6 @@ export default {
     },
     trendTitle() {
       return { day: '今日血压趋势', week: '近7天血压趋势', month: '近30天血压趋势' }[this.activePeriod]
-    },
-    periodRange() {
-      const today = dayjs().format('YYYY-MM-DD')
-      if (this.activePeriod === 'day')   return { startDate: today, endDate: today }
-      if (this.activePeriod === 'week')  return { startDate: dayjs().subtract(6, 'day').format('YYYY-MM-DD'), endDate: today }
-      return { startDate: dayjs().subtract(29, 'day').format('YYYY-MM-DD'), endDate: today }
     },
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.avgSystolic || 0), 160) : 160
@@ -378,26 +371,14 @@ export default {
   mounted() {
     this.initClock()
     this.fetchData()
-    
-    window.addEventListener('resize', this.handleResize)
     this.$nextTick(() => this.startAutoScroll())
     this.refreshTimer = setInterval(() => this.loadRealtime(), 30000)
   },
   beforeUnmount() {
-    clearInterval(this.clockTimer)
     clearInterval(this.refreshTimer)
-    clearInterval(this.scrollTimer)
-    clearTimeout(this.resizeTimer)
-    window.removeEventListener('resize', this.handleResize)
     Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
-    initClock() {
-      const tick = () => { this.currentTime = dayjs().format('YYYY年MM月DD日 HH:mm:ss') }
-      tick()
-      this.clockTimer = setInterval(tick, 1000)
-    },
-
     async fetchData() {
       await Promise.allSettled([
         this.loadOverview(),
@@ -680,15 +661,7 @@ export default {
       return { normal: '正常', pre: '偏高', stage1: '1级', danger: '2级' }[lv]
     },
 
-    fmtTime(ts) { return ts ? dayjs(ts).format('MM-DD HH:mm') : '' },
 
-    goToPortrait(item) {
-      if (item.userCode || item.empCode) {
-        this.$router.push({ path: '/personnel-management/health-portrait', query: { empCode: item.userCode || item.empCode } })
-      } else {
-        this.$router.push({ path: '/personnel-management/health-portrait', query: { name: item.userName } })
-      }
-    },
     setPageSize() {
       const el = this.$refs.listRef; if (!el) return
       const ROW_H = 27
@@ -698,23 +671,6 @@ export default {
         this.currentPage = 1
       }
     },
-    handleResize() {
-      clearTimeout(this.resizeTimer)
-      this.resizeTimer = setTimeout(() => {
-        
-        this.$nextTick(() => Object.values(this.charts).forEach(c => c && c.resize && c.resize()))
-      }, 200)
-    },
-    startAutoScroll() {
-      const el = this.$refs.listRef; if (!el) return
-      let top = 0
-      this.scrollTimer = setInterval(() => {
-        const max = el.scrollHeight - el.clientHeight
-        if (max <= 0) return
-        if (top >= max) { setTimeout(() => { top = 0; el.scrollTop = 0 }, 1500) }
-        else { top += 1; el.scrollTop = top }
-      }, 40)
-    }
   }
 }
 </script>

@@ -38,7 +38,7 @@ export function getBloodOxygenDistribution(startDate, endDate) {
  * 获取TOP用户血氧数据
  * @param {Number} limit 返回数量，默认5
  */
-export function getTopUsers(limit = 5, startDate, endDate) {
+export function getBloodOxygenTopUsers(limit = 5, startDate, endDate) {
   return request({
     url: '/blood-oxygen/top-users',
     method: 'get',
@@ -49,7 +49,7 @@ export function getTopUsers(limit = 5, startDate, endDate) {
 /**
  * 获取部门血氧异常统计
  */
-export function getDeptAbnormalStats(startDate, endDate) {
+export function getBloodOxygenDeptStats(startDate, endDate) {
   return request({
     url: '/blood-oxygen/department-stats',
     method: 'get',

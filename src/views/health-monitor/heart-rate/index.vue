@@ -298,13 +298,15 @@ import {
   getHeartRateDistribution,
   getAgeHeartRate,
   getRealtimeHeartRate,
-  getTopUsers,
-  getDeptAbnormalStats,
+  getHeartRateTopUsers,
+  getHeartRateDeptStats,
   getHourlyHeartRate
 } from '@/api/heart-rate'
+import chartPageMixin from '@/mixins/chartPage'
 
 export default {
   name: 'HeartRateAnalysis',
+  mixins: [chartPageMixin],
   data() {
     return {
       currentTime: '',
@@ -330,10 +332,7 @@ export default {
         { label: '近30日', value: 'month' }
       ],
       charts: {},
-      clockTimer: null,
       refreshTimer: null,
-      scrollTimer: null,
-      resizeTimer: null,
       detailItem: null,
       detailVisible: false,
       filterDept: ''
@@ -368,12 +367,6 @@ export default {
     },
     trendTitle() {
       return { day: '今日心率趋势', week: '近7天心率趋势', month: '近30天心率趋势' }[this.activePeriod]
-    },
-    periodRange() {
-      const today = dayjs().format('YYYY-MM-DD')
-      if (this.activePeriod === 'day') return { startDate: today, endDate: today }
-      if (this.activePeriod === 'week') return { startDate: dayjs().subtract(6, 'day').format('YYYY-MM-DD'), endDate: today }
-      return { startDate: dayjs().subtract(29, 'day').format('YYYY-MM-DD'), endDate: today }
     },
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.count)) : 1
@@ -418,24 +411,14 @@ export default {
   mounted() {
     this.initClock()
     this.fetchData()
-    window.addEventListener('resize', this.handleResize)
     this.$nextTick(() => this.startAutoScroll())
     this.refreshTimer = setInterval(() => this.fetchData(), 30000)
   },
   beforeUnmount() {
-    clearInterval(this.clockTimer)
     clearInterval(this.refreshTimer)
-    clearInterval(this.scrollTimer)
-    clearTimeout(this.resizeTimer)
-    window.removeEventListener('resize', this.handleResize)
     Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
-    initClock() {
-      const tick = () => { this.currentTime = dayjs().format('YYYY年MM月DD日 HH:mm:ss') }
-      tick()
-      this.clockTimer = setInterval(tick, 1000)
-    },
 
     async fetchData() {
       await Promise.allSettled([
@@ -457,12 +440,12 @@ export default {
     },
     async loadTopUsers() {
       const { startDate, endDate } = this.periodRange
-      let d = []; try { const r = await getTopUsers(5, startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
+      let d = []; try { const r = await getHeartRateTopUsers(5, startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
       this.top5Data = d
     },
     async loadDept() {
       const { startDate, endDate } = this.periodRange
-      let d = []; try { const r = await getDeptAbnormalStats(startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
+      let d = []; try { const r = await getHeartRateDeptStats(startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
       this.$nextTick(() => this.initDept(d))
     },
     async loadAge() {
@@ -827,19 +810,7 @@ export default {
     },
 
     hrLevel(v) { return v > 120 ? 'high' : v < 55 ? 'low' : 'normal' },
-    fmtTime(ts) { return ts ? dayjs(ts).format('MM-DD HH:mm') : '' },
 
-    goToPortrait(item) {
-      if (item.userCode || item.empCode) {
-        this.$router.push({ path: '/personnel-management/health-portrait', query: { empCode: item.userCode || item.empCode } })
-      } else {
-        this.$router.push({ path: '/personnel-management/health-portrait', query: { name: item.userName } })
-      }
-    },
-    showDetail(item) {
-      this.detailItem = item
-      this.detailVisible = true
-    },
     setPageSize() {
       const el = this.$refs.listRef; if (!el) return
       const ROW_H = 27  // hr-rt-row: 6+6 padding + ~14px line + 1px margin
@@ -849,22 +820,6 @@ export default {
         this.currentPage = 1
       }
     },
-    handleResize() {
-      clearTimeout(this.resizeTimer)
-      this.resizeTimer = setTimeout(() => {
-        this.$nextTick(() => Object.values(this.charts).forEach(c => c && c.resize && c.resize()))
-      }, 200)
-    },
-    startAutoScroll() {
-      const el = this.$refs.listRef; if (!el) return
-      let top = 0
-      this.scrollTimer = setInterval(() => {
-        const max = el.scrollHeight - el.clientHeight
-        if (max <= 0) return
-        if (top >= max) { setTimeout(() => { top = 0; el.scrollTop = 0 }, 1500) }
-        else { top += 1; el.scrollTop = top }
-      }, 40)
-    }
   }
 }
 </script>

@@ -333,7 +333,6 @@ export default {
       scrollPaused: false,
       refreshTimer: null,
       autoScrollTimer: null,
-      resizeTimer: null,
       clockTimer: null,
       detailUser: null,
       detailVisible: false,
@@ -527,18 +526,12 @@ export default {
     this.fetchData()
     this.autoRefresh()
     this.startAutoScroll()
-    window.addEventListener('resize', this.handleResize)
     document.addEventListener('visibilitychange', this.onVisibilityChange)
-    this.$nextTick(() => {
-      this.handleResize()
-    })
   },
   beforeUnmount() {
     clearInterval(this.refreshTimer)
     clearInterval(this.autoScrollTimer)
     clearInterval(this.clockTimer)
-    clearTimeout(this.resizeTimer)
-    window.removeEventListener('resize', this.handleResize)
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
   },
   methods: {
@@ -634,13 +627,6 @@ export default {
     },
     pauseAutoScroll() { this.scrollPaused = true },
     resumeAutoScroll() { this.scrollPaused = false },
-
-    handleResize() {
-      clearTimeout(this.resizeTimer)
-      this.resizeTimer = setTimeout(() => {
-        // Charts removed - resize handler kept for potential future use
-      }, 200)
-    },
 
     rateCls(v) {
       if (v >= 80) return 'kpi-green'
