@@ -265,6 +265,7 @@ import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { getSleepPageData, getSleepTrend, getSleepQualityDistribution } from '@/api/sleep'
 import { emptyOption, chartTooltip, trendGrid, hourlyGrid } from '@/utils/echarts-config'
+import { initChart } from '@/utils/chart-helpers'
 import { getDepartmentList } from '@/api/department'
 import chartPageMixin from '@/mixins/chartPage'
 
@@ -419,9 +420,7 @@ export default {
 
     // ── 睡眠阶段环形图 ──
     initStage() {
-      const el = this.$refs.stageRef; if (!el) return
-      if (this.charts.stage) this.charts.stage.dispose()
-      const c = echarts.init(el); this.charts.stage = c
+      const c = initChart(this.charts, 'stage', this.$refs.stageRef); if (!c) return
       c.setOption({
         backgroundColor: 'transparent',
         series: [{
@@ -441,9 +440,7 @@ export default {
 
     // ── 质量评分分布柱图 ──
     initScore(data) {
-      const el = this.$refs.scoreRef; if (!el) return
-      if (this.charts.score) this.charts.score.dispose()
-      const c = echarts.init(el); this.charts.score = c
+      const c = initChart(this.charts, 'score', this.$refs.scoreRef); if (!c) return
       const d = data.length ? data : [
         { label: '差(0-40)',    count: 0, color: '#ff5252' },
         { label: '较差(40-60)', count: 0, color: '#FFB84D' },
@@ -486,9 +483,7 @@ export default {
 
     // ── 近30天趋势（时长柱 + 评分折线）──
     initTrend(data) {
-      const el = this.$refs.trendRef; if (!el) return
-      if (this.charts.trend) this.charts.trend.dispose()
-      const c = echarts.init(el); this.charts.trend = c
+      const c = initChart(this.charts, 'trend', this.$refs.trendRef); if (!c) return
       const fbDates = Array.from({length:30}, (_,i) => dayjs().subtract(29-i,'day').format('MM/DD'))
       const dates  = data.dates || fbDates
       const hours  = data.avgData || data.hours || new Array(dates.length).fill(0)
@@ -566,9 +561,7 @@ export default {
 
     // ── 睡眠时长分布（小环形饼图）──
     initDuration() {
-      const el = this.$refs.durationRef; if (!el) return
-      if (this.charts.duration) this.charts.duration.dispose()
-      const c = echarts.init(el); this.charts.duration = c
+      const c = initChart(this.charts, 'duration', this.$refs.durationRef); if (!c) return
       const total = this.overview.totalCount || 0
       c.setOption({
         backgroundColor: 'transparent',
@@ -602,18 +595,14 @@ export default {
 
     // ── 入睡时间分布（数据库无入睡时刻字段，显示暂无数据）──
     initBedtime() {
-      const el = this.$refs.bedtimeRef; if (!el) return
-      if (this.charts.bedtime) this.charts.bedtime.dispose()
-      const c = echarts.init(el); this.charts.bedtime = c
+      const c = initChart(this.charts, 'bedtime', this.$refs.bedtimeRef); if (!c) return
       this.lateBedPct = 0
       c.setOption(emptyOption('暂无数据', 13))
     },
 
     // ── 各部门睡眠数据上传率（竖向柱状图，部门数据来自 /department/list 接口）──
     initDept(data) {
-      const el = this.$refs.deptRef; if (!el) return
-      if (this.charts.dept) this.charts.dept.dispose()
-      const c = echarts.init(el); this.charts.dept = c
+      const c = initChart(this.charts, 'dept', this.$refs.deptRef); if (!c) return
       if (!data || !data.length) {
         c.setOption(emptyOption())
         return

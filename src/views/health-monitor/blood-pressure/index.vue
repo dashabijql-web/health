@@ -454,9 +454,7 @@ export default {
 
     // ── ECharts ──
     initDeptChart(data) {
-      const el = this.$refs.deptRef; if (!el) return
-      if (this.charts.dept) this.charts.dept.dispose()
-      const c = echarts.init(el); this.charts.dept = c
+      const c = initChart(this.charts, 'dept', this.$refs.deptRef); if (!c) return
       if (!data.length) { c.setOption(emptyOption()); return }
       const d = data.slice(0, 12)
       c.setOption({
@@ -488,9 +486,7 @@ export default {
     },
 
     initTrendChart(dates, sysVals, diaVals) {
-      const el = this.$refs.trendRef; if (!el) return
-      if (this.charts.trend) this.charts.trend.dispose()
-      const c = echarts.init(el); this.charts.trend = c
+      const c = initChart(this.charts, 'trend', this.$refs.trendRef); if (!c) return
       const isEmpty = !dates.length
       const fbDates = Array.from({ length: 30 }, (_, i) => dayjs().subtract(29 - i, 'day').format('MM/DD'))
       c.setOption({
@@ -535,9 +531,7 @@ export default {
     },
 
     initHourlyChart(sysVals, diaVals) {
-      const el = this.$refs.hourlyRef; if (!el) return
-      if (this.charts.hourly) this.charts.hourly.dispose()
-      const c = echarts.init(el); this.charts.hourly = c
+      const c = initChart(this.charts, 'hourly', this.$refs.hourlyRef); if (!c) return
       const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
       c.setOption({
         backgroundColor: 'transparent',

@@ -436,9 +436,7 @@ export default {
     },
 
     initDept(data) {
-      const el = this.$refs.deptRef; if (!el) return
-      if (this.charts.dept) this.charts.dept.dispose()
-      const c = echarts.init(el); this.charts.dept = c
+      const c = initChart(this.charts, 'dept', this.$refs.deptRef); if (!c) return
       if (!data.length) { c.setOption(emptyOption()); return }
       const d = data.slice(0, 10)
       c.setOption({
@@ -473,9 +471,7 @@ export default {
     },
 
     renderHourly(vals) {
-      const el = this.$refs.hourlyRef; if (!el) return
-      if (this.charts.hourly) this.charts.hourly.dispose()
-      const c = echarts.init(el); this.charts.hourly = c
+      const c = initChart(this.charts, 'hourly', this.$refs.hourlyRef); if (!c) return
       const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
       c.setOption({
         backgroundColor: 'transparent',
@@ -504,9 +500,7 @@ export default {
     },
 
     renderHourlyDaily(dates, vals) {
-      const el = this.$refs.hourlyRef; if (!el) return
-      if (this.charts.hourly) this.charts.hourly.dispose()
-      const c = echarts.init(el); this.charts.hourly = c
+      const c = initChart(this.charts, 'hourly', this.$refs.hourlyRef); if (!c) return
       if (!dates.length) { c.setOption(emptyOption('暂无数据', 13)); return }
       c.setOption({
         backgroundColor: 'transparent',

@@ -245,6 +245,7 @@ import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getDeptWarningStats } from '@/api/risk-warning'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, barLabel } from '@/utils/echarts-config'
+import { initChart } from '@/utils/chart-helpers'
 import { getHealthRecords } from '@/api/health'
 import { getOnlineUsers } from '@/api/realtime'
 import chartPageMixin from '@/mixins/chartPage'
@@ -427,9 +428,7 @@ export default {
     },
 
     initTrendChart() {
-      const el=this.$refs.trendRef; if(!el) return
-      if(this.charts.trend) this.charts.trend.dispose()
-      const c=echarts.init(el); this.charts.trend=c
+      const c=initChart(this.charts,'trend',this.$refs.trendRef); if(!c) return
       const {dates,series}=this.trendData
       if(!dates.length){ c.setOption(emptyOption('暂无趋势数据')); return }
       c.setOption({
@@ -449,9 +448,7 @@ export default {
     },
 
     initDeptChart() {
-      const el=this.$refs.deptRef; if(!el) return
-      if(this.charts.dept) this.charts.dept.dispose()
-      const c=echarts.init(el); this.charts.dept=c
+      const c=initChart(this.charts,'dept',this.$refs.deptRef); if(!c) return
       if(!this.deptData.length){ c.setOption(emptyOption()); return }
       const names=this.deptData.map(d=>d.deptName)
       // FIX ④: 动态左侧留白防截断
@@ -474,9 +471,7 @@ export default {
     },
 
     initTrendDay() {
-      const el=this.$refs.trendRef; if(!el) return
-      if(this.charts.trend) this.charts.trend.dispose()
-      const c=echarts.init(el); this.charts.trend=c
+      const c=initChart(this.charts,'trend',this.$refs.trendRef); if(!c) return
       const total=this.warningStats.reduce((s,x)=>s+x.value,0)
       if(!total){ c.setOption(emptyOption('今日暂无预警数据')); return }
       c.setOption({
@@ -491,9 +486,7 @@ export default {
 
     // 右侧面板：环形图
     initDonutChart() {
-      const el = this.$refs.donutRef; if(!el) return
-      if(this.charts.donut) this.charts.donut.dispose()
-      const c = echarts.init(el); this.charts.donut = c
+      const c = initChart(this.charts,'donut',this.$refs.donutRef); if(!c) return
       const total = this.warningStats.reduce((s,x)=>s+x.value,0)
       if(!total) {
         c.setOption(emptyOption('暂无数据', 12))
