@@ -285,7 +285,6 @@ export default {
         { label: '高压 (危险)',   range: '≥ 85',      color: '#ff5252' }
       ],
       charts: {},
-      refreshTimer: null,
     }
   },
   computed: {
@@ -349,10 +348,6 @@ export default {
     this.fetchData()
     this.$nextTick(() => this.startAutoScroll())
     this.refreshTimer = setInterval(() => this.loadRealtime(), 30000)
-  },
-  beforeUnmount() {
-    clearInterval(this.refreshTimer)
-    Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
     async fetchData() {
@@ -591,12 +586,6 @@ export default {
           }
         }]
       })
-    },
-
-    switchPeriod(val) {
-      if (this.activePeriod === val) return
-      this.activePeriod = val
-      this.fetchData()
     },
 
     psLevel(v) {

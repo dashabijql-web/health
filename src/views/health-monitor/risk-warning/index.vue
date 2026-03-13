@@ -272,7 +272,6 @@ export default {
       activePeriod: 'month',
       periodOptions: [{ label: '当日', value: 'day' }, { label: '近7日', value: 'week' }, { label: '近30日', value: 'month' }],
       charts: {},
-      refreshTimer: null,
       detailVisible: false, detailRow: null,
       autoScrollPaused: false,
       scrollTop: 0,
@@ -372,10 +371,6 @@ export default {
     this.initClock(); this.fetchData()
     this.$nextTick(() => this.startAutoScroll())
     this.refreshTimer = setInterval(() => this.fetchData(), 30000)
-  },
-  beforeUnmount() {
-    clearInterval(this.refreshTimer)
-    Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
     async fetchData() {
@@ -528,7 +523,6 @@ export default {
     levelLabel(lv) { return lv==='高'||lv==='危险'?'高危':lv==='中'||lv==='警告'?'中危':'注意' },
     levelClass(lv) { return lv==='高'||lv==='危险'?'danger':lv==='中'||lv==='警告'?'warn':'info' },
 
-    switchPeriod(val) { if(this.activePeriod===val)return; this.activePeriod=val; this.fetchData() },
     async openDetail(item) {
       this.detailRow = item
       this.detailVisible = true

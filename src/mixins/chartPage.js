@@ -1,7 +1,8 @@
 /**
  * 健康监测页面通用 mixin
- * 提供：initClock、handleResize、startAutoScroll、fmtTime、periodRange
- * 自动注册/注销 resize 事件，管理 clock/scroll/resize 定时器
+ * 提供：initClock、handleResize、startAutoScroll、fmtTime、periodRange、switchPeriod
+ * 自动注册/注销 resize 事件，管理 clock/scroll/resize/refresh 定时器
+ * 自动 dispose 所有 ECharts 实例
  *
  * 使用方式：
  *   import chartPageMixin from '@/mixins/chartPage'
@@ -11,6 +12,7 @@
  *   - data 中有 charts 对象（key→echarts实例）
  *   - data 中有 currentTime（字符串，用于时钟显示）
  *   - data 中有 activePeriod（字符串，用于 periodRange 计算）
+ *   - methods 中有 fetchData()（switchPeriod 调用）
  *   - template 中 ref="listRef" 绑定到需要自动滚动的容器
  */
 import dayjs from 'dayjs'
@@ -20,7 +22,8 @@ export default {
     return {
       clockTimer: null,
       scrollTimer: null,
-      resizeTimer: null
+      resizeTimer: null,
+      refreshTimer: null
     }
   },
   computed: {
@@ -37,8 +40,10 @@ export default {
   beforeUnmount() {
     clearInterval(this.clockTimer)
     clearInterval(this.scrollTimer)
+    clearInterval(this.refreshTimer)
     clearTimeout(this.resizeTimer)
     window.removeEventListener('resize', this.handleResize)
+    if (this.charts) Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
     initClock() {
@@ -62,6 +67,11 @@ export default {
         if (top >= max) { setTimeout(() => { top = 0; el.scrollTop = 0 }, 1500) }
         else { top += 1; el.scrollTop = top }
       }, 40)
+    },
+    switchPeriod(val) {
+      if (this.activePeriod === val) return
+      this.activePeriod = val
+      this.fetchData()
     },
     fmtTime(ts) {
       return ts ? dayjs(ts).format('MM-DD HH:mm') : ''

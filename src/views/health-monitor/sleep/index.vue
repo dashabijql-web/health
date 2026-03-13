@@ -300,7 +300,6 @@ export default {
       currentPage: 1,
       pageSize: 20,
       charts: {},
-      refreshTimer: null,
       recordDialog: { visible: false, item: null }
     }
   },
@@ -340,10 +339,6 @@ export default {
       this.initBedtime()
     })
     this.refreshTimer = setInterval(() => this.fetchData(), 60000)
-  },
-  beforeUnmount() {
-    clearInterval(this.refreshTimer)
-    Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
     async fetchData() {

@@ -333,7 +333,6 @@ export default {
         { label: '近30日', value: 'month' }
       ],
       charts: {},
-      refreshTimer: null,
       detailItem: null,
       detailVisible: false,
       filterDept: ''
@@ -414,10 +413,6 @@ export default {
     this.fetchData()
     this.$nextTick(() => this.startAutoScroll())
     this.refreshTimer = setInterval(() => this.fetchData(), 30000)
-  },
-  beforeUnmount() {
-    clearInterval(this.refreshTimer)
-    Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
 
@@ -693,12 +688,6 @@ export default {
           }
         }]
       })
-    },
-
-    switchPeriod(val) {
-      if (this.activePeriod === val) return
-      this.activePeriod = val
-      this.fetchData()
     },
 
     initTrendDay(vals) {
