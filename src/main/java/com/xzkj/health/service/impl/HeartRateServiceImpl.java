@@ -1,19 +1,17 @@
 package com.xzkj.health.service.impl;
 
-import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.HeartRateMapper;
 import com.xzkj.health.service.HeartRateService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 /**
- * 心率监测服务实现 - 增强版
+ * 心率监测服务实现
+ * 异常由 GlobalExceptionHandler 统一处理，Service 层无需 try-catch-rethrow
  */
-@Slf4j
 @Service
 public class HeartRateServiceImpl implements HeartRateService {
 
@@ -22,96 +20,49 @@ public class HeartRateServiceImpl implements HeartRateService {
 
     @Override
     public Map<String, Object> getHeartRateOverview(String startDate, String endDate) {
-        try {
-            return heartRateMapper.getHeartRateOverview(startDate, endDate);
-        } catch (Exception e) {
-            log.error("获取心率概览失败", e);
-            throw new RuntimeException("获取心率概览失败: " + e.getMessage());
-        }
+        return heartRateMapper.getHeartRateOverview(startDate, endDate);
     }
 
     @Override
     public List<Map<String, Object>> getTopUsers(int limit, String startDate, String endDate) {
-        try {
-            return heartRateMapper.getTopUsers(limit, startDate, endDate);
-        } catch (Exception e) {
-            log.error("获取TOP用户失败", e);
-            throw new RuntimeException("获取TOP用户失败: " + e.getMessage());
-        }
+        return heartRateMapper.getTopUsers(limit, startDate, endDate);
     }
 
     @Override
     public List<Map<String, Object>> getAgeDistribution() {
-        try {
-            return heartRateMapper.getAgeDistribution();
-        } catch (Exception e) {
-            log.error("获取年龄段统计失败", e);
-            throw new RuntimeException("获取年龄段统计失败: " + e.getMessage());
-        }
+        return heartRateMapper.getAgeDistribution();
     }
 
     @Override
     public List<Map<String, Object>> getHeartRateDistribution(String startDate, String endDate) {
-        try {
-            return heartRateMapper.getHeartRateDistributionNew(startDate, endDate);
-        } catch (Exception e) {
-            log.error("获取心率分布失败", e);
-            throw new RuntimeException("获取心率分布失败: " + e.getMessage());
-        }
+        return heartRateMapper.getHeartRateDistributionNew(startDate, endDate);
     }
 
     @Override
     public Map<String, Object> getHeartRateTrend(int days) {
-        try {
-            List<Map<String, Object>> rows = heartRateMapper.getHeartRateTrend(days);
-            return MapValueUtil.convertTrendData(rows, "avgHeartRate");
-        } catch (Exception e) {
-            log.error("获取心率趋势失败", e);
-            throw new RuntimeException("获取心率趋势失败: " + e.getMessage());
-        }
+        return MapValueUtil.convertTrendData(heartRateMapper.getHeartRateTrend(days), "avgHeartRate");
     }
 
     @Override
     public List<Map<String, Object>> getRealtimeData(int limit) {
-        try {
-            return heartRateMapper.getRealtimeData(limit);
-        } catch (Exception e) {
-            log.error("获取实时数据失败", e);
-            throw new RuntimeException("获取实时数据失败: " + e.getMessage());
-        }
+        return heartRateMapper.getRealtimeData(limit);
     }
 
     @Override
     public List<Map<String, Object>> getDepartmentStats(String startDate, String endDate) {
-        try {
-            return heartRateMapper.getDepartmentStats(startDate, endDate);
-        } catch (Exception e) {
-            log.error("获取部门统计失败", e);
-            throw new RuntimeException("获取部门统计失败: " + e.getMessage());
-        }
+        return heartRateMapper.getDepartmentStats(startDate, endDate);
     }
 
     @Override
     public Map<String, Object> getAbnormalRecords(int page, int size) {
-        try {
-            int offset = (page - 1) * size;
-            List<Map<String, Object>> list = heartRateMapper.getAbnormalRecords(offset, size);
-            int total = heartRateMapper.countAbnormalRecords();
-            return MapValueUtil.buildPageResult(list, total, page, size);
-        } catch (Exception e) {
-            log.error("获取异常心率记录失败", e);
-            throw new RuntimeException("获取异常心率记录失败: " + e.getMessage());
-        }
+        int offset = (page - 1) * size;
+        return MapValueUtil.buildPageResult(
+                heartRateMapper.getAbnormalRecords(offset, size),
+                heartRateMapper.countAbnormalRecords(), page, size);
     }
 
     @Override
     public List<Map<String, Object>> getHourlyStats(String startDate, String endDate) {
-        try {
-            List<Map<String, Object>> data = heartRateMapper.getHourlyStats(startDate, endDate);
-            return data != null ? data : Collections.emptyList();
-        } catch (Exception e) {
-            log.error("获取心率逐小时数据失败", e);
-            throw new RuntimeException("获取心率逐小时数据失败: " + e.getMessage());
-        }
+        return MapValueUtil.orEmpty(heartRateMapper.getHourlyStats(startDate, endDate));
     }
 }

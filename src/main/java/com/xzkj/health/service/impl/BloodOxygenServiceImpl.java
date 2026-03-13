@@ -1,10 +1,8 @@
 package com.xzkj.health.service.impl;
 
-import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.mapper.BloodOxygenMapper;
 import com.xzkj.health.service.BloodOxygenService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,8 +10,8 @@ import java.util.*;
 
 /**
  * 血氧监测服务实现
+ * 异常由 GlobalExceptionHandler 统一处理
  */
-@Slf4j
 @Service
 public class BloodOxygenServiceImpl implements BloodOxygenService {
 
