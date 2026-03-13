@@ -223,7 +223,7 @@
 
       <!-- ─ 右侧：实时血压列表 ─ -->
       <div class="bp-rtlist">
-        <div class="bp-panel" style="height:100%;display:flex;flex-direction:column;overflow:hidden">
+        <div class="bp-panel hm-panel-flex">
           <div class="bp-ph">
             <span class="bp-ph-bar"></span>
             <span class="bp-ph-title">实时血压数据</span>

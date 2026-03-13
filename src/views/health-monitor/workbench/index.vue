@@ -139,6 +139,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Close } from '@element-plus/icons-vue'
 import { getCalendarData, getDayHeartRateRank, getDayBloodOxygenRank, getDayStepsRank, getDayWarnings } from '@/api/workbench'
 
@@ -181,7 +182,7 @@ async function loadData() {
     }
     dayData.value = map
   } catch (e) {
-    console.error('[workbench] loadData error', e)
+    ElMessage.error('加载日历数据失败')
   } finally {
     loading.value = false
   }

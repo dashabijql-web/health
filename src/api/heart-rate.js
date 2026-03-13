@@ -35,19 +35,6 @@ export function getHeartRateDistribution(startDate, endDate) {
 }
 
 /**
- * 获取异常心率记录
- * @param {Number} page 页码
- * @param {Number} size 每页条数
- */
-export function getAbnormalHeartRate(page = 1, size = 10) {
-  return request({
-    url: '/heart-rate/abnormal',
-    method: 'get',
-    params: { page, size }
-  })
-}
-
-/**
  * 获取TOP用户心率数据
  * @param {Number} limit 返回数量，默认5
  */

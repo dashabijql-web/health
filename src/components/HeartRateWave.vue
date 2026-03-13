@@ -132,13 +132,6 @@ const generateECGPoint = (x) => {
   // 基线（170-200）
   else {
     y = baseY
-    // 随机添加噪声
-    y += (Math.random() - 0.5) * 2
-  }
-
-  // 随机异常标记
-  if (props.showWarning && Math.random() < 0.01) {
-    y += (Math.random() - 0.5) * amplitude * 0.5
   }
 
   return y
@@ -202,8 +195,6 @@ const animate = () => {
   // 更新心率（模拟心率变化）
   if (props.heartRate > 0) {
     currentHeartRate.value = props.heartRate
-  } else if (currentX % 60 === 0) {
-    currentHeartRate.value = 70 + Math.floor(Math.random() * 20)
   }
 
   animationId = requestAnimationFrame(animate)

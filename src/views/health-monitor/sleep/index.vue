@@ -188,7 +188,7 @@
 
       <!-- ─ 右侧：数据明细 ─ -->
       <div class="sl-rtlist">
-        <div class="sl-panel" style="height:100%;display:flex;flex-direction:column;overflow:hidden">
+        <div class="sl-panel hm-panel-flex">
           <div class="sl-ph">
             <span class="sl-ph-bar"></span>
             <span class="sl-ph-title">数据明细</span>

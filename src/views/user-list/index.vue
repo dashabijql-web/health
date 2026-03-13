@@ -405,7 +405,7 @@ export default {
       try {
         const res = await getUserStats()
         if (res.code === 200) this.stats = res.data
-      } catch (e) { console.error('加载用户统计失败:', e) }
+      } catch (e) { /* ignore */ }
     },
     async loadUserList() {
       this.loading = true
@@ -431,7 +431,7 @@ export default {
         const res = await getAvailableRoles()
         if (res.code === 200) this.availableRoles = res.data
       } catch (e) {
-        console.error('加载角色列表失败:', e)
+        /* ignore */
       } finally {
         this.rolesLoading = false
       }
@@ -444,7 +444,7 @@ export default {
           this.deptList = list.map(d => ({ id: d.id, name: d.deptName || d.dept_name || d.name }))
         }
       } catch (e) {
-        console.error('加载部门列表失败:', e)
+        /* ignore */
       }
     },
     handleSearch() { this.pagination.page = 1; this.loadUserList() },

@@ -151,7 +151,6 @@ service.interceptors.request.use(
   },
   error => {
     // 请求配置错误（极少发生，如 URL 格式错误）
-    console.log(error)
     return Promise.reject(error)
   }
 )

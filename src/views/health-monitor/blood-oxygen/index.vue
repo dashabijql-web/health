@@ -215,7 +215,7 @@
 
       <!-- ─ 右侧：实时列表 ─ -->
       <div class="bo-rtlist">
-        <div class="bo-panel" style="height:100%;display:flex;flex-direction:column;overflow:hidden">
+        <div class="bo-panel hm-panel-flex">
           <div class="bo-ph">
             <span class="bo-ph-bar"></span>
             <span class="bo-ph-title">实时血氧数据</span>
@@ -259,8 +259,8 @@
     <el-dialog v-model="detailVisible" :title="`${detailItem?.userName || ''} 血氧详情`" width="400px" :append-to-body="true">
       <div v-if="detailItem" style="padding:8px 0">
         <div style="text-align:center;margin-bottom:20px">
-          <span style="font-size:48px;font-weight:700;font-family:Consolas;color:#00d4ff">{{ detailItem.bloodOxygen }}</span>
-          <span style="font-size:16px;color:#8ba6c8;margin-left:4px">%</span>
+          <span class="hm-detail-value">{{ detailItem.bloodOxygen }}</span>
+          <span class="hm-detail-unit">%</span>
         </div>
         <el-descriptions :column="2" border>
           <el-descriptions-item label="状态">

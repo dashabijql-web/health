@@ -368,7 +368,7 @@ export default {
       try {
         const res = await getRoleStats()
         if (res.code === 200) this.stats = res.data
-      } catch (e) { console.error('加载角色统计失败:', e) }
+      } catch (e) { /* ignore */ }
     },
     async loadRoleList() {
       this.loading = true

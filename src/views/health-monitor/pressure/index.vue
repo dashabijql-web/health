@@ -201,7 +201,7 @@
 
       <!-- ─ 右侧：实时压力列表 ─ -->
       <div class="ps-rtlist">
-        <div class="ps-panel" style="height:100%;display:flex;flex-direction:column;overflow:hidden">
+        <div class="ps-panel hm-panel-flex">
           <div class="ps-ph">
             <span class="ps-ph-bar"></span>
             <span class="ps-ph-title">实时压力数据</span>

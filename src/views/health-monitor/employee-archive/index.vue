@@ -177,8 +177,7 @@ async function loadData() {
     if (res.code === 200) {
       employees.value = (res.data || []).map(e => ({
         ...e,
-        // 简单用部门预警比例计算一个健康分（72-92随机范围，实际可接后端）
-        _healthScore: 72 + Math.floor(Math.random() * 20)
+        _healthScore: e.healthScore || 0
       }))
     }
   } catch (e) {

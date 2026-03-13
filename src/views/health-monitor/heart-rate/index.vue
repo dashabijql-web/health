@@ -222,7 +222,7 @@
 
       <!-- ─ 右侧：实时列表 ─ -->
       <div class="hr-rtlist">
-        <div class="hr-panel" style="height:100%;display:flex;flex-direction:column;overflow:hidden">
+        <div class="hr-panel hm-panel-flex">
           <div class="hr-ph">
             <span class="hr-ph-bar"></span>
             <span class="hr-ph-title">实时心率数据</span>
@@ -270,8 +270,8 @@
     <el-dialog v-model="detailVisible" :title="`${detailItem?.userName || ''} 心率详情`" width="400px" :append-to-body="true">
       <div v-if="detailItem" style="padding:8px 0">
         <div style="text-align:center;margin-bottom:20px">
-          <span style="font-size:48px;font-weight:700;font-family:Consolas;color:#00d4ff">{{ detailItem.heartRate }}</span>
-          <span style="font-size:16px;color:#8ba6c8;margin-left:4px">bpm</span>
+          <span class="hm-detail-value">{{ detailItem.heartRate }}</span>
+          <span class="hm-detail-unit">bpm</span>
         </div>
         <el-descriptions :column="2" border>
           <el-descriptions-item label="状态">

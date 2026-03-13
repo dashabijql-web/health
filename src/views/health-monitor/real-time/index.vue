@@ -99,6 +99,9 @@
             @mouseleave="resumeAutoScroll">
             <el-table
               :data="paginatedUserList"
+              v-loading="isLoading"
+              element-loading-background="rgba(10,30,61,0.8)"
+              element-loading-text="加载中..."
               height="100%"
               style="width: 100%"
               :header-cell-style="tblHeadStyle"
@@ -342,6 +345,7 @@ export default {
       voiceDialogVisible: false,
       voiceTemplateId: '',
       voiceTemplates: [],
+      isLoading: false,
       tblHeadStyle: {
         background: 'rgba(0,40,90,0.9)',
         color: '#00d4ff',
@@ -525,12 +529,9 @@ export default {
     this.autoRefresh()
     this.startAutoScroll()
     window.addEventListener('resize', this.handleResize)
+    document.addEventListener('visibilitychange', this.onVisibilityChange)
     this.$nextTick(() => {
-      // Charts removed
-      // 延迟调用 setScale 确保 DOM 完全渲染
-      setTimeout(() => {
-        
-      }, 100)
+      this.handleResize()
     })
   },
   beforeUnmount() {
@@ -539,6 +540,7 @@ export default {
     clearInterval(this.clockTimer)
     clearTimeout(this.resizeTimer)
     window.removeEventListener('resize', this.handleResize)
+    document.removeEventListener('visibilitychange', this.onVisibilityChange)
   },
   methods: {
     initTime() {
@@ -551,16 +553,20 @@ export default {
     async fetchData() {
       if (this._fetching) return
       this._fetching = true
+      const isFirst = !this._loaded
+      if (isFirst) this.isLoading = true
       try {
         await Promise.all([
           this.fetchOverview(),
           this.fetchOnlineUsers(),
           this.fetchStatistics()
         ])
+        this._loaded = true
       } catch (e) {
         // 错误由各子方法自行处理，无需向上传播
       } finally {
         this._fetching = false
+        if (isFirst) this.isLoading = false
       }
     },
 
@@ -587,6 +593,17 @@ export default {
       this.refreshTimer = setInterval(() => {
         this.fetchData()
       }, 5000)
+    },
+
+    onVisibilityChange() {
+      if (document.hidden) {
+        clearInterval(this.refreshTimer)
+        clearInterval(this.autoScrollTimer)
+      } else {
+        this.fetchData()
+        this.autoRefresh()
+        this.startAutoScroll()
+      }
     },
 
     handleSearch() {

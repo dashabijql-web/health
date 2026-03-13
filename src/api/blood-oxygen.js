@@ -35,19 +35,6 @@ export function getBloodOxygenDistribution(startDate, endDate) {
 }
 
 /**
- * 获取异常血氧记录
- * @param {Number} page 页码
- * @param {Number} size 每页条数
- */
-export function getAbnormalBloodOxygen(page = 1, size = 10) {
-  return request({
-    url: '/blood-oxygen/abnormal',
-    method: 'get',
-    params: { page, size }
-  })
-}
-
-/**
  * 获取TOP用户血氧数据
  * @param {Number} limit 返回数量，默认5
  */

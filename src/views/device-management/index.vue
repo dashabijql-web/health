@@ -58,7 +58,20 @@
       <div class="panel-header">
         <div class="panel-title"><span class="title-bar"></span>设备列表</div>
         <div class="panel-header-right">
-          <span class="total-badge">共 {{ deviceList.length }} 台</span>
+          <el-input v-model="searchImei" placeholder="搜索IMEI/用户" clearable size="small"
+            class="search-input" @clear="resetFilters" @keyup.enter="pagination.page = 1">
+            <template #prefix><el-icon><Search /></el-icon></template>
+          </el-input>
+          <el-select v-model="filterOnline" placeholder="在线状态" clearable size="small" class="filter-select" @change="pagination.page = 1">
+            <el-option label="在线" :value="1" />
+            <el-option label="离线" :value="0" />
+          </el-select>
+          <el-select v-model="filterBind" placeholder="绑定状态" clearable size="small" class="filter-select" @change="pagination.page = 1">
+            <el-option label="已绑定" :value="true" />
+            <el-option label="未绑定" :value="false" />
+          </el-select>
+          <el-button size="small" @click="resetFilters">重置</el-button>
+          <span class="total-badge">{{ filteredDeviceList.length }} / {{ deviceList.length }} 台</span>
           <el-button type="primary" size="small" :icon="Refresh" @click="refreshDevices">刷新</el-button>
         </div>
       </div>
@@ -137,7 +150,7 @@
           :current-page="pagination.page"
           :page-sizes="[10, 20, 50, 100]"
           :page-size="pagination.size"
-          :total="pagination.total"
+          :total="filteredDeviceList.length"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
         />
@@ -326,7 +339,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Monitor, Timer, CircleCheck, Connection, Document, Link, Unlock, Upload, Delete, ChatDotRound } from '@element-plus/icons-vue'
+import { Refresh, Monitor, Timer, CircleCheck, Connection, Document, Link, Unlock, Upload, Delete, ChatDotRound, Search } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import {
   getOnlineDevices,
@@ -350,6 +363,37 @@ const updateTime = () => {
 // 设备列表数据
 const deviceList = ref([])
 const loading = ref(false)
+
+// 搜索筛选
+const searchImei = ref('')
+const filterOnline = ref(null)
+const filterBind = ref(null)
+
+const resetFilters = () => {
+  searchImei.value = ''
+  filterOnline.value = null
+  filterBind.value = null
+  pagination.page = 1
+}
+
+// 过滤后的设备列表
+const filteredDeviceList = computed(() => {
+  let list = deviceList.value
+  if (searchImei.value) {
+    const q = searchImei.value.toLowerCase()
+    list = list.filter(d =>
+      (d.imei && d.imei.toLowerCase().includes(q)) ||
+      (d.userName && d.userName.toLowerCase().includes(q))
+    )
+  }
+  if (filterOnline.value !== null && filterOnline.value !== '') {
+    list = list.filter(d => d.status === filterOnline.value)
+  }
+  if (filterBind.value !== null && filterBind.value !== '') {
+    list = list.filter(d => !!d.bindStatus === filterBind.value)
+  }
+  return list
+})
 
 // 分页
 const pagination = reactive({
@@ -431,7 +475,7 @@ const deviceStats = computed(() => {
 const paginatedDeviceList = computed(() => {
   const start = (pagination.page - 1) * pagination.size
   const end = start + pagination.size
-  return deviceList.value.slice(start, end)
+  return filteredDeviceList.value.slice(start, end)
 })
 
 // 表格序号（考虑分页）
@@ -702,7 +746,8 @@ onBeforeUnmount(() => {
   padding: 20px;
   background: #0a0e27;
   height: calc(100vh - 50px);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -774,7 +819,9 @@ onBeforeUnmount(() => {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 20px; border-bottom: 1px solid #232b4d;
 }
-.panel-header-right { display: flex; align-items: center; gap: 12px; }
+.panel-header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.search-input { width: 180px; }
+.filter-select { width: 110px; }
 .panel-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #c8d8e8; }
 .title-bar { display: inline-block; width: 3px; height: 16px; background: #00d4ff; border-radius: 2px; }
 .total-badge {

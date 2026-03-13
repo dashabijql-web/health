@@ -895,6 +895,7 @@ export default {
     
     this._resizeHandler = () => this.handleResize()
     window.addEventListener('resize', this._resizeHandler)
+    document.addEventListener('visibilitychange', this._onVisibilityChange = () => this.onVisibilityChange())
     this.refreshTextTimer = setInterval(() => this.updateRefreshText(), 5000)
   },
   activated() {
@@ -913,6 +914,7 @@ export default {
     clearInterval(this.kpiRefreshTimer)
     clearTimeout(this.resizeTimer)
     window.removeEventListener('resize', this._resizeHandler)
+    document.removeEventListener('visibilitychange', this._onVisibilityChange)
     Object.values(this.charts).forEach(c => c && c.dispose())
     if (this.empDrawer.trendChart) this.empDrawer.trendChart.dispose()
     if (this.empDrawer.radarChart) this.empDrawer.radarChart.dispose()
@@ -1044,15 +1046,11 @@ export default {
             }))
             .filter(d => d.name && d.name !== '')
 
-          if (!this.deptDataList.length) {
-            console.warn('[Dashboard] 部门数据加载成功但过滤后为空，原始数据:', r.data)
           }
         } else {
-          console.warn('[Dashboard] 部门数据加载失败或为空, code:', r.code, 'data:', r.data)
           this.deptDataList = []
         }
       } catch (error) {
-        console.error('[Dashboard] 部门数据加载异常:', error)
         this.deptDataList = []
       }
       this.$nextTick(() => { this.initDeptChart(); this.startListScroll('riskList','riskScrollInterval',35) })
@@ -1124,17 +1122,12 @@ export default {
         const res = await getHealthPortrait(empCode)
         if (res.code === 200 && res.data) {
           const d = res.data
-          console.log('[Dashboard] 员工档案数据:', { empCode, response: d })
-
           this.empDrawer.data = {
             empName:        d.empName        || d.employee?.empName        || userName,
             deptName:       d.deptName       || d.employee?.deptName       || '--',
             jobTypeName:    d.jobTypeName    || d.employee?.jobTypeName    || '--',
           }
           const v = d.vitals || d.realtime || {}
-          if (!d.vitals && !d.realtime) {
-            console.warn('[Dashboard] 员工档案缺少体征数据 (vitals/realtime):', d)
-          }
           this.empDrawer.vitals = [
             {
               label: '心率', val: v.heartRate || '--', unit: 'bpm', color: '#ff5252',
@@ -1793,6 +1786,19 @@ export default {
     },
     startAutoRefresh() {
       this.refreshTimer = setInterval(() => this.fetchData(), 30000)
+    },
+    onVisibilityChange() {
+      if (document.hidden) {
+        clearInterval(this.refreshTimer)
+        clearInterval(this.kpiRefreshTimer)
+        clearInterval(this.refreshTextTimer)
+      } else {
+        this.fetchData()
+        this.fetchKpiData()
+        this.startAutoRefresh()
+        this.kpiRefreshTimer = setInterval(() => this.fetchKpiData(), 30000)
+        this.refreshTextTimer = setInterval(() => this.updateRefreshText(), 5000)
+      }
     },
     handleResize() {
       clearTimeout(this.resizeTimer)

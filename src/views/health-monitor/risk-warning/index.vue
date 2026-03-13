@@ -581,7 +581,7 @@ export default {
               this.vitalChartRange = `${start.format('HH:mm')} – ${end.format('HH:mm')}（±${hours}h）`
             }
           } catch(e) {
-            console.warn('[VitalChart] records failed hours=' + hours, e)
+            /* retry with larger window */
           }
         }
 
@@ -606,7 +606,7 @@ export default {
               this.vitalChartRange = '近7天日均趋势（采样间隔稀疏）'
             }
           } catch(e2) {
-            console.warn('[VitalChart] portrait fallback failed:', e2)
+            /* fallback failed, continue */
           }
         }
 
@@ -640,7 +640,6 @@ export default {
         await this.$nextTick()
         this.renderVitalChart(times, hrs, spo2, temps, isDaily ? '' : warnTime.format('HH:mm'))
       } catch(e) {
-        console.error('[VitalChart] error:', e)
         this.vitalEmpty = true
         this.vitalLoading = false
       }
