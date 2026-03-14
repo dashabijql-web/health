@@ -69,7 +69,7 @@
                 <el-badge :value="cell.data.warningCount" type="danger" class="warn-badge" />
               </div>
             </template>
-            <div v-else class="cell-no-data">--</div>
+            <div v-else class="cell-no-data">无数据</div>
           </template>
         </div>
       </div>

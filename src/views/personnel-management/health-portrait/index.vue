@@ -534,7 +534,7 @@ const initRadarChart = () => {
         { name: '活动', max: 100 }, { name: '血压', max: 100 },
         { name: '体温', max: 100 }, { name: '压力', max: 100 }
       ],
-      name: { textStyle: { color: '#7eb8d4', fontSize: 11 } },
+      axisName: { color: '#7eb8d4', fontSize: 11 },
       axisLine: { lineStyle: { color: '#232b4d' } },
       splitLine: { lineStyle: { color: '#232b4d' } },
       splitArea: { areaStyle: { color: ['rgba(0,212,255,.02)', 'rgba(0,212,255,.05)'] } }

@@ -1471,7 +1471,7 @@ export default {
             { name: '血压',   max: 100 },
             { name: '活动量', max: 100 }
           ],
-          name: { textStyle: { color: '#8ba6c8', fontSize: 11 } },
+          axisName: { color: '#8ba6c8', fontSize: 11 },
           axisLine:  { lineStyle: { color: 'rgba(0,212,255,0.15)' } },
           splitLine: { lineStyle: { color: 'rgba(0,212,255,0.12)' } },
           splitArea: { areaStyle: { color: ['rgba(0,212,255,0.02)', 'rgba(0,212,255,0.05)'] } }

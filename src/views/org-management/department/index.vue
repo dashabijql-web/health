@@ -66,7 +66,9 @@
         <el-table-column type="index" label="#" width="50" align="center" />
         <el-table-column prop="deptName" label="部门名称" min-width="150" show-overflow-tooltip />
         <el-table-column prop="deptCode" label="部门编码" width="130" />
-        <el-table-column prop="leader" label="负责人" width="110" />
+        <el-table-column prop="leader" label="负责人" width="110">
+          <template #default="{ row }"><span :style="row.leader?'':'color:#4b5563'">{{ row.leader || '--' }}</span></template>
+        </el-table-column>
         <el-table-column prop="phone" label="联系电话" width="150" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">

@@ -110,10 +110,10 @@
         登录
       </el-button>
 
-      <!-- 默认账号密码提示（开发环境方便测试，生产环境可删除） -->
-      <div class="tips">
-        <span style="margin-right:20px;">username: admin</span>
-        <span>password: admin123</span>
+      <!-- 开发环境测试账号提示 -->
+      <div class="tips" @click="showHint=!showHint" style="cursor:pointer;user-select:none">
+        <span style="color:#8ba6c8;font-size:12px">{{ showHint ? '▲ 隐藏账号提示' : '▼ 测试账号提示' }}</span>
+        <span v-if="showHint" style="margin-left:16px;color:#aac4e0">admin / admin123</span>
       </div>
 
     </el-form>
@@ -206,6 +206,7 @@ export default {
     }
 
     return {
+      showHint: false,
       /**
        * 表单数据对象
        * 通过 v-model 与输入框双向绑定

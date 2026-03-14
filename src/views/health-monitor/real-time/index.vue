@@ -141,7 +141,10 @@
               </el-table-column>
               <el-table-column prop="heartRate" label="心率(bpm)" width="85" align="center">
                 <template #default="{ row }">
-                  <span :class="hrCls(row.heartRate)">{{ row.heartRate || '--' }}</span>
+                  <el-tooltip v-if="!row.heartRate" content="设备暂未上报该项数据" placement="top" :show-after="500">
+                    <span class="c-na">--</span>
+                  </el-tooltip>
+                  <span v-else :class="hrCls(row.heartRate)">{{ row.heartRate }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="bloodOxygen" label="血氧(%)" width="75" align="center">
@@ -1000,6 +1003,7 @@ export default {
 .c-calories { color: #f97316; font-weight: 500; }
 .c-time     { color: #8ba6c8; font-size: 12px; }
 .c-dim      { color: #6b7b94; }
+.c-na       { color: #3d4a5c; cursor: help; }
 .c-ok       { color: #67C23A; font-weight: 600; }
 .c-warn     { color: #E6A23C; font-weight: 600; }
 .c-danger   { color: #F56C6C; font-weight: 600; }
