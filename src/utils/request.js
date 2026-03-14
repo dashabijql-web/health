@@ -94,6 +94,12 @@ const service = axios.create({
 let isRedirectingToLogin = false
 
 /**
+ * 错误消息去重集合
+ * 记录正在显示的错误消息，防止相同错误并发触发时重复弹窗
+ */
+const activeErrors = new Set()
+
+/**
  * 静默跳转到登录页（不显示任何错误提示）
  *
  * 步骤：
@@ -189,13 +195,18 @@ service.interceptors.response.use(
         return Promise.reject(new Error(res.message || 'Error'))
       }
 
-      // 其他业务错误 → 弹出错误提示（5秒后自动消失）
-      ElMessage({
-        message: res.message || '请求失败',
-        type: 'error',
-        duration: 5000
-      })
-      return Promise.reject(new Error(res.message || 'Error'))
+      // 其他业务错误 → 弹出错误提示（5秒后自动消失），同一消息去重
+      const errMsg = res.message || res.msg || '请求失败'
+      if (!activeErrors.has(errMsg)) {
+        activeErrors.add(errMsg)
+        ElMessage({
+          message: errMsg,
+          type: 'error',
+          duration: 5000,
+          onClose: () => activeErrors.delete(errMsg)
+        })
+      }
+      return Promise.reject(new Error(errMsg))
     }
 
     // 业务成功（code === 200）→ 直接返回 res（包含 code, message, data）
@@ -259,7 +270,7 @@ service.interceptors.response.use(
           message = '服务暂时不可用，请稍后重试'
           break
         default:
-          message = error.response.data?.message || '请求失败'
+          message = error.response.data?.message || error.response.data?.msg || '请求失败'
       }
     } else if (error.message?.includes('timeout')) {
       message = '请求超时，请稍后重试'
@@ -273,13 +284,17 @@ service.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // 其他错误 → 弹出提示（5秒可关闭）
-    ElMessage({
-      message,
-      type: 'error',
-      duration: 5000,
-      showClose: true   // 允许用户手动关闭
-    })
+    // 其他错误 → 弹出提示（5秒可关闭），同一消息去重防止并发弹多条
+    if (!activeErrors.has(message)) {
+      activeErrors.add(message)
+      ElMessage({
+        message,
+        type: 'error',
+        duration: 5000,
+        showClose: true,
+        onClose: () => activeErrors.delete(message)
+      })
+    }
 
     return Promise.reject(error)
   }
