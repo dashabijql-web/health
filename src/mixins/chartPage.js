@@ -100,7 +100,7 @@ export default {
     goToPortrait(item) {
       const code = item.userCode || item.empCode
       this.$router.push({
-        path: '/personnel-management/health-portrait',
+        path: '/health-monitor/health-portrait',
         query: code ? { empCode: code } : { name: item.userName }
       })
     },

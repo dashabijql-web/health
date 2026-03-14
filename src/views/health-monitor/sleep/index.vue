@@ -440,12 +440,7 @@ export default {
     // ── 质量评分分布柱图 ──
     initScore(data) {
       const c = initChart(this.charts, 'score', this.$refs.scoreRef); if (!c) return
-      const d = data.length ? data : [
-        { label: '差(0-40)',    count: 0, color: '#ff5252' },
-        { label: '较差(40-60)', count: 0, color: '#FFB84D' },
-        { label: '良好(60-80)', count: 0, color: '#4FC3F7' },
-        { label: '优秀(80+)',   count: 0, color: '#52c41a' }
-      ]
+      const d = data
       c.setOption({
         backgroundColor: 'transparent',
         tooltip: {

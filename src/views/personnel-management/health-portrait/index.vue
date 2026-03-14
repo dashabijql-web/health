@@ -57,6 +57,7 @@
 
       <div class="top-bar-right">
         <div class="clock-badge"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
+        <el-button size="small" type="primary" @click="goRealtime"><el-icon><Monitor /></el-icon>实时监控</el-button>
         <el-button size="small" @click="router.back()"><el-icon><Back /></el-icon>返回</el-button>
       </div>
     </div>
@@ -234,7 +235,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Timer, UserFilled, Back, Postcard, OfficeBuilding, Suitcase } from '@element-plus/icons-vue'
+import { Timer, UserFilled, Back, Postcard, OfficeBuilding, Suitcase, Monitor } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getHealthPortrait } from '@/api/health-portrait'
 import { getCachedAiReport, generateAiReport } from '@/api/ai'
@@ -258,6 +259,17 @@ const loading = ref(false)
 const firstLoading = ref(false)
 
 const portrait = reactive({ empName: '', empCode: '', deptName: '', jobTypeName: '', gender: null, bloodType: '', height: null, weight: null })
+
+function goRealtime() {
+  router.push({
+    path: '/health-monitor/employee-profile',
+    query: {
+      empCode: portrait.empCode, empName: portrait.empName,
+      gender: portrait.gender ?? 1, deptName: portrait.deptName,
+      jobTypeName: portrait.jobTypeName
+    }
+  })
+}
 const vitals = reactive({ heartRate: null, bloodOxygen: null, temperature: null, systolic: null, diastolic: null, pressure: null })
 const trendData = ref({ dates: [], heartRates: [], bloodOxygens: [] })
 const hourlyHrData = ref(new Array(24).fill(0))

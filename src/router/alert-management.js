@@ -4,7 +4,7 @@ export default {
   path: '/alert-management',
   component: Layout,
   name: 'AlertManagement',
-  meta: { title: '告警管理', icon: 'Bell' },
+  meta: { title: '预警管理', icon: 'Bell' },
   children: [
     {
       path: 'config',
@@ -16,7 +16,7 @@ export default {
       path: 'records',
       name: 'AlertRecords',
       component: () => import('@/views/alert-management/records/index.vue'),
-      meta: { title: '告警记录', icon: 'List', permCode: 'alert:records' }
+      meta: { title: '预警记录', icon: 'List', permCode: 'alert:records' }
     }
   ]
 }

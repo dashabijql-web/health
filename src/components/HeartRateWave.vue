@@ -227,6 +227,7 @@ onUnmounted(() => {
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+  max-width: 100%;
 }
 
 .wave-canvas {

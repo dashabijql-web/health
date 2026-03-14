@@ -515,11 +515,7 @@ export default {
 
     initAge(data) {
       const c = initChart(this.charts, 'age', this.$refs.ageRef); if (!c) return
-      const fb = [
-        { ageRange: '20-30', avgHeartRate: 75 }, { ageRange: '30-40', avgHeartRate: 78 },
-        { ageRange: '40-50', avgHeartRate: 80 }, { ageRange: '50+',   avgHeartRate: 82 }
-      ]
-      const d = data.length ? data : fb
+      const d = data
       c.setOption({
         backgroundColor: 'transparent',
         grid: ageGrid(),

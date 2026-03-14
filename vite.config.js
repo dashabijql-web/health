@@ -32,16 +32,36 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import http from 'node:http'
+import fs from 'node:fs'
 import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+
+// Vite dev server 插件：接收前端 POST /perf-log，追加写入 perf.log
+const perfLogPlugin = () => ({
+  name: 'perf-log',
+  configureServer(server) {
+    const logFile = path.resolve(process.cwd(), 'perf.log')
+    server.middlewares.use('/perf-log', (req, res) => {
+      if (req.method !== 'POST') { res.end(); return }
+      let body = ''
+      req.on('data', chunk => body += chunk)
+      req.on('end', () => {
+        const line = `${new Date().toISOString()}  ${body}\n`
+        fs.appendFileSync(logFile, line)
+        res.end('ok')
+      })
+    })
+  }
+})
 
 export default defineConfig(({ mode }) => {
   // 根据当前运行模式（development/staging/production）加载对应 .env 文件
   const env = loadEnv(mode, process.cwd())
   return {
     plugins: [
+      perfLogPlugin(),
       vue(),
       // 自动导入 Element Plus 组件（无需在每个 .vue 文件手动 import）
       AutoImport({ resolvers: [ElementPlusResolver({ importStyle: false })] }),

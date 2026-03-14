@@ -9,7 +9,7 @@
  *
  * 主要用途：
  *   - health-monitor/real-time 实时监控页（在线人员列表）
- *   - safety-command 安全指挥中心（地下人数统计、SOS 报警等）
+ *   - safety-command 安全指挥中心（地下人数统计、SOS 预警等）
  *   - PersonDetailDrawer 人员详情抽屉（单人实时体征）
  */
 

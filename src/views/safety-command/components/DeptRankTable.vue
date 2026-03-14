@@ -17,7 +17,7 @@
         <thead>
           <tr>
             <th>#</th><th>部门</th><th>在线/总</th>
-            <th>健康率</th><th>SOS</th><th>跌倒</th><th>告警</th><th>状态</th>
+            <th>健康率</th><th>SOS</th><th>跌倒</th><th>预警</th><th>状态</th>
           </tr>
         </thead>
         <tbody>

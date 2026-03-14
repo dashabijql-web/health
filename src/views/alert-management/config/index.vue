@@ -4,7 +4,7 @@
       <div class="page-header-left">
         <el-icon class="header-icon"><Setting /></el-icon>
         <div>
-          <h1 class="main-title">告警阈值配置</h1>
+          <h1 class="main-title">预警阈值配置</h1>
           <p class="sub-title">配置各项生理指标的正常、预警、危险范围</p>
         </div>
       </div>
@@ -34,13 +34,17 @@
 
         <div class="range-bar-wrap">
           <div class="range-legend">
-            <span class="legend-item"><span class="legend-dot critical"></span>危险</span>
-            <span class="legend-item"><span class="legend-dot warn"></span>预警</span>
+            <span class="legend-item"><span class="legend-dot critical"></span>高危</span>
+            <span class="legend-item"><span class="legend-dot mid"></span>中危</span>
+            <span class="legend-item"><span class="legend-dot warn"></span>低危</span>
             <span class="legend-item"><span class="legend-dot normal"></span>正常</span>
           </div>
           <div class="range-bar">
-            <div class="range-segment critical-low" :style="{ width: calcWidth(item, item.criticalLow, item.warnLow) }">
+            <div class="range-segment critical-low" :style="{ width: calcWidth(item, item.criticalLow, item.warnMidLow) }">
               <span class="range-label">{{ item.criticalLow }}</span>
+            </div>
+            <div class="range-segment warn-mid-low" :style="{ width: calcWidth(item, item.warnMidLow, item.warnLow) }">
+              <span class="range-label">{{ item.warnMidLow }}</span>
             </div>
             <div class="range-segment warn-low" :style="{ width: calcWidth(item, item.warnLow, item.normalMin) }">
               <span class="range-label">{{ item.warnLow }}</span>
@@ -51,7 +55,10 @@
             <div class="range-segment warn-high" :style="{ width: calcWidth(item, item.normalMax, item.warnHigh) }">
               <span class="range-label">{{ item.warnHigh }}</span>
             </div>
-            <div class="range-segment critical-high" :style="{ width: calcWidth(item, item.warnHigh, item.criticalHigh) }">
+            <div class="range-segment warn-mid-high" :style="{ width: calcWidth(item, item.warnHigh, item.warnMidHigh) }">
+              <span class="range-label">{{ item.warnMidHigh }}</span>
+            </div>
+            <div class="range-segment critical-high" :style="{ width: calcWidth(item, item.warnMidHigh, item.criticalHigh) }">
               <span class="range-label">{{ item.criticalHigh }}</span>
             </div>
           </div>
@@ -63,28 +70,35 @@
       </div>
       <div v-if="!loading && filteredConfigList.length === 0" class="config-empty">
         <el-icon size="36" color="#2d3561"><Setting /></el-icon>
-        <p>该风险等级暂无告警配置</p>
+        <p>该风险等级暂无预警配置</p>
       </div>
     </div>
 
     <el-dialog v-model="dialogVisible" :title="`编辑 ${editForm.configName} 阈值`" width="560px" :close-on-click-modal="false">
       <el-form ref="formRef" :model="editForm" :rules="formRules" label-width="100px" class="form-body">
         <div class="range-section">
-          <div class="section-header normal-header"><span class="section-dot normal"></span>正常范围</div>
+          <div class="section-header normal-header"><span class="section-dot normal"></span>正常</div>
           <el-row :gutter="16">
             <el-col :span="12"><el-form-item label="最小值" prop="normalMin"><el-input-number v-model="editForm.normalMin" :precision="1" :step="1" controls-position="right" style="width:100%" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="最大值" prop="normalMax"><el-input-number v-model="editForm.normalMax" :precision="1" :step="1" controls-position="right" style="width:100%" /></el-form-item></el-col>
           </el-row>
         </div>
         <div class="range-section">
-          <div class="section-header warn-header"><span class="section-dot warn"></span>预警范围</div>
+          <div class="section-header warn-header"><span class="section-dot warn"></span>低危预警</div>
           <el-row :gutter="16">
             <el-col :span="12"><el-form-item label="低值" prop="warnLow"><el-input-number v-model="editForm.warnLow" :precision="1" :step="1" controls-position="right" style="width:100%" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="高值" prop="warnHigh"><el-input-number v-model="editForm.warnHigh" :precision="1" :step="1" controls-position="right" style="width:100%" /></el-form-item></el-col>
           </el-row>
         </div>
         <div class="range-section">
-          <div class="section-header critical-header"><span class="section-dot critical"></span>危险范围</div>
+          <div class="section-header mid-header"><span class="section-dot mid"></span>中危预警</div>
+          <el-row :gutter="16">
+            <el-col :span="12"><el-form-item label="低值" prop="warnMidLow"><el-input-number v-model="editForm.warnMidLow" :precision="1" :step="1" controls-position="right" style="width:100%" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="高值" prop="warnMidHigh"><el-input-number v-model="editForm.warnMidHigh" :precision="1" :step="1" controls-position="right" style="width:100%" /></el-form-item></el-col>
+          </el-row>
+        </div>
+        <div class="range-section">
+          <div class="section-header critical-header"><span class="section-dot critical"></span>高危预警</div>
           <el-row :gutter="16">
             <el-col :span="12"><el-form-item label="低值" prop="criticalLow"><el-input-number v-model="editForm.criticalLow" :precision="1" :step="1" controls-position="right" style="width:100%" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="高值" prop="criticalHigh"><el-input-number v-model="editForm.criticalHigh" :precision="1" :step="1" controls-position="right" style="width:100%" /></el-form-item></el-col>
@@ -131,7 +145,7 @@ const loadConfigList = async () => {
   try {
     const res = await getAlertConfigList()
     if (res.code === 200) configList.value = res.data || []
-  } catch (e) { ElMessage.error('加载告警配置失败') }
+  } catch (e) { ElMessage.error('加载预警配置失败') }
   finally { loading.value = false }
 }
 
@@ -146,7 +160,7 @@ const calcWidth = (item, from, to) => {
 
 const handleToggle = async (item) => {
   try {
-    await ElMessageBox.confirm(`确定要${item.enabled ? '禁用' : '启用'}「${item.configName}」告警吗？`, '状态确认', { type: 'warning' })
+    await ElMessageBox.confirm(`确定要${item.enabled ? '禁用' : '启用'}「${item.configName}」预警吗？`, '状态确认', { type: 'warning' })
     const res = await toggleAlertConfig(item.id)
     if (res.code === 200) { ElMessage.success('操作成功'); await loadConfigList() }
     else ElMessage.error(res.message || '操作失败')
@@ -156,26 +170,29 @@ const handleToggle = async (item) => {
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const formRef = ref(null)
-const editForm = reactive({ id: null, configName: '', normalMin: 0, normalMax: 0, warnLow: 0, warnHigh: 0, criticalLow: 0, criticalHigh: 0 })
+const editForm = reactive({ id: null, configName: '', normalMin: 0, normalMax: 0, warnLow: 0, warnHigh: 0, warnMidLow: 0, warnMidHigh: 0, criticalLow: 0, criticalHigh: 0 })
 
 const validateRange = (rule, value, callback) => {
-  const { criticalLow, warnLow, normalMin, normalMax, warnHigh, criticalHigh } = editForm
-  if (criticalLow > warnLow || warnLow > normalMin || normalMin > normalMax || normalMax > warnHigh || warnHigh > criticalHigh) {
-    callback(new Error('范围值应满足: 危险低 <= 预警低 <= 正常低 <= 正常高 <= 预警高 <= 危险高'))
+  const { criticalLow, warnMidLow, warnLow, normalMin, normalMax, warnHigh, warnMidHigh, criticalHigh } = editForm
+  if (criticalLow > warnMidLow || warnMidLow > warnLow || warnLow > normalMin ||
+      normalMin > normalMax || normalMax > warnHigh || warnHigh > warnMidHigh || warnMidHigh > criticalHigh) {
+    callback(new Error('应满足: 高危低 ≤ 中危低 ≤ 低危低 ≤ 正常低 ≤ 正常高 ≤ 低危高 ≤ 中危高 ≤ 高危高'))
   } else callback()
 }
 
 const formRules = {
-  normalMin: [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
-  normalMax: [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
-  warnLow: [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
-  warnHigh: [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
-  criticalLow: [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
+  normalMin:   [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
+  normalMax:   [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
+  warnLow:     [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
+  warnHigh:    [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
+  warnMidLow:  [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
+  warnMidHigh: [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
+  criticalLow:  [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }],
   criticalHigh: [{ required: true, message: '必填' }, { validator: validateRange, trigger: 'blur' }]
 }
 
 const openEdit = (item) => {
-  Object.assign(editForm, { id: item.id, configName: item.configName, normalMin: item.normalMin, normalMax: item.normalMax, warnLow: item.warnLow, warnHigh: item.warnHigh, criticalLow: item.criticalLow, criticalHigh: item.criticalHigh })
+  Object.assign(editForm, { id: item.id, configName: item.configName, normalMin: item.normalMin, normalMax: item.normalMax, warnLow: item.warnLow, warnHigh: item.warnHigh, warnMidLow: item.warnMidLow, warnMidHigh: item.warnMidHigh, criticalLow: item.criticalLow, criticalHigh: item.criticalHigh })
   dialogVisible.value = true
 }
 
@@ -184,7 +201,7 @@ const submitForm = async () => {
   if (!valid) return
   submitting.value = true
   try {
-    const res = await updateAlertConfig({ id: editForm.id, normalMin: editForm.normalMin, normalMax: editForm.normalMax, warnLow: editForm.warnLow, warnHigh: editForm.warnHigh, criticalLow: editForm.criticalLow, criticalHigh: editForm.criticalHigh })
+    const res = await updateAlertConfig({ id: editForm.id, normalMin: editForm.normalMin, normalMax: editForm.normalMax, warnLow: editForm.warnLow, warnHigh: editForm.warnHigh, warnMidLow: editForm.warnMidLow, warnMidHigh: editForm.warnMidHigh, criticalLow: editForm.criticalLow, criticalHigh: editForm.criticalHigh })
     if (res.code === 200) { ElMessage.success('保存成功'); dialogVisible.value = false; loadConfigList() }
     else ElMessage.error(res.message || '保存失败')
   } catch (e) { ElMessage.error('保存失败') }
@@ -233,10 +250,11 @@ onMounted(() => loadConfigList())
 .range-bar-wrap { margin-bottom: 16px; }
 .range-legend { display: flex; gap: 16px; margin-bottom: 8px; }
 .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: $da-text-dim; }
-.legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; &.critical { background: $da-danger; } &.warn { background: $da-warning; } &.normal { background: $da-success; } }
+.legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; &.critical { background: $da-danger; } &.mid { background: #ff9800; } &.warn { background: $da-warning; } &.normal { background: $da-success; } }
 .range-bar { display: flex; height: 32px; border-radius: 6px; overflow: hidden; border: 1px solid $da-border-light; }
 .range-segment { display: flex; align-items: center; justify-content: center; min-width: 30px;
   &.critical-low, &.critical-high { background: rgba(255,82,82,.35); }
+  &.warn-mid-low, &.warn-mid-high { background: rgba(255,152,0,.35); }
   &.warn-low, &.warn-high { background: rgba(255,210,0,.3); }
   &.normal { background: rgba(56,239,125,.3); }
 }
@@ -246,11 +264,12 @@ onMounted(() => loadConfigList())
 .form-body { padding: 8px 0; }
 .range-section { margin-bottom: 16px; padding: 16px; background: $da-panel-alt; border: 1px solid $da-border; border-radius: 8px; }
 .section-header { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid $da-border;
-  &.normal-header { color: $da-success; } &.warn-header { color: $da-warning; } &.critical-header { color: $da-danger; }
+  &.normal-header { color: $da-success; } &.warn-header { color: $da-warning; } &.mid-header { color: #ff9800; } &.critical-header { color: $da-danger; }
 }
 .section-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
   &.normal { background: $da-success; box-shadow: 0 0 6px rgba(56,239,125,.5); }
   &.warn { background: $da-warning; box-shadow: 0 0 6px rgba(255,210,0,.5); }
+  &.mid { background: #ff9800; box-shadow: 0 0 6px rgba(255,152,0,.5); }
   &.critical { background: $da-danger; box-shadow: 0 0 6px rgba(255,82,82,.5); }
 }
 

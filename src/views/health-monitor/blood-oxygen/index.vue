@@ -522,11 +522,7 @@ export default {
     // ── 年龄段（血氧 94-99%）──
     initAge(data) {
       const c = initChart(this.charts, 'age', this.$refs.ageRef); if (!c) return
-      const fb = [
-        { ageRange: '20-30', avgBloodOxygen: 98 }, { ageRange: '30-40', avgBloodOxygen: 97 },
-        { ageRange: '40-50', avgBloodOxygen: 96 }, { ageRange: '50+',   avgBloodOxygen: 95 }
-      ]
-      const d = data.length ? data : fb
+      const d = data
       c.setOption({
         backgroundColor: 'transparent',
         grid: ageGrid(),

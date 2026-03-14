@@ -12,8 +12,8 @@
  *   - staticAlert：长时间静止不动（可能晕倒）
  *
  * 主要用途：
- *   - 安全指挥中心（index.vue）：实时事件列表、紧急告警横幅
- *   - 告警管理/记录页（records/index.vue）：历史记录查询
+ *   - 安全指挥中心（index.vue）：实时事件列表、紧急预警横幅
+ *   - 预警管理/记录页（records/index.vue）：历史记录查询
  *   - health-monitor/risk-warning：预警分析统计
  */
 
@@ -27,7 +27,7 @@ import request from '@/utils/request'
  *   { sosCount: 2, fallCount: 1, staticCount: 5, abnormalCount: 12,
  *     totalOnline: 234, normalCount: 214 }
  *
- * 使用场景：安全指挥中心 KPI 卡片、告警管理顶部统计卡
+ * 使用场景：安全指挥中心 KPI 卡片、预警管理顶部统计卡
  */
 export function getRiskWarningOverview(startDate, endDate) {
   return request({

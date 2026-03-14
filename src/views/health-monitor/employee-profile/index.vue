@@ -50,12 +50,14 @@
             <span class="ep-warn-count" v-if="warnings.length">({{ warnings.length }})</span>
           </div>
           <div v-if="warnings.length === 0" class="ep-empty-warn">暂无预警记录</div>
-          <div class="ep-warn-list">
-            <div v-for="w in warnings" :key="w.id || w.time" class="ep-warn-item">
-              <span :class="['ep-wdot', w.handled ? 'done' : 'pend']"></span>
-              <span class="ep-wtype">{{ w.warningType || w.type || '--' }}</span>
-              <span class="ep-wtime">{{ fmtTime(w.createTime || w.time) }}</span>
-              <span :class="['ep-wst', w.handled ? 'done' : 'pend']">{{ w.handled ? '已处理' : '未处理' }}</span>
+          <div v-else class="ep-warn-scroll-wrap">
+            <div class="ep-warn-list ep-warn-scroll">
+              <div v-for="(w, idx) in warnings.concat(warnings)" :key="(w.id || w.time) + '_' + idx" class="ep-warn-item">
+                <span :class="['ep-wdot', w.handled ? 'done' : 'pend']"></span>
+                <span class="ep-wtype">{{ w.warningType || w.type || '--' }}</span>
+                <span class="ep-wtime">{{ fmtTime(w.createTime || w.time) }}</span>
+                <span :class="['ep-wst', w.handled ? 'done' : 'pend']">{{ w.handled ? '已处理' : '未处理' }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -179,13 +181,13 @@
             </div>
             <div class="ep-vital-card steps">
               <div class="ep-vc-label">今日步数</div>
-              <div class="ep-vc-val"><span class="cyan">{{ exercise.todaySteps || '--' }}</span> 步</div>
+              <div class="ep-vc-val"><span class="cyan">{{ exercise.todaySteps > 0 ? exercise.todaySteps : '--' }}</span> 步</div>
               <div class="ep-vc-bar"><div :style="{ width: Math.min(100, (exercise.todaySteps||0)/100) + '%' }" class="ep-vc-fill steps-fill"></div></div>
               <div class="ep-vc-range">目标 10,000 步</div>
             </div>
             <div class="ep-vital-card cals">
               <div class="ep-vc-label">今日卡路里</div>
-              <div class="ep-vc-val"><span class="cyan">{{ exercise.todayCalories || '--' }}</span> kcal</div>
+              <div class="ep-vc-val"><span class="cyan">{{ exercise.todayCalories > 0 ? exercise.todayCalories : '--' }}</span> kcal</div>
               <div class="ep-vc-bar"><div :style="{ width: Math.min(100, (exercise.todayCalories||0)/20) + '%' }" class="ep-vc-fill cals-fill"></div></div>
               <div class="ep-vc-range">目标 2,000 kcal</div>
             </div>
@@ -237,7 +239,6 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import HeartRateWave from '@/components/HeartRateWave.vue'
 import { getUserRealtimeData } from '@/api/realtime'
-import { getHealthRecords } from '@/api/health'
 import { getRiskWarningList } from '@/api/risk-warning'
 import { getHealthPortrait } from '@/api/health-portrait'
 
@@ -265,7 +266,8 @@ const trendRef   = ref(null)
 let   trendChart = null
 
 // ─── 趋势数据 7 天均值 ─────────────────────────────────────
-const trend7 = ref({ avgHr: 0, avgSpo2: 0, avgTemp: 0 })
+const trend7       = ref({ avgHr: 0, avgSpo2: 0, avgTemp: 0 })
+const portraitTrend = ref(null) // 存储 portrait 接口返回的 7 天趋势原始数据
 
 // ─── 预警统计 ──────────────────────────────────────────────
 const warnCount  = computed(() => warnings.value.length)
@@ -299,7 +301,7 @@ const hrItems = computed(() => {
     { key:'h2', label:'7日均值', v: trend7.value.avgHr || '--', unit:'bpm', cls:'cyan' },
     { key:'h3', label:'正常范围', v:'60~100', unit:'bpm', cls:'dim' },
     { key:'h4', label:'心率状态', v: status, unit:'', cls: hrClass(hr) || 'green' },
-    { key:'h5', label:'压力指数', v: vitals.value.pressure || '--', unit:'', cls: pressClass(vitals.value.pressure) },
+    { key:'h5', label:'心率预警', v: warnings.value.filter(w => (w.warningType||'').includes('心率')).length, unit:'次', cls: warnings.value.filter(w => (w.warningType||'').includes('心率')).length > 0 ? 'red' : 'green' },
     { key:'h6', label:'7日预警', v: warn7Count.value, unit:'次', cls: warn7Count.value > 3 ? 'red' : 'green' },
   ]
 })
@@ -320,11 +322,11 @@ const vitalItems = computed(() => {
   const tStatus = !t ? '--' : (tempClass(t) === 'red' ? '异常' : tempClass(t) === 'yellow' ? '偏高' : '正常')
   return [
     { key:'v1', label:'体温', v: fmtTemp(t), unit:'°C', cls: tempClass(t) },
-    { key:'v2', label:'今日步数', v: exercise.value.todaySteps || '--', unit:'步', cls:'green' },
-    { key:'v3', label:'今日卡路里', v: exercise.value.todayCalories || '--', unit:'kcal', cls:'cyan' },
+    { key:'v2', label:'今日步数', v: exercise.value.todaySteps > 0 ? exercise.value.todaySteps : '--', unit:'步', cls:'green' },
+    { key:'v3', label:'今日卡路里', v: exercise.value.todayCalories > 0 ? exercise.value.todayCalories : '--', unit:'kcal', cls:'cyan' },
     { key:'v4', label:'压力指数', v: vitals.value.pressure || '--', unit:'', cls: pressClass(vitals.value.pressure) },
     { key:'v5', label:'体温状态', v: tStatus, unit:'', cls: tempClass(t) || 'green' },
-    { key:'v6', label:'综合评分', v: trend7.value.avgHr ? Math.max(60, 100 - warnCount.value * 3) : '--', unit:'分', cls:'cyan' },
+    { key:'v6', label:'血压', v: (vitals.value.systolic && vitals.value.diastolic) ? `${vitals.value.systolic}/${vitals.value.diastolic}` : '--', unit:'mmHg', cls:'cyan' },
   ]
 })
 const warnItems = computed(() => {
@@ -389,6 +391,18 @@ const refresh = async () => {
     exercise.value = d.exercise || { todaySteps: 0, todayCalories: 0 }
     isOnline.value = true
     lastUpdate.value = new Date().toLocaleString('zh-CN')
+    // 缓存趋势数据供 buildTrendChart 使用，同时填充 7 日均值
+    if (d.trend) {
+      portraitTrend.value = d.trend
+      if (d.trend.heartRates?.length) {
+        const valid = d.trend.heartRates.filter(Boolean)
+        if (valid.length) trend7.value.avgHr = Math.round(valid.reduce((a, b) => a + b, 0) / valid.length)
+      }
+      if (d.trend.bloodOxygens?.length) {
+        const valid = d.trend.bloodOxygens.filter(Boolean)
+        if (valid.length) trend7.value.avgSpo2 = +(valid.reduce((a, b) => a + b, 0) / valid.length).toFixed(1)
+      }
+    }
   }
 
   if (warnRes.status === 'fulfilled' && warnRes.value?.data) {
@@ -400,45 +414,16 @@ const refresh = async () => {
   buildTrendChart()
 }
 
-const buildTrendChart = async () => {
+const buildTrendChart = () => {
   if (!trendRef.value) return
   if (trendChart) trendChart.dispose()
   trendChart = echarts.init(trendRef.value)
 
-  const code = empInfo.value.empCode
-  const labels = [], dateKeys = [], dateMap = {}
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i)
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-    labels.push(`${d.getMonth()+1}/${d.getDate()}`)
-    dateKeys.push(key)
-    dateMap[key] = { hr: [], spo2: [], temp: [] }
-  }
-
-  if (code) {
-    try {
-      const res = await getHealthRecords({ userCode: code, size: 500, startTime: dateKeys[0], endTime: dateKeys[6] })
-      if (res?.data) {
-        const recs = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || [])
-        recs.forEach(r => {
-          const dt = (r.recordTime || r.record_time || '').substring(0, 10)
-          if (!dateMap[dt]) return
-          if (r.heartRate)   dateMap[dt].hr.push(+r.heartRate)
-          if (r.bloodOxygen) dateMap[dt].spo2.push(+r.bloodOxygen)
-          if (r.temperature) { const t = r.temperature > 100 ? r.temperature/10 : +r.temperature; dateMap[dt].temp.push(t) }
-        })
-      }
-    } catch {}
-  }
-
-  const avg = arr => arr.length ? +(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : null
-  const hrV   = dateKeys.map(k => avg(dateMap[k].hr))
-  const spo2V = dateKeys.map(k => avg(dateMap[k].spo2))
-
-  const validHr   = hrV.filter(Boolean)
-  const validSpo2 = spo2V.filter(Boolean)
-  if (validHr.length)   trend7.value.avgHr   = Math.round(validHr.reduce((a,b)=>a+b,0)/validHr.length)
-  if (validSpo2.length) trend7.value.avgSpo2 = +(validSpo2.reduce((a,b)=>a+b,0)/validSpo2.length).toFixed(1)
+  // 直接使用 portrait 接口已返回的趋势数据，无需额外 API 调用
+  const t = portraitTrend.value
+  const labels = t?.dates?.map(d => { const p = d.split('-'); return `${+p[1]}/${+p[2]}` }) || []
+  const hrV   = t?.heartRates   || []
+  const spo2V = t?.bloodOxygens || []
 
   trendChart.setOption({
     backgroundColor: 'transparent',
@@ -563,9 +548,14 @@ onUnmounted(() => {
 .ep-trend-chart { width: 100%; height: 140px; }
 
 /* 预警列表 */
-.ep-warns { flex: 1; overflow: hidden; }
+.ep-warns { flex: 1; overflow: hidden; display: flex; flex-direction: column; margin-bottom: 0; min-height: 0; }
+.ep-warns .ep-ph { flex-shrink: 0; }
 .ep-empty-warn { text-align: center; color: #3a5070; font-size: 12px; padding: 12px 0; }
-.ep-warn-list { display: flex; flex-direction: column; gap: 5px; max-height: 160px; overflow-y: auto; }
+.ep-warn-scroll-wrap { flex: 1; overflow: hidden; min-height: 0; }
+.ep-warn-list { display: flex; flex-direction: column; gap: 5px; }
+.ep-warn-scroll { animation: warnScrollUp 18s linear infinite; }
+.ep-warn-scroll:hover { animation-play-state: paused; }
+@keyframes warnScrollUp { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
 .ep-warn-list::-webkit-scrollbar { width: 3px; }
 .ep-warn-list::-webkit-scrollbar-thumb { background: #1a3060; border-radius: 2px; }
 .ep-warn-item { display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 6px; background: rgba(0,0,0,0.2); border-radius: 4px; }

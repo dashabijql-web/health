@@ -4,8 +4,8 @@
       <div class="page-header-left">
         <el-icon class="header-icon"><Bell /></el-icon>
         <div>
-          <h1 class="main-title">告警记录</h1>
-          <p class="sub-title">查看和处理所有健康告警事件</p>
+          <h1 class="main-title">预警记录</h1>
+          <p class="sub-title">查看和处理所有健康预警事件</p>
         </div>
       </div>
       <div class="header-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
@@ -16,7 +16,7 @@
       <el-col :span="6">
         <div class="stat-card stat-card-clickable" @click="filterByCard('all')">
           <div class="stat-icon-wrap primary"><el-icon size="26"><Bell /></el-icon></div>
-          <div class="stat-body"><div class="stat-value">{{ overview.todayTotal || 0 }}</div><div class="stat-label">今日告警</div></div>
+          <div class="stat-body"><div class="stat-value">{{ overview.todayTotal || 0 }}</div><div class="stat-label">今日预警</div></div>
         </div>
       </el-col>
       <el-col :span="6">
@@ -29,7 +29,7 @@
       <el-col :span="6">
         <div class="stat-card stat-card-clickable" @click="filterByCard('critical')">
           <div class="stat-icon-wrap warning"><el-icon size="26"><WarnTriangleFilled /></el-icon></div>
-          <div class="stat-body"><div class="stat-value">{{ overview.critical || 0 }}</div><div class="stat-label">危急告警</div></div>
+          <div class="stat-body"><div class="stat-value">{{ overview.critical || 0 }}</div><div class="stat-label">危急预警</div></div>
         </div>
       </el-col>
       <el-col :span="6">
@@ -45,14 +45,14 @@
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item><el-date-picker v-model="searchForm.dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" style="width:260px" /></el-form-item>
         <el-form-item>
-          <el-select v-model="searchForm.warningType" placeholder="告警类型" clearable style="width:140px">
+          <el-select v-model="searchForm.warningType" placeholder="预警类型" clearable style="width:140px">
             <el-option label="SOS求助" value="SOS" /><el-option label="跌倒" value="fall" /><el-option label="心率异常" value="heartRate" />
-            <el-option label="血氧异常" value="bloodOxygen" /><el-option label="体温异常" value="temperature" /><el-option label="静态报警" value="staticAlert" />
+            <el-option label="血氧异常" value="bloodOxygen" /><el-option label="体温异常" value="temperature" /><el-option label="静态预警" value="staticAlert" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-select v-model="searchForm.warningLevel" placeholder="告警级别" clearable style="width:120px">
-            <el-option label="危急" value="critical" /><el-option label="预警" value="warning" /><el-option label="提示" value="info" />
+          <el-select v-model="searchForm.warningLevel" placeholder="预警级别" clearable style="width:120px">
+            <el-option label="高危" value="高危" /><el-option label="中危" value="中危" /><el-option label="低危" value="低危" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -73,7 +73,7 @@
     <!-- Data Table -->
     <div class="panel table-panel">
       <div class="panel-header">
-        <div class="panel-title"><span class="title-bar"></span>告警列表</div>
+        <div class="panel-title"><span class="title-bar"></span>预警列表</div>
         <div class="panel-header-right">
           <el-button
             v-if="selectedRows.length > 0"
@@ -92,15 +92,21 @@
         @selection-change="rows => selectedRows = rows">
         <el-table-column type="selection" width="46" align="center" @click.stop />
         <el-table-column type="index" label="#" width="50" align="center" />
-        <el-table-column prop="createTime" label="告警时间" width="170">
+        <el-table-column prop="createTime" label="预警时间" width="170">
           <template #default="{row}">{{ formatDate(row.createTime) }}</template>
         </el-table-column>
-        <el-table-column prop="userName" label="姓名" width="110" />
-        <el-table-column label="告警类型" width="120" align="center">
+        <el-table-column prop="userName" label="姓名" width="100" />
+        <el-table-column label="性别" width="65" align="center">
+          <template #default="{row}">{{ row.gender === 1 ? '男' : row.gender === 2 ? '女' : '-' }}</template>
+        </el-table-column>
+        <el-table-column label="年龄" width="65" align="center">
+          <template #default="{row}">{{ row.age != null ? row.age : '-' }}</template>
+        </el-table-column>
+        <el-table-column label="预警类型" width="120" align="center">
           <template #default="{row}"><el-tag :type="typeTag(row.warningType)" size="small" effect="dark">{{ typeLabel(row.warningType) }}</el-tag></template>
         </el-table-column>
-        <el-table-column prop="warningValue" label="告警值" width="100" align="center" />
-        <el-table-column label="告警级别" width="100" align="center">
+        <el-table-column prop="warningValue" label="预警值" width="100" align="center" />
+        <el-table-column label="预警级别" width="100" align="center">
           <template #default="{row}"><el-tag :type="levelTag(row.warningLevel)" size="small" effect="dark">{{ levelLabel(row.warningLevel) }}</el-tag></template>
         </el-table-column>
         <el-table-column label="处理状态" width="100" align="center">
@@ -123,11 +129,11 @@
     </div>
 
     <!-- Detail Drawer -->
-    <el-drawer v-model="detailVisible" title="告警详情" width="480px" direction="rtl" :destroy-on-close="true">
+    <el-drawer v-model="detailVisible" title="预警详情" width="480px" direction="rtl" :destroy-on-close="true">
       <div v-if="detailRow" class="detail-body">
         <div class="detail-section">
           <div class="detail-row">
-            <span class="detail-label">告警时间</span>
+            <span class="detail-label">预警时间</span>
             <span class="detail-value">{{ formatDate(detailRow.createTime) }}</span>
           </div>
           <div class="detail-row">
@@ -135,15 +141,15 @@
             <span class="detail-value">{{ detailRow.userName || '-' }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">告警类型</span>
+            <span class="detail-label">预警类型</span>
             <el-tag :type="typeTag(detailRow.warningType)" size="small" effect="dark">{{ typeLabel(detailRow.warningType) }}</el-tag>
           </div>
           <div class="detail-row">
-            <span class="detail-label">告警级别</span>
+            <span class="detail-label">预警级别</span>
             <el-tag :type="levelTag(detailRow.warningLevel)" size="small" effect="dark">{{ levelLabel(detailRow.warningLevel) }}</el-tag>
           </div>
           <div class="detail-row">
-            <span class="detail-label">告警值</span>
+            <span class="detail-label">预警值</span>
             <span class="detail-value">{{ detailRow.warningValue || '-' }}</span>
           </div>
           <div class="detail-row">
@@ -173,18 +179,18 @@
 
         <div class="detail-footer" v-if="detailRow.handleStatus !== 1">
           <el-button type="warning" style="width:100%" @click="() => { openHandle(detailRow); detailVisible = false }">
-            <el-icon><Edit /></el-icon> 处理此告警
+            <el-icon><Edit /></el-icon> 处理此预警
           </el-button>
         </div>
       </div>
     </el-drawer>
 
     <!-- Handle Dialog -->
-    <el-dialog v-model="handleDialogVisible" title="处理告警" width="520px" :close-on-click-modal="false">
+    <el-dialog v-model="handleDialogVisible" title="处理预警" width="520px" :close-on-click-modal="false">
       <div class="handle-summary">
-        <div class="summary-row"><span class="summary-label">告警人员</span><span class="summary-value">{{ currentRow?.userName||'-' }}</span></div>
-        <div class="summary-row"><span class="summary-label">告警类型</span><el-tag :type="typeTag(currentRow?.warningType)" size="small" effect="dark">{{ typeLabel(currentRow?.warningType) }}</el-tag></div>
-        <div class="summary-row"><span class="summary-label">告警时间</span><span class="summary-value">{{ formatDate(currentRow?.createTime) }}</span></div>
+        <div class="summary-row"><span class="summary-label">预警人员</span><span class="summary-value">{{ currentRow?.userName||'-' }}</span></div>
+        <div class="summary-row"><span class="summary-label">预警类型</span><el-tag :type="typeTag(currentRow?.warningType)" size="small" effect="dark">{{ typeLabel(currentRow?.warningType) }}</el-tag></div>
+        <div class="summary-row"><span class="summary-label">预警时间</span><span class="summary-value">{{ formatDate(currentRow?.createTime) }}</span></div>
       </div>
       <el-form ref="handleFormRef" :model="handleForm" :rules="handleRules" label-width="90px" class="form-body">
         <el-form-item label="处理方式" prop="handleType">
@@ -234,7 +240,7 @@ const loadData = async () => {
     if (searchForm.keyword) p.keyword = searchForm.keyword
     const res = await getRiskWarningList(p)
     if (res.code===200) { tableData.value = res.data?.list||[]; pagination.total = res.data?.total||0 }
-  } catch(e) { ElMessage.error('加载告警列表失败') }
+  } catch(e) { ElMessage.error('加载预警列表失败') }
   finally { loading.value = false }
 }
 
@@ -255,10 +261,10 @@ const filterByCard = (type) => {
   handleSearch()
 }
 
-const typeMap = { SOS:{l:'SOS求助',t:'danger'}, fall:{l:'跌倒',t:'warning'}, heartRate:{l:'心率异常',t:''}, bloodOxygen:{l:'血氧异常',t:'info'}, temperature:{l:'体温异常',t:'warning'}, staticAlert:{l:'静态报警',t:'info'} }
+const typeMap = { SOS:{l:'SOS求助',t:'danger'}, fall:{l:'跌倒',t:'warning'}, heartRate:{l:'心率异常',t:''}, bloodOxygen:{l:'血氧异常',t:'info'}, temperature:{l:'体温异常',t:'warning'}, staticAlert:{l:'静态预警',t:'info'} }
 const typeLabel = t => typeMap[t]?.l||t||'-'
 const typeTag = t => typeMap[t]?.t||''
-const levelMap = { critical:{l:'危急',t:'danger'}, warning:{l:'预警',t:'warning'}, info:{l:'提示',t:'info'} }
+const levelMap = { 高危:{l:'高危',t:'danger'}, 中危:{l:'中危',t:'warning'}, 低危:{l:'低危',t:'info'} }
 const levelLabel = l => levelMap[l]?.l||l||'-'
 const levelTag = l => levelMap[l]?.t||'info'
 
@@ -275,7 +281,7 @@ const batchHandle = async () => {
     const ids = selectedRows.value.map(r => r.id)
     const res = await handleBatchRiskWarning(ids)
     if (res.code === 200) {
-      ElMessage.success(`已批量处理 ${ids.length} 条告警`)
+      ElMessage.success(`已批量处理 ${ids.length} 条预警`)
       selectedRows.value = []
       loadData()
       loadOverview()

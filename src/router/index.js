@@ -60,11 +60,9 @@
 
 import { createRouter, createWebHashHistory } from 'vue-router'
 import healthMonitorRouter from './health-monitor'
-import orgManagementRouter from './org-management'
-import personnelManagementRouter from './personnel-management'
 import alertManagementRouter from './alert-management'
-import statisticsRouter from './statistics'
 import Layout from '@/layout/index.vue'
+
 
 /**
  * 静态路由配置（所有用户都有的路由，无需权限控制）
@@ -120,67 +118,48 @@ export const constantRoutes = [
   // 健康监测模块路由（从独立文件引入，保持路由文件整洁）
   healthMonitorRouter,
 
-  // 设备管理模块
+  // 预警管理
+  alertManagementRouter,
+
+  // 后台管理
   {
-    path: '/device-management',
+    path: '/admin',
     component: Layout,
-    name: 'DeviceManagement',
-    meta: { title: '设备管理', icon: 'Monitor' },
+    name: 'Admin',
+    meta: { title: '后台管理', icon: 'Setting' },
     children: [
       {
-        path: 'list',
+        path: 'device-list',
         name: 'DeviceList',
         component: () => import('@/views/device-management/index.vue'),
-        meta: {
-          title: '设备列表',
-          icon: 'Monitor',
-          permCode: 'device:list'
-        }
-      }
-    ]
-  },
-
-  // 用户管理模块
-  {
-    path: '/user-management',
-    component: Layout,                // 使用主布局（含侧边栏导航）
-    name: 'UserManagement',
-    meta: { title: '用户管理', icon: 'User' },  // 侧边栏显示标题和图标
-    children: [
+        meta: { title: '设备列表', icon: 'Monitor', permCode: 'device:list' }
+      },
       {
-        path: 'list',                 // 完整路径：/user-management/list
+        path: 'user-list',
         name: 'UserList',
         component: () => import('@/views/user-list/index.vue'),
-        meta: {
-          title: '用户列表',
-          icon: 'UserFilled',
-          permCode: 'user:list'       // 权限码：只有拥有 'user:list' 权限的用户才能看到此菜单
-        }
-      }
-    ]
-  },
-
-  // 权限管理模块
-  {
-    path: '/permission-management',
-    component: Layout,
-    name: 'PermissionManagement',
-    meta: { title: '权限管理', icon: 'Lock' },
-    children: [
+        meta: { title: '用户列表', icon: 'UserFilled', permCode: 'user:list' }
+      },
       {
         path: 'role',
         name: 'RoleManagement',
         component: () => import('@/views/role-management/index.vue'),
         meta: { title: '角色管理', icon: 'Key', permCode: 'role:list' }
+      },
+      {
+        path: 'department',
+        name: 'Department',
+        component: () => import('@/views/org-management/department/index.vue'),
+        meta: { title: '部门管理', icon: 'Grid', permCode: 'org:department' }
+      },
+      {
+        path: 'job-type',
+        name: 'JobType',
+        component: () => import('@/views/org-management/job-type/index.vue'),
+        meta: { title: '工种管理', icon: 'SetUp', permCode: 'org:job-type' }
       }
     ]
   },
-
-  // 组织管理、人员管理、告警管理、统计分析
-  orgManagementRouter,
-  personnelManagementRouter,
-  alertManagementRouter,
-  statisticsRouter,
 
   // 兜底路由：所有未匹配的路径都跳转到 404（必须放最后）
   // /:pathMatch(.*)*  是 Vue Router 4 的通配符写法（Vue Router 3 用 * 号）

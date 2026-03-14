@@ -31,7 +31,7 @@
 
     <div class="kcard kc-yellow" @click="$emit('detail','alerts')">
       <div class="kc-glow"></div>
-      <div class="kc-head"><span class="kc-lbl">其他告警</span><span class="kc-ico">⚠️</span></div>
+      <div class="kc-head"><span class="kc-lbl">其他预警</span><span class="kc-ico">⚠️</span></div>
       <div class="kc-num" style="color:#ffd32a;text-shadow:0 0 20px rgba(255,211,42,.4)">
         <AnimatedNumber :value="stats.static + stats.abnormal" fontSize="40px" color="#ffd32a" :duration="1500" :separator="false"/>
       </div>

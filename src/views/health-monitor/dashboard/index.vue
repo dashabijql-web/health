@@ -54,7 +54,9 @@
           </div>
           <!-- 6个体征指标卡 -->
           <div class="dm-vitals-grid">
-            <div class="dm-vital-card" v-for="v in vitalCards" :key="v.label">
+            <div class="dm-vital-card" v-for="v in vitalCards" :key="v.label"
+                 :style="v.route ? 'cursor:pointer' : ''"
+                 @click="v.route && $router.push(v.route)">
               <div class="dm-vital-icon" :style="{color: v.color, borderColor: v.color + '33', background: v.color + '12'}">
                 <el-icon :size="16"><component :is="v.icon" /></el-icon>
               </div>
@@ -72,7 +74,7 @@
           <div class="dm-ph">
             <span class="dm-ph-bar"></span>
             <span class="dm-ph-title">部门综合看板</span>
-            <span class="dm-ph-sub">数据量 vs 预警量</span>
+            <span class="dm-ph-sub">检测人数 vs 异常人数</span>
           </div>
           <div class="dm-pc">
             <div id="deptDataChart" style="width:100%;height:100%"></div>
@@ -85,16 +87,15 @@
       <main class="dm-main">
 
         <!-- 6指标概况卡片行 -->
-        <div class="dm-panel dm-main-metrics">
+        <div class="dm-panel dm-main-metrics" style="cursor:pointer" @click="openDeptPersonModal">
           <div class="dm-ph">
             <span class="dm-ph-bar"></span>
-            <span class="dm-ph-title">{{ periodLabel }}检测数据量</span>
-            <span class="dm-ph-sub">共 {{ totalRecords !== null ? totalRecords.toLocaleString() : '--' }} 条记录</span>
+            <span class="dm-ph-title">{{ periodLabel }}检测人数</span>
+            <span class="dm-ph-sub">共 {{ totalPersons !== null ? totalPersons.toLocaleString() : '--' }} 人次 <span style="font-size:10px;color:#00b4ff;margin-left:6px">▶ 点击查看部门详情</span></span>
           </div>
           <div class="dm-metrics-row">
             <div class="dm-metric-card" v-for="m in metricCards" :key="m.label"
-                 style="cursor:pointer"
-                 @click="onMetricCardClick(m)">
+                 @click.stop="onMetricCardClick(m)">
               <div class="dm-metric-val" :style="{color: m.color}">
                 {{ m.val.toLocaleString() }}
               </div>
@@ -116,36 +117,21 @@
 
             <!-- ── 左：视频 ── -->
             <div class="dm-model-video-col">
-              <!-- 上方：实时在岗概况（始终为当前实时数据，不随时间段切换） -->
-              <div class="dm-duty-bar">
-                <div class="dm-duty-item">
-                  <span class="dm-duty-val" style="color:#38ef7d">{{ (onDutyStats.onDuty > 0 || onDutyStats.offDuty > 0) ? onDutyStats.onDuty.toLocaleString() : '--' }}</span>
-                  <span class="dm-duty-lbl">当前在岗</span>
-                </div>
-                <div class="dm-duty-sep"></div>
-                <div class="dm-duty-item">
-                  <span class="dm-duty-val" style="color:#8ba6c8">{{ (onDutyStats.onDuty > 0 || onDutyStats.offDuty > 0) ? onDutyStats.offDuty.toLocaleString() : '--' }}</span>
-                  <span class="dm-duty-lbl">当前离岗</span>
-                </div>
-                <div class="dm-duty-sep"></div>
-                <div class="dm-duty-item">
-                  <span class="dm-duty-val" style="color:#ff5252">{{ onDutyStats.abnormal }}</span>
-                  <span class="dm-duty-lbl">当前异常</span>
-                </div>
-              </div>
-
-              <!-- 实时预警动态（从右栏移过来，已优化高度） -->
+              <!-- 实时预警动态 -->
               <div class="dm-event-list-wrap">
                 <!-- 页码指示器（固定在顶部，始终可见） -->
-                <div class="dm-event-header" v-if="warningTotalPages > 1">
+                <div class="dm-event-header">
                   <span class="dm-event-title">实时预警</span>
-                  <span class="dm-event-page-info">第 {{ warningCurrentPage }} / {{ warningTotalPages }} 页</span>
-                  <div class="dm-event-page-btns">
+                  <span class="dm-event-page-info">
+                    共 <b style="color:#00d4ff">{{ warningEvents.length }}</b> 条
+                    <template v-if="warningTotalPages > 1">· 第 {{ warningCurrentPage }} / {{ warningTotalPages }} 页</template>
+                  </span>
+                  <div class="dm-event-page-btns" v-if="warningTotalPages > 1">
                     <button class="dm-page-btn-sm" :disabled="warningCurrentPage === 1" @click="goToWarningPage('prev')">‹</button>
                     <button class="dm-page-btn-sm" :disabled="warningCurrentPage === warningTotalPages" @click="goToWarningPage('next')">›</button>
                   </div>
                 </div>
-                <div class="dm-event-list" ref="warningListMid" style="max-height:680px;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none">
+                <div class="dm-event-list" ref="warningListMid" style="max-height:740px;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none">
                   <div
                     v-for="(ev, i) in paginatedWarningEvents" :key="i"
                     :class="['dm-event', ev.level === 'danger' ? 'ev-danger' : 'ev-warn', ev.level === 'danger' ? 'alert-item--critical' : '', ev.handled ? 'ev-handled' : '']"
@@ -342,6 +328,7 @@
     :append-to-body="true"
     :destroy-on-close="true"
     class="dm-emp-drawer"
+    style="--el-bg-color:#080c20;--el-drawer-bg-color:#080c20"
   >
     <template #header>
       <div class="dm-drawer-hd">
@@ -444,10 +431,107 @@
     </template>
   </el-dialog>
 
+  <!-- ══════ 部门检测人次弹窗 ══════ -->
+  <el-dialog
+    v-model="deptPersonModal.visible"
+    width="960px"
+    :append-to-body="true"
+    :destroy-on-close="false"
+    :show-close="false"
+    class="dm-dept-person-dialog"
+    style="background:#0a1628;border:1px solid rgba(0,212,255,0.18);border-radius:10px"
+    :header-style="{ display:'none' }"
+    :body-style="{ padding:0, background:'#0a1628' }"
+    @closed="deptPersonModal.chart && deptPersonModal.chart.dispose() && (deptPersonModal.chart = null)"
+  >
+    <div class="dm-dp-header">
+      <span class="dm-dp-header-title">部门检测人次</span>
+      <button class="dm-dp-header-close" @click="deptPersonModal.visible = false">×</button>
+    </div>
+    <div class="dm-dp-toolbar">
+      <el-date-picker
+        v-model="deptPersonModal.dateRange"
+        type="daterange"
+        value-format="YYYY-MM-DD"
+        range-separator="至"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        style="width:300px;flex-shrink:0"
+        @change="loadDeptPersonChart"
+      />
+    </div>
+    <div v-loading="deptPersonModal.loading" ref="deptPersonChartRef" style="width:100%;height:480px"></div>
+  </el-dialog>
+
+  <!-- ══════ 单部门检测/异常趋势弹窗 ══════ -->
+  <el-dialog
+    v-model="deptDetailModal.visible"
+    width="860px"
+    :append-to-body="true"
+    :destroy-on-close="false"
+    :show-close="false"
+    class="dm-dept-person-dialog"
+    style="background:#0a1628;border:1px solid rgba(0,212,255,0.18);border-radius:10px"
+    :header-style="{ display:'none' }"
+    :body-style="{ padding:0, background:'#0a1628' }"
+    @closed="deptDetailModal.chart && deptDetailModal.chart.dispose() && (deptDetailModal.chart = null)"
+  >
+    <div class="dm-dp-header">
+      <span class="dm-dp-header-title">{{ deptDetailModal.deptName }} — 检测 / 异常趋势</span>
+      <button class="dm-dp-header-close" @click="deptDetailModal.visible = false">×</button>
+    </div>
+    <div class="dm-dp-toolbar">
+      <el-date-picker
+        v-model="deptDetailModal.dateRange"
+        type="daterange"
+        value-format="YYYY-MM-DD"
+        range-separator="至"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        style="width:300px;flex-shrink:0"
+        @change="loadDeptDetailChart"
+      />
+    </div>
+    <div v-loading="deptDetailModal.loading" ref="deptDetailChartRef" style="width:100%;height:420px"></div>
+  </el-dialog>
+
+  <!-- ══════ 指标每日检测/异常趋势弹窗 ══════ -->
+  <el-dialog
+    v-model="metricDetailModal.visible"
+    width="860px"
+    :append-to-body="true"
+    :destroy-on-close="false"
+    :show-close="false"
+    class="dm-dept-person-dialog"
+    style="background:#0a1628;border:1px solid rgba(0,212,255,0.18);border-radius:10px"
+    :header-style="{ display:'none' }"
+    :body-style="{ padding:0, background:'#0a1628' }"
+    @closed="metricDetailModal.chart && metricDetailModal.chart.dispose() && (metricDetailModal.chart = null)"
+  >
+    <div class="dm-dp-header">
+      <span class="dm-dp-header-title">{{ metricDetailModal.metricLabel }} — 检测 / 异常趋势</span>
+      <button class="dm-dp-header-close" @click="metricDetailModal.visible = false">×</button>
+    </div>
+    <div class="dm-dp-toolbar">
+      <el-date-picker
+        v-model="metricDetailModal.dateRange"
+        type="daterange"
+        value-format="YYYY-MM-DD"
+        range-separator="至"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        style="width:300px;flex-shrink:0"
+        @change="loadMetricDetailChart"
+      />
+    </div>
+    <div v-loading="metricDetailModal.loading" ref="metricDetailChartRef" style="width:100%;height:420px"></div>
+  </el-dialog>
+
 </template>
 
 <script>
 import * as echarts from 'echarts'
+import { markRaw } from 'vue'
 import dayjs from 'dayjs'
 import {
   getDashboardOverview,
@@ -457,7 +541,12 @@ import {
   getWarningEvents,
   getDeptHealthCounts,
   getDailyTrend,
-  getWarningCounts
+  getWarningCounts,
+  getPersonCounts,
+  getDeptDailyPersons,
+  getDeptPersonStats,
+  getDeptDailyDetail,
+  getMetricDailyDetail
 } from '@/api/health'
 import { getWarningTypes } from '@/api/statistics'
 import { getHealthPortrait } from '@/api/health-portrait'
@@ -480,9 +569,33 @@ export default {
       riskScrollInterval: null,
       onDutyStats: { onDuty: 0, offDuty: 0, abnormal: 0 },
       checkData: {},
+      personCounts: {},
+      deptPersonModal: {
+        visible: false,
+        loading: false,
+        dateRange: null,
+        chart: null
+      },
+      deptDetailModal: {
+        visible: false,
+        loading: false,
+        deptName: '',
+        dateRange: null,
+        chart: null
+      },
+      metricDetailModal: {
+        visible: false,
+        loading: false,
+        metricType: '',
+        metricLabel: '',
+        metricColor: '#00d4ff',
+        dateRange: null,
+        chart: null
+      },
       bodyIndicators: {},
       top5Data: [],
       deptDataList: [],
+      deptPersonStatsList: [],
       warningRates: [],
       deviceStats: { total: 0, activeRate: 0, usageRate: 0, warningRate: 0 },
       warningEvents: [],
@@ -652,15 +765,18 @@ export default {
           .filter(Boolean)
       ).size
 
-      // KPI 加载状态判断：kpiRealtimeTotal === 0 表示未加载（初始值），应显示 "--"
-      const hasKpiData = this.kpiRealtimeTotal > 0 || this.kpiRealtimeOnline > 0
+      // 今日监测覆盖率
+      const monitored = Number(this.personCounts?.heartRate || 0)
+      const total = this.kpiRealtimeTotal || 0
+      const coverageRate = total > 0 ? Math.round(monitored / total * 100) : null
 
       return [
         {
-          label: '当前在线 / 在岗总数',
-          val: hasKpiData ? `${this.kpiRealtimeOnline} / ${this.kpiRealtimeTotal}` : '--',
-          cls: 'kpi-cyan', clickable: true, route: '/health-monitor/employee-archive',
-          sub: hasKpiData ? `上报率 ${onlineRate}%` : '数据加载中...'
+          label: '今日监测覆盖率',
+          val: coverageRate !== null ? `${coverageRate}%` : '--',
+          cls: coverageRate !== null && coverageRate < 80 ? 'kpi-orange' : 'kpi-teal',
+          clickable: false,
+          sub: total > 0 ? `已监测 ${monitored} / ${total} 人` : '数据加载中...'
         },
         {
           label: '今日新增预警',
@@ -670,7 +786,7 @@ export default {
           subCls: delta !== null && delta > 0 ? 'sub-up' : 'sub-down'
         },
         {
-          label: '未处理告警',
+          label: '未处理预警',
           valHtml: `<span style="color:#ff3b3b">${this.kpiUnhandledHigh}</span><span style="font-size:11px;color:#8ba6c8"> 高危 / </span><span style="color:#ffaa00">${this.kpiUnhandledMid}</span><span style="font-size:11px;color:#8ba6c8"> 中危</span>`,
           cls: 'kpi-red', clickable: true, route: '/health-monitor/risk-warning'
         },
@@ -687,13 +803,18 @@ export default {
         }
       ]
     },
+    totalPersons() {
+      const v = this.personCounts.totalPersons
+      return v != null ? Number(v) : null
+    },
     metricCards() {
-      const maxVal = Math.max(...this.metricList.map(m => this.checkData[m.key]||0), 1)
+      const maxVal = Math.max(...this.metricList.map(m => Number(this.personCounts[m.key]||0)), 1)
       return this.metricList.map(m => ({
+        key: m.key,
         label: m.label,
         color: m.color,
-        val: this.checkData[m.key] || 0,
-        pct: Math.round((this.checkData[m.key]||0) / maxVal * 100)
+        val: Number(this.personCounts[m.key] || 0),
+        pct: Math.round(Number(this.personCounts[m.key]||0) / maxVal * 100)
       }))
     },
     vitalCards() {
@@ -701,16 +822,19 @@ export default {
       return [
         {
           label: '人均心率', val: b.avgHeartRate || '--', unit: 'bpm', color: '#00d4ff', icon: 'Monitor',
+          route: '/health-monitor/heart-rate',
           tag: !b.avgHeartRate ? '-' : b.avgHeartRate > 100 ? '偏快' : b.avgHeartRate < 55 ? '偏慢' : '正常',
           tagCls: !b.avgHeartRate ? '' : (b.avgHeartRate > 100 || b.avgHeartRate < 55) ? 'vtag-warn' : 'vtag-ok'
         },
         {
           label: '人均血氧', val: b.avgBloodOxygen || '--', unit: '%', color: '#67C23A', icon: 'FirstAidKit',
+          route: '/health-monitor/blood-oxygen',
           tag: !b.avgBloodOxygen ? '-' : b.avgBloodOxygen < 90 ? '过低' : b.avgBloodOxygen < 95 ? '偏低' : '良好',
           tagCls: !b.avgBloodOxygen ? '' : b.avgBloodOxygen < 90 ? 'vtag-danger' : b.avgBloodOxygen < 95 ? 'vtag-warn' : 'vtag-ok'
         },
         {
           label: '压力均值', val: b.avgPressure || '--', unit: '', color: '#a78bfa', icon: 'MagicStick',
+          route: '/health-monitor/pressure',
           tag: !b.avgPressure ? '-' : b.avgPressure > 80 ? '过高' : b.avgPressure > 60 ? '偏高' : '适中',
           tagCls: !b.avgPressure ? '' : b.avgPressure > 80 ? 'vtag-danger' : b.avgPressure > 60 ? 'vtag-warn' : 'vtag-ok'
         },
@@ -730,6 +854,7 @@ export default {
           unit: 'mmHg',
           color: '#ff6b9d',
           icon: 'Top',
+          route: '/health-monitor/blood-pressure',
           tag: !b.avgBloodPressureHigh ? '-'
             : b.avgBloodPressureHigh <= 120 ? '正常'
             : b.avgBloodPressureHigh <= 140 ? '偏高'
@@ -744,6 +869,7 @@ export default {
           unit: 'mmHg',
           color: '#a78bfa',
           icon: 'Bottom',
+          route: '/health-monitor/blood-pressure',
           tag: !b.avgBloodPressureLow ? '-'
             : b.avgBloodPressureLow <= 80 ? '正常'
             : b.avgBloodPressureLow <= 90 ? '偏高'
@@ -928,6 +1054,7 @@ export default {
       await Promise.allSettled([
         this.fetchDashboardData(),
         this.fetchBodyIndicators(),
+        this.fetchPersonCounts(),
         this.fetchDeviceData(),
         this.fetchWarningEvents(),
         this.fetchTop5Data(),
@@ -973,6 +1100,121 @@ export default {
         const res = await getDashboardOverview(this.periodRange)
         if (res.code === 200) this.checkData = res.data
       } catch(e) { this.checkData = {} }
+    },
+    async fetchPersonCounts() {
+      try {
+        const res = await getPersonCounts(this.periodRange)
+        if (res.code === 200) this.personCounts = res.data || {}
+      } catch(e) { this.personCounts = {} }
+    },
+    openDeptPersonModal() {
+      const today = new Date()
+      const s = new Date(today); s.setDate(s.getDate() - 6)
+      const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      this.deptPersonModal.dateRange = [fmt(s), fmt(today)]
+      this.deptPersonModal.visible = true
+      this.$nextTick(() => this.loadDeptPersonChart())
+    },
+    async loadDeptPersonChart() {
+      const modal = this.deptPersonModal
+      modal.loading = true
+      const [startTime, endTime] = modal.dateRange
+      try {
+        const res = await getDeptDailyPersons({ startTime, endTime })
+        if (res.code !== 200) return
+        const rows = res.data || []
+        // 按部门聚合：{ deptName -> { day -> count } }
+        const deptMap = {}
+        const daySet = new Set()
+        rows.forEach(r => {
+          if (!deptMap[r.deptName]) deptMap[r.deptName] = {}
+          deptMap[r.deptName][r.day] = r.personCount
+          daySet.add(r.day)
+        })
+        const days = Array.from(daySet).sort()
+        const depts = Object.keys(deptMap)
+        const palette = ['#00e5ff','#00e676','#ffd740','#ff6e40','#ea80fc','#40c4ff','#f48fb1','#69f0ae','#ffab40','#b388ff','#80d8ff','#ccff90']
+        // 按该部门在最后一天的人次降序排列，让大值线在上方
+        depts.sort((a, b) => {
+          const lastDay = days[days.length - 1]
+          return (deptMap[b][lastDay] || 0) - (deptMap[a][lastDay] || 0)
+        })
+        const series = depts.map((dept, i) => {
+          const color = palette[i % palette.length]
+          return {
+            name: dept,
+            type: 'line',
+            smooth: true,
+            data: days.map(d => deptMap[dept][d] || 0),
+            lineStyle: { width: 2, color, shadowColor: color + '66', shadowBlur: 4 },
+            itemStyle: { color },
+            symbol: 'circle', symbolSize: 4,
+            emphasis: { focus: 'series', lineStyle: { width: 3, shadowBlur: 8 }, itemStyle: { symbolSize: 7 } }
+          }
+        })
+        await this.$nextTick()
+        const el = this.$refs.deptPersonChartRef
+        console.log('[DeptChart] el:', el, 'size:', el?.offsetWidth, el?.offsetHeight)
+        console.log('[DeptChart] days:', days, 'depts:', depts)
+        console.log('[DeptChart] series[0] data:', series[0]?.data)
+        if (!el) { console.error('[DeptChart] ref not found'); return }
+        if (modal.chart) modal.chart.dispose()
+        const echarts = this.$echarts || window.echarts || (await import('echarts'))
+        console.log('[DeptChart] echarts:', typeof echarts, 'init:', typeof echarts.init)
+        modal.chart = markRaw(echarts.init(el, null, { renderer: 'canvas' }))
+        console.log('[DeptChart] chart instance:', modal.chart)
+        modal.chart.on('mousemove', () => console.log('[DeptChart] mousemove on chart ✓'))
+        modal.chart.setOption({
+          backgroundColor: '#0a1628',
+          grid: { left: 60, right: 150, top: 20, bottom: 50, containLabel: false },
+          legend: {
+            right: 10, top: 'middle', orient: 'vertical', type: 'scroll',
+            textStyle: { color: 'rgba(200,224,248,0.8)', fontSize: 12 },
+            pageIconColor: '#00d4ff', pageTextStyle: { color: '#8ba6c8' },
+            icon: 'circle', itemWidth: 10, itemHeight: 10, itemGap: 12
+          },
+          xAxis: {
+            type: 'category', data: days, boundaryGap: false,
+            axisLabel: { color: 'rgba(180,210,240,0.55)', fontSize: 12, margin: 12 },
+            axisLine: { lineStyle: { color: 'rgba(0,212,255,0.12)' } },
+            axisTick: { show: false }
+          },
+          yAxis: {
+            type: 'value', name: '人次', minInterval: 1,
+            nameTextStyle: { color: 'rgba(180,210,240,0.45)', fontSize: 12, padding: [0,0,0,-30] },
+            axisLabel: { color: 'rgba(180,210,240,0.55)', fontSize: 12 },
+            splitLine: { lineStyle: { color: 'rgba(0,180,255,0.08)' } },
+            axisLine: { show: false }, axisTick: { show: false }
+          },
+          tooltip: {
+            trigger: 'axis',
+            confine: true,
+            backgroundColor: 'rgba(8,16,38,0.96)',
+            borderColor: 'rgba(255,255,255,0.06)',
+            borderWidth: 1,
+            padding: [14, 18],
+            extraCssText: 'box-shadow:0 8px 32px rgba(0,0,0,0.7);border-radius:8px;z-index:99999!important',
+            textStyle: { color: '#fff', fontSize: 13 },
+            formatter(params) {
+              const date = params[0] ? params[0].axisValue : ''
+              let s = `<div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:12px">${date}</div>`
+              params.forEach(p => {
+                if ((p.value ?? 0) === 0) return
+                s += `<div style="display:flex;align-items:center;gap:10px;margin:6px 0;min-width:160px">` +
+                  `<span style="width:12px;height:12px;border-radius:50%;background:${p.color};display:inline-block;flex-shrink:0"></span>` +
+                  `<span style="color:rgba(220,235,255,0.85);flex:1;font-size:14px">${p.seriesName}</span>` +
+                  `<span style="font-weight:700;font-size:18px;color:#fff;letter-spacing:0.5px">${p.value}</span>` +
+                  `</div>`
+              })
+              return s
+            },
+            axisPointer: { type: 'line', lineStyle: { color: 'rgba(255,255,255,0.15)', type: 'dashed', width: 1 } }
+          },
+          series
+        })
+      } finally {
+        modal.loading = false
+      }
     },
     async fetchBodyIndicators() {
       try {
@@ -1026,23 +1268,31 @@ export default {
       } catch(e) { this.warningEvents = [] }
     },
     async loadDeptData() {
-      try {
-        const r = await getDeptHealthCounts(this.periodRange)
-        if (r.code === 200 && Array.isArray(r.data) && r.data.length) {
-          this.deptDataList = r.data
-            .map(d => ({
-              name: d.name || d.deptName || '',
-              count: d.count || d.dataCount || 0,
-              prevCount: d.prevCount || d.previousCount || 0
-            }))
-            .filter(d => d.name && d.name !== '')
-        } else {
-          this.deptDataList = []
-        }
-      } catch (error) {
+      const t0 = performance.now()
+      const [r, statsR] = await Promise.allSettled([
+        getDeptHealthCounts(this.periodRange),
+        getDeptPersonStats(this.periodRange)
+      ])
+      fetch('/perf-log', { method:'POST', body:`[dashboard] loadDeptData(parallel): ${(performance.now()-t0).toFixed(0)}ms` }).catch(()=>{})
+      const counts = r.status === 'fulfilled' ? r.value : null
+      if (counts?.code === 200 && Array.isArray(counts.data) && counts.data.length) {
+        this.deptDataList = counts.data
+          .map(d => ({ name: d.name || d.deptName || '', count: d.count || d.dataCount || 0, prevCount: d.prevCount || d.previousCount || 0 }))
+          .filter(d => d.name && d.name !== '')
+      } else {
         this.deptDataList = []
       }
+      const stats = statsR.status === 'fulfilled' ? statsR.value : null
+      this.deptPersonStatsList = (stats?.code === 200 && Array.isArray(stats.data)) ? stats.data : []
       this.$nextTick(() => { this.initDeptChart(); this.startListScroll('riskList','riskScrollInterval',35) })
+    },
+    async fetchDeptPersonStats() {
+      const t0 = performance.now()
+      try {
+        const r = await getDeptPersonStats(this.periodRange)
+        fetch('/perf-log', { method:'POST', body:`[dashboard] getDeptPersonStats: ${(performance.now()-t0).toFixed(0)}ms` }).catch(()=>{})
+        this.deptPersonStatsList = (r.code === 200 && Array.isArray(r.data)) ? r.data : []
+      } catch { this.deptPersonStatsList = [] }
     },
 
     // ─── 改动1：决策型 KPI 数据加载 ───
@@ -1069,7 +1319,7 @@ export default {
         }
         this.kpiTodayWarnings     = countData(todayRes)
         this.kpiYesterdayWarnings = countData(yesRes)
-        // KPI-3：未处理告警（复用已加载的 warningEvents，按 level 区分高危/中危）
+        // KPI-3：未处理预警（复用已加载的 warningEvents，按 level 区分高危/中危）
         const unhandled = this.warningEvents.filter(e => !e.handled)
         this.kpiUnhandledHigh = unhandled.filter(e => e.level === 'danger').length
         this.kpiUnhandledMid  = unhandled.filter(e => e.level === 'warn').length
@@ -1282,19 +1532,22 @@ export default {
       const chart = echarts.init(dom)
       this.charts.dept = chart
 
-      // 合并数据量和预警量，按数据量排序
-      const deptMap = {}
-      this.deptDataList.forEach(d => {
-        deptMap[d.name] = { name: d.name, dataCount: d.count, warningCount: 0 }
-      })
-      this.riskDeptList.forEach(d => {
-        if (deptMap[d.name]) {
-          deptMap[d.name].warningCount = d.count
-        } else {
-          deptMap[d.name] = { name: d.name, dataCount: 0, warningCount: d.count }
-        }
-      })
-      const sorted = Object.values(deptMap).sort((a, b) => b.dataCount - a.dataCount).slice(0, 10)
+      // 优先用 deptPersonStatsList（检测人数+异常人数），降级用旧数据
+      let sorted
+      if (this.deptPersonStatsList.length) {
+        sorted = [...this.deptPersonStatsList]
+          .sort((a, b) => (b.personCount || 0) - (a.personCount || 0))
+          .slice(0, 10)
+          .map(d => ({ name: d.deptName || d.name, dataCount: d.personCount || 0, warningCount: d.abnormalPersonCount || 0 }))
+      } else {
+        const deptMap = {}
+        this.deptDataList.forEach(d => { deptMap[d.name] = { name: d.name, dataCount: d.count, warningCount: 0 } })
+        this.riskDeptList.forEach(d => {
+          if (deptMap[d.name]) deptMap[d.name].warningCount = d.count
+          else deptMap[d.name] = { name: d.name, dataCount: 0, warningCount: d.count }
+        })
+        sorted = Object.values(deptMap).sort((a, b) => b.dataCount - a.dataCount).slice(0, 10)
+      }
 
       // 如果没有部门数据，显示"暂无数据"
       if (sorted.length === 0) {
@@ -1314,12 +1567,12 @@ export default {
           textStyle: { color: '#fff', fontSize: 11 },
           formatter: p => {
             return `${p[0].name}<br/>` +
-              `<span style="color:#00d4ff">●</span> 数据量: <b style="color:#00d4ff">${p[0].value.toLocaleString()}</b><br/>` +
-              `<span style="color:#ff9800">●</span> 预警量: <b style="color:#ff9800">${p[1].value.toLocaleString()}</b>`
+              `<span style="color:#00d4ff">●</span> 检测人数: <b style="color:#00d4ff">${p[0].value.toLocaleString()}</b><br/>` +
+              `<span style="color:#ff9800">●</span> 异常人数: <b style="color:#ff9800">${p[1].value.toLocaleString()}</b>`
           }
         },
         legend: {
-          data: ['数据量', '预警量'],
+          data: ['检测人数', '异常人数'],
           top: 0, right: 10,
           textStyle: { color: '#8ba6c8', fontSize: 10 },
           itemWidth: 12, itemHeight: 8
@@ -1340,7 +1593,7 @@ export default {
         },
         series: [
           {
-            name: '数据量',
+            name: '检测人数',
             type: 'bar', barMaxWidth: 10, barGap: '20%',
             data: sorted.map(d => d.dataCount),
             itemStyle: {
@@ -1353,7 +1606,7 @@ export default {
             label: { show: true, position: 'right', color: '#00d4ff', fontSize: 8, formatter: p => p.value >= 1000 ? (p.value/1000).toFixed(1)+'k' : p.value }
           },
           {
-            name: '预警量',
+            name: '异常人数',
             type: 'bar', barMaxWidth: 10,
             data: sorted.map(d => d.warningCount),
             itemStyle: {
@@ -1367,6 +1620,91 @@ export default {
           }
         ]
       })
+      chart.on('click', params => {
+        if (params.name) this.openDeptDetailModal(params.name)
+      })
+      chart.getZr().setCursorStyle('pointer')
+    },
+
+    openDeptDetailModal(deptName) {
+      const today = new Date()
+      const s = new Date(today); s.setDate(s.getDate() - 6)
+      const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      this.deptDetailModal.deptName = deptName
+      this.deptDetailModal.dateRange = [fmt(s), fmt(today)]
+      this.deptDetailModal.visible = true
+      this.$nextTick(() => this.loadDeptDetailChart())
+    },
+    async loadDeptDetailChart() {
+      const modal = this.deptDetailModal
+      modal.loading = true
+      const [startTime, endTime] = modal.dateRange
+      try {
+        const res = await getDeptDailyDetail({ deptName: modal.deptName, startTime, endTime })
+        if (res.code !== 200) return
+        const rows = res.data || []
+        const days = rows.map(r => r.day)
+        const personCounts = rows.map(r => r.personCount || 0)
+        const abnormalCounts = rows.map(r => r.abnormalPersonCount || 0)
+        await this.$nextTick()
+        const el = this.$refs.deptDetailChartRef
+        if (!el) return
+        if (modal.chart) modal.chart.dispose()
+        const echartsLib = this.$echarts || window.echarts || (await import('echarts'))
+        modal.chart = markRaw(echartsLib.init(el, null, { renderer: 'canvas' }))
+        modal.chart.setOption({
+          backgroundColor: '#0a1628',
+          grid: { left: 60, right: 30, top: 50, bottom: 50, containLabel: false },
+          legend: {
+            top: 12, left: 'center', orient: 'horizontal',
+            textStyle: { color: 'rgba(200,224,248,0.8)', fontSize: 13 },
+            icon: 'circle', itemWidth: 10, itemHeight: 10, itemGap: 30
+          },
+          xAxis: {
+            type: 'category', data: days, boundaryGap: false,
+            axisLabel: { color: 'rgba(180,210,240,0.55)', fontSize: 12, margin: 12 },
+            axisLine: { lineStyle: { color: 'rgba(0,212,255,0.12)' } },
+            axisTick: { show: false }
+          },
+          yAxis: {
+            type: 'value', name: '人次', minInterval: 1,
+            nameTextStyle: { color: 'rgba(180,210,240,0.45)', fontSize: 12, padding: [0,0,0,-30] },
+            axisLabel: { color: 'rgba(180,210,240,0.55)', fontSize: 12 },
+            splitLine: { lineStyle: { color: 'rgba(0,180,255,0.08)' } },
+            axisLine: { show: false }, axisTick: { show: false }
+          },
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(8,14,40,0.92)', borderColor: 'rgba(0,212,255,0.3)',
+            textStyle: { color: '#e8f4ff', fontSize: 12 },
+            formatter: params => {
+              let s = `<div style="font-size:11px;color:#8ba6c8;margin-bottom:4px">${params[0].axisValue}</div>`
+              params.forEach(p => { s += `<div>${p.marker}${p.seriesName}: <b>${p.value}</b> 人</div>` })
+              return s
+            }
+          },
+          series: [
+            {
+              name: '检测人数', type: 'line', smooth: true, data: personCounts,
+              lineStyle: { width: 2, color: '#00e5ff', shadowColor: '#00e5ff66', shadowBlur: 4 },
+              itemStyle: { color: '#00e5ff' },
+              areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                colorStops: [{ offset: 0, color: '#00e5ff33' }, { offset: 1, color: '#00e5ff05' }] } },
+              symbol: 'circle', symbolSize: 5
+            },
+            {
+              name: '异常人数', type: 'line', smooth: true, data: abnormalCounts,
+              lineStyle: { width: 2, color: '#ff9800', shadowColor: '#ff980066', shadowBlur: 4 },
+              itemStyle: { color: '#ff9800' },
+              areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                colorStops: [{ offset: 0, color: '#ff980033' }, { offset: 1, color: '#ff980005' }] } },
+              symbol: 'circle', symbolSize: 5
+            }
+          ]
+        })
+      } finally {
+        modal.loading = false
+      }
     },
 
     initDeviceCharts() {
@@ -1379,8 +1717,10 @@ export default {
     },
     async fetchTrendDaily() {
       const days = { day: 7, week: 7, month: 30 }[this.activePeriod] || 30
+      const t0 = performance.now()
       try {
         const res = await getDailyTrend(days)
+        fetch('/perf-log', { method:'POST', body:`[dashboard] getDailyTrend(${days}days): ${(performance.now()-t0).toFixed(0)}ms` }).catch(()=>{})
         this.trendDailyData = (res.code === 200 && Array.isArray(res.data)) ? res.data : []
       } catch {
         this.trendDailyData = []
@@ -1388,8 +1728,10 @@ export default {
     },
     async fetchWarningDist() {
       const groupBy = this.activePeriod === 'day' ? 'hour' : 'day'
+      const t0 = performance.now()
       try {
         const res = await getWarningCounts({ ...this.periodRange, groupBy })
+        fetch('/perf-log', { method:'POST', body:`[dashboard] getWarningCounts(${groupBy}): ${(performance.now()-t0).toFixed(0)}ms` }).catch(()=>{})
         this.warningDistData = (res.code === 200 && res.data)
           ? res.data
           : { labels: [], counts: [] }
@@ -1667,8 +2009,86 @@ export default {
       if (k.route) this.$router.push(k.route)
     },
     onMetricCardClick(m) {
-      // 所有指标卡片统一跳转到风险预警页
-      this.$router.push('/health-monitor/risk-warning')
+      const today = new Date()
+      const s = new Date(today); s.setDate(s.getDate() - 6)
+      const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      this.metricDetailModal.metricType = m.key
+      this.metricDetailModal.metricLabel = m.label
+      this.metricDetailModal.metricColor = m.color
+      this.metricDetailModal.dateRange = [fmt(s), fmt(today)]
+      this.metricDetailModal.visible = true
+      this.$nextTick(() => this.loadMetricDetailChart())
+    },
+    async loadMetricDetailChart() {
+      const modal = this.metricDetailModal
+      modal.loading = true
+      const [startTime, endTime] = modal.dateRange
+      try {
+        const res = await getMetricDailyDetail({ metricType: modal.metricType, startTime, endTime })
+        if (res.code !== 200) return
+        const rows = res.data || []
+        const days = rows.map(r => r.day)
+        const personCounts = rows.map(r => r.personCount || 0)
+        const abnormalCounts = rows.map(r => r.abnormalPersonCount || 0)
+        await this.$nextTick()
+        const el = this.$refs.metricDetailChartRef
+        if (!el) return
+        if (modal.chart) modal.chart.dispose()
+        const echartsLib = this.$echarts || window.echarts || (await import('echarts'))
+        modal.chart = markRaw(echartsLib.init(el, null, { renderer: 'canvas' }))
+        modal.chart.setOption({
+          backgroundColor: '#0a1628',
+          grid: { left: 60, right: 30, top: 50, bottom: 50, containLabel: false },
+          legend: {
+            top: 12, left: 'center', orient: 'horizontal',
+            textStyle: { color: 'rgba(200,224,248,0.8)', fontSize: 13 },
+            icon: 'circle', itemWidth: 10, itemHeight: 10, itemGap: 30
+          },
+          xAxis: {
+            type: 'category', data: days, boundaryGap: false,
+            axisLabel: { color: 'rgba(180,210,240,0.55)', fontSize: 12, margin: 12 },
+            axisLine: { lineStyle: { color: 'rgba(0,212,255,0.12)' } },
+            axisTick: { show: false }
+          },
+          yAxis: {
+            type: 'value', name: '人次', minInterval: 1,
+            nameTextStyle: { color: 'rgba(180,210,240,0.45)', fontSize: 12, padding: [0,0,0,-30] },
+            axisLabel: { color: 'rgba(180,210,240,0.55)', fontSize: 12 },
+            splitLine: { lineStyle: { color: 'rgba(0,180,255,0.08)' } },
+            axisLine: { show: false }, axisTick: { show: false }
+          },
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(8,14,40,0.92)', borderColor: 'rgba(0,212,255,0.3)',
+            textStyle: { color: '#e8f4ff', fontSize: 12 },
+            formatter: params => {
+              let s = `<div style="font-size:11px;color:#8ba6c8;margin-bottom:4px">${params[0].axisValue}</div>`
+              params.forEach(p => { s += `<div>${p.marker}${p.seriesName}: <b>${p.value}</b> 人</div>` })
+              return s
+            }
+          },
+          series: [
+            {
+              name: '检测人数', type: 'line', smooth: true, data: personCounts,
+              lineStyle: { width: 2, color: modal.metricColor, shadowColor: modal.metricColor + '66', shadowBlur: 4 },
+              itemStyle: { color: modal.metricColor },
+              areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                colorStops: [{ offset: 0, color: modal.metricColor + '33' }, { offset: 1, color: modal.metricColor + '05' }] } },
+              symbol: 'circle', symbolSize: 5
+            },
+            {
+              name: '异常人数', type: 'line', smooth: true, data: abnormalCounts,
+              lineStyle: { width: 2, color: '#ff9800', shadowColor: '#ff980066', shadowBlur: 4 },
+              itemStyle: { color: '#ff9800' },
+              areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                colorStops: [{ offset: 0, color: '#ff980033' }, { offset: 1, color: '#ff980005' }] } },
+              symbol: 'circle', symbolSize: 5
+            }
+          ]
+        })
+      } finally {
+        modal.loading = false
+      }
     },
 
     // ─── 辅助 ───
@@ -1967,29 +2387,6 @@ $white:  #e8f4ff;
   display:flex; flex-direction:column; align-items:stretch;
   overflow:hidden; padding:0;
 }
-// 上方在岗概况条
-.dm-duty-bar {
-  flex-shrink:0; height:52px;
-  display:flex; align-items:center; justify-content:space-around;
-  padding:0 12px;
-  background:rgba(0,212,255,0.04);
-  border-bottom:1px solid rgba(0,212,255,0.1);
-  z-index:4; position:relative; overflow:hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: -40%;
-    width: 40%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.9), transparent);
-    animation: dmDutyFlow 3s linear infinite;
-  }
-}
-.dm-duty-item { display:flex; flex-direction:column; align-items:center; gap:2px; }
-.dm-duty-val  { font-size:20px; font-weight:700; font-family:'Consolas',monospace; line-height:1; }
-.dm-duty-lbl  { font-size:11px; color:$dim; }
-.dm-duty-sep  { width:1px; height:28px; background:rgba(0,212,255,0.15); }
 
 // 视频贴边撑满
 .dm-video-wrap {
@@ -2448,16 +2845,18 @@ $white:  #e8f4ff;
 // ══ 员工健康档案 Drawer ══
 .dm-emp-drawer {
   :deep(.el-drawer) {
-    background: #080c20;
-    border-left: 1px solid rgba(0,212,255,0.2);
+    background: #080c20 !important;
+    border-left: 1px solid rgba(0,212,255,0.2) !important;
   }
   :deep(.el-drawer__header) {
-    padding: 16px 20px 12px;
-    border-bottom: 1px solid rgba(0,212,255,0.12);
-    margin-bottom: 0;
+    background: #080c20 !important;
+    padding: 16px 20px 12px !important;
+    border-bottom: 1px solid rgba(0,212,255,0.12) !important;
+    margin-bottom: 0 !important;
   }
   :deep(.el-drawer__body) {
-    padding: 0;
+    background: #080c20 !important;
+    padding: 0 !important;
     overflow-y: auto;
     &::-webkit-scrollbar { width: 4px; }
     &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
@@ -2556,6 +2955,56 @@ $white:  #e8f4ff;
   :deep(.el-dialog__title) { color: #e8f4ff; }
   :deep(.el-textarea__inner) { background: rgba(0,212,255,0.05); border-color: rgba(0,212,255,0.2); color: #c8d8e8; }
 }
+.dm-dept-person-dialog {
+  :deep(.el-dialog) {
+    background: #0a1628 !important;
+    border: none !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+  :deep(.el-dialog__header) { display: none !important; }
+  :deep(.el-dialog__body) { padding: 0 !important; background: #0a1628 !important; }
+  :deep(.el-date-editor.el-input__wrapper),
+  :deep(.el-input__wrapper) {
+    background: rgba(0,40,80,0.6) !important;
+    box-shadow: 0 0 0 1px rgba(0,180,255,0.3) !important;
+    border-radius: 4px !important;
+  }
+  :deep(.el-range-input) { background: transparent !important; color: #90b8d8 !important; font-size: 13px !important; }
+  :deep(.el-range-separator) { color: rgba(0,212,255,0.6) !important; }
+  :deep(.el-range__icon) { color: rgba(0,212,255,0.5) !important; }
+}
+.dm-dp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 16px;
+  background: #0a1628;
+}
+.dm-dp-header-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #e0f0ff;
+  letter-spacing: 0.5px;
+}
+.dm-dp-header-close {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(200,224,248,0.5);
+  cursor: pointer; font-size: 20px; line-height: 1;
+  transition: color 0.2s;
+  &:hover { color: #fff; }
+}
+.dm-dp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 22px 16px;
+  background: #0a1628;
+}
 .dm-hd-info { background: rgba(0,212,255,0.04); border-radius: 6px; padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; }
 .dm-hd-row  { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .dm-hd-key  { color: #8ba6c8; width: 36px; flex-shrink: 0; }
@@ -2575,7 +3024,7 @@ $white:  #e8f4ff;
   animation: criticalBlink 2s infinite;
 }
 
-// ── 改动2：高危告警条目高亮 ──
+// ── 改动2：高危预警条目高亮 ──
 .alert-item--critical {
   border-left: 3px solid #ff3b3b !important;
   background: rgba(255,59,59,0.06) !important;

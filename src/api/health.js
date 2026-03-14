@@ -205,3 +205,23 @@ export function getDailyTrend(days) {
 export function getWarningCounts(params) {
   return request({ url: '/dashboard/warning-counts', method: 'get', params })
 }
+
+export function getPersonCounts(params) {
+  return request({ url: '/dashboard/person-counts', method: 'get', params })
+}
+
+export function getDeptDailyPersons(params) {
+  return request({ url: '/dashboard/dept-daily-persons', method: 'get', params })
+}
+
+export function getDeptDailyDetail(params) {
+  return request({ url: '/dashboard/dept-daily-detail', method: 'get', params })
+}
+
+export function getMetricDailyDetail(params) {
+  return request({ url: '/dashboard/metric-daily-detail', method: 'get', params })
+}
+
+export function getDeptPersonStats(params) {
+  return request({ url: '/dashboard/dept-person-stats', method: 'get', params })
+}
