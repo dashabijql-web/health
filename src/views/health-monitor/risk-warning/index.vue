@@ -102,7 +102,7 @@
             </div>
 
             <div class="rw-list-hd">
-              <span>序号</span><span>姓名</span><span>部门</span><span>预警类型</span><span>级别</span><span>预警值</span><span>状态</span><span>时间</span>
+              <span>序号</span><span>姓名</span><span>工号</span><span>部门</span><span>预警类型</span><span>级别</span><span>预警值</span><span>状态</span><span>备注</span><span>时间</span>
             </div>
 
             <div class="rw-list-body" ref="listRef"
@@ -112,11 +112,13 @@
                 :class="warnClass(item.warningLevel)" @click="openDetail(item)">
                 <span class="rw-list-idx">{{ (currentPage-1)*pageSize+i+1 }}</span>
                 <span class="rw-list-name">{{ item.userName || '--' }}</span>
+                <span class="rw-list-code">{{ item.empCode || item.userCode || '--' }}</span>
                 <span class="rw-list-dept">{{ item.deptName || '--' }}</span>
                 <span class="rw-list-type">{{ item.warningType || '--' }}</span>
                 <span class="rw-list-badge" :class="warnClass(item.warningLevel)">{{ item.warningLevel || '--' }}</span>
                 <span class="rw-list-val">{{ item.warningValue || '--' }}</span>
                 <span class="rw-list-handled" :class="item.handled ? 'handled' : 'pending'">{{ item.handled ? '已处理' : '待处理' }}</span>
+                <span class="rw-list-note">{{ item.handleNote || '--' }}</span>
                 <span class="rw-list-time">{{ fmtTime(item.createTime) }}</span>
               </div>
               <div v-if="filteredList.length===0" class="rw-list-empty">暂无匹配数据</div>
@@ -131,47 +133,6 @@
             </div>
           </div>
 
-          <!-- 右侧：在线人员实时状态 -->
-          <div class="rw-right-col">
-            <div class="rw-online-panel">
-              <div class="rw-sub-ph">
-                <span class="rw-ph-bar"></span>
-                <span class="rw-ph-title">在线人员实时状态</span>
-                <span class="rw-online-count">{{ onlineUsers.length }} 人在线</span>
-                <div class="rw-online-filter">
-                  <input v-model="onlineFilter" class="rw-filter-input rw-ol-search" placeholder="搜索姓名…" @input="onlinePage=1" />
-                  <select v-model="onlineFilterStatus" class="rw-filter-select" @change="onlinePage=1">
-                    <option value="">全部</option>
-                    <option value="normal">正常</option>
-                    <option value="warning">预警</option>
-                  </select>
-                </div>
-              </div>
-              <div class="rw-ol-hd">
-                <span>姓名</span><span>部门</span><span>心率</span><span>血氧</span><span>体温</span><span>状态</span><span>更新时间</span>
-              </div>
-              <div class="rw-ol-body" ref="onlineListRef">
-                <div class="rw-ol-row" v-for="(u, i) in pagedOnlineUsers" :key="u.empCode||i"
-                  :class="onlineRowClass(u.warningLevel)">
-                  <span class="rw-ol-name">{{ u.empName || '--' }}</span>
-                  <span class="rw-ol-dept">{{ u.deptName || '--' }}</span>
-                  <span class="rw-ol-num" :style="{color: hrColor(u.heartRate)}">{{ u.heartRate || '--' }}</span>
-                  <span class="rw-ol-num" :style="{color: spo2Color(u.bloodOxygen)}">{{ u.bloodOxygen || '--' }}</span>
-                  <span class="rw-ol-num" :style="{color: tempColor(u.temperature)}">{{ fmtTemp(u.temperature) }}</span>
-                  <span class="rw-ol-badge" :class="warnClass(u.warningLevel)">{{ u.warningLevel || '正常' }}</span>
-                  <span class="rw-ol-time">{{ fmtTime(u.lastUpdateTime) }}</span>
-                </div>
-                <div v-if="filteredOnlineUsers.length===0" class="rw-list-empty">暂无在线人员数据</div>
-              </div>
-              <div class="rw-ol-pg">
-                <button class="rw-pg-btn" :disabled="onlinePage===1" @click="onlinePage=1">首页</button>
-                <button class="rw-pg-btn" :disabled="onlinePage===1" @click="onlinePage--">‹</button>
-                <span class="rw-pg-info">{{ onlinePage }} / {{ onlineTotalPages }}</span>
-                <button class="rw-pg-btn" :disabled="onlinePage>=onlineTotalPages" @click="onlinePage++">›</button>
-                <button class="rw-pg-btn" :disabled="onlinePage>=onlineTotalPages" @click="onlinePage=onlineTotalPages">末页</button>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
     </section>
@@ -247,7 +208,6 @@ import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getDep
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, barLabel } from '@/utils/echarts-config'
 import { initChart, gradV } from '@/utils/chart-helpers'
 import { getHealthRecords } from '@/api/health'
-import { getOnlineUsers } from '@/api/realtime'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
 
@@ -277,12 +237,6 @@ export default {
       detailVisible: false, detailRow: null,
       autoScrollPaused: false,
       scrollTop: 0,
-      // 在线人员实时状态
-      onlineUsers: [],
-      onlineFilter: '',
-      onlineFilterStatus: '',
-      onlinePage: 1,
-      onlinePageSize: 15,
       // 体征曲线
       vitalLoading: false,
       vitalEmpty: false,
@@ -347,22 +301,6 @@ export default {
       return Math.round(this.warningList.filter(x=>x.handled||x.isHandled===1||x.isHandled===true).length/all*100)
     },
 
-    // 在线人员过滤
-    filteredOnlineUsers() {
-      return this.onlineUsers.filter(u => {
-        const nameOk = !this.onlineFilter || (u.empName||'').includes(this.onlineFilter)
-        const lv = u.warningLevel
-        const hasWarning = lv && lv !== '正常' && lv !== 'normal'
-        const statusOk = !this.onlineFilterStatus ||
-          (this.onlineFilterStatus === 'warning' ? hasWarning : !hasWarning)
-        return nameOk && statusOk
-      })
-    },
-    pagedOnlineUsers() {
-      const s = (this.onlinePage-1)*this.onlinePageSize
-      return this.filteredOnlineUsers.slice(s, s+this.onlinePageSize)
-    },
-    onlineTotalPages() { return Math.max(1, Math.ceil(this.filteredOnlineUsers.length/this.onlinePageSize)) }
   },
   watch: {
     filteredList() {
@@ -372,7 +310,7 @@ export default {
   mounted() { this.initPage() },
   methods: {
     async fetchData() {
-      await Promise.allSettled([this.loadStats(), this.loadTrend(), this.loadDept(), this.loadList(), this.loadOnlineUsers()])
+      await Promise.allSettled([this.loadStats(), this.loadTrend(), this.loadDept(), this.loadList()])
       this.$nextTick(() => this.initDonutChart())
     },
     async loadStats() {
@@ -417,16 +355,6 @@ export default {
         if (r.code===200 && r.data) this.warningList=r.data.list||r.data||[]
       } catch {}
     },
-    async loadOnlineUsers() {
-      try {
-        const r = await getOnlineUsers(1, 1000)
-        if (r.code===200 && r.data) {
-          this.onlineUsers = r.data.list || r.data || []
-          this.$nextTick(() => this.setOnlinePageSize())
-        }
-      } catch {}
-    },
-
     initTrendChart() {
       const c=initChart(this.charts,'trend',this.$refs.trendRef); if(!c) return
       const {dates,series}=this.trendData
@@ -754,21 +682,9 @@ export default {
     fmtTime(ts)     { return ts?dayjs(ts).format('MM-DD HH:mm'):'--' },
     fmtTimeFull(ts) { return ts?dayjs(ts).format('YYYY-MM-DD HH:mm:ss'):'--' },
 
-    // 在线人员辅助方法
-    hrColor(v)   { if(!v||v===0) return '#8ba6c8'; return v>100||v<60?'#ef4444':'#52c41a' },
-    spo2Color(v) { if(!v||v===0) return '#8ba6c8'; return v<95?'#ef4444':v<97?'#f97316':'#52c41a' },
-    tempColor(v) { if(!v||v===0) return '#8ba6c8'; const t=parseFloat(v); return t>37.5?'#ef4444':t>37.2?'#f97316':'#52c41a' },
-    fmtTemp(v)   { if(!v||v===0) return '--'; const t=parseFloat(v); return (t>100?(t/10):t).toFixed(1) },
-    onlineRowClass(lv) { return lv && lv!=='正常' && lv!=='normal' ? 'ol-warning' : '' },
-    setOnlinePageSize() {
-      const el = this.$refs.onlineListRef; if(!el) return
-      const n = Math.max(8, Math.floor(el.clientHeight / 28))
-      if (n !== this.onlinePageSize) { this.onlinePageSize = n; this.onlinePage = 1 }
-    },
-
     handleResize() {
       clearTimeout(this.resizeTimer)
-      this.resizeTimer=setTimeout(()=>{ this.$nextTick(()=>{ Object.values(this.charts).forEach(c=>c&&c.resize&&c.resize()); this.setOnlinePageSize() }) },200)
+      this.resizeTimer=setTimeout(()=>{ this.$nextTick(()=>{ Object.values(this.charts).forEach(c=>c&&c.resize&&c.resize()) }) },200)
     }
   }
 }
@@ -855,8 +771,8 @@ export default {
 /* FIX ①: 7列 含部门 */
 .rw-list-hd {
   display:grid;
-  grid-template-columns: 40px 60px 80px 96px 54px 96px 70px 84px;
-  gap:0; padding:5px 14px; flex-shrink:0; background:rgba(0,212,255,.055);
+  grid-template-columns: 44px 68px 80px 1fr 1.2fr 70px 86px 84px 1fr 108px;
+  gap:0; padding:4px 14px; flex-shrink:0; background:rgba(0,212,255,.055);
   border-bottom:1px solid rgba(0,212,255,.1);
   span { font-size:11px; color:$dim; font-weight:600; padding:0 4px; }
 }
@@ -867,8 +783,9 @@ export default {
 }
 .rw-list-row {
   display:grid;
-  grid-template-columns: 40px 60px 80px 96px 54px 96px 70px 84px;
-  gap:0; padding:7px 6px; margin-bottom:1px;
+  grid-template-columns: 44px 68px 80px 1fr 1.2fr 70px 86px 84px 1fr 108px;
+  justify-items: start;
+  gap:0; padding:4px 6px; margin-bottom:1px;
   border-radius:6px; align-items:center; border-left:3px solid transparent;
   transition:background .15s; cursor:pointer;
   &:hover { background:rgba(0,212,255,.055); }
@@ -897,6 +814,8 @@ export default {
   &.handled { background:rgba(56,239,125,.1); color:#38ef7d; border:1px solid rgba(56,239,125,.25); }
   &.pending { background:rgba(255,210,0,.1);  color:#ffd200; border:1px solid rgba(255,210,0,.25); }
 }
+.rw-list-code { font-size:11px; color:#7eb8d4; font-family:'Consolas',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rw-list-note { font-size:11px; color:$dim; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .rw-list-time { font-size:11px; color:$dim; }
 .rw-list-empty { text-align:center; padding:40px 0; color:$dim; font-size:13px; }
 
@@ -960,67 +879,8 @@ export default {
 .rw-dw-si-val   { font-size:15px; font-weight:700; font-family:'Consolas',monospace; }
 .rw-dw-si-sub   { font-size:9px; color:#4a5578; margin-top:2px; }
 
-/* ══ 列表+右侧面板布局 ══ */
-.rw-panel-list { flex-direction: row !important; }
+/* ══ 列表布局 ══ */
 .rw-list-wrap  { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
-.rw-right-col  {
-  width:460px; flex-shrink:0; display:flex; flex-direction:column; padding:0 0 0 8px;
-}
-
-/* 右侧子面板 header */
-.rw-sub-ph {
-  height:32px; flex-shrink:0; display:flex; align-items:center; gap:8px;
-  padding:0 12px; border-bottom:1px solid rgba(0,212,255,.09); background:rgba(0,212,255,.03);
-}
-
-/* 在线人员实时状态面板 */
-.rw-online-panel {
-  flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;
-  background:$panel; border:1px solid $border; border-radius:10px;
-}
-.rw-online-count {
-  font-size:11px; color:$accent; font-family:'Consolas',monospace;
-  background:rgba(0,212,255,.1); border:1px solid rgba(0,212,255,.25);
-  border-radius:3px; padding:1px 6px; flex-shrink:0;
-}
-.rw-online-filter { margin-left:auto; display:flex; align-items:center; gap:5px; }
-.rw-ol-search { width:72px !important; }
-.rw-ol-hd {
-  display:grid;
-  grid-template-columns: 56px 80px 46px 46px 50px 54px 1fr;
-  gap:0; padding:5px 12px; flex-shrink:0;
-  background:rgba(0,212,255,.055); border-bottom:1px solid rgba(0,212,255,.1);
-  span { font-size:11px; color:$dim; font-weight:600; padding:0 3px; }
-}
-.rw-ol-body {
-  flex:1; min-height:0; overflow-y:auto; padding:3px 6px;
-  &::-webkit-scrollbar { width:3px; }
-  &::-webkit-scrollbar-thumb { background:rgba(0,212,255,.18); border-radius:2px; }
-}
-.rw-ol-row {
-  display:grid;
-  grid-template-columns: 56px 80px 46px 46px 50px 54px 1fr;
-  gap:0; padding:5px 6px; margin-bottom:1px;
-  border-radius:5px; align-items:center; border-left:3px solid transparent;
-  transition:background .15s;
-  &:hover { background:rgba(0,212,255,.05); }
-  &:nth-child(even) { background:rgba(255,255,255,.013); }
-  &:nth-child(even):hover { background:rgba(0,212,255,.05); }
-  &.ol-warning { border-left-color:rgba(249,115,22,.7); background:rgba(249,115,22,.03) !important; }
-}
-.rw-ol-name  { font-size:12px; color:$white; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 3px; }
-.rw-ol-dept  { font-size:11px; color:$text; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 3px; }
-.rw-ol-num   { font-size:12px; font-weight:700; font-family:'Consolas',monospace; text-align:center; padding:0 3px; }
-.rw-ol-badge {
-  font-size:10px; padding:1px 5px; border-radius:3px; text-align:center; white-space:nowrap; display:inline-block;
-  &.critical { background:var(--severity-critical-bg); color:var(--severity-critical); border:1px solid var(--severity-critical); }
-  &.high     { background:var(--severity-high-bg); color:var(--severity-high); border:1px solid var(--severity-high); }
-  &.medium   { background:var(--severity-medium-bg); color:var(--severity-medium); border:1px solid var(--severity-medium); }
-  &.low,
-  &.normal   { background:var(--severity-low-bg); color:var(--severity-low); border:1px solid var(--severity-low); }
-}
-.rw-ol-time  { font-size:10px; color:$dim; padding:0 3px; }
-.rw-ol-pg    { height:32px; flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:5px; border-top:1px solid rgba(0,212,255,.1); }
 </style>
 
 <style lang="scss">

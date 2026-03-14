@@ -6,38 +6,43 @@
         <span class="rt-live-dot"></span>
         <h1 class="rt-hd-title">实时健康监控</h1>
       </div>
-      <div class="rt-hd-kpis">
-        <div
-          class="rt-kpi"
-          v-for="k in headerKpis"
-          :key="k.label"
-          :style="k.clickable ? { cursor: 'pointer' } : {}"
-          @click="k.onClick && k.onClick()">
-          <span class="rt-kpi-n" :class="k.cls">{{ k.val }}</span>
-          <span class="rt-kpi-l">{{ k.label }}</span>
+
+      <!-- 实时预警 ticker -->
+      <div class="rt-ticker-wrap">
+        <span class="rt-ticker-label">实时预警</span>
+        <div class="rt-ticker-scroll">
+          <template v-if="warningUsers.length">
+            <!-- 双份内容实现无缝循环 -->
+            <div class="rt-ticker-inner">
+              <span
+                v-for="(u, i) in [...warningUsers, ...warningUsers]"
+                :key="u.userCode + '_' + i"
+                class="rt-ticker-tag">
+                {{ u.userName }} <em>{{ getUserIndicator(u) }}</em>
+              </span>
+            </div>
+          </template>
+          <span v-else class="rt-ticker-empty">暂无预警人员</span>
         </div>
       </div>
-      <div class="rt-hd-time">{{ currentTime }}</div>
+
+      <div class="rt-hd-right">
+        <div class="rt-hd-stat">
+          <span class="rt-hd-stat-val st-ok">{{ normalCount }}</span>
+          <span class="rt-hd-stat-lbl">正常</span>
+        </div>
+        <div class="rt-hd-sep"></div>
+        <div class="rt-hd-stat">
+          <span class="rt-hd-stat-val st-warn" :class="{ 'val-blink': warningCount > 0 }">{{ warningCount }}</span>
+          <span class="rt-hd-stat-lbl">预警中</span>
+        </div>
+        <div class="rt-hd-sep"></div>
+        <div class="rt-hd-time">{{ currentTime }}</div>
+      </div>
     </header>
 
     <!-- Body -->
     <section class="rt-bd">
-      <!-- Left: 6 vital metric cards -->
-      <aside class="rt-aside">
-        <div class="rt-vital" v-for="v in vitalCards" :key="v.key">
-          <div class="rt-vital-ico" :style="{ background: v.bg }">
-            <el-icon :size="22" :style="{ color: v.color }"><component :is="v.icon" /></el-icon>
-          </div>
-          <div class="rt-vital-info">
-            <div class="rt-vital-val" :style="{ color: v.color }">{{ v.value }}</div>
-            <div class="rt-vital-lbl">{{ v.label }}</div>
-            <div class="rt-vital-sub">{{ v.sub }}</div>
-          </div>
-          <div class="rt-vital-dot" :class="v.dotCls"></div>
-        </div>
-      </aside>
-
-      <!-- Center: table panel -->
       <main class="rt-main">
         <div class="rt-panel rt-table-panel">
           <!-- panel header with search bar -->
@@ -46,7 +51,6 @@
               <span class="rt-ph-dot"></span>
               <span class="rt-ph-title">在线用户实时状态</span>
               <span class="rt-badge-online">{{ filteredUserList.length }} 人在线</span>
-              <!-- active filter hints -->
               <span v-if="hrFilter" class="rt-badge-filter" @click="hrFilter = null; currentPage = 1">
                 心率: {{ hrFilter.label }} &times;
               </span>
@@ -106,10 +110,23 @@
               style="width: 100%"
               :header-cell-style="tblHeadStyle"
               :cell-style="tblCellStyle"
+              :row-class-name="rowClass"
               @row-click="showUserDetail">
               <el-table-column prop="userName" label="姓名" min-width="70" align="center">
                 <template #default="{ row }">
                   <span class="c-name">{{ row.userName || '--' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="gender" label="性别" width="55" align="center">
+                <template #default="{ row }">
+                  <span :style="{color: row.gender===1?'#60a5fa':'#f472b6'}">
+                    {{ row.gender === 1 ? '男' : row.gender === 2 ? '女' : '--' }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="age" label="年龄" width="55" align="center">
+                <template #default="{ row }">
+                  <span class="c-code">{{ row.age != null ? row.age : '--' }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="userCode" label="工号" min-width="90" align="center">
@@ -291,11 +308,7 @@
 <script>
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
-import {
-  getRealtimeOverview,
-  getOnlineUsers,
-  getRealtimeStatistics
-} from '@/api/realtime'
+import { getOnlineUsers } from '@/api/realtime'
 import { sendWatchMessage, sendVoiceMessage, getVoiceTemplates } from '@/api/device'
 
 export default {
@@ -303,22 +316,6 @@ export default {
   data() {
     return {
       currentTime: '',
-      overview: {
-        avgHeartRate: 0,
-        avgBloodOxygen: 0,
-        avgSteps: 0,
-        avgTemperature: 0,
-        avgBloodPressureHigh: 0,
-        avgPressure: 0,
-        todayWarningCount: 0
-      },
-      statistics: {
-        onlineUsers: 0,
-        totalUsers: 0,
-        todayRecords: 0,
-        onlineRate: 0,
-        normalRate: 0
-      },
       onlineUsers: { list: [], total: 0 },
       searchForm: { name: '', dept: '', status: '' },
       hrFilter: null,
@@ -359,88 +356,22 @@ export default {
     }
   },
   computed: {
-    headerKpis() {
-      const s = this.statistics
-      const o = this.overview
-      return [
-        { label: '在线设备',   val: s.onlineUsers,         cls: 'kpi-green',  clickable: false, onClick: null },
-        { label: '设备总数',   val: s.totalUsers,           cls: '',           clickable: false, onClick: null },
-        {
-          label: '在线率',
-          val: s.onlineRate + '%',
-          cls: this.rateCls(s.onlineRate),
-          clickable: true,
-          onClick: () => {
-            ElMessage.info({
-              message: `在线率 = 在线设备 / 设备总数 × 100%（当前：${s.onlineUsers} / ${s.totalUsers}）`,
-              duration: 3000
-            })
-          }
-        },
-        { label: '健康正常率', val: s.normalRate + '%',     cls: this.rateCls(s.normalRate), clickable: false, onClick: null },
-        {
-          label: '近7天预警',
-          val: o.todayWarningCount,
-          cls: o.todayWarningCount > 0 ? 'kpi-warn' : 'kpi-green',
-          clickable: true,
-          onClick: () => {
-            this.searchForm.status = this.searchForm.status === 'warning' ? '' : 'warning'
-            this.currentPage = 1
-          }
-        },
-        { label: '近7天记录',  val: s.todayRecords,         cls: '',           clickable: false, onClick: null }
-      ]
+    allUsers() {
+      return this.onlineUsers.list || []
     },
-    vitalCards() {
-      const o = this.overview
-      return [
-        {
-          key: 'hr', label: '平均心率',
-          value: o.avgHeartRate || '--', sub: '次/分钟',
-          icon: 'Odometer', color: '#ef4444', bg: 'rgba(239,68,68,0.15)',
-          dotCls: this.metricDot('hr', o.avgHeartRate)
-        },
-        {
-          key: 'spo2', label: '平均血氧',
-          value: o.avgBloodOxygen ? o.avgBloodOxygen + '%' : '--', sub: '正常 ≥95%',
-          icon: 'DataLine', color: '#3b82f6', bg: 'rgba(59,130,246,0.15)',
-          dotCls: this.metricDot('spo2', o.avgBloodOxygen)
-        },
-        {
-          key: 'temp', label: '平均体温',
-          value: o.avgTemperature ? o.avgTemperature + '°C' : '--', sub: '正常 36~37.5',
-          icon: 'TrendCharts', color: '#f97316', bg: 'rgba(249,115,22,0.15)',
-          dotCls: this.metricDot('temp', o.avgTemperature)
-        },
-        {
-          key: 'steps', label: '平均步数',
-          value: o.avgSteps || '--', sub: '步/天',
-          icon: 'Histogram', color: '#22c55e', bg: 'rgba(34,197,94,0.15)',
-          dotCls: 'dot-ok'
-        },
-        {
-          key: 'bp', label: '平均收缩压',
-          value: o.avgBloodPressureHigh ? Math.round(o.avgBloodPressureHigh) + ' mmHg' : '--',
-          sub: '正常 90~139',
-          icon: 'Pointer', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)',
-          dotCls: this.metricDot('bp', o.avgBloodPressureHigh)
-        },
-        {
-          key: 'pressure', label: '平均压力指数',
-          value: o.avgPressure ? Math.round(o.avgPressure) : '--', sub: '正常 < 70',
-          icon: 'Lightning', color: '#fb923c', bg: 'rgba(251,146,60,0.15)',
-          dotCls: this.metricDot('pressure', o.avgPressure)
-        },
-        {
-          key: 'warn', label: '近7天预警',
-          value: o.todayWarningCount || 0, sub: '近7天累计',
-          icon: 'Warning', color: '#E6A23C', bg: 'rgba(230,162,60,0.15)',
-          dotCls: o.todayWarningCount > 0 ? 'dot-warn' : 'dot-ok'
-        }
-      ]
+    warningUsers() {
+      return this.allUsers
+        .filter(u => u.status === 'warning')
+        .sort((a, b) => new Date(b.lastUpdate) - new Date(a.lastUpdate))
+    },
+    normalCount() {
+      return this.allUsers.filter(u => u.status === 'normal').length
+    },
+    warningCount() {
+      return this.warningUsers.length
     },
     filteredUserList() {
-      let list = this.onlineUsers.list || []
+      let list = this.allUsers
       if (this.searchForm.name) {
         const q = this.searchForm.name.trim().toLowerCase()
         list = list.filter(u =>
@@ -512,74 +443,66 @@ export default {
       ]
     }
   },
-  watch: {
-    filteredUserList() {
-      // Removed chart updates
-    }
-  },
   mounted() {
     this.initTime()
-    this.fetchData()
+    this.fetchOnlineUsers()
     this.autoRefresh()
     this.startAutoScroll()
     document.addEventListener('visibilitychange', this.onVisibilityChange)
+    this.$nextTick(() => {
+      this._ro = new ResizeObserver(() => this.updatePageSize())
+      const el = this.$refs.tableWrapper
+      if (el) { this._ro.observe(el); this.updatePageSize() }
+    })
   },
   beforeUnmount() {
     clearInterval(this.refreshTimer)
     clearInterval(this.autoScrollTimer)
     clearInterval(this.clockTimer)
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
+    if (this._ro) this._ro.disconnect()
   },
   methods: {
+    updatePageSize() {
+      const el = this.$refs.tableWrapper
+      if (!el) return
+      const HEADER_H = 44
+      const ROW_H    = 41
+      const n = Math.max(10, Math.floor((el.clientHeight - HEADER_H) / ROW_H))
+      if (n !== this.pageSize) {
+        this.pageSize = n
+        this.currentPage = 1
+      }
+    },
     initTime() {
-      this.currentTime = dayjs().format('YYYY-MM-DD HH:mm:ss')
+      this.currentTime = dayjs().format('HH:mm:ss')
       this.clockTimer = setInterval(() => {
-        this.currentTime = dayjs().format('YYYY-MM-DD HH:mm:ss')
+        this.currentTime = dayjs().format('HH:mm:ss')
       }, 1000)
     },
 
-    async fetchData() {
+    async fetchOnlineUsers() {
       if (this._fetching) return
       this._fetching = true
       const isFirst = !this._loaded
       if (isFirst) this.isLoading = true
       try {
-        await Promise.all([
-          this.fetchOverview(),
-          this.fetchOnlineUsers(),
-          this.fetchStatistics()
-        ])
+        const r = await getOnlineUsers(1, 10000)
+        if (r.code === 200) {
+          this.onlineUsers = r.data
+          const depts = new Set((r.data.list || []).map(u => u.deptName).filter(Boolean))
+          this.deptList = [...depts].sort()
+        }
         this._loaded = true
-      } catch (e) {
-        // 错误由各子方法自行处理，无需向上传播
       } finally {
         this._fetching = false
         if (isFirst) this.isLoading = false
       }
     },
 
-    async fetchOverview() {
-      const r = await getRealtimeOverview()
-      if (r.code === 200) this.overview = r.data
-    },
-
-    async fetchOnlineUsers() {
-      const r = await getOnlineUsers(1, 10000)
-      if (r.code === 200) {
-        this.onlineUsers = r.data
-        const depts = new Set((r.data.list || []).map(u => u.deptName).filter(Boolean))
-        this.deptList = [...depts].sort()
-      }
-    },
-
-    async fetchStatistics() {
-      const r = await getRealtimeStatistics()
-      if (r.code === 200) this.statistics = r.data
-    },
-
     autoRefresh() {
       this.refreshTimer = setInterval(() => {
-        this.fetchData()
+        this.fetchOnlineUsers()
       }, 5000)
     },
 
@@ -588,16 +511,13 @@ export default {
         clearInterval(this.refreshTimer)
         clearInterval(this.autoScrollTimer)
       } else {
-        this.fetchData()
+        this.fetchOnlineUsers()
         this.autoRefresh()
         this.startAutoScroll()
       }
     },
 
-    handleSearch() {
-      this.currentPage = 1
-    },
-
+    handleSearch() { this.currentPage = 1 },
     handleReset() {
       this.searchForm = { name: '', dept: '', status: '' }
       this.hrFilter = null
@@ -618,29 +538,21 @@ export default {
       }, 50)
     },
 
-    toggleAutoScroll() {
-      this.autoScrollEnabled = !this.autoScrollEnabled
-    },
-    pauseAutoScroll() { this.scrollPaused = true },
+    toggleAutoScroll() { this.autoScrollEnabled = !this.autoScrollEnabled },
+    pauseAutoScroll()  { this.scrollPaused = true },
     resumeAutoScroll() { this.scrollPaused = false },
 
-    rateCls(v) {
-      if (v >= 80) return 'kpi-green'
-      if (v >= 60) return 'kpi-yellow'
-      return 'kpi-warn'
+    rowClass({ row }) {
+      return row.status === 'warning' ? 'row-warning' : ''
     },
 
-    metricDot(key, val) {
-      if (!val) return 'dot-none'
-      const map = {
-        hr:       v => (v >= 60 && v <= 100) ? 'dot-ok' : (v >= 50 && v <= 120) ? 'dot-warn' : 'dot-danger',
-        spo2:     v => v >= 97 ? 'dot-ok' : v >= 94 ? 'dot-warn' : 'dot-danger',
-        temp:     v => (v >= 36.0 && v <= 37.3) ? 'dot-ok' : (v >= 35.5 && v <= 37.8) ? 'dot-warn' : 'dot-danger',
-        sleep:    v => (v >= 7 && v <= 9) ? 'dot-ok' : v >= 6 ? 'dot-warn' : 'dot-danger',
-        bp:       v => (v >= 90 && v <= 139) ? 'dot-ok' : (v < 160) ? 'dot-warn' : 'dot-danger',
-        pressure: v => v < 70 ? 'dot-ok' : v < 85 ? 'dot-warn' : 'dot-danger'
-      }
-      return map[key] ? map[key](val) : 'dot-ok'
+    getUserIndicator(u) {
+      if (u.heartRate && (u.heartRate < 50 || u.heartRate > 120)) return `心率 ${u.heartRate}`
+      if (u.bloodOxygen && u.bloodOxygen < 90)                     return `血氧 ${u.bloodOxygen}%`
+      if (u.temperature && (u.temperature < 35 || u.temperature > 38)) return `体温 ${u.temperature}°`
+      if (u.bloodPressureHigh && u.bloodPressureHigh >= 160)        return `血压 ${u.bloodPressureHigh}`
+      if (u.pressure && u.pressure >= 85)                           return `压力 ${u.pressure}`
+      return '体征异常'
     },
 
     hrCls(v) {
@@ -649,35 +561,30 @@ export default {
       if (v < 60 || v > 100) return 'c-warn'
       return 'c-ok'
     },
-
     spo2Cls(v) {
       if (!v) return 'c-dim'
       if (v < 90) return 'c-danger'
       if (v < 95) return 'c-warn'
       return 'c-ok'
     },
-
     tempCls(v) {
       if (!v) return 'c-dim'
       if (v < 35 || v > 38) return 'c-danger'
       if (v < 36 || v > 37.5) return 'c-warn'
       return 'c-ok'
     },
-
     bpCls(v) {
       if (!v) return 'c-dim'
       if (v >= 160) return 'c-danger'
       if (v >= 140 || v < 90) return 'c-warn'
       return 'c-bp'
     },
-
     bpLowCls(v) {
       if (!v) return 'c-dim'
       if (v >= 100) return 'c-danger'
       if (v >= 90 || v < 60) return 'c-warn'
       return 'c-bp'
     },
-
     pressureCls(v) {
       if (v == null) return 'c-dim'
       if (v >= 85) return 'c-danger'
@@ -742,18 +649,16 @@ export default {
       } catch {
         ElMessage.error('推送失败')
       }
-    },
-
+    }
   }
 }
 </script>
 
 <style lang="scss" scoped>
-/* ===== Root ===== */
 .rt-root {
   width: 100%;
-  height: calc(100vh - 50px); /* 视口高度 - 顶部导航栏 */
-  min-height: 600px; /* 最小高度防止过小 */
+  height: calc(100vh - 50px);
+  min-height: 600px;
   background: #0a0e27;
   overflow: hidden;
   display: flex;
@@ -764,14 +669,14 @@ export default {
 
 /* ===== Header ===== */
 .rt-hd {
-  height: 60px;
+  height: 54px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  padding: 0 24px;
-  background: rgba(0, 8, 28, 0.6);
+  padding: 0 20px;
+  background: rgba(0, 8, 28, 0.7);
   border-bottom: 1px solid rgba(0, 212, 255, 0.2);
-  gap: 24px;
+  gap: 16px;
 }
 
 .rt-hd-left {
@@ -782,8 +687,7 @@ export default {
 }
 
 .rt-live-dot {
-  width: 9px;
-  height: 9px;
+  width: 8px; height: 8px;
   border-radius: 50%;
   background: #00d4ff;
   box-shadow: 0 0 8px #00d4ff;
@@ -791,49 +695,109 @@ export default {
 }
 
 .rt-hd-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold;
   color: #fff;
   margin: 0;
   white-space: nowrap;
-  text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+  text-shadow: 0 0 12px rgba(0,212,255,0.5);
 }
 
-.rt-hd-kpis {
-  display: flex;
+/* ticker */
+.rt-ticker-wrap {
   flex: 1;
-  justify-content: center;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  min-width: 0;
 }
 
-.rt-kpi {
+.rt-ticker-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #E6A23C;
+  background: rgba(230,162,60,0.15);
+  border: 1px solid rgba(230,162,60,0.35);
+  border-radius: 4px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.rt-ticker-scroll {
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+  height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+.rt-ticker-inner {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  white-space: nowrap;
+  animation: tickerScroll 30s linear infinite;
+  &:hover { animation-play-state: paused; }
+}
+
+@keyframes tickerScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.rt-ticker-tag {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #ffd200;
+  background: rgba(255,210,0,0.08);
+  border: 1px solid rgba(255,210,0,0.25);
+  border-radius: 12px;
+  padding: 2px 10px;
+  em { font-style: normal; color: #ff9800; margin-left: 4px; }
+}
+
+.rt-ticker-empty {
+  font-size: 12px;
+  color: #22c55e;
+  white-space: nowrap;
+}
+
+/* right stats */
+.rt-hd-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.rt-hd-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 30px;
-  border-right: 1px solid rgba(0, 212, 255, 0.2);
-  transition: background 0.2s;
-  &:first-child { border-left: 1px solid rgba(0, 212, 255, 0.2); }
-  &[style*="pointer"]:hover {
-    background: rgba(0, 212, 255, 0.06);
-  }
 }
 
-.rt-kpi-n {
-  font-size: 22px;
-  font-weight: bold;
+.rt-hd-stat-val {
+  font-size: 20px;
+  font-weight: 700;
   font-family: 'Consolas', monospace;
-  color: #00d4ff;
   line-height: 1.1;
-  margin-bottom: 2px;
-  &.kpi-green  { color: #67C23A; }
-  &.kpi-yellow { color: #f0d060; }
-  &.kpi-warn   { color: #E6A23C; }
+  &.st-ok   { color: #22c55e; }
+  &.st-warn { color: #E6A23C; }
+  &.val-blink { animation: blink 1.5s infinite; }
 }
 
-.rt-kpi-l {
+.rt-hd-stat-lbl {
   font-size: 11px;
   color: #8ba6c8;
-  white-space: nowrap;
+}
+
+.rt-hd-sep {
+  width: 1px;
+  height: 28px;
+  background: rgba(0,212,255,0.2);
 }
 
 .rt-hd-time {
@@ -848,85 +812,10 @@ export default {
 .rt-bd {
   flex: 1;
   display: flex;
-  gap: 10px;
   padding: 10px;
   overflow: hidden;
 }
 
-/* ===== Left aside (6 vital cards) ===== */
-.rt-aside {
-  width: 195px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rt-vital {
-  flex: 1;
-  background: rgba(10, 18, 48, 0.65);
-  border: 1px solid rgba(0, 212, 255, 0.2);
-  border-radius: 8px;
-  padding: 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  position: relative;
-  transition: border-color 0.25s, background 0.25s;
-
-  &:hover {
-    border-color: rgba(0, 212, 255, 0.4);
-    background: rgba(0, 28, 70, 0.75);
-  }
-}
-
-.rt-vital-ico {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.rt-vital-info { flex: 1; min-width: 0; }
-
-.rt-vital-val {
-  font-size: 21px;
-  font-weight: bold;
-  font-family: 'Consolas', monospace;
-  line-height: 1.2;
-}
-
-.rt-vital-lbl {
-  font-size: 12px;
-  color: #a8c5e6;
-  margin-top: 2px;
-}
-
-.rt-vital-sub {
-  font-size: 11px;
-  color: #6b7b94;
-  margin-top: 1px;
-}
-
-.rt-vital-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  flex-shrink: 0;
-
-  &.dot-ok     { background: #67C23A; box-shadow: 0 0 6px #67C23A; }
-  &.dot-warn   { background: #E6A23C; box-shadow: 0 0 6px #E6A23C; animation: blink 1.5s infinite; }
-  &.dot-danger { background: #F56C6C; box-shadow: 0 0 6px #F56C6C; animation: blink 1s infinite; }
-  &.dot-none   { background: #4a5568; }
-}
-
-/* ===== Center (table) ===== */
 .rt-main {
   flex: 1;
   overflow: hidden;
@@ -935,8 +824,8 @@ export default {
 }
 
 .rt-panel {
-  background: rgba(10, 18, 48, 0.65);
-  border: 1px solid rgba(0, 212, 255, 0.2);
+  background: rgba(10,18,48,0.65);
+  border: 1px solid rgba(0,212,255,0.2);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -950,7 +839,7 @@ export default {
 
 .rt-ph {
   padding: 10px 16px;
-  border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+  border-bottom: 1px solid rgba(0,212,255,0.15);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -966,8 +855,7 @@ export default {
 }
 
 .rt-ph-dot {
-  width: 6px;
-  height: 6px;
+  width: 6px; height: 6px;
   background: #00d4ff;
   border-radius: 50%;
   box-shadow: 0 0 6px #00d4ff;
@@ -983,8 +871,8 @@ export default {
 .rt-badge-online {
   font-size: 12px;
   color: #22c55e;
-  background: rgba(34, 197, 94, 0.15);
-  border: 1px solid rgba(34, 197, 94, 0.35);
+  background: rgba(34,197,94,0.15);
+  border: 1px solid rgba(34,197,94,0.35);
   border-radius: 10px;
   padding: 1px 10px;
 }
@@ -992,15 +880,12 @@ export default {
 .rt-badge-filter {
   font-size: 12px;
   color: #00d4ff;
-  background: rgba(0, 212, 255, 0.12);
-  border: 1px solid rgba(0, 212, 255, 0.4);
+  background: rgba(0,212,255,0.12);
+  border: 1px solid rgba(0,212,255,0.4);
   border-radius: 10px;
   padding: 1px 10px;
   cursor: pointer;
-  transition: background 0.2s;
-  &:hover {
-    background: rgba(0, 212, 255, 0.22);
-  }
+  &:hover { background: rgba(0,212,255,0.22); }
 }
 
 .rt-ph-right {
@@ -1009,12 +894,11 @@ export default {
   gap: 8px;
 }
 
-/* Input / Select dark theme */
 .rt-inp {
   width: 150px;
   :deep(.el-input__wrapper) {
-    background: rgba(0, 25, 60, 0.7) !important;
-    border: 1px solid rgba(0, 212, 255, 0.3) !important;
+    background: rgba(0,25,60,0.7) !important;
+    border: 1px solid rgba(0,212,255,0.3) !important;
     box-shadow: none !important;
   }
   :deep(.el-input__inner) {
@@ -1026,31 +910,31 @@ export default {
 .rt-sel {
   width: 130px;
   :deep(.el-select__wrapper) {
-    background: rgba(0, 25, 60, 0.7) !important;
-    border: 1px solid rgba(0, 212, 255, 0.3) !important;
+    background: rgba(0,25,60,0.7) !important;
+    border: 1px solid rgba(0,212,255,0.3) !important;
     box-shadow: none !important;
   }
-  :deep(.el-select__placeholder)          { color: #5a6a80 !important; }
-  :deep(.el-select__selected-item span)   { color: #a8c5e6 !important; }
-  :deep(.el-select__caret)                { color: #00d4ff !important; }
+  :deep(.el-select__placeholder)        { color: #5a6a80 !important; }
+  :deep(.el-select__selected-item span) { color: #a8c5e6 !important; }
+  :deep(.el-select__caret)              { color: #00d4ff !important; }
 }
 
 .rt-sel-sm {
   width: 110px;
   :deep(.el-select__wrapper) {
-    background: rgba(0, 25, 60, 0.7) !important;
-    border: 1px solid rgba(0, 212, 255, 0.3) !important;
+    background: rgba(0,25,60,0.7) !important;
+    border: 1px solid rgba(0,212,255,0.3) !important;
     box-shadow: none !important;
   }
-  :deep(.el-select__placeholder)          { color: #5a6a80 !important; }
-  :deep(.el-select__selected-item span)   { color: #a8c5e6 !important; }
-  :deep(.el-select__caret)                { color: #00d4ff !important; }
+  :deep(.el-select__placeholder)        { color: #5a6a80 !important; }
+  :deep(.el-select__selected-item span) { color: #a8c5e6 !important; }
+  :deep(.el-select__caret)              { color: #00d4ff !important; }
 }
 
 .rt-btn {
   padding: 7px 14px;
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.18), rgba(0, 80, 200, 0.18));
-  border: 1px solid rgba(0, 212, 255, 0.4);
+  background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(0,80,200,0.18));
+  border: 1px solid rgba(0,212,255,0.4);
   border-radius: 5px;
   color: #00d4ff;
   font-size: 13px;
@@ -1060,67 +944,59 @@ export default {
   gap: 5px;
   white-space: nowrap;
   transition: all 0.25s;
-
-  &:hover {
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.28), rgba(0, 80, 200, 0.28));
-    box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
-  }
+  &:hover { background: linear-gradient(135deg, rgba(0,212,255,0.28), rgba(0,80,200,0.28)); box-shadow: 0 0 8px rgba(0,212,255,0.3); }
   &:active { transform: scale(0.96); }
 }
 
 .rt-btn-g {
   padding: 7px 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
   color: #8ba6c8;
-  &:hover { background: rgba(255, 255, 255, 0.1); box-shadow: none; }
+  &:hover { background: rgba(255,255,255,0.1); box-shadow: none; }
 }
 
-/* Table wrapper */
+/* Table */
 .rt-tbl-wrap {
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
-
   &::-webkit-scrollbar       { width: 4px; }
-  &::-webkit-scrollbar-track { background: rgba(0, 20, 50, 0.4); }
-  &::-webkit-scrollbar-thumb { background: rgba(0, 212, 255, 0.3); border-radius: 2px; }
+  &::-webkit-scrollbar-track { background: rgba(0,20,50,0.4); }
+  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
 
   :deep(.el-table) {
-    --el-table-border-color: rgba(0, 212, 255, 0.2) !important;
-    --el-table-row-hover-bg-color: rgba(0, 80, 180, 0.3) !important;
+    --el-table-border-color: rgba(0,212,255,0.2) !important;
+    --el-table-row-hover-bg-color: rgba(0,80,180,0.3) !important;
     --el-table-bg-color: transparent !important;
     --el-table-tr-bg-color: transparent !important;
     background: transparent !important;
-
     &::before { display: none; }
-
-    .el-table__body-wrapper {
-      overflow-x: auto !important;
-    }
-
+    .el-table__body-wrapper { overflow-x: auto !important; }
     .el-table__header th.el-table__cell {
-      background: rgba(0, 40, 90, 0.9) !important;
-      border-color: rgba(0, 212, 255, 0.3) !important;
+      background: rgba(0,40,90,0.9) !important;
+      border-color: rgba(0,212,255,0.3) !important;
       color: #00d4ff !important;
     }
-
     .el-table__body tr {
       background: transparent;
-      &:nth-child(even) td { background: rgba(0, 30, 70, 0.25) !important; }
-      &:hover > td        { background: rgba(0, 80, 180, 0.3) !important; }
+      &:nth-child(even) td { background: rgba(0,30,70,0.25) !important; }
+      &:hover > td        { background: rgba(0,80,180,0.3) !important; }
     }
+    td.el-table__cell { border-color: rgba(0,212,255,0.15) !important; }
+  }
 
-    td.el-table__cell { border-color: rgba(0, 212, 255, 0.15) !important; }
+  /* 预警行高亮 */
+  :deep(.row-warning) td {
+    background: rgba(230,162,60,0.06) !important;
   }
 }
 
-/* Cell value color classes */
 .c-name     { color: #00d4ff; font-weight: 500; }
 .c-code     { color: #8ba6c8; }
 .c-dept     { color: #a8c5e6; }
 .c-steps    { color: #22c55e; font-weight: 500; }
-.c-sleep    { color: #a855f7; font-weight: 500; }
+.c-calories { color: #f97316; font-weight: 500; }
 .c-time     { color: #8ba6c8; font-size: 12px; }
 .c-dim      { color: #6b7b94; }
 .c-ok       { color: #67C23A; font-weight: 600; }
@@ -1135,35 +1011,25 @@ export default {
   border-radius: 10px;
   font-size: 12px;
   font-weight: 500;
-  &.st-ok {
-    background: rgba(103, 194, 58, 0.18);
-    color: #67C23A;
-    border: 1px solid rgba(103, 194, 58, 0.4);
-  }
-  &.st-warn {
-    background: rgba(230, 162, 60, 0.18);
-    color: #E6A23C;
-    border: 1px solid rgba(230, 162, 60, 0.4);
-    animation: blink 2s infinite;
-  }
+  &.st-ok   { background: rgba(103,194,58,0.18);  color: #67C23A; border: 1px solid rgba(103,194,58,0.4); }
+  &.st-warn { background: rgba(230,162,60,0.18);  color: #E6A23C; border: 1px solid rgba(230,162,60,0.4); animation: blink 2s infinite; }
 }
 
-/* 发消息按钮 */
 .rt-msg-btn {
   padding: 3px 8px;
   font-size: 13px;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.4);
+  background: rgba(99,102,241,0.15);
+  border: 1px solid rgba(99,102,241,0.4);
   color: #a5b4fc;
   border-radius: 4px;
   cursor: pointer;
-  &:hover { background: rgba(99, 102, 241, 0.3); color: #c7d2fe; }
+  &:hover { background: rgba(99,102,241,0.3); color: #c7d2fe; }
 }
 .rt-voice-btn {
-  background: rgba(245, 158, 11, 0.15);
-  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245,158,11,0.15);
+  border-color: rgba(245,158,11,0.4);
   color: #fbbf24;
-  &:hover { background: rgba(245, 158, 11, 0.3); color: #fde68a; }
+  &:hover { background: rgba(245,158,11,0.3); color: #fde68a; }
 }
 .rt-voice-tpl {
   padding: 10px 14px;
@@ -1193,7 +1059,7 @@ export default {
 /* Pagination */
 .rt-pg {
   padding: 8px 16px;
-  border-top: 1px solid rgba(0, 212, 255, 0.15);
+  border-top: 1px solid rgba(0,212,255,0.15);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1201,79 +1067,41 @@ export default {
 }
 
 .rt-pg-btn {
-  min-width: 50px;
-  height: 30px;
-  padding: 0 10px;
-  background: rgba(20, 60, 120, 0.3);
-  border: 1px solid rgba(0, 212, 255, 0.3);
+  min-width: 50px; height: 30px; padding: 0 10px;
+  background: rgba(20,60,120,0.3);
+  border: 1px solid rgba(0,212,255,0.3);
   border-radius: 4px;
   color: #00d4ff;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.25s;
-
-  &:hover:not(:disabled) {
-    background: rgba(0, 212, 255, 0.2);
-    border-color: #00d4ff;
-  }
+  &:hover:not(:disabled) { background: rgba(0,212,255,0.2); border-color: #00d4ff; }
   &:disabled { opacity: 0.3; cursor: not-allowed; }
 }
 
-.rt-pg-info {
-  color: #00d4ff;
-  font-size: 14px;
-  font-weight: 500;
-  min-width: 70px;
-  text-align: center;
-}
+.rt-pg-info  { color: #00d4ff; font-size: 14px; font-weight: 500; min-width: 70px; text-align: center; }
+.rt-pg-total { color: #8ba6c8; font-size: 12px; margin-left: 6px; }
 
-.rt-pg-total {
-  color: #8ba6c8;
-  font-size: 12px;
-  margin-left: 6px;
-}
-
-
-/* ===== Dialog dark theme override ===== */
 :deep(.el-dialog) {
   background: #0d1535 !important;
-  border: 1px solid rgba(0, 212, 255, 0.25) !important;
+  border: 1px solid rgba(0,212,255,0.25) !important;
   border-radius: 10px !important;
-  box-shadow: 0 0 40px rgba(0, 80, 200, 0.4) !important;
-
+  box-shadow: 0 0 40px rgba(0,80,200,0.4) !important;
   .el-dialog__header {
-    background: rgba(0, 25, 70, 0.8) !important;
-    border-bottom: 1px solid rgba(0, 212, 255, 0.2) !important;
+    background: rgba(0,25,70,0.8) !important;
+    border-bottom: 1px solid rgba(0,212,255,0.2) !important;
     padding: 14px 20px !important;
     margin-right: 0 !important;
     border-radius: 10px 10px 0 0 !important;
   }
-
-  .el-dialog__title {
-    color: #00d4ff !important;
-    font-size: 15px !important;
-    font-weight: bold !important;
-  }
-
+  .el-dialog__title { color: #00d4ff !important; font-size: 15px !important; font-weight: bold !important; }
   .el-dialog__headerbtn {
-    top: 14px !important;
-    right: 16px !important;
-
-    .el-dialog__close {
-      color: #8ba6c8 !important;
-      font-size: 18px !important;
-      &:hover { color: #00d4ff !important; }
-    }
+    top: 14px !important; right: 16px !important;
+    .el-dialog__close { color: #8ba6c8 !important; font-size: 18px !important; &:hover { color: #00d4ff !important; } }
   }
-
-  .el-dialog__body {
-    background: transparent !important;
-    padding: 16px 20px 20px !important;
-    color: #a8c5e6 !important;
-  }
+  .el-dialog__body { background: transparent !important; padding: 16px 20px 20px !important; color: #a8c5e6 !important; }
 }
 
-/* ===== Animations ===== */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.3; }

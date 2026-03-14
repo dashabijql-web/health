@@ -379,7 +379,17 @@ export default {
       return this.realtimeList.filter(x => x.bloodOxygen < 95)
     }
   },
-  mounted() { this.initPage() },
+  mounted() {
+    this.initPage()
+    this.$nextTick(() => {
+      this._ro = new ResizeObserver(() => this.setPageSize(27))
+      const el = this.$refs.listRef
+      if (el) { this._ro.observe(el); this.setPageSize(27) }
+    })
+  },
+  beforeUnmount() {
+    if (this._ro) this._ro.disconnect()
+  },
   methods: {
     async fetchData() {
       await Promise.allSettled([
@@ -730,7 +740,11 @@ export default {
 .bo-panel-trend { flex: 1; min-height: 0; }
 
 /* ── Rtlist ── */
-.bo-rtlist { width: 272px; flex-shrink: 0; }
+.bo-rtlist {
+  width: 272px; flex-shrink: 0;
+  display: flex; flex-direction: column; min-height: 0;
+  .bo-panel { flex: 1; min-height: 0; }
+}
 
 /* ── Panel（hm-panel mixin + 页面特有） ── */
 .bo-ph {

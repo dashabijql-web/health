@@ -50,6 +50,37 @@
 - ✅ Dashboard API 返回 `avgCalories = 441`
 - ✅ 前端显示"441 kcal"
 
+### ⚠️ 后续发现：存储过程自动重建视图问题（2026-03-13 16:40）
+
+**问题复现**：修复视图后数小时，视图又退回到13列，calories 列再次消失。
+
+**根本原因**：存储过程 `sp_update_monthly_views` 会自动重建视图，但其 SQL 模板中**缺少 calories 列**。
+
+**最终修复**（第4处）：
+```sql
+-- 修复存储过程模板（D:/HealthShow/fix_sp_update_monthly_views.sql）
+-- Line 23-25, 31-33: 在所有 SELECT 模板中添加 calories
+SELECT @monthly = STRING_AGG(
+    N'SELECT id, user_code, heart_rate, blood_oxygen, '
+    + N'blood_pressure_high, blood_pressure_low, temperature, sleep_minutes, '
+    + N'steps, calories, pressure, record_time, create_time, update_time '  -- 添加 calories
+    + N'FROM [dbo].[' + name + N']',
+    N' UNION ALL '
+) WITHIN GROUP (ORDER BY name)
+```
+
+**执行方式**：
+```bash
+sqlcmd -S "R9000K3080\MSSQLSERVER2019" -E -d health \
+  -i D:/HealthShow/fix_sp_update_monthly_views.sql
+```
+
+**最终验证**：
+- ✅ 存储过程已更新（包含 calories 列）
+- ✅ 视图有14列（包含 calories）
+- ✅ 后端重启后 50+ 秒，0 个 ERROR
+- ✅ 即使以后存储过程再被调用，也会正确生成包含 calories 的视图
+
 ---
 
 ## 🚨 关键教训与最佳实践

@@ -108,6 +108,7 @@ export default {
     setPageSize(rowH = 27) {
       const el = this.$refs.listRef; if (!el) return
       const n = Math.max(10, Math.floor(el.clientHeight / rowH))
+      console.log(`[setPageSize] clientHeight=${el.clientHeight} rowH=${rowH} → rows=${n} (pageSize was ${this.pageSize})`)
       if (n !== this.pageSize) {
         this.pageSize = n
         this.currentPage = 1

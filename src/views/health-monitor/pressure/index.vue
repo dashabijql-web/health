@@ -334,7 +334,17 @@ export default {
       ]
     }
   },
-  mounted() { this.initPage(() => this.loadRealtime()) },
+  mounted() {
+    this.initPage(() => this.loadRealtime())
+    this.$nextTick(() => {
+      this._ro = new ResizeObserver(() => this.setPageSize(27))
+      const el = this.$refs.listRef
+      if (el) { this._ro.observe(el); this.setPageSize(27) }
+    })
+  },
+  beforeUnmount() {
+    if (this._ro) this._ro.disconnect()
+  },
   methods: {
     async fetchData() {
       await Promise.allSettled([
@@ -694,7 +704,11 @@ $cyan:   #00d4ff;
 .ps-panel-dist     { flex: 0 0 258px; }
 
 // ── Right list ──
-.ps-rtlist { width: 272px; flex-shrink: 0; }
+.ps-rtlist {
+  width: 272px; flex-shrink: 0;
+  display: flex; flex-direction: column; min-height: 0;
+  .ps-panel { flex: 1; min-height: 0; }
+}
 
 // ── Panel（hm-panel mixin + 页面特有） ──
 .ps-ph {

@@ -88,7 +88,7 @@
         <div class="dm-panel dm-main-metrics">
           <div class="dm-ph">
             <span class="dm-ph-bar"></span>
-            <span class="dm-ph-title">{{ periodLabel }}检测概览</span>
+            <span class="dm-ph-title">{{ periodLabel }}检测数据量</span>
             <span class="dm-ph-sub">共 {{ totalRecords !== null ? totalRecords.toLocaleString() : '--' }} 条记录</span>
           </div>
           <div class="dm-metrics-row">
@@ -145,7 +145,7 @@
                     <button class="dm-page-btn-sm" :disabled="warningCurrentPage === warningTotalPages" @click="goToWarningPage('next')">›</button>
                   </div>
                 </div>
-                <div class="dm-event-list" ref="warningListMid" style="max-height:680px;overflow-y:auto">
+                <div class="dm-event-list" ref="warningListMid" style="max-height:680px;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none">
                   <div
                     v-for="(ev, i) in paginatedWarningEvents" :key="i"
                     :class="['dm-event', ev.level === 'danger' ? 'ev-danger' : 'ev-warn', ev.level === 'danger' ? 'alert-item--critical' : '', ev.handled ? 'ev-handled' : '']"
@@ -193,31 +193,10 @@
 
             </div>
 
-            <!-- ── 右：三区数据 ── -->
+            <!-- ── 右：两区数据 ── -->
             <div class="dm-model-data-col">
 
-              <!-- 区1：异常人员排行（已删除预警类型分布，保留在右侧栏） -->
-              <div class="dm-data-block">
-                <div class="dm-block-hd">
-                  <span class="dm-ph-bar"></span>
-                  <span class="dm-block-title">异常人员排行</span>
-                  <span class="dm-block-sub">{{ periodLabel }}累计</span>
-                </div>
-                <div class="dm-top5-list" ref="top5List">
-                  <div class="dm-top5-row" v-for="(item,i) in top5DisplayData" :key="i"
-                       @click="openEmployeeDrawer(item)" style="cursor:pointer">
-                    <span class="dm-top5-rank" :class="'rk-'+(i+1)">{{i+1}}</span>
-                    <span class="dm-top5-name">{{item.userName||item.name}}</span>
-                    <div class="dm-top5-bar-wrap">
-                      <div class="dm-top5-bar" :style="{width:(item.count/top5Max*100)+'%'}"></div>
-                    </div>
-                    <span class="dm-top5-val">{{item.count}}</span>
-                  </div>
-                  <div v-if="!top5DisplayData.length" class="dm-empty">暂无数据</div>
-                </div>
-              </div>
-
-              <!-- 区2：各指标每日异常率趋势折线图 -->
+              <!-- 区1：各指标每日异常率趋势折线图 -->
               <div class="dm-data-block dm-data-block-trend">
                 <div class="dm-block-hd">
                   <span class="dm-ph-bar"></span>
@@ -239,17 +218,8 @@
             </div><!-- /dm-model-data-col -->
           </div><!-- /dm-model-body -->
 
-          <!-- 底部信息条（业务统计，在线率已移至设备状态面板） -->
+          <!-- 底部信息条（业务统计） -->
           <div class="dm-model-footer">
-            <div class="dm-mf-dot" style="background:#38ef7d"></div>
-            <span class="dm-mf-label">健康达标率</span>
-            <span class="dm-mf-val" style="color:#38ef7d">{{ healthPassRate }}%</span>
-            <div class="dm-mf-sep"></div>
-            <div class="dm-mf-dot" style="background:#ff9800"></div>
-            <span class="dm-mf-label">预警设备</span>
-            <span class="dm-mf-val" style="color:#ff9800">{{ deviceWarningCount }}</span>
-            <span style="color:#8ba6c8;font-size:12px">台</span>
-            <div class="dm-mf-sep"></div>
             <div class="dm-mf-dot" style="background:#ffd200"></div>
             <span class="dm-mf-label">{{ periodLabel }}已处理</span>
             <span class="dm-mf-val" style="color:#ffd200">{{ warningEvents.filter(e=>e.handled).length }}</span>
@@ -304,7 +274,28 @@
       <!-- ─── 右栏 ─── -->
       <aside class="dm-right">
 
-        <!-- 健康小贴士（已扩展至15条） -->
+        <!-- 异常人员排行（与健康小贴士各占一半高度） -->
+        <div class="dm-panel dm-right-rank">
+          <div class="dm-ph">
+            <span class="dm-ph-bar"></span>
+            <span class="dm-ph-title">异常人员排行</span>
+            <span class="dm-ph-sub">{{ periodLabel }}累计</span>
+          </div>
+          <div class="dm-top5-list" ref="top5List">
+            <div class="dm-top5-row" v-for="(item,i) in top5DisplayData" :key="i"
+                 @click="openEmployeeDrawer(item)" style="cursor:pointer">
+              <span class="dm-top5-rank" :class="'rk-'+(i+1)">{{i+1}}</span>
+              <span class="dm-top5-name">{{item.userName||item.name}}</span>
+              <div class="dm-top5-bar-wrap">
+                <div class="dm-top5-bar" :style="{width:(item.count/top5Max*100)+'%'}"></div>
+              </div>
+              <span class="dm-top5-val">{{item.count}}</span>
+            </div>
+            <div v-if="!top5DisplayData.length" class="dm-empty">暂无数据</div>
+          </div>
+        </div>
+
+        <!-- 健康小贴士（与异常人员排行各占一半高度） -->
         <health-tips :count="15" class="dm-right-tips" />
 
         <!-- 指标预警率分析 -->
@@ -1715,12 +1706,11 @@ export default {
       } else if (direction === 'next' && this.warningCurrentPage < this.warningTotalPages) {
         this.warningCurrentPage++
       }
-      // 翻页后滚动到顶部
       this.$nextTick(() => {
         const list = this.$refs.warningListMid
-        if (list) {
-          list.scrollTop = 0
-        }
+        console.log('[手动翻页]', direction, '→ 第', this.warningCurrentPage, '页, scrollHeight=', list?.scrollHeight, 'clientHeight=', list?.clientHeight, '闭包 _warnScrollTop=', this._warnScrollTop)
+        if (list) list.scrollTop = 0
+        this._warnScrollTop = 0  // 同步重置闭包变量
       })
     },
 
@@ -1735,24 +1725,31 @@ export default {
             ? this.warningCurrentPage + 1 : 1
           this.$nextTick(() => {
             const list = this.$refs.warningListMid
+            console.log('[翻页定时器] 切到第', this.warningCurrentPage, '页, list.scrollHeight=', list?.scrollHeight, 'list.clientHeight=', list?.clientHeight, '重置 scrollTop=0, 闭包 scrollTop before reset=', this._warnScrollTop)
             if (list) list.scrollTop = 0
+            this._warnScrollTop = 0  // 同步重置闭包变量
           })
         }
       }, 8000)
 
       // 平滑滚动（内容溢出时）
+      this._warnScrollTop = 0
       this.$nextTick(() => {
         const list = this.$refs.warningListMid
         if (!list) return
-        let scrollTop = 0
         this.pageScrollInterval = setInterval(() => {
           const max = list.scrollHeight - list.clientHeight
-          if (max <= 0) { scrollTop = 0; return }
-          if (scrollTop >= max) {
-            scrollTop = max  // 停在底部等待翻页定时器处理
+          if (max <= 0) {
+            if (this._warnScrollTop !== 0) console.log('[滚动interval] max<=0, 重置')
+            this._warnScrollTop = 0
+            return
+          }
+          if (this._warnScrollTop >= max) {
+            console.log('[滚动interval] 到底了, scrollTop=', this._warnScrollTop, 'max=', max, '等待翻页')
+            this._warnScrollTop = max
           } else {
-            scrollTop += 1
-            list.scrollTop = scrollTop
+            this._warnScrollTop += 1
+            list.scrollTop = this._warnScrollTop
           }
         }, 40)
       })
@@ -1969,43 +1966,6 @@ $white:  #e8f4ff;
   flex:0 0 280px; position:relative;
   display:flex; flex-direction:column; align-items:stretch;
   overflow:hidden; padding:0;
-  &::before {
-    content: '';
-    position: absolute;
-    top: 52px;
-    bottom: 36px;
-    left: 0;
-    width: 2px;
-    background: repeating-linear-gradient(
-      to bottom,
-      rgba(0, 212, 255, 0.6) 0px,
-      rgba(0, 212, 255, 0.6) 4px,
-      transparent 4px,
-      transparent 12px
-    );
-    animation: dmDataStreamL 1.8s linear infinite;
-    z-index: 5;
-    pointer-events: none;
-  }
-  &::after {
-    content: '';
-    position: absolute;
-    top: 52px;
-    bottom: 36px;
-    right: 0;
-    width: 2px;
-    background: repeating-linear-gradient(
-      to bottom,
-      rgba(0, 212, 255, 0.6) 0px,
-      rgba(0, 212, 255, 0.6) 4px,
-      transparent 4px,
-      transparent 12px
-    );
-    animation: dmDataStreamR 1.8s linear infinite;
-    animation-delay: 0.9s;
-    z-index: 5;
-    pointer-events: none;
-  }
 }
 // 上方在岗概况条
 .dm-duty-bar {
@@ -2135,8 +2095,8 @@ $white:  #e8f4ff;
 .dm-top5-bar { height:100%; border-radius:3px; background:linear-gradient(90deg,#00d4ff,#0066cc); transition:width 0.8s ease; }
 .dm-top5-val { font-size:14px; font-weight:700; color:#00d4ff; font-family:'Consolas',monospace; width:28px; text-align:right; flex-shrink:0; }
 
-// 各指标每日异常率趋势折线图
-.dm-data-block-trend { flex:0 0 200px; }
+// 趋势和预警时段各占一半
+.dm-data-block-trend { flex:1; }
 
 // 底行：左右分割布局
 .dm-data-row2 {
@@ -2234,7 +2194,8 @@ $white:  #e8f4ff;
 .dm-right { width:300px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
 .dm-right-events  { flex:1; min-height:0; }
 .dm-right-warnrate{ flex:0 0 220px; }
-.dm-right-tips    { flex:0 0 200px; }
+.dm-right-rank    { flex:1; min-height:0; overflow:hidden; }
+.dm-right-tips    { flex:1; min-height:0; }
 
 // 实时预警动态
 .dm-badge-count {
@@ -2272,14 +2233,15 @@ $white:  #e8f4ff;
 
 .dm-event-list {
   flex:1; overflow-y:auto; padding:2px 0;
-  &::-webkit-scrollbar { width:3px; }
-  &::-webkit-scrollbar-thumb { background:rgba(0,212,255,0.2); border-radius:2px; }
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display:none; width:0; }
 }
 .dm-event {
   padding:8px 14px; border-bottom:1px solid rgba(0,212,255,0.07);
   transition: opacity 0.3s, background 0.3s;
-  &.ev-danger { border-left:3px solid #ff5252; background:rgba(255,82,82,0.05); }
-  &.ev-warn   { border-left:3px solid #ffd200; background:rgba(255,210,0,0.03); }
+  &.ev-danger { background:rgba(255,82,82,0.05); }
+  &.ev-warn   { background:rgba(255,210,0,0.03); }
   &.ev-handled {
     opacity: 0.45;
     border-left-color: #38ef7d !important;

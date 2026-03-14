@@ -113,15 +113,6 @@
             </div>
           </div>
 
-          <div class="hr-panel hr-panel-hourly">
-            <div class="hr-ph">
-              <span class="hr-ph-bar"></span>
-              <span class="hr-ph-title">{{ hourlyTitle }}</span>
-            </div>
-            <div class="hr-pc">
-              <div ref="hourlyRef" style="width:100%;height:100%"></div>
-            </div>
-          </div>
 
           <div class="hr-panel hr-panel-dist">
             <div class="hr-ph">
@@ -160,28 +151,6 @@
           </div>
         </div>
 
-        <!-- 心率区间分布统计 -->
-        <div class="hr-panel hr-panel-dist-stat">
-          <div class="hr-ph">
-            <span class="hr-ph-bar"></span>
-            <span class="hr-ph-title">当前在线人员心率分布</span>
-            <span class="hr-ds-total">共 <em>{{ realtimeList.length }}</em> 人在线</span>
-          </div>
-          <div class="hr-ds-body">
-            <div class="hr-ds-zone" :class="z.cls" v-for="z in hrZones" :key="z.key">
-              <div class="hr-ds-icon" :style="{color: z.color}">{{ z.icon }}</div>
-              <div class="hr-ds-count" :style="{color: z.color}">{{ z.count }}</div>
-              <div class="hr-ds-pct" :style="{color: z.color}">{{ z.pct }}%</div>
-              <div class="hr-ds-label">{{ z.label }}</div>
-              <div class="hr-ds-range">{{ z.range }}</div>
-            </div>
-          </div>
-          <div class="hr-ds-bar-row">
-            <div class="hr-ds-seg" v-for="z in hrZones" :key="z.key"
-              :style="{width: z.pct + '%', background: z.color}"
-              :title="z.label + ': ' + z.count + '人'"></div>
-          </div>
-        </div>
 
         <!-- 当前异常心率明细：高度跟内容走，不拉伸 -->
         <div class="hr-panel hr-panel-anomaly">
@@ -394,7 +363,20 @@ export default {
       ]
     }
   },
-  mounted() { this.initPage() },
+  mounted() {
+    this.initPage()
+    this.$nextTick(() => {
+      this._ro = new ResizeObserver(() => this.setPageSize(27))
+      const el = this.$refs.listRef
+      if (el) {
+        this._ro.observe(el)
+        this.setPageSize(27)
+      }
+    })
+  },
+  beforeUnmount() {
+    if (this._ro) this._ro.disconnect()
+  },
   methods: {
 
     async fetchData() {
@@ -659,7 +641,7 @@ export default {
 
     hrLevel,
 
-    // setPageSize → chartPageMixin
+    // setPageSize(27) → chartPageMixin（公式：floor(clientHeight / 27), min 10）
   }
 }
 </script>
@@ -781,13 +763,17 @@ export default {
 // ── Main（hm-main mixin） ──
 .hr-overview-panel { height: 162px; flex-shrink: 0; }
 .hr-mid-row        { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }
-.hr-panel-age      { flex: 0 0 340px; }
+.hr-panel-age      { flex: 1; }
 .hr-panel-hourly   { flex: 1; }
-.hr-panel-dist     { flex: 0 0 258px; }
+.hr-panel-dist     { flex: 1; }
 .hr-panel-trend    { flex: 1; min-height: 160px; max-height: 300px; }
 
 // ── Right list ──
-.hr-rtlist { width: 272px; flex-shrink: 0; }
+.hr-rtlist {
+  width: 272px; flex-shrink: 0;
+  display: flex; flex-direction: column; min-height: 0;
+  .hr-panel { flex: 1; min-height: 0; }
+}
 
 // ── Panel（hm-panel mixin + 页面特有） ──
 .hr-ph {

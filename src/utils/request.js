@@ -83,7 +83,7 @@ import router from '@/router'
  */
 const service = axios.create({
   baseURL: import.meta.env.VITE_BASE_API || '/dev-api',
-  timeout: 10000
+  timeout: 20000
 })
 
 /**
