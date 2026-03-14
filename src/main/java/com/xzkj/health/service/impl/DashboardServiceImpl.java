@@ -127,6 +127,7 @@ public class DashboardServiceImpl implements DashboardService {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> item : list) {
             Map<String, Object> warning = new HashMap<>();
+            warning.put("id",       item.get("id"));          // 用于前端"确认处理"接口传参
             warning.put("type",     item.get("warning_type"));
             warning.put("userName", item.get("real_name"));
             warning.put("empCode",  item.get("emp_code"));  // 员工编码，用于前端去重统计异常人员数
@@ -170,9 +171,12 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public List<Map<String, Object>> getDailyAnomalyRates(int days) {
-        String startDate = LocalDate.now().minusDays(days - 1).format(DATE_FMT);
-        String endDate   = LocalDate.now().format(DATE_FMT);
-        return dashboardMapper.getDailyAnomalyRates(startDate, endDate);
+        LocalDate start = LocalDate.now().minusDays(days - 1);
+        LocalDate end   = LocalDate.now();
+        String startDate = start.format(DATE_FMT);
+        String endDate   = end.format(DATE_FMT);
+        // 全部从预聚合汇总表读（30行，极快）；今天的汇总由定时任务每5分钟刷新
+        return dashboardMapper.getDailyStatsFromSummary(startDate, endDate);
     }
 
     @Override
