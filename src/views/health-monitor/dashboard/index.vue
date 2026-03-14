@@ -2128,7 +2128,6 @@ export default {
       }
       this.$nextTick(() => {
         const list = this.$refs.warningListMid
-        console.log('[手动翻页]', direction, '→ 第', this.warningCurrentPage, '页, scrollHeight=', list?.scrollHeight, 'clientHeight=', list?.clientHeight, '闭包 _warnScrollTop=', this._warnScrollTop)
         if (list) list.scrollTop = 0
         this._warnScrollTop = 0  // 同步重置闭包变量
       })
@@ -2145,7 +2144,6 @@ export default {
             ? this.warningCurrentPage + 1 : 1
           this.$nextTick(() => {
             const list = this.$refs.warningListMid
-            console.log('[翻页定时器] 切到第', this.warningCurrentPage, '页, list.scrollHeight=', list?.scrollHeight, 'list.clientHeight=', list?.clientHeight, '重置 scrollTop=0, 闭包 scrollTop before reset=', this._warnScrollTop)
             if (list) list.scrollTop = 0
             this._warnScrollTop = 0  // 同步重置闭包变量
           })
@@ -2160,13 +2158,21 @@ export default {
         this.pageScrollInterval = setInterval(() => {
           const max = list.scrollHeight - list.clientHeight
           if (max <= 0) {
-            if (this._warnScrollTop !== 0) console.log('[滚动interval] max<=0, 重置')
             this._warnScrollTop = 0
             return
           }
           if (this._warnScrollTop >= max) {
-            console.log('[滚动interval] 到底了, scrollTop=', this._warnScrollTop, 'max=', max, '等待翻页')
-            this._warnScrollTop = max
+            // 到底后暂停 interval，2s 后回顶重新开始，避免持续触发
+            if (!this._warnScrollPaused) {
+              this._warnScrollPaused = true
+              clearInterval(this.pageScrollInterval)
+              setTimeout(() => {
+                this._warnScrollTop = 0
+                list.scrollTop = 0
+                this._warnScrollPaused = false
+                this.startAutoScroll()
+              }, 2000)
+            }
           } else {
             this._warnScrollTop += 1
             list.scrollTop = this._warnScrollTop

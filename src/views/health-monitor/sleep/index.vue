@@ -440,7 +440,8 @@ export default {
     // ── 质量评分分布柱图 ──
     initScore(data) {
       const c = initChart(this.charts, 'score', this.$refs.scoreRef); if (!c) return
-      const d = data
+      const d = Array.isArray(data) ? data : []
+      if (!d.length) { c.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#8ba6c8', fontSize: 13, fontWeight: 'normal' } }, series: [] }); return }
       c.setOption({
         backgroundColor: 'transparent',
         tooltip: {

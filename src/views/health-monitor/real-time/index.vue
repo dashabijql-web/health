@@ -204,11 +204,11 @@
               <el-table-column label="操作" width="100" align="center" fixed="right">
                 <template #default="{ row }">
                   <div v-if="row.imei" style="display:flex;gap:4px;justify-content:center">
-                    <button class="rt-msg-btn" @click.stop="handleSendMessage(row)" title="文字消息">
-                      💬
+                    <button class="rt-msg-btn" @click.stop="handleSendMessage(row)" title="文字消息" aria-label="发送文字消息">
+                      <el-icon><ChatDotRound /></el-icon>
                     </button>
-                    <button class="rt-msg-btn rt-voice-btn" @click.stop="handleSendVoice(row)" title="语音广播">
-                      🔊
+                    <button class="rt-msg-btn rt-voice-btn" @click.stop="handleSendVoice(row)" title="语音广播" aria-label="语音广播">
+                      <el-icon><Bell /></el-icon>
                     </button>
                   </div>
                 </template>
@@ -259,7 +259,7 @@
     <!-- 语音广播对话框 -->
     <el-dialog
       v-model="voiceDialogVisible"
-      title="🔊 语音广播到手表"
+      title="语音广播到手表"
       width="400px"
       :append-to-body="true"
       :close-on-click-modal="false">
@@ -308,6 +308,7 @@
 <script>
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
+import { ChatDotRound, Bell } from '@element-plus/icons-vue'
 import { getOnlineUsers } from '@/api/realtime'
 import { sendWatchMessage, sendVoiceMessage, getVoiceTemplates } from '@/api/device'
 

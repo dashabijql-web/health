@@ -222,7 +222,22 @@ const { currentTime } = useClock()
 const overview = reactive({ todayTotal: 0, pending: 0, critical: 0, handled: 0 })
 const handleRate = computed(() => { const t = overview.todayTotal||0; return t===0?0:((overview.handled/t)*100).toFixed(1) })
 
-const loadOverview = async () => { try { const r = await getRiskWarningOverview(); if(r.code===200) Object.assign(overview, r.data||{}) } catch(e){} }
+const loadOverview = async () => {
+  try {
+    const r = await getRiskWarningOverview()
+    if (r.code === 200) {
+      const d = r.data || {}
+      // 后端字段名: totalWarnings/pendingWarnings/dangerCount/handledWarnings
+      // 前端字段名: todayTotal/pending/critical/handled
+      Object.assign(overview, {
+        todayTotal: d.totalWarnings   ?? d.todayTotal   ?? 0,
+        pending:    d.pendingWarnings ?? d.pending      ?? 0,
+        critical:   d.dangerCount     ?? d.critical     ?? 0,
+        handled:    d.handledWarnings ?? d.handled      ?? 0
+      })
+    }
+  } catch(e) {}
+}
 
 const searchForm = reactive({ dateRange: null, warningType: '', warningLevel: '', handleStatus: '', keyword: '' })
 const loading = ref(false)
@@ -253,7 +268,7 @@ const filterByCard = (type) => {
   if (type === 'unhandled') {
     searchForm.handleStatus = 'unhandled'
   } else if (type === 'critical') {
-    searchForm.warningLevel = 'critical'
+    searchForm.warningLevel = '高危'
   } else if (type === 'handled') {
     searchForm.handleStatus = 'handled'
   }
