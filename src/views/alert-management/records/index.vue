@@ -249,10 +249,11 @@ const loadData = async () => {
   try {
     const p = { page: pagination.page, size: pagination.size }
     if (searchForm.dateRange?.length===2) { p.startDate=searchForm.dateRange[0]; p.endDate=searchForm.dateRange[1] }
-    if (searchForm.warningType) p.warningType = searchForm.warningType
-    if (searchForm.warningLevel) p.warningLevel = searchForm.warningLevel
+    // 后端参数名与前端 searchForm 字段名的映射：
+    // warningLevel → level，keyword → userCode（模糊匹配员工编号/姓名由后端处理）
+    if (searchForm.warningLevel) p.level = searchForm.warningLevel
     if (searchForm.handleStatus==='handled') p.handled=true; else if(searchForm.handleStatus==='unhandled') p.handled=false
-    if (searchForm.keyword) p.keyword = searchForm.keyword
+    if (searchForm.keyword) p.userCode = searchForm.keyword
     const res = await getRiskWarningList(p)
     if (res.code===200) { tableData.value = res.data?.list||[]; pagination.total = res.data?.total||0 }
   } catch(e) { ElMessage.error('加载预警列表失败') }
