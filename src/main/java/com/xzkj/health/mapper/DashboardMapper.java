@@ -3,6 +3,7 @@ package com.xzkj.health.mapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.SelectProvider;
 
 import java.util.List;
 import java.util.Map;
@@ -187,13 +188,35 @@ public interface DashboardMapper {
             "  / NULLIF(COUNT(CASE WHEN temperature IS NOT NULL THEN 1 END), 0), 1) AS temperatureRate, " +
             "ROUND(COUNT(CASE WHEN pressure IS NOT NULL AND pressure > 75 THEN 1 END) * 100.0 " +
             "  / NULLIF(COUNT(CASE WHEN pressure IS NOT NULL THEN 1 END), 0), 1) AS pressureRate " +
-            "FROM v_health_record " +
-            "WHERE record_time >= CONVERT(date, #{startDate}) " +
-            "AND   record_time <  DATEADD(DAY, 1, CONVERT(date, #{endDate})) " +
+            "FROM ${tableSource} " +
             "GROUP BY CONVERT(VARCHAR(10), record_time, 120) " +
             "ORDER BY date ASC")
-    List<Map<String, Object>> getDailyAnomalyRates(@Param("startDate") String startDate,
-                                                   @Param("endDate")   String endDate);
+    List<Map<String, Object>> getDailyAnomalyRates(@Param("tableSource") String tableSource);
+
+    // 从预聚合日汇总表读取（极快，每行=1天）
+    @Select("SELECT CONVERT(VARCHAR(10), stat_date, 120) AS date, " +
+            "heart_rate_rate AS heartRateRate, blood_oxygen_rate AS bloodOxygenRate, " +
+            "temperature_rate AS temperatureRate, pressure_rate AS pressureRate " +
+            "FROM health_daily_stats " +
+            "WHERE stat_date >= CONVERT(date,#{startDate}) AND stat_date <= CONVERT(date,#{endDate}) " +
+            "ORDER BY stat_date ASC")
+    List<Map<String, Object>> getDailyStatsFromSummary(@Param("startDate") String startDate,
+                                                        @Param("endDate")   String endDate);
+
+    // 计算今日实时异常率（只扫当天数据，量小）
+    @Select("SELECT CONVERT(VARCHAR(10), record_time, 120) AS date, " +
+            "ROUND(COUNT(CASE WHEN heart_rate IS NOT NULL AND (heart_rate>100 OR heart_rate<60) THEN 1 END)*100.0 " +
+            "  / NULLIF(COUNT(CASE WHEN heart_rate IS NOT NULL THEN 1 END),0),1) AS heartRateRate, " +
+            "ROUND(COUNT(CASE WHEN blood_oxygen IS NOT NULL AND blood_oxygen<95 THEN 1 END)*100.0 " +
+            "  / NULLIF(COUNT(CASE WHEN blood_oxygen IS NOT NULL THEN 1 END),0),1) AS bloodOxygenRate, " +
+            "ROUND(COUNT(CASE WHEN temperature IS NOT NULL AND (temperature>375 OR temperature<360) THEN 1 END)*100.0 " +
+            "  / NULLIF(COUNT(CASE WHEN temperature IS NOT NULL THEN 1 END),0),1) AS temperatureRate, " +
+            "ROUND(COUNT(CASE WHEN pressure IS NOT NULL AND pressure>75 THEN 1 END)*100.0 " +
+            "  / NULLIF(COUNT(CASE WHEN pressure IS NOT NULL THEN 1 END),0),1) AS pressureRate " +
+            "FROM ${tableName} " +
+            "WHERE record_time >= CONVERT(date, GETDATE()) " +
+            "GROUP BY CONVERT(VARCHAR(10), record_time, 120)")
+    List<Map<String, Object>> getTodayAnomalyRates(@Param("tableName") String tableName);
 
     /**
      * 按日期统计预警数量（用于柱状图，不受 TOP 限制）
@@ -242,20 +265,27 @@ public interface DashboardMapper {
     @Select("SELECT TOP 10 " +
             "d.dept_name AS department, " +
             "COUNT(DISTINCT e.id) AS memberCount, " +
-            "CASE WHEN COUNT(hr.id) = 0 THEN 75 " +
-            "     WHEN COUNT(DISTINCT wc.id) >= COUNT(hr.id) THEN 0 " +
-            "     ELSE CAST(100 - COUNT(DISTINCT wc.id) * 100 / COUNT(hr.id) AS INT) " +
+            "CASE WHEN ISNULL(h.record_count, 0) = 0 THEN 75 " +
+            "     WHEN ISNULL(w.warning_count, 0) >= h.record_count THEN 0 " +
+            "     ELSE CAST(100 - ISNULL(w.warning_count, 0) * 100 / h.record_count AS INT) " +
             "END AS healthScore " +
             "FROM department d " +
             "INNER JOIN employee e ON d.id = e.dept_id AND (e.status IS NULL OR e.status = 0) " +
-            "LEFT JOIN v_health_record hr ON e.emp_code = hr.user_code " +
-            "  AND hr.record_time >= CONVERT(date, #{startTime}) " +
-            "  AND hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
-            "LEFT JOIN v_warning_record wc ON e.emp_code = wc.user_code " +
-            "  AND wc.create_time >= CONVERT(date, #{startTime}) " +
-            "  AND wc.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
-            "GROUP BY d.id, d.dept_name " +
-            "HAVING COUNT(hr.id) > 0 " +
+            "JOIN ( " +
+            "  SELECT user_code, COUNT(id) AS record_count " +
+            "  FROM v_health_record " +
+            "  WHERE record_time >= CONVERT(date, #{startTime}) " +
+            "  AND   record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  GROUP BY user_code " +
+            ") h ON h.user_code = e.emp_code " +
+            "LEFT JOIN ( " +
+            "  SELECT user_code, COUNT(id) AS warning_count " +
+            "  FROM v_warning_record " +
+            "  WHERE create_time >= CONVERT(date, #{startTime}) " +
+            "  AND   create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  GROUP BY user_code " +
+            ") w ON w.user_code = e.emp_code " +
+            "GROUP BY d.id, d.dept_name, h.record_count, w.warning_count " +
             "ORDER BY healthScore DESC")
     List<Map<String, Object>> getDeptRanking(@Param("startTime") String startTime,
                                               @Param("endTime")   String endTime);
@@ -264,6 +294,7 @@ public interface DashboardMapper {
      * 获取指定日期范围内的预警记录
      */
     @Select("SELECT TOP (#{limit}) " +
+            "w.id, " +
             "w.warning_type, " +
             "ISNULL(e.emp_name, w.user_code) AS real_name, " +
             "ISNULL(e.emp_code, w.user_code) AS emp_code, " +
@@ -342,4 +373,143 @@ public interface DashboardMapper {
             "  WHEN '中'   THEN 2 WHEN '警告' THEN 2 " +
             "  WHEN '低'   THEN 1 ELSE 0 END DESC, w.create_time DESC")
     List<Map<String, Object>> getDayWarnings(@Param("date") String date);
+
+    /**
+     * 获取指定日期范围内各指标的检测人数（DISTINCT user_code）
+     * 使用 CTE 先 GROUP BY user_code 再 SUM，避免多次 COUNT DISTINCT 全表扫描（原 ~2.3s → CTE ~180ms）
+     */
+    @Select(";WITH user_flags AS ( " +
+            "  SELECT user_code, " +
+            "    MAX(CASE WHEN heart_rate   IS NOT NULL THEN 1 ELSE 0 END) AS has_hr, " +
+            "    MAX(CASE WHEN blood_oxygen IS NOT NULL THEN 1 ELSE 0 END) AS has_bo, " +
+            "    MAX(CASE WHEN steps        IS NOT NULL THEN 1 ELSE 0 END) AS has_st, " +
+            "    MAX(CASE WHEN temperature  IS NOT NULL THEN 1 ELSE 0 END) AS has_tp, " +
+            "    MAX(CASE WHEN pressure     IS NOT NULL THEN 1 ELSE 0 END) AS has_pr " +
+            "  FROM v_health_record " +
+            "  WHERE record_time >= CONVERT(date, #{startTime}) " +
+            "  AND   record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  GROUP BY user_code " +
+            ") " +
+            "SELECT SUM(has_hr) AS heartRate, SUM(has_bo) AS bloodOxygen, " +
+            "SUM(has_st) AS steps, SUM(has_tp) AS temperature, " +
+            "SUM(has_pr) AS pressure, COUNT(*) AS totalPersons " +
+            "FROM user_flags")
+    Map<String, Object> getPersonCountsByRange(@Param("startTime") String startTime,
+                                               @Param("endTime")   String endTime);
+
+    /**
+     * 获取指定日期范围内各部门每日检测人数（用于弹窗折线图）
+     */
+    @Select("SELECT d.dept_name AS deptName, " +
+            "CONVERT(VARCHAR(10), hr.record_time, 120) AS day, " +
+            "COUNT(DISTINCT e.emp_code) AS personCount " +
+            "FROM v_health_record hr " +
+            "INNER JOIN employee e  ON hr.user_code = e.emp_code " +
+            "INNER JOIN department d ON e.dept_id   = d.id " +
+            "WHERE hr.record_time >= CONVERT(date, #{startTime}) " +
+            "AND   hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "GROUP BY d.dept_name, CONVERT(VARCHAR(10), hr.record_time, 120) " +
+            "ORDER BY d.dept_name, day")
+    List<Map<String, Object>> getDeptDailyPersons(@Param("startTime") String startTime,
+                                                   @Param("endTime")   String endTime);
+
+    /**
+     * 各部门检测人数 + 异常人数（用于部门综合看板图表）
+     * 使用 CTE 分别聚合两张 UNION-ALL 视图，避免跨视图 JOIN 全表扫描（原写法 ~10s，CTE ~400ms）
+     */
+    @Select(";WITH dept_persons AS ( " +
+            "  SELECT d.dept_name AS deptName, COUNT(DISTINCT hr.user_code) AS personCount " +
+            "  FROM v_health_record hr " +
+            "  INNER JOIN employee e   ON hr.user_code = e.emp_code " +
+            "  INNER JOIN department d ON e.dept_id    = d.id " +
+            "  WHERE hr.record_time >= CONVERT(date, #{startTime}) " +
+            "  AND   hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  GROUP BY d.dept_name " +
+            "), " +
+            "dept_abnormal AS ( " +
+            "  SELECT d.dept_name AS deptName, COUNT(DISTINCT wr.user_code) AS abnormalPersonCount " +
+            "  FROM v_warning_record wr " +
+            "  INNER JOIN employee e   ON wr.user_code = e.emp_code " +
+            "  INNER JOIN department d ON e.dept_id    = d.id " +
+            "  WHERE wr.create_time >= CONVERT(date, #{startTime}) " +
+            "  AND   wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  GROUP BY d.dept_name " +
+            ") " +
+            "SELECT dp.deptName, dp.personCount, " +
+            "ISNULL(da.abnormalPersonCount, 0) AS abnormalPersonCount " +
+            "FROM dept_persons dp " +
+            "LEFT JOIN dept_abnormal da ON dp.deptName = da.deptName " +
+            "ORDER BY dp.personCount DESC")
+    List<Map<String, Object>> getDeptPersonStats(@Param("startTime") String startTime,
+                                                  @Param("endTime")   String endTime);
+
+    // 直接查分区表，避免扫 UNION ALL 视图（由 Controller 传入具体表名）
+    @Select(";WITH dept_persons AS ( " +
+            "  SELECT d.dept_name AS deptName, COUNT(DISTINCT hr.user_code) AS personCount " +
+            "  FROM ${healthSource} hr " +
+            "  INNER JOIN employee e   ON hr.user_code = e.emp_code " +
+            "  INNER JOIN department d ON e.dept_id    = d.id " +
+            "  WHERE hr.record_time >= CONVERT(date, #{startTime}) " +
+            "  AND   hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  GROUP BY d.dept_name " +
+            "), " +
+            "dept_abnormal AS ( " +
+            "  SELECT d.dept_name AS deptName, COUNT(DISTINCT wr.user_code) AS abnormalPersonCount " +
+            "  FROM ${warningSource} wr " +
+            "  INNER JOIN employee e   ON wr.user_code = e.emp_code " +
+            "  INNER JOIN department d ON e.dept_id    = d.id " +
+            "  WHERE wr.create_time >= CONVERT(date, #{startTime}) " +
+            "  AND   wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  GROUP BY d.dept_name " +
+            ") " +
+            "SELECT dp.deptName, dp.personCount, " +
+            "ISNULL(da.abnormalPersonCount, 0) AS abnormalPersonCount " +
+            "FROM dept_persons dp " +
+            "LEFT JOIN dept_abnormal da ON dp.deptName = da.deptName " +
+            "ORDER BY dp.personCount DESC")
+    List<Map<String, Object>> getDeptPersonStatsDirect(@Param("healthSource")  String healthSource,
+                                                        @Param("warningSource") String warningSource,
+                                                        @Param("startTime")     String startTime,
+                                                        @Param("endTime")       String endTime);
+
+    /**
+     * 单部门每日检测人数 + 异常人数（点击看板弹窗折线图用）
+     */
+    @Select(";WITH dept_persons AS ( " +
+            "  SELECT CONVERT(VARCHAR(10), hr.record_time, 120) AS day, " +
+            "  COUNT(DISTINCT e.emp_code) AS personCount " +
+            "  FROM v_health_record hr " +
+            "  INNER JOIN employee e   ON hr.user_code = e.emp_code " +
+            "  INNER JOIN department d ON e.dept_id    = d.id " +
+            "  WHERE d.dept_name = #{deptName} " +
+            "  AND hr.record_time >= CONVERT(date, #{startTime}) " +
+            "  AND hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  GROUP BY CONVERT(VARCHAR(10), hr.record_time, 120) " +
+            "), " +
+            "dept_abnormal AS ( " +
+            "  SELECT CONVERT(VARCHAR(10), wr.create_time, 120) AS day, " +
+            "  COUNT(DISTINCT wr.user_code) AS abnormalPersonCount " +
+            "  FROM v_warning_record wr " +
+            "  INNER JOIN employee e   ON wr.user_code = e.emp_code " +
+            "  INNER JOIN department d ON e.dept_id    = d.id " +
+            "  WHERE d.dept_name = #{deptName} " +
+            "  AND wr.create_time >= CONVERT(date, #{startTime}) " +
+            "  AND wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  GROUP BY CONVERT(VARCHAR(10), wr.create_time, 120) " +
+            ") " +
+            "SELECT dp.day, dp.personCount, ISNULL(da.abnormalPersonCount, 0) AS abnormalPersonCount " +
+            "FROM dept_persons dp " +
+            "LEFT JOIN dept_abnormal da ON dp.day = da.day " +
+            "ORDER BY dp.day")
+    List<Map<String, Object>> getDeptDailyDetail(@Param("deptName") String deptName,
+                                                  @Param("startTime") String startTime,
+                                                  @Param("endTime")   String endTime);
+
+    /**
+     * 指标每日检测人数 + 异常人数（点击指标卡片弹窗折线图用）
+     */
+    @SelectProvider(type = MetricDailySqlProvider.class, method = "getMetricDailyDetail")
+    List<Map<String, Object>> getMetricDailyDetail(@Param("metricType") String metricType,
+                                                    @Param("startTime")  String startTime,
+                                                    @Param("endTime")    String endTime);
 }
