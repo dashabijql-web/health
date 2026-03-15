@@ -656,7 +656,11 @@ export default {
         if(max<=0) return
         if(this.scrollTop>=max){
           this.autoScrollPaused=true
-          setTimeout(()=>{ this.scrollTop=0; if(el)el.scrollTop=0; this.autoScrollPaused=false },2000)
+          setTimeout(()=>{
+            if(this.currentPage<this.totalPages){ this.currentPage++ }
+            else { this.currentPage=1 }
+            this.$nextTick(()=>{ this.scrollTop=0; if(el)el.scrollTop=0; this.autoScrollPaused=false })
+          },2000)
         } else { this.scrollTop+=1; el.scrollTop=this.scrollTop }
       },40)
     },

@@ -17,5 +17,17 @@
       "Bash(LC_ALL=C grep:*)",
       "Bash(python:*)"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -File C:/Users/j/.claude/notify.ps1"
+          }
+        ]
+      }
+    ]
   }
 }

@@ -149,47 +149,58 @@
               </el-table-column>
               <el-table-column prop="bloodOxygen" label="血氧(%)" width="75" align="center">
                 <template #default="{ row }">
-                  <span :class="spo2Cls(row.bloodOxygen)">
-                    {{ row.bloodOxygen ? row.bloodOxygen + '%' : '--' }}
-                  </span>
+                  <el-tooltip v-if="!row.bloodOxygen" content="设备暂未上报该项数据" placement="top" :show-after="500">
+                    <span class="c-na">--</span>
+                  </el-tooltip>
+                  <span v-else :class="spo2Cls(row.bloodOxygen)">{{ row.bloodOxygen }}%</span>
                 </template>
               </el-table-column>
               <el-table-column prop="temperature" label="体温(°C)" width="80" align="center">
                 <template #default="{ row }">
-                  <span :class="tempCls(row.temperature)">
-                    {{ row.temperature ? row.temperature + '°' : '--' }}
-                  </span>
+                  <el-tooltip v-if="!row.temperature" content="设备暂未上报该项数据" placement="top" :show-after="500">
+                    <span class="c-na">--</span>
+                  </el-tooltip>
+                  <span v-else :class="tempCls(row.temperature)">{{ row.temperature }}°</span>
                 </template>
               </el-table-column>
               <el-table-column prop="steps" label="步数" width="70" align="center">
                 <template #default="{ row }">
-                  <span class="c-steps">{{ row.steps != null ? row.steps : '--' }}</span>
+                  <el-tooltip v-if="row.steps == null" content="设备暂未上报该项数据" placement="top" :show-after="500">
+                    <span class="c-na">--</span>
+                  </el-tooltip>
+                  <span v-else class="c-steps">{{ row.steps }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="calories" label="卡路里(kcal)" width="105" align="center">
                 <template #default="{ row }">
-                  <span class="c-calories">{{ row.calories != null ? row.calories : '--' }}</span>
+                  <el-tooltip v-if="row.calories == null" content="设备暂未上报该项数据" placement="top" :show-after="500">
+                    <span class="c-na">--</span>
+                  </el-tooltip>
+                  <span v-else class="c-calories">{{ row.calories }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="bloodPressureHigh" label="收缩压" width="70" align="center">
                 <template #default="{ row }">
-                  <span :class="bpCls(row.bloodPressureHigh)">
-                    {{ row.bloodPressureHigh || '--' }}
-                  </span>
+                  <el-tooltip v-if="!row.bloodPressureHigh" content="设备暂未上报该项数据" placement="top" :show-after="500">
+                    <span class="c-na">--</span>
+                  </el-tooltip>
+                  <span v-else :class="bpCls(row.bloodPressureHigh)">{{ row.bloodPressureHigh }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="bloodPressureLow" label="舒张压" width="70" align="center">
                 <template #default="{ row }">
-                  <span :class="bpLowCls(row.bloodPressureLow)">
-                    {{ row.bloodPressureLow || '--' }}
-                  </span>
+                  <el-tooltip v-if="!row.bloodPressureLow" content="设备暂未上报该项数据" placement="top" :show-after="500">
+                    <span class="c-na">--</span>
+                  </el-tooltip>
+                  <span v-else :class="bpLowCls(row.bloodPressureLow)">{{ row.bloodPressureLow }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="pressure" label="压力指数" width="80" align="center">
                 <template #default="{ row }">
-                  <span :class="pressureCls(row.pressure)">
-                    {{ row.pressure != null ? row.pressure : '--' }}
-                  </span>
+                  <el-tooltip v-if="row.pressure == null" content="设备暂未上报该项数据" placement="top" :show-after="500">
+                    <span class="c-na">--</span>
+                  </el-tooltip>
+                  <span v-else :class="pressureCls(row.pressure)">{{ row.pressure }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="status" label="状态" width="60" align="center">
@@ -529,6 +540,7 @@ export default {
     },
 
     startAutoScroll() {
+      clearInterval(this.autoScrollTimer)
       this.autoScrollTimer = setInterval(() => {
         if (!this.autoScrollEnabled || this.scrollPaused) return
         const el = this.$el?.querySelector('.el-table__body-wrapper .el-scrollbar__wrap')
@@ -536,8 +548,20 @@ export default {
         const max = el.scrollHeight - el.clientHeight
         if (max <= 0) return
         el.scrollTop += 1
-        if (el.scrollTop >= max) {
-          setTimeout(() => { el.scrollTop = 0 }, 2000)
+        if (el.scrollTop >= max - 1) {
+          this.scrollPaused = true
+          setTimeout(() => {
+            if (this.currentPage < this.totalPages) {
+              // 翻到下一页，滚到顶
+              this.currentPage++
+              this.$nextTick(() => { if (el) el.scrollTop = 0 })
+            } else {
+              // 最后一页回到第一页
+              this.currentPage = 1
+              this.$nextTick(() => { if (el) el.scrollTop = 0 })
+            }
+            this.scrollPaused = false
+          }, 1500)
         }
       }, 50)
     },

@@ -135,6 +135,8 @@
                   <div
                     v-for="(ev, i) in paginatedWarningEvents" :key="i"
                     :class="['dm-event', ev.level === 'danger' ? 'ev-danger' : 'ev-warn', ev.level === 'danger' ? 'alert-item--critical' : '', ev.handled ? 'ev-handled' : '']"
+                    style="cursor:pointer"
+                    @click="openWarnCurve(ev)"
                   >
                     <div class="dm-ev-row1">
                       <span :class="['dm-ev-badge', ev.level === 'danger' ? 'badge-danger' : 'badge-warn']">
@@ -228,7 +230,7 @@
           <div class="dm-device-body">
             <!-- 左：数字卡片 -->
             <div class="dm-device-cards">
-              <div class="dm-dcard" v-for="c in deviceCards" :key="c.label" :class="c.cls">
+              <div class="dm-dcard" v-for="c in deviceCards" :key="c.label" :class="[c.cls, c.route ? 'dm-dcard-clickable' : '']" @click="c.route && goToDeviceList(c)">
                 <div class="dm-dcard-val">{{ c.val }}</div>
                 <div class="dm-dcard-label">{{ c.label }}</div>
               </div>
@@ -295,7 +297,7 @@
             <div v-if="!warningRateList.length" class="dm-empty" style="padding:40px 20px;text-align:center;color:#4a6080;font-size:12px">
               暂无数据
             </div>
-            <div v-for="item in warningRateList" :key="item.name" class="dm-warn-item">
+            <div v-for="item in warningRateList" :key="item.name" class="dm-warn-item" style="cursor:pointer" @click="goToWarningRecords(item)">
               <div class="dm-warn-icon-wrap">
                 <el-icon :size="15"><component :is="getWarningIcon(item.name)" /></el-icon>
               </div>
@@ -527,6 +529,27 @@
     <div v-loading="metricDetailModal.loading" ref="metricDetailChartRef" style="width:100%;height:420px"></div>
   </el-dialog>
 
+  <!-- ══════ 预警附近时段健康曲线弹窗 ══════ -->
+  <el-dialog
+    v-model="warnCurveModal.visible"
+    :title="warnCurveModal.title"
+    width="780px"
+    :append-to-body="true"
+    :destroy-on-close="true"
+    @opened="initWarnCurveChart"
+  >
+    <div class="dm-wc-info" v-if="warnCurveModal.event">
+      <el-tag :type="warnCurveModal.event.level === 'danger' ? 'danger' : 'warning'" size="small" effect="dark">{{ warnCurveModal.event.level === 'danger' ? '危险' : '预警' }}</el-tag>
+      <span class="dm-wc-type">{{ warnCurveModal.event.type }}</span>
+      <span class="dm-wc-sep">·</span>
+      <span class="dm-wc-val" style="color:#FFB84D">{{ warnCurveModal.event.indicator }}: {{ warnCurveModal.event.value }}</span>
+      <span class="dm-wc-sep">·</span>
+      <span class="dm-wc-time">{{ warnCurveModal.event.time }}</span>
+    </div>
+    <div v-loading="warnCurveModal.loading" ref="warnCurveChartRef" style="width:100%;height:360px;margin-top:12px"></div>
+    <div v-if="!warnCurveModal.loading && !warnCurveModal.hasData" style="text-align:center;color:#4a6080;padding:60px 0;font-size:13px">该时段暂无健康记录数据</div>
+  </el-dialog>
+
 </template>
 
 <script>
@@ -546,7 +569,8 @@ import {
   getDeptDailyPersons,
   getDeptPersonStats,
   getDeptDailyDetail,
-  getMetricDailyDetail
+  getMetricDailyDetail,
+  getHealthRecords
 } from '@/api/health'
 import { getWarningTypes } from '@/api/statistics'
 import { getHealthPortrait } from '@/api/health-portrait'
@@ -591,6 +615,14 @@ export default {
         metricColor: '#00d4ff',
         dateRange: null,
         chart: null
+      },
+      warnCurveModal: {
+        visible: false,
+        loading: false,
+        hasData: false,
+        title: '',
+        event: null,
+        records: []
       },
       bodyIndicators: {},
       top5Data: [],
@@ -979,11 +1011,11 @@ export default {
       const showVal = (val) => hasDeviceData ? val : '--'
 
       return [
-        { label: '设备总数', val: showVal(this.deviceStats.boundDevices ?? this.deviceStats.total),  cls: 'dc-blue'   },
-        { label: '在线设备', val: showVal(this.deviceOnline),        cls: 'dc-green'  },
-        { label: '离线设备', val: showVal(this.deviceOffline),       cls: 'dc-gray'   },
-        { label: '预警设备', val: showVal(this.deviceWarningCount),  cls: 'dc-red'    },
-        { label: '电量不足', val: showVal(this.lowBatteryCount),     cls: 'dc-orange' }
+        { label: '设备总数', val: showVal(this.deviceStats.boundDevices ?? this.deviceStats.total),  cls: 'dc-blue',   route: { path: '/admin/device-list' } },
+        { label: '在线设备', val: showVal(this.deviceOnline),        cls: 'dc-green',  route: { path: '/admin/device-list', query: { online: 1 } } },
+        { label: '离线设备', val: showVal(this.deviceOffline),       cls: 'dc-gray',   route: { path: '/admin/device-list', query: { online: 0 } } },
+        { label: '预警设备', val: showVal(this.deviceWarningCount),  cls: 'dc-red',    route: { path: '/admin/device-list', query: { filter: 'warning' } } },
+        { label: '电量不足', val: showVal(this.lowBatteryCount),     cls: 'dc-orange', route: { path: '/admin/device-list', query: { filter: 'lowBattery' } } }
       ]
     },
     paginatedWarningEvents() {
@@ -1154,16 +1186,10 @@ export default {
         })
         await this.$nextTick()
         const el = this.$refs.deptPersonChartRef
-        console.log('[DeptChart] el:', el, 'size:', el?.offsetWidth, el?.offsetHeight)
-        console.log('[DeptChart] days:', days, 'depts:', depts)
-        console.log('[DeptChart] series[0] data:', series[0]?.data)
-        if (!el) { console.error('[DeptChart] ref not found'); return }
+        if (!el) return
         if (modal.chart) modal.chart.dispose()
         const echarts = this.$echarts || window.echarts || (await import('echarts'))
-        console.log('[DeptChart] echarts:', typeof echarts, 'init:', typeof echarts.init)
         modal.chart = markRaw(echarts.init(el, null, { renderer: 'canvas' }))
-        console.log('[DeptChart] chart instance:', modal.chart)
-        modal.chart.on('mousemove', () => console.log('[DeptChart] mousemove on chart ✓'))
         modal.chart.setOption({
           backgroundColor: '#0a1628',
           grid: { left: 60, right: 150, top: 20, bottom: 50, containLabel: false },
@@ -1511,7 +1537,8 @@ export default {
       try {
         await handleRiskWarning(ev.id, {
           handleBy:     this.$store.getters.name || '管理员',
-          handleRemark: this.handleDialog.remark
+          handleRemark: this.handleDialog.remark,
+          createTime:   ev.time
         })
         ev.handled      = true
         ev.handleRemark = this.handleDialog.remark
@@ -1831,6 +1858,7 @@ export default {
           name: s.name,
           type: 'line',
           smooth: true,
+          cursor: 'pointer',
           yAxisIndex: s.yAxisIndex || 0,
           symbol: 'circle', symbolSize: 4, showSymbol: false,
           data: rawData.map(d => d[s.key] ?? null),
@@ -1856,6 +1884,18 @@ export default {
             data: [[{ yAxis: 0 }, { yAxis: s.threshold }]]
           }
         }))
+      })
+      // 点击折线图任意位置跳转到对应日期的预警列表
+      // 使用 zrender 层监听，因为 showSymbol:false 时 ECharts click 事件无命中目标
+      chart.getZr().off('click')
+      chart.getZr().on('click', e => {
+        const pt = chart.convertFromPixel({ seriesIndex: 0 }, [e.offsetX, e.offsetY])
+        if (!pt) return
+        const idx = Math.round(pt[0])
+        if (idx < 0 || idx >= dates.length) return
+        const date = dates[idx]
+        if (!date) return
+        this.$router.push({ path: '/alert-management/records', query: { startDate: date, endDate: date } })
       })
     },
 
@@ -1960,6 +2000,7 @@ export default {
           type: 'bar',
           data: vals,
           barMaxWidth: this.activePeriod === 'day' ? 10 : 8,
+          cursor: 'pointer',
           itemStyle: {
             color: params => {
               const v = params.value
@@ -1970,6 +2011,23 @@ export default {
             borderRadius: [2, 2, 0, 0]
           }
         }]
+      })
+      // 点击柱子跳转到对应日期的预警列表
+      chart.off('click')
+      chart.on('click', params => {
+        if (params.value === 0) return
+        let date
+        if (this.activePeriod === 'day') {
+          // 当天，取今日日期
+          const now = new Date()
+          date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
+        } else {
+          // week/month 模式：dist.labels[dataIndex] 是完整日期如 '2026-03-15'
+          date = (dist.labels || [])[params.dataIndex]
+          if (!date) return
+          date = String(date).slice(0, 10)
+        }
+        this.$router.push({ path: '/alert-management/records', query: { startDate: date, endDate: date } })
       })
     },
     initGauge(id, value, highColor, lowColor) {
@@ -2120,6 +2178,112 @@ export default {
     },
 
     // 手动翻页时滚动到顶部
+    goToDeviceList(card) {
+      this.$router.push(card.route)
+    },
+    goToWarningRecords(item) {
+      const map = { '心率预警率': '心率', '血氧预警率': '血氧', '体温预警率': '体温', '压力预警率': '压力' }
+      const type = map[item.name]
+      this.$router.push({ path: '/alert-management/records', query: type ? { warningType: type } : {} })
+    },
+
+    async openWarnCurve(ev) {
+      if (!ev.userCode || !ev.time) return
+      this.warnCurveModal.event = ev
+      this.warnCurveModal.title = `${ev.userName} · ${ev.type} 附近时段健康曲线`
+      this.warnCurveModal.loading = true
+      this.warnCurveModal.hasData = false
+      this.warnCurveModal.records = []
+      this.warnCurveModal.visible = true
+
+      try {
+        // 预警时间前后30分钟
+        const warnMs = new Date(ev.time).getTime()
+        const fmt = ms => {
+          const d = new Date(ms)
+          return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`
+        }
+        const startTime = fmt(warnMs - 30 * 60 * 1000)
+        const endTime   = fmt(warnMs + 30 * 60 * 1000)
+        const res = await getHealthRecords({ userCode: ev.userCode, startTime, endTime, page: 1, size: 200 })
+        if (res.code === 200) {
+          this.warnCurveModal.records = (res.data?.records || []).reverse()
+          this.warnCurveModal.hasData = this.warnCurveModal.records.length > 0
+        }
+      } catch(e) {
+        this.warnCurveModal.hasData = false
+      } finally {
+        this.warnCurveModal.loading = false
+      }
+    },
+
+    initWarnCurveChart() {
+      const dom = this.$refs.warnCurveChartRef
+      if (!dom || !this.warnCurveModal.hasData) return
+      const records = this.warnCurveModal.records
+      const ev = this.warnCurveModal.event
+
+      // 判断要展示哪些指标（以预警类型为主，同时显示其他有值的指标）
+      const indicatorMap = {
+        '心率': { key: 'heartRate',         label: '心率(bpm)',   color: '#00d4ff', unit: 'bpm' },
+        '血氧': { key: 'bloodOxygen',        label: '血氧(%)',     color: '#38ef7d', unit: '%'   },
+        '体温': { key: 'temperature',        label: '体温(°C)',    color: '#ffd200', unit: '°C', divisor: 10 },
+        '压力': { key: 'pressure',           label: '压力指数',   color: '#a78bfa', unit: ''    },
+        '血压': { key: 'bloodPressureHigh',  label: '收缩压(mmHg)', color: '#ff7043', unit: 'mmHg' },
+      }
+      const typeKey = Object.keys(indicatorMap).find(k => ev.type?.includes(k)) || '心率'
+      // 主指标排首位，其余有数据的追加
+      const primaryKey = indicatorMap[typeKey].key
+      const seriesDef = [indicatorMap[typeKey]]
+      Object.entries(indicatorMap).forEach(([k, v]) => {
+        if (k !== typeKey && records.some(r => r[v.key] != null)) seriesDef.push(v)
+      })
+
+      const times = records.map(r => r.time ? String(r.time).slice(11, 16) : '')
+      const warnTime = ev.time ? String(ev.time).slice(11, 16) : null
+
+      const chart = echarts.init(dom)
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(10,20,50,0.92)',
+          borderColor: '#00d4ff44',
+          textStyle: { color: '#fff', fontSize: 11 },
+          formatter: params => {
+            const header = `<div style="color:#8ba0bb;margin-bottom:3px">${params[0]?.axisValue}</div>`
+            return header + params.map(p => `<div><span style="color:${p.color}">● </span>${p.seriesName}：<b style="color:${p.color}">${p.value ?? '--'}</b></div>`).join('')
+          }
+        },
+        legend: { top: 4, right: 4, textStyle: { color: '#8ba0bb', fontSize: 10 }, itemWidth: 14, itemHeight: 3 },
+        grid: { left: 36, right: 16, top: 28, bottom: 24 },
+        xAxis: {
+          type: 'category', data: times,
+          axisLabel: { color: '#6a7a9a', fontSize: 9 },
+          axisLine: { lineStyle: { color: '#1e3a5f' } }
+        },
+        yAxis: { type: 'value', axisLabel: { color: '#6a7a9a', fontSize: 10 }, splitLine: { lineStyle: { color: 'rgba(100,160,255,0.08)' } } },
+        series: [
+          ...seriesDef.map(s => ({
+            name: s.label, type: 'line', smooth: true,
+            symbol: 'circle', symbolSize: 4,
+            data: records.map(r => r[s.key] != null ? (s.divisor ? +(r[s.key]/s.divisor).toFixed(1) : r[s.key]) : null),
+            lineStyle: { color: s.color, width: 2 },
+            itemStyle: { color: s.color },
+            connectNulls: false
+          })),
+          // 预警时刻标线
+          ...(warnTime ? [{
+            name: '预警时刻', type: 'line', data: [], markLine: {
+              symbol: 'none',
+              lineStyle: { color: '#ff5252', type: 'solid', width: 1.5 },
+              label: { formatter: '预警', color: '#ff5252', fontSize: 10 },
+              data: [{ xAxis: warnTime }]
+            }
+          }] : [])
+        ]
+      })
+    },
     goToWarningPage(direction) {
       if (direction === 'prev' && this.warningCurrentPage > 1) {
         this.warningCurrentPage--
@@ -2579,6 +2743,7 @@ $white:  #e8f4ff;
   border-radius:8px; padding:6px 10px;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   border:1px solid transparent;
+  &.dm-dcard-clickable { cursor:pointer; transition:transform 0.15s,box-shadow 0.15s; &:hover { transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,0.3); } }
   &.dc-blue   { background:rgba(0,212,255,0.08);   border-color:rgba(0,212,255,0.2);   .dm-dcard-val{color:#00d4ff} }
   &.dc-green  { background:rgba(56,239,125,0.08);  border-color:rgba(56,239,125,0.2);  .dm-dcard-val{color:#38ef7d} }
   &.dc-gray   { background:rgba(139,166,200,0.07); border-color:rgba(139,166,200,0.18);.dm-dcard-val{color:#8ba6c8} }
@@ -3013,6 +3178,11 @@ $white:  #e8f4ff;
 }
 .dm-hd-info { background: rgba(0,212,255,0.04); border-radius: 6px; padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; }
 .dm-hd-row  { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.dm-wc-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.dm-wc-type { color: #e0e8f0; font-weight: 600; }
+.dm-wc-sep  { color: #3a5070; }
+.dm-wc-val  { font-weight: 500; }
+.dm-wc-time { color: #6a7a9a; font-size: 12px; }
 .dm-hd-key  { color: #8ba6c8; width: 36px; flex-shrink: 0; }
 .dm-hd-val  { color: #c8d8e8; font-weight: 600; }
 

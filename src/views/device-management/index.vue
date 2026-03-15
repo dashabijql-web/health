@@ -70,6 +70,14 @@
             <el-option label="已绑定" :value="true" />
             <el-option label="未绑定" :value="false" />
           </el-select>
+          <el-select v-model="filterWarningVal" placeholder="预警状态" clearable size="small" class="filter-select" @change="v => { filterWarning = v === 'warning'; pagination.page = 1 }">
+            <el-option label="有预警" value="warning" />
+            <el-option label="无预警" value="normal" />
+          </el-select>
+          <el-select v-model="filterBatteryVal" placeholder="电量" clearable size="small" class="filter-select" @change="v => { filterLowBattery = v === 'low'; pagination.page = 1 }">
+            <el-option label="电量不足(<20%)" value="low" />
+            <el-option label="电量充足(≥20%)" value="ok" />
+          </el-select>
           <el-button size="small" @click="resetFilters">重置</el-button>
           <span class="total-badge">{{ filteredDeviceList.length }} / {{ deviceList.length }} 台</span>
           <el-button type="primary" size="small" :icon="Refresh" @click="refreshDevices">刷新</el-button>
@@ -96,6 +104,12 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="预警状态" width="100" align="center" sortable :sort-method="(a,b) => (b.hasWarning ? 1 : 0) - (a.hasWarning ? 1 : 0)">
+          <template #default="{ row }">
+            <el-tag v-if="row.hasWarning" type="danger" size="small" effect="dark">有预警</el-tag>
+            <el-tag v-else type="success" size="small" effect="dark">正常</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="绑定用户" min-width="150">
           <template #default="{ row }">
             <div v-if="row.bindStatus" class="user-cell">
@@ -113,6 +127,14 @@
             <el-tag v-if="row.bufferCount > 0" type="warning" size="small" effect="dark">
               {{ row.bufferCount }} 条
             </el-tag>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="电量" width="90" align="center" sortable :sort-method="(a,b) => (a.batteryLevel??-1) - (b.batteryLevel??-1)">
+          <template #default="{ row }">
+            <span v-if="row.batteryLevel != null" :class="['battery-text', row.batteryLevel < 20 ? 'battery-low' : row.batteryLevel < 50 ? 'battery-mid' : 'battery-ok']">
+              {{ row.batteryLevel }}%
+            </span>
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
@@ -338,6 +360,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Monitor, Timer, CircleCheck, Connection, Document, Link, Unlock, Upload, Delete, ChatDotRound, Search } from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -353,6 +376,7 @@ import {
 import { useClock } from '@/composables/useClock'
 
 const { currentTime } = useClock()
+const route = useRoute()
 
 // 设备列表数据
 const deviceList = ref([])
@@ -362,11 +386,19 @@ const loading = ref(false)
 const searchImei = ref('')
 const filterOnline = ref(null)
 const filterBind = ref(null)
+const filterWarning = ref(false)
+const filterLowBattery = ref(false)
+const filterWarningVal = ref('')
+const filterBatteryVal = ref('')
 
 const resetFilters = () => {
   searchImei.value = ''
   filterOnline.value = null
   filterBind.value = null
+  filterWarning.value = false
+  filterLowBattery.value = false
+  filterWarningVal.value = ''
+  filterBatteryVal.value = ''
   pagination.page = 1
 }
 
@@ -385,6 +417,16 @@ const filteredDeviceList = computed(() => {
   }
   if (filterBind.value !== null && filterBind.value !== '') {
     list = list.filter(d => !!d.bindStatus === filterBind.value)
+  }
+  if (filterWarning.value) {
+    list = list.filter(d => d.hasWarning)
+  }
+  if (filterBatteryVal.value === 'low') {
+    list = list.filter(d => d.batteryLevel != null && d.batteryLevel < 20)
+  } else if (filterBatteryVal.value === 'ok') {
+    list = list.filter(d => d.batteryLevel == null || d.batteryLevel >= 20)
+  } else if (filterLowBattery.value) {
+    list = list.filter(d => d.batteryLevel != null && d.batteryLevel < 20)
   }
   return list
 })
@@ -713,6 +755,17 @@ const handleCurrentChange = (page) => {
 // 组件挂载时刷新设备列表和更新时间
 let deviceTimer = null
 onMounted(() => {
+  // Read filter from route query (e.g. from dashboard card click)
+  if (route.query.online !== undefined) {
+    filterOnline.value = Number(route.query.online)
+  }
+  if (route.query.filter === 'warning') {
+    filterWarning.value = true
+    filterWarningVal.value = 'warning'
+  } else if (route.query.filter === 'lowBattery') {
+    filterLowBattery.value = true
+    filterBatteryVal.value = 'low'
+  }
   refreshDevices()
   deviceTimer = setInterval(refreshDevices, 30000)
 })
@@ -830,6 +883,10 @@ onBeforeUnmount(() => {
 }
 .online-text { font-size: 12px; }
 .text-muted { color: #7eb8d4; font-size: 12px; }
+.battery-text { font-size: 12px; font-weight: 600; }
+.battery-ok  { color: #38ef7d; }
+.battery-mid { color: #ffd200; }
+.battery-low { color: #ff5252; }
 
 /* ── 用户搜索建议项样式 ── */
 .user-suggestion-item {

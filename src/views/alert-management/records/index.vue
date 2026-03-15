@@ -46,8 +46,13 @@
         <el-form-item><el-date-picker v-model="searchForm.dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" style="width:260px" /></el-form-item>
         <el-form-item>
           <el-select v-model="searchForm.warningType" placeholder="预警类型" clearable style="width:140px">
-            <el-option label="SOS求助" value="SOS" /><el-option label="跌倒" value="fall" /><el-option label="心率异常" value="heartRate" />
-            <el-option label="血氧异常" value="bloodOxygen" /><el-option label="体温异常" value="temperature" /><el-option label="静态预警" value="staticAlert" />
+            <el-option label="心率异常" value="心率" />
+            <el-option label="血氧异常" value="血氧" />
+            <el-option label="体温异常" value="体温" />
+            <el-option label="血压偏高" value="血压" />
+            <el-option label="压力偏高" value="压力" />
+            <el-option label="SOS求助"  value="SOS" />
+            <el-option label="跌倒"    value="跌倒" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -211,11 +216,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { Timer, Search, Refresh, Edit, Bell, WarningFilled, WarnTriangleFilled, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { formatDate } from '@/utils'
 import { useClock } from '@/composables/useClock'
 import { getRiskWarningList, getRiskWarningOverview, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
+
+const route = useRoute()
 
 const { currentTime } = useClock()
 
@@ -251,6 +259,7 @@ const loadData = async () => {
     if (searchForm.dateRange?.length===2) { p.startDate=searchForm.dateRange[0]; p.endDate=searchForm.dateRange[1] }
     // 后端参数名与前端 searchForm 字段名的映射：
     // warningLevel → level，keyword → userCode（模糊匹配员工编号/姓名由后端处理）
+    if (searchForm.warningType) p.warningType = searchForm.warningType
     if (searchForm.warningLevel) p.level = searchForm.warningLevel
     if (searchForm.handleStatus==='handled') p.handled=true; else if(searchForm.handleStatus==='unhandled') p.handled=false
     if (searchForm.keyword) p.userCode = searchForm.keyword
@@ -320,14 +329,22 @@ const submitHandle = async () => {
   if(!valid) return
   handleSubmitting.value = true
   try {
-    const res = await handleRiskWarning(currentRow.value.id, { handleType:handleForm.handleType, handleNote:handleForm.handleNote, notify:handleForm.notify })
+    const res = await handleRiskWarning(currentRow.value.id, { handleType:handleForm.handleType, handleNote:handleForm.handleNote, notify:handleForm.notify, createTime:currentRow.value.createTime })
     if(res.code===200) { ElMessage.success('处理成功'); handleDialogVisible.value=false; loadData(); loadOverview() }
     else ElMessage.error(res.message||'处理失败')
   } catch(e) { ElMessage.error('处理失败') }
   finally { handleSubmitting.value=false }
 }
 
-onMounted(() => { loadOverview(); loadData() })
+onMounted(() => {
+  if (route.query.warningType) {
+    searchForm.warningType = route.query.warningType
+  }
+  if (route.query.startDate && route.query.endDate) {
+    searchForm.dateRange = [route.query.startDate, route.query.endDate]
+  }
+  loadOverview(); loadData()
+})
 </script>
 
 <style scoped lang="scss">
