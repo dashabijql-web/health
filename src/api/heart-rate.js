@@ -60,10 +60,11 @@ export function getHeartRateDeptStats(startDate, endDate) {
 /**
  * 获取各年龄段平均心率
  */
-export function getAgeHeartRate() {
+export function getAgeHeartRate(startDate, endDate) {
   return request({
     url: '/heart-rate/age-stats',
-    method: 'get'
+    method: 'get',
+    params: { startDate, endDate }
   })
 }
 

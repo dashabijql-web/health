@@ -29,16 +29,16 @@
 
       <!-- ─ 左侧：TOP5 紧凑列表 + 部门柱状图 ─ -->
       <aside class="ps-aside">
-        <!-- TOP5：高压力人员 -->
+        <!-- 高压力排行 -->
         <div class="ps-panel ps-aside-top">
           <div class="ps-ph">
             <span class="ps-ph-bar"></span>
-            <span class="ps-ph-title">高压力 TOP5</span>
+            <span class="ps-ph-title">{{ top5Title }}</span>
           </div>
-          <div class="ps-top5-list">
+          <div class="ps-top5-list" ref="top5ScrollRef">
             <div v-if="!top5Data.length" class="ps-top5-empty">暂无高压力数据</div>
             <div class="ps-top5-row" v-for="(item, i) in top5Data" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
-              <span class="ps-top5-rank" :class="'rank-'+(i+1)">{{ i+1 }}</span>
+              <span class="ps-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="ps-top5-name">{{ item.userName }}</span>
               <div class="ps-top5-bar-wrap">
                 <div class="ps-top5-bar"
@@ -57,6 +57,7 @@
           <div class="ps-ph">
             <span class="ps-ph-bar"></span>
             <span class="ps-ph-title">部门平均压力指数</span>
+            <span v-if="filterDept" class="ps-dept-tag" @click="filterDept=''" title="点击取消筛选">{{ filterDept }} ×</span>
           </div>
           <div class="ps-pc">
             <div ref="deptRef" style="width:100%;height:100%"></div>
@@ -166,7 +167,7 @@
         <div class="ps-panel ps-panel-anomaly">
           <div class="ps-ph">
             <span class="ps-ph-bar"></span>
-            <span class="ps-ph-title">当前异常压力明细</span>
+            <span class="ps-ph-title">当前异常压力明细{{ filterDept ? ' — ' + filterDept : '' }}</span>
             <span class="ps-anomaly-count" v-if="psAnomalyList.length">
               共 <em>{{ psAnomalyList.length }}</em> 人异常
             </span>
@@ -271,10 +272,12 @@ export default {
       top5Data: [],
       deptData: [],
       realtimeList: [],
+      filterDept: '',
       currentPage: 1,
       pageSize: 20,
       activePeriod: 'month',
       periodOptions: PERIOD_OPTIONS,
+      _top5ScrollTimer: null,
       psRanges: [
         { label: '放松 (低压力)', range: '< 50',      color: '#4FC3F7' },
         { label: '正常 (健康)',   range: '50 – 69',   color: '#52c41a' },
@@ -314,9 +317,17 @@ export default {
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.avgPressure || 0)) : 1
     },
+    top5Title() {
+      const p = { day: '今日', week: '近7日', month: '近30日' }[this.activePeriod]
+      return p + '高压力排行'
+    },
+    filteredRealtimeList() {
+      if (!this.filterDept) return this.realtimeList
+      return this.realtimeList.filter(x => x.deptName === this.filterDept)
+    },
     /* pagedList / totalPages from chartPageMixin */
     psAnomalyList() {
-      return this.realtimeList.filter(x => x.pressure >= 70)
+      return this.filteredRealtimeList.filter(x => x.pressure >= 70)
     },
     psZones() {
       const list = this.realtimeList
@@ -344,6 +355,7 @@ export default {
   },
   beforeUnmount() {
     if (this._ro) this._ro.disconnect()
+    if (this._top5ScrollTimer) clearInterval(this._top5ScrollTimer)
   },
   methods: {
     async fetchData() {
@@ -370,10 +382,11 @@ export default {
       const { startDate, endDate } = this.periodRange
       let d = []
       try {
-        const r = await getPressureTopUsers(5, startDate, endDate)
+        const r = await getPressureTopUsers(1000, startDate, endDate)
         if (r.code === 200) d = r.data || []
       } catch {}
       this.top5Data = d
+      this.$nextTick(() => this.startTop5Scroll())
     },
 
     async loadDept() {
@@ -470,6 +483,12 @@ export default {
           }
         }]
       })
+      c.off('click')
+      c.on('click', params => {
+        const name = d[params.dataIndex]?.deptName
+        if (!name) return
+        this.filterDept = this.filterDept === name ? '' : name
+      })
     },
 
     initDist(data) {
@@ -552,6 +571,21 @@ export default {
 
 
 
+
+    startTop5Scroll() {
+      if (this._top5ScrollTimer) { clearInterval(this._top5ScrollTimer); this._top5ScrollTimer = null }
+      const el = this.$refs.top5ScrollRef
+      if (!el || el.scrollHeight <= el.clientHeight) return
+      let paused = false
+      this._top5ScrollTimer = setInterval(() => {
+        if (paused) return
+        el.scrollTop += 1
+        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
+          paused = true
+          setTimeout(() => { el.scrollTop = 0; paused = false }, 1500)
+        }
+      }, 40)
+    },
 
     // setPageSize → chartPageMixin
 
@@ -665,16 +699,20 @@ $cyan:   #00d4ff;
   width: 260px; flex-shrink: 0;
   display: flex; flex-direction: column; gap: 10px;
 }
-.ps-aside-top { height: 200px; flex-shrink: 0; }
+.ps-aside-top { height: 200px; flex-shrink: 0; display: flex; flex-direction: column; }
 .ps-aside-bot { flex: 1; }
 
 // TOP5 紧凑列表
 .ps-top5-empty { padding: 20px 0; text-align: center; color: rgba(251,146,60,0.5); font-size: 12px; }
 .ps-top5-list {
+  flex: 1;
+  overflow-y: auto;
   padding: 8px 12px;
   display: flex;
   flex-direction: column;
   gap: 9px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(251,146,60,0.18); border-radius: 2px; }
 }
 .ps-top5-row {
   display: flex;
@@ -690,7 +728,7 @@ $cyan:   #00d4ff;
   &.rank-1 { background: rgba(255,184,77,0.2); color: #FFB84D; border: 1px solid rgba(255,184,77,0.4); }
   &.rank-2 { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
   &.rank-3 { background: rgba(82,196,26,0.12); color: #52c41a; border: 1px solid rgba(82,196,26,0.3); }
-  &.rank-4, &.rank-5 { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
+  &.rank-4, &.rank-5, &.rank-n { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
 }
 .ps-top5-name { font-size: 12px; color: $white; width: 60px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ps-top5-bar-wrap { flex: 1; height: 6px; background: rgba(251,146,60,0.08); border-radius: 3px; overflow: hidden; }
@@ -740,6 +778,14 @@ $cyan:   #00d4ff;
 // 压力等级说明 - ps uses orange colors + wider name, override mixin defaults
 .ps-range-info { background: rgba(251,146,60,0.03); border-color: rgba(251,146,60,0.1); }
 .ps-range-name { width: 78px; }
+
+// 部门筛选标签
+.ps-dept-tag {
+  margin-left: auto; font-size: 11px; padding: 1px 6px; border-radius: 3px;
+  background: rgba(251,146,60,0.15); color: $accent; border: 1px solid rgba(251,146,60,0.35);
+  cursor: pointer;
+  &:hover { background: rgba(251,146,60,0.25); }
+}
 
 // ── 分布图 ──
 .ps-dist-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }

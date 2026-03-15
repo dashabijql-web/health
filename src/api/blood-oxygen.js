@@ -60,10 +60,11 @@ export function getBloodOxygenDeptStats(startDate, endDate) {
 /**
  * 获取各年龄段平均血氧
  */
-export function getAgeBloodOxygen() {
+export function getAgeBloodOxygen(startDate, endDate) {
   return request({
     url: '/blood-oxygen/age-stats',
-    method: 'get'
+    method: 'get',
+    params: { startDate, endDate }
   })
 }
 

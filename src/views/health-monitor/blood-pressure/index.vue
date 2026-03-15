@@ -29,16 +29,16 @@
 
       <!-- ─ 左侧：TOP5 + 部门统计 ─ -->
       <aside class="bp-aside">
-        <!-- TOP5 紧凑列表 -->
+        <!-- 高收缩压排行 -->
         <div class="bp-panel bp-aside-top">
           <div class="bp-ph">
             <span class="bp-ph-bar"></span>
-            <span class="bp-ph-title">高收缩压 TOP5</span>
+            <span class="bp-ph-title">{{ top5Title }}</span>
           </div>
-          <div class="bp-top5-list">
+          <div class="bp-top5-list" ref="top5ScrollRef">
             <div v-if="!top5Data.length" class="bp-top5-empty">暂无高收缩压人员数据</div>
             <div class="bp-top5-row" v-for="(item, i) in top5Data" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
-              <span class="bp-top5-rank" :class="'rank-'+(i+1)">{{ i+1 }}</span>
+              <span class="bp-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="bp-top5-name">{{ item.userName }}</span>
               <div class="bp-top5-bar-wrap">
                 <div class="bp-top5-bar" :style="{width: (item.avgSystolic / top5Max * 100) + '%'}"></div>
@@ -53,6 +53,7 @@
           <div class="bp-ph">
             <span class="bp-ph-bar"></span>
             <span class="bp-ph-title">部门平均收缩压</span>
+            <span v-if="filterDept" class="bp-dept-tag" @click="filterDept=''" title="点击取消筛选">{{ filterDept }} ×</span>
             <div class="bp-ph-legend">
               <span class="bp-leg-dot" style="background:#a78bfa"></span><span class="bp-leg-txt">收缩压</span>
               <span class="bp-leg-dot" style="background:#38bdf8"></span><span class="bp-leg-txt">舒张压</span>
@@ -184,7 +185,7 @@
         <div class="bp-panel bp-panel-anomaly">
           <div class="bp-ph">
             <span class="bp-ph-bar"></span>
-            <span class="bp-ph-title">当前异常血压明细</span>
+            <span class="bp-ph-title">当前异常血压明细{{ filterDept ? ' — ' + filterDept : '' }}</span>
             <span class="bp-anomaly-count" v-if="bpAnomalyList.length">
               共 <em>{{ bpAnomalyList.length }}</em> 人异常
             </span>
@@ -295,6 +296,8 @@ export default {
       },
       distLegend: [],
       top5Data: [],
+      filterDept: '',
+      _top5ScrollTimer: null,
       bpGrades: [
         { label: '正常',       range: '< 120 / < 80 mmHg',  color: '#52c41a' },
         { label: '偏高',       range: '120~139 / 80~89',     color: '#FFB84D' },
@@ -339,9 +342,17 @@ export default {
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.avgSystolic || 0), 160) : 160
     },
+    top5Title() {
+      const p = { day: '今日', week: '近7日', month: '近30日' }[this.activePeriod]
+      return p + '高收缩压排行'
+    },
+    filteredRealtimeList() {
+      if (!this.filterDept) return this.realtimeList
+      return this.realtimeList.filter(x => x.deptName === this.filterDept)
+    },
     /* pagedList / totalPages from chartPageMixin */
     bpAnomalyList() {
-      return this.realtimeList.filter(x => x.systolic >= 140 || x.diastolic >= 90)
+      return this.filteredRealtimeList.filter(x => x.systolic >= 140 || x.diastolic >= 90)
     },
     bpZones() {
       const list = this.realtimeList
@@ -369,6 +380,7 @@ export default {
   },
   beforeUnmount() {
     if (this._ro) this._ro.disconnect()
+    if (this._top5ScrollTimer) clearInterval(this._top5ScrollTimer)
   },
   methods: {
     async fetchData() {
@@ -394,9 +406,10 @@ export default {
     async loadTopUsers() {
       const { startDate, endDate } = this.periodRange
       try {
-        const r = await getBPTopUsers(5, startDate, endDate)
+        const r = await getBPTopUsers(1000, startDate, endDate)
         if (r.code === 200) this.top5Data = r.data || []
       } catch { this.top5Data = [] }
+      this.$nextTick(() => this.startTop5Scroll())
     },
 
     async loadDept() {
@@ -487,6 +500,12 @@ export default {
           }
         ]
       })
+      c.off('click')
+      c.on('click', params => {
+        const name = d[params.dataIndex]?.deptName
+        if (!name) return
+        this.filterDept = this.filterDept === name ? '' : name
+      })
     },
 
     initDistChart(data) {
@@ -496,8 +515,7 @@ export default {
 
     initTrendChart(dates, sysVals, diaVals) {
       const c = initChart(this.charts, 'trend', this.$refs.trendRef); if (!c) return
-      const isEmpty = !dates.length
-      const fbDates = Array.from({ length: 30 }, (_, i) => dayjs().subtract(29 - i, 'day').format('MM/DD'))
+      if (!dates.length) { c.setOption(emptyOption('暂无数据', 13)); return }
       c.setOption({
         backgroundColor: 'transparent',
         tooltip: chartTooltip(p => {
@@ -512,11 +530,11 @@ export default {
           textStyle: { color: '#8ba6c8', fontSize: 11 }, itemWidth: 14, itemHeight: 3
         },
         grid: { ...trendGrid(), right: '5%', top: '16%' },
-        xAxis: { ...categoryAxis(isEmpty ? fbDates : dates, { fontSize: 10, interval: Math.floor((isEmpty ? fbDates : dates).length / 6) }), boundaryGap: false },
+        xAxis: { ...categoryAxis(dates, { fontSize: 10, interval: Math.floor(dates.length / 6) }), boundaryGap: false },
         yAxis: valueAxis({ name: 'mmHg', min: v => Math.max(0, Math.floor(v.min - 8)), max: v => Math.ceil(v.max + 8) }),
         series: [
           {
-            name: '收缩压', type: 'line', data: isEmpty ? [] : sysVals,
+            name: '收缩压', type: 'line', data: sysVals,
             smooth: true, symbol: 'none', connectNulls: false,
             lineStyle: { color: '#a78bfa', width: 2 },
             areaStyle: { color: gradV('rgba(167,139,250,0.28)', 'rgba(167,139,250,0.02)') },
@@ -524,7 +542,7 @@ export default {
               data: [{ yAxis: 139, label: { color: '#a78bfa', fontSize: 10, formatter: '偏高 139' } }] }
           },
           {
-            name: '舒张压', type: 'line', data: isEmpty ? [] : diaVals,
+            name: '舒张压', type: 'line', data: diaVals,
             smooth: true, symbol: 'none', connectNulls: false,
             lineStyle: { color: '#38bdf8', width: 2 },
             areaStyle: { color: gradV('rgba(56,189,248,0.2)', 'rgba(56,189,248,0.02)') },
@@ -582,6 +600,21 @@ export default {
       return { normal: '正常', pre: '偏高', stage1: '1级', danger: '2级' }[lv]
     },
 
+
+    startTop5Scroll() {
+      if (this._top5ScrollTimer) { clearInterval(this._top5ScrollTimer); this._top5ScrollTimer = null }
+      const el = this.$refs.top5ScrollRef
+      if (!el || el.scrollHeight <= el.clientHeight) return
+      let paused = false
+      this._top5ScrollTimer = setInterval(() => {
+        if (paused) return
+        el.scrollTop += 1
+        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
+          paused = true
+          setTimeout(() => { el.scrollTop = 0; paused = false }, 1500)
+        }
+      }, 40)
+    },
 
     // setPageSize → chartPageMixin
   }
@@ -692,7 +725,7 @@ $sky:    #38bdf8;
   width: 260px; flex-shrink: 0;
   display: flex; flex-direction: column; gap: 10px;
 }
-.bp-aside-top { height: 200px; flex-shrink: 0; }
+.bp-aside-top { height: 200px; flex-shrink: 0; display: flex; flex-direction: column; }
 .bp-aside-bot { flex: 1; }
 
 // ── Main（hm-main mixin） ──
@@ -731,8 +764,12 @@ $sky:    #38bdf8;
 // ── TOP5 紧凑列表 ──
 .bp-top5-empty { padding: 20px 0; text-align: center; color: rgba(167,139,250,0.5); font-size: 12px; }
 .bp-top5-list {
+  flex: 1;
+  overflow-y: auto;
   padding: 8px 12px;
   display: flex; flex-direction: column; gap: 8px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.18); border-radius: 2px; }
 }
 .bp-top5-row {
   display: flex; align-items: center; gap: 8px;
@@ -744,12 +781,20 @@ $sky:    #38bdf8;
   &.rank-1 { background: rgba(255,184,77,0.2); color: #FFB84D; border: 1px solid rgba(255,184,77,0.4); }
   &.rank-2 { background: rgba(167,139,250,0.12); color: $purple; border: 1px solid rgba(167,139,250,0.3); }
   &.rank-3 { background: rgba(56,189,248,0.12); color: $sky; border: 1px solid rgba(56,189,248,0.3); }
-  &.rank-4, &.rank-5 { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
+  &.rank-4, &.rank-5, &.rank-n { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
 }
 .bp-top5-name { font-size: 12px; color: $white; width: 56px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bp-top5-bar-wrap { flex: 1; height: 6px; background: rgba(167,139,250,0.08); border-radius: 3px; overflow: hidden; }
 .bp-top5-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, $purple, #7c3aed); transition: width 0.8s ease; }
 .bp-top5-val { font-size: 13px; font-weight: 700; color: $purple; font-family: 'Consolas', monospace; width: 28px; text-align: right; flex-shrink: 0; }
+
+// 部门筛选标签
+.bp-dept-tag {
+  margin-left: auto; font-size: 11px; padding: 1px 6px; border-radius: 3px;
+  background: rgba(167,139,250,0.15); color: $purple; border: 1px solid rgba(167,139,250,0.35);
+  cursor: pointer;
+  &:hover { background: rgba(167,139,250,0.25); }
+}
 
 // ── 概况面板内容 ──
 .bp-overview-body {
@@ -835,7 +880,7 @@ $sky:    #38bdf8;
 .bp-ds-seg { transition: width 0.4s ease; min-width: 0; }
 
 // ── 异常明细面板 ──
-.bp-panel-anomaly { flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+.bp-panel-anomaly { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .bp-anomaly-count {
   margin-left: auto; font-size: 12px; color: #ff7043;
   em { font-style: normal; font-weight: 700; }
@@ -853,7 +898,7 @@ $sky:    #38bdf8;
   span { font-size: 11px; color: $dim; font-weight: 600; }
 }
 .bp-anomaly-list {
-  flex: 1; overflow-y: auto; padding: 3px 6px; max-height: 110px;
+  flex: 1; overflow-y: auto; padding: 3px 6px;
   &::-webkit-scrollbar { width: 3px; }
   &::-webkit-scrollbar-thumb { background: rgba(255,112,67,0.2); border-radius: 2px; }
 }

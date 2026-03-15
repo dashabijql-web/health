@@ -30,12 +30,12 @@
         <div class="bo-panel bo-aside-top">
           <div class="bo-ph">
             <span class="bo-ph-bar"></span>
-            <span class="bo-ph-title">异常频次 TOP5</span>
+            <span class="bo-ph-title">{{ top5Title }}</span>
           </div>
-          <div class="bo-top5-list">
+          <div class="bo-top5-list" ref="top5ScrollRef">
             <div v-if="!top5Data.length" class="bo-top5-empty">暂无异常频次数据</div>
             <div class="bo-top5-row" v-for="(item, i) in top5Data" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
-              <span class="bo-top5-rank" :class="'rank-'+(i+1)">{{ i+1 }}</span>
+              <span class="bo-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="bo-top5-name">{{ item.userName }}</span>
               <div class="bo-top5-bar-wrap">
                 <div class="bo-top5-bar" :style="{width: (item.count / top5Max * 100) + '%'}"></div>
@@ -49,6 +49,7 @@
           <div class="bo-ph">
             <span class="bo-ph-bar"></span>
             <span class="bo-ph-title">部门血氧异常统计</span>
+            <span v-if="filterDept" class="bo-dept-tag" @click="filterDept=''" title="点击取消筛选">{{ filterDept }} ×</span>
             <div class="bo-ph-legend">
               <span class="bo-leg-dot" style="background:#FFB84D"></span><span class="bo-leg-txt">偏低</span>
               <span class="bo-leg-dot" style="background:#4FC3F7"></span><span class="bo-leg-txt">偏高</span>
@@ -180,7 +181,7 @@
         <div class="bo-panel bo-panel-anomaly">
           <div class="bo-ph">
             <span class="bo-ph-bar"></span>
-            <span class="bo-ph-title">当前异常血氧明细</span>
+            <span class="bo-ph-title">当前异常血氧明细{{ filterDept ? ' — ' + filterDept : '' }}</span>
             <span class="bo-anomaly-count" v-if="boAnomalyList.length">
               共 <em>{{ boAnomalyList.length }}</em> 人异常
             </span>
@@ -323,7 +324,7 @@ export default {
       charts: {},
       detailItem: null,
       detailVisible: false,
-      filterDept: ''
+      _top5ScrollTimer: null
     }
   },
   computed: {
@@ -359,7 +360,11 @@ export default {
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.count)) : 1
     },
-    /* pagedList / totalPages from chartPageMixin */
+    top5Title() {
+      const p = { day: '今日', week: '近7日', month: '近30日' }[this.activePeriod]
+      return p + '异常频次排行'
+    },
+    /* pagedList / totalPages / filteredRealtimeList from chartPageMixin */
     boZones() {
       const list = this.realtimeList
       const total = list.length || 1
@@ -376,7 +381,7 @@ export default {
       ]
     },
     boAnomalyList() {
-      return this.realtimeList.filter(x => x.bloodOxygen < 95)
+      return this.filteredRealtimeList.filter(x => x.bloodOxygen < 95)
     }
   },
   mounted() {
@@ -389,6 +394,7 @@ export default {
   },
   beforeUnmount() {
     if (this._ro) this._ro.disconnect()
+    if (this._top5ScrollTimer) clearInterval(this._top5ScrollTimer)
   },
   methods: {
     async fetchData() {
@@ -405,8 +411,9 @@ export default {
     },
     async loadTopUsers() {
       const { startDate, endDate } = this.periodRange
-      let d = []; try { const r = await getBloodOxygenTopUsers(5, startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
+      let d = []; try { const r = await getBloodOxygenTopUsers(1000, startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
       this.top5Data = d
+      this.$nextTick(() => this.startTop5Scroll())
     },
     async loadDept() {
       const { startDate, endDate } = this.periodRange
@@ -414,7 +421,8 @@ export default {
       this.$nextTick(() => this.initDept(d))
     },
     async loadAge() {
-      let d = []; try { const r = await getAgeBloodOxygen(); if (r.code === 200) d = r.data || [] } catch {}
+      const { startDate, endDate } = this.periodRange
+      let d = []; try { const r = await getAgeBloodOxygen(startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
       this.$nextTick(() => this.initAge(d))
     },
     async loadDist() {
@@ -576,9 +584,9 @@ export default {
     // ── 趋势折线图 ──
     initTrend(data) {
       const c = initChart(this.charts, 'trend', this.$refs.trendRef); if (!c) return
-      const fbDates = Array.from({ length: 30 }, (_, i) => dayjs().subtract(29 - i, 'day').format('MM/DD'))
-      const dates = data.dates  || fbDates
-      const vals  = data.values || new Array(dates.length).fill(0)
+      const dates = data.dates  || []
+      const vals  = data.values || []
+      if (!dates.length) { c.setOption(emptyOption('暂无数据', 13)); return }
       c.setOption({
         backgroundColor: 'transparent',
         tooltip: chartTooltip(p => `${p[0].name}<br/>平均血氧：<b style="color:#00d4ff">${p[0].value}%</b>`),
@@ -660,6 +668,21 @@ export default {
 
     boLevel: spo2Level,
 
+    startTop5Scroll() {
+      if (this._top5ScrollTimer) { clearInterval(this._top5ScrollTimer); this._top5ScrollTimer = null }
+      const el = this.$refs.top5ScrollRef
+      if (!el || el.scrollHeight <= el.clientHeight) return
+      let paused = false
+      this._top5ScrollTimer = setInterval(() => {
+        if (paused) return
+        el.scrollTop += 1
+        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
+          paused = true
+          setTimeout(() => { el.scrollTop = 0; paused = false }, 1500)
+        }
+      }, 40)
+    },
+
     // setPageSize → chartPageMixin
   }
 }
@@ -724,7 +747,7 @@ export default {
 
 /* ── Aside ── */
 .bo-aside       { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
-.bo-aside-top   { height: 190px; flex-shrink: 0; }
+.bo-aside-top   { height: 190px; flex-shrink: 0; display: flex; flex-direction: column; }
 .bo-aside-bot   { flex: 1; }
 
 /* ── Main（hm-main mixin） ── */
@@ -772,7 +795,12 @@ export default {
 
 /* ── TOP5 ── */
 .bo-top5-empty { padding: 20px 0; text-align: center; color: rgba(126,184,247,0.5); font-size: 12px; }
-.bo-top5-list { padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
+.bo-top5-list {
+  flex: 1; overflow-y: auto;
+  padding: 8px 12px; display: flex; flex-direction: column; gap: 8px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.18); border-radius: 2px; }
+}
 .bo-top5-row  { display: flex; align-items: center; gap: 8px; }
 .bo-top5-rank {
   width: 18px; height: 18px; border-radius: 4px; font-size: 11px; font-weight: 700;
@@ -780,7 +808,7 @@ export default {
   &.rank-1 { background: rgba(255,184,77,0.2); color: #FFB84D; border: 1px solid rgba(255,184,77,0.4); }
   &.rank-2 { background: rgba(0,212,255,0.12); color: $accent;  border: 1px solid rgba(0,212,255,0.3); }
   &.rank-3 { background: rgba(82,196,26,0.12); color: #52c41a;  border: 1px solid rgba(82,196,26,0.3); }
-  &.rank-4, &.rank-5 { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
+  &.rank-4, &.rank-5, &.rank-n { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
 }
 .bo-top5-name    { font-size: 12px; color: $white; width: 64px; flex-shrink: 0; }
 .bo-top5-bar-wrap{ flex: 1; height: 6px; background: rgba(0,212,255,0.08); border-radius: 3px; overflow: hidden; }
@@ -876,8 +904,16 @@ export default {
 }
 .bo-ds-seg { transition: width 0.4s ease; min-width: 0; }
 
+// 部门筛选标签
+.bo-dept-tag {
+  font-size: 11px; padding: 1px 6px; border-radius: 3px;
+  background: rgba(0,212,255,0.15); color: $accent; border: 1px solid rgba(0,212,255,0.35);
+  cursor: pointer;
+  &:hover { background: rgba(0,212,255,0.25); }
+}
+
 // ── 异常血氧明细面板 ──
-.bo-panel-anomaly { flex-shrink: 0; }
+.bo-panel-anomaly { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .bo-anomaly-count {
   margin-left: auto; font-size: 12px; color: $dim;
   em { color: #ff8a80; font-style: normal; font-weight: 700; }
@@ -886,13 +922,17 @@ export default {
   text-align: center; padding: 14px 0; font-size: 13px; color: $dim;
 }
 .bo-anomaly-ok { color: #52c41a; font-size: 15px; margin-right: 4px; }
-.bo-anomaly-body { display: flex; flex-direction: column; }
+.bo-anomaly-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .bo-anomaly-hd {
   display: grid; grid-template-columns: 1.2fr 1.5fr 0.9fr 0.9fr 1.4fr;
-  padding: 4px 8px; font-size: 11px; color: $dim;
+  padding: 4px 8px; font-size: 11px; color: $dim; flex-shrink: 0;
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-.bo-anomaly-list { max-height: 120px; overflow-y: auto; }
+.bo-anomaly-list {
+  flex: 1; overflow-y: auto;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,184,77,0.2); border-radius: 2px; }
+}
 .bo-anomaly-row {
   display: grid; grid-template-columns: 1.2fr 1.5fr 0.9fr 0.9fr 1.4fr;
   padding: 5px 8px; font-size: 12px; border-radius: 4px;

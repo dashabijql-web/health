@@ -33,12 +33,13 @@
         <div class="hr-panel hr-aside-top">
           <div class="hr-ph">
             <span class="hr-ph-bar"></span>
-            <span class="hr-ph-title">异常频次 TOP5</span>
+            <span class="hr-ph-title">异常频次排行</span>
           </div>
-          <div class="hr-top5-list">
+          <div class="hr-top5-list" ref="top5ScrollRef"
+               @mouseenter="_top5Paused=true" @mouseleave="_top5Paused=false">
             <div v-if="!top5Data.length" class="hr-top5-empty">暂无异常频次数据</div>
             <div class="hr-top5-row" v-for="(item, i) in top5Data" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
-              <span class="hr-top5-rank" :class="'rank-'+(i+1)">{{ i+1 }}</span>
+              <span class="hr-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="hr-top5-name">{{ item.userName }}</span>
               <div class="hr-top5-bar-wrap">
                 <div class="hr-top5-bar" :style="{width: (item.count / top5Max * 100) + '%'}"></div>
@@ -114,6 +115,16 @@
           </div>
 
 
+          <div class="hr-panel hr-panel-hourly">
+            <div class="hr-ph">
+              <span class="hr-ph-bar"></span>
+              <span class="hr-ph-title">{{ hourlyTitle }}</span>
+            </div>
+            <div class="hr-pc">
+              <div ref="hourlyRef" style="width:100%;height:100%"></div>
+            </div>
+          </div>
+
           <div class="hr-panel hr-panel-dist">
             <div class="hr-ph">
               <span class="hr-ph-bar"></span>
@@ -151,6 +162,20 @@
           </div>
         </div>
 
+
+        <!-- 心率区间统计 -->
+        <div class="hr-zone-row">
+          <div v-for="z in hrZones" :key="z.key" :class="['hr-zone-card', z.cls]">
+            <div class="hr-zone-top">
+              <span class="hr-zone-label">{{ z.icon }} {{ z.label }}</span>
+              <span class="hr-zone-range">{{ z.range }}</span>
+            </div>
+            <span class="hr-zone-count">{{ z.count }}<em>人</em></span>
+            <div class="hr-zone-bar">
+              <div class="hr-zone-fill" :style="{ width: z.pct + '%', background: z.color }"></div>
+            </div>
+          </div>
+        </div>
 
         <!-- 当前异常心率明细：高度跟内容走，不拉伸 -->
         <div class="hr-panel hr-panel-anomaly">
@@ -288,6 +313,7 @@ export default {
       },
       distLegend: [],
       top5Data: [],
+
       hrRanges: [
         { label: '偏低 (心动过缓)', range: '< 55 次/分',     color: '#4FC3F7' },
         { label: '正常 (健康范围)', range: '55–120 次/分',   color: '#52c41a' },
@@ -340,12 +366,7 @@ export default {
     },
     /* pagedList / totalPages from chartPageMixin */
     anomalyList() {
-      return this.realtimeList.filter(x => x.heartRate > 120 || x.heartRate < 55)
-    },
-    anomalyPanelH() {
-      const PH = 36, HD = 26, ROW = 27, PAD = 10
-      if (!this.anomalyList.length) return PH + 46
-      return PH + HD + Math.min(this.anomalyList.length, 12) * ROW + PAD
+      return this.filteredRealtimeList.filter(x => x.heartRate > 120 || x.heartRate < 55)
     },
     hrZones() {
       const list = this.realtimeList
@@ -365,6 +386,22 @@ export default {
   },
   mounted() {
     this.initPage()
+    this._top5Paused = false
+    this._top5ScrollTimer = setInterval(() => {
+      if (this._top5Paused) return
+      const el = this.$refs.top5ScrollRef
+      if (!el) return
+      const max = el.scrollHeight - el.clientHeight
+      if (max <= 0) return
+      el.scrollTop += 1
+      if (el.scrollTop >= max - 1) {
+        this._top5Paused = true
+        setTimeout(() => {
+          if (el) el.scrollTop = 0
+          this._top5Paused = false
+        }, 1500)
+      }
+    }, 40)
     this.$nextTick(() => {
       this._ro = new ResizeObserver(() => this.setPageSize(27))
       const el = this.$refs.listRef
@@ -375,6 +412,7 @@ export default {
     })
   },
   beforeUnmount() {
+    clearInterval(this._top5ScrollTimer)
     if (this._ro) this._ro.disconnect()
   },
   methods: {
@@ -399,7 +437,7 @@ export default {
     },
     async loadTopUsers() {
       const { startDate, endDate } = this.periodRange
-      let d = []; try { const r = await getHeartRateTopUsers(5, startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
+      let d = []; try { const r = await getHeartRateTopUsers(1000, startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
       this.top5Data = d
     },
     async loadDept() {
@@ -408,7 +446,8 @@ export default {
       this.$nextTick(() => this.initDept(d))
     },
     async loadAge() {
-      let d = []; try { const r = await getAgeHeartRate(); if (r.code === 200) d = r.data || [] } catch {}
+      const { startDate, endDate } = this.periodRange
+      let d = []; try { const r = await getAgeHeartRate(startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
       this.$nextTick(() => this.initAge(d))
     },
     async loadDist() {
@@ -539,9 +578,9 @@ export default {
 
     initTrend(data) {
       const c = initChart(this.charts, 'trend', this.$refs.trendRef); if (!c) return
-      const fbDates = Array.from({ length: 30 }, (_, i) => dayjs().subtract(29 - i, 'day').format('MM/DD'))
-      const dates = data.dates  || fbDates
-      const vals  = data.values || new Array(dates.length).fill(0)
+      const dates = data.dates  || []
+      const vals  = data.values || []
+      if (!dates.length) { c.setOption(emptyOption('暂无趋势数据')); return }
       c.setOption({
         backgroundColor: 'transparent',
         tooltip: chartTooltip(p => `${p[0].name}<br/>平均心率：<b style="color:#00d4ff">${p[0].value}</b> 次/分`),
@@ -722,7 +761,7 @@ export default {
   width: 300px; flex-shrink: 0;
   display: flex; flex-direction: column; gap: 10px;
 }
-.hr-aside-top { height: 190px; flex-shrink: 0; }
+.hr-aside-top { height: 190px; flex-shrink: 0; display: flex; flex-direction: column; }
 .hr-aside-bot { flex: 1; }
 
 // TOP5 紧凑列表
@@ -732,6 +771,11 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.25); border-radius: 2px; }
 }
 .hr-top5-row {
   display: flex;
@@ -747,7 +791,7 @@ export default {
   &.rank-1 { background: rgba(255,184,77,0.2); color: #FFB84D; border: 1px solid rgba(255,184,77,0.4); }
   &.rank-2 { background: rgba(0,212,255,0.12); color: #00d4ff; border: 1px solid rgba(0,212,255,0.3); }
   &.rank-3 { background: rgba(82,196,26,0.12); color: #52c41a; border: 1px solid rgba(82,196,26,0.3); }
-  &.rank-4, &.rank-5 { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
+  &.rank-n { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
 }
 .hr-top5-name { font-size: 12px; color: $white; width: 64px; flex-shrink: 0; }
 .hr-top5-bar-wrap { flex: 1; height: 6px; background: rgba(0,212,255,0.08); border-radius: 3px; overflow: hidden; }
@@ -762,7 +806,7 @@ export default {
 .hr-panel-age      { flex: 1; }
 .hr-panel-hourly   { flex: 1; }
 .hr-panel-dist     { flex: 1; }
-.hr-panel-trend    { flex: 1; min-height: 160px; max-height: 300px; }
+.hr-panel-trend    { flex: 1; min-height: 160px; max-height: 220px; }
 
 // ── Right list ──
 .hr-rtlist {
@@ -858,7 +902,45 @@ export default {
 .hr-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; } // override mixin
 
 // ── 异常明细面板 ──
-.hr-panel-anomaly { flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+.hr-panel-anomaly { flex: 1; min-height: 150px; display: flex; flex-direction: column; overflow: hidden; }
+
+/* 心率区间统计卡 */
+.hr-zone-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  flex-shrink: 0;
+}
+.hr-zone-card {
+  background: rgba(0,212,255,0.04);
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.hr-zone-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.hr-zone-label { font-size: 12px; color: #a8c5e6; }
+.hr-zone-range { font-size: 10px; color: #5a6a80; }
+.hr-zone-count {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'Consolas', monospace;
+  color: #e0f0ff;
+  line-height: 1.2;
+  em { font-size: 11px; font-style: normal; color: #8ba6c8; margin-left: 2px; }
+}
+.hr-zone-bar  { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; }
+.hr-zone-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+.zone-low      { border-color: rgba(79,195,247,0.35); }
+.zone-normal   { border-color: rgba(82,196,26,0.35); }
+.zone-elevated { border-color: rgba(255,184,77,0.35); }
+.zone-danger   { border-color: rgba(255,82,82,0.35); }
 .hr-anomaly-count {
   margin-left: auto; font-size: 12px; color: #FFB84D;
   em { font-style: normal; font-weight: 700; }

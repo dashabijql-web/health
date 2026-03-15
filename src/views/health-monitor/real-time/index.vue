@@ -1040,6 +1040,7 @@ export default {
   border-radius: 10px;
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
   &.st-ok   { background: rgba(103,194,58,0.18);  color: #67C23A; border: 1px solid rgba(103,194,58,0.4); }
   &.st-warn { background: rgba(230,162,60,0.18);  color: #E6A23C; border: 1px solid rgba(230,162,60,0.4); animation: blink 2s infinite; }
 }
