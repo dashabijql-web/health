@@ -201,8 +201,19 @@
         </div>
       </div>
 
-      <!-- RIGHT: AI 报告 -->
+      <!-- RIGHT: ECG + AI 报告 + 诊断历史 -->
       <div class="col-right">
+
+        <!-- ECG 实时心电图 -->
+        <div class="panel ecg-panel">
+          <div class="panel-hd">
+            <span class="title-bar ecg-bar"></span>实时心电图
+            <span v-if="vitals.heartRate" class="ecg-hr">❤ {{ vitals.heartRate }} bpm</span>
+            <span v-else class="ecg-hr ecg-hr-na">等待心率数据…</span>
+          </div>
+          <canvas ref="ecgCanvasRef" class="ecg-canvas"></canvas>
+        </div>
+
         <div class="panel ai-panel">
           <div class="panel-hd ai-hd">
             <div class="ai-hd-left">
@@ -215,6 +226,7 @@
                 {{ aiReport.content ? '刷新报告' : '生成 AI 分析' }}
               </el-button>
               <el-button v-if="aiReport.content" size="small" plain :loading="aiLoading" @click="handleGenerateReport(true)">重新生成</el-button>
+              <el-button v-if="aiReport.content" size="small" plain :loading="pdfExporting" @click="exportPdf">📄 导出PDF</el-button>
             </div>
           </div>
           <div v-if="aiLoading" class="ai-loading">
@@ -227,6 +239,22 @@
           </div>
           <div v-else class="ai-content" v-html="renderedReport"></div>
         </div>
+
+        <!-- 诊断历史 -->
+        <div class="panel hist-panel" v-if="reportHistory.length">
+          <div class="panel-hd hist-hd" @click="histExpanded = !histExpanded">
+            <span class="title-bar hist-bar"></span>诊断历史
+            <span class="badge">{{ reportHistory.length }} 条</span>
+            <span class="hist-toggle">{{ histExpanded ? '▲' : '▼' }}</span>
+          </div>
+          <div v-if="histExpanded" class="hist-list">
+            <div v-for="(h, i) in reportHistory" :key="i" class="hist-item" @click="restoreHistory(h)">
+              <div class="hist-time">{{ h.generateTime }}</div>
+              <div class="hist-preview">{{ (h.content || '').replace(/#+\s*/g,'').slice(0, 60) }}…</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -240,6 +268,8 @@ import { ElMessage } from 'element-plus'
 import { getHealthPortrait } from '@/api/health-portrait'
 import { getCachedAiReport, generateAiReport } from '@/api/ai'
 import * as echarts from 'echarts'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 const route = useRoute()
 const router = useRouter()
@@ -278,12 +308,16 @@ const warnings = ref([])
 
 const trendChartRef = ref(null)
 const radarChartRef = ref(null)
+const ecgCanvasRef = ref(null)
 let trendChart = null
 let radarChart = null
 let pollTimer = null
+let ecgAnimId = null
 
 const aiReport = reactive({ content: '', generateTime: '', expiresAt: '' })
 const aiLoading = ref(false)
+const reportHistory = ref([])
+const histExpanded = ref(false)
 
 // ── 综合等级 ──
 const gradeInfo = computed(() => {
@@ -375,6 +409,118 @@ const scorePills = computed(() => {
   }
 })
 
+// ── 诊断历史（localStorage，最多5条）──
+const histKey = () => `ai_history_${empCode.value}`
+function loadHistory() {
+  try { reportHistory.value = JSON.parse(localStorage.getItem(histKey()) || '[]') } catch { reportHistory.value = [] }
+}
+function saveToHistory(report) {
+  const item = { content: report.content, generateTime: report.generateTime }
+  const list = reportHistory.value.filter(h => h.generateTime !== item.generateTime)
+  list.unshift(item)
+  reportHistory.value = list.slice(0, 5)
+  try { localStorage.setItem(histKey(), JSON.stringify(reportHistory.value)) } catch {}
+}
+function restoreHistory(h) {
+  aiReport.content = h.content
+  aiReport.generateTime = h.generateTime
+}
+
+// ── PDF 导出 ──
+const pdfExporting = ref(false)
+async function exportPdf() {
+  if (pdfExporting.value) return
+  pdfExporting.value = true
+  ElMessage.info('正在生成 PDF，请稍候…')
+  try {
+    const el = document.querySelector('.ai-content')
+    if (!el) return
+    const canvas = await html2canvas(el, { backgroundColor: '#141830', scale: 2 })
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' })
+    const pageW = pdf.internal.pageSize.getWidth()
+    const pageH = pdf.internal.pageSize.getHeight()
+    const imgW = pageW - 20
+    const imgH = (canvas.height * imgW) / canvas.width
+    const name = portrait.empName || empCode.value
+    pdf.setFontSize(14)
+    pdf.setTextColor(40, 40, 40)
+    pdf.text(`AI 健康分析报告 — ${name}`, 10, 14)
+    pdf.setFontSize(9)
+    pdf.setTextColor(120, 120, 120)
+    pdf.text(`生成时间：${aiReport.generateTime}    员工编号：${empCode.value}`, 10, 20)
+    pdf.addImage(imgData, 'PNG', 10, 25, imgW, imgH)
+    pdf.save(`AI健康报告_${name}_${aiReport.generateTime?.replace(/[: ]/g,'') || Date.now()}.pdf`)
+    ElMessage.success('PDF 导出成功')
+  } catch (e) {
+    ElMessage.error('PDF 生成失败：' + e.message)
+  } finally { pdfExporting.value = false }
+}
+
+// ── ECG 心电图模拟 ──
+function startEcg() {
+  const canvas = ecgCanvasRef.value
+  if (!canvas) return
+  stopEcg()
+  const ctx = canvas.getContext('2d')
+  function resize() {
+    canvas.width = canvas.offsetWidth || 400
+    canvas.height = canvas.offsetHeight || 72
+  }
+  resize()
+  let W = canvas.width, H = canvas.height
+  let buf = new Float32Array(W).fill(H / 2)
+  let phase = 0
+
+  function beatSample(t) {
+    let v = 0
+    v += 0.15 * Math.exp(-((t - 0.2) / 0.04) ** 2)  // P
+    v -= 0.1  * Math.exp(-((t - 0.44) / 0.02) ** 2) // Q
+    v += 1.0  * Math.exp(-((t - 0.50) / 0.018) ** 2) // R
+    v -= 0.28 * Math.exp(-((t - 0.56) / 0.02) ** 2) // S
+    v += 0.35 * Math.exp(-((t - 0.72) / 0.055) ** 2) // T
+    return v
+  }
+
+  let last = 0
+  function draw(now) {
+    if (now - last < 16) { ecgAnimId = requestAnimationFrame(draw); return }
+    last = now
+    if (canvas.offsetWidth !== W || canvas.offsetHeight !== H) {
+      resize(); W = canvas.width; H = canvas.height; buf = new Float32Array(W).fill(H / 2)
+    }
+    const hr = vitals.heartRate || 75
+    const beatsPerSec = hr / 60
+    const pxPerFrame = beatsPerSec * (W / 4)  // 4s window
+    phase += pxPerFrame / 60
+    const beatLenPx = W / 4 * (1 / beatsPerSec)
+    const t = (phase % beatLenPx) / beatLenPx
+    const amp = H * 0.36
+    buf.copyWithin(0, 1)
+    buf[W - 1] = H / 2 - beatSample(t) * amp
+
+    ctx.fillStyle = '#071020'
+    ctx.fillRect(0, 0, W, H)
+    // grid
+    ctx.strokeStyle = 'rgba(0,212,255,0.07)'
+    ctx.lineWidth = 0.5
+    for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
+    for (let y = 0; y < H; y += 20) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+    // waveform
+    ctx.beginPath()
+    ctx.strokeStyle = '#00ff88'
+    ctx.lineWidth = 1.5
+    ctx.shadowColor = '#00ff88'
+    ctx.shadowBlur = 5
+    for (let i = 0; i < W; i++) { i === 0 ? ctx.moveTo(i, buf[i]) : ctx.lineTo(i, buf[i]) }
+    ctx.stroke()
+    ctx.shadowBlur = 0
+    ecgAnimId = requestAnimationFrame(draw)
+  }
+  ecgAnimId = requestAnimationFrame(draw)
+}
+function stopEcg() { if (ecgAnimId) { cancelAnimationFrame(ecgAnimId); ecgAnimId = null } }
+
 const loadCachedReport = async () => {
   if (!empCode.value) return
   try {
@@ -396,6 +542,7 @@ const handleGenerateReport = async (force = false) => {
       aiReport.content = res.data.reportContent
       aiReport.generateTime = res.data.generateTime
       aiReport.expiresAt = res.data.expiresAt
+      saveToHistory(aiReport)
       ElMessage.success('AI 报告生成成功')
     } else {
       ElMessage.error(res.message || 'AI 分析失败')
@@ -551,11 +698,14 @@ const initRadarChart = () => {
 
 const handleResize = () => { trendChart?.resize(); radarChart?.resize() }
 
-onMounted(() => {
+onMounted(async () => {
   fetchPortrait(true)
   loadCachedReport()
+  loadHistory()
   window.addEventListener('resize', handleResize)
   pollTimer = setInterval(() => fetchPortrait(false), 10000)
+  await nextTick()
+  startEcg()
 })
 
 onBeforeUnmount(() => {
@@ -564,6 +714,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
   trendChart?.dispose()
   radarChart?.dispose()
+  stopEcg()
 })
 </script>
 
@@ -778,6 +929,27 @@ onBeforeUnmount(() => {
 .heat-legend { display: flex; align-items: center; gap: 3px; font-size: 9px; color: #4a5578; margin-top: 5px; }
 .hl-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 
+/* ECG */
+.ecg-panel { flex-shrink: 0; }
+.ecg-bar { background: #00ff88; }
+.ecg-canvas { width: 100%; height: 72px; display: block; background: #071020; border-radius: 0 0 10px 10px; }
+.ecg-hr { margin-left: auto; font-size: 11px; color: #00ff88; font-weight: 700; }
+.ecg-hr-na { color: #4a5578; }
+
+/* 诊断历史 */
+.hist-panel { flex-shrink: 0; }
+.hist-bar { background: #667eea; }
+.hist-hd { cursor: pointer; user-select: none; &:hover { background: rgba(255,255,255,.03); } }
+.hist-toggle { margin-left: auto; font-size: 10px; color: #4a5578; }
+.hist-list { padding: 6px 0; }
+.hist-item {
+  padding: 6px 14px; cursor: pointer; border-bottom: 1px solid #1a1f3a;
+  &:last-child { border-bottom: none; }
+  &:hover { background: rgba(102,126,234,.08); }
+}
+.hist-time { font-size: 10px; color: #7eb8d4; margin-bottom: 2px; }
+.hist-preview { font-size: 11px; color: #4a5578; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* RIGHT COL */
 .ai-panel { flex: 1; }
 .ai-hd { flex-wrap: wrap; }
@@ -804,6 +976,18 @@ onBeforeUnmount(() => {
   &::-webkit-scrollbar-thumb { background: #232b4d; border-radius: 2px; }
   :deep(h4) { font-size: 13px; font-weight: 700; color: #00d4ff; margin: 10px 0 4px; padding-left: 7px; border-left: 3px solid #00d4ff; }
   :deep(strong) { color: #e8f4ff; }
+}
+
+/* 打印 PDF */
+@media print {
+  .portrait-root { background: #fff !important; color: #111 !important; height: auto !important; overflow: visible !important; }
+  .col-left, .col-center, .ecg-panel, .hist-panel, .top-bar-right { display: none !important; }
+  .main-grid { display: block !important; }
+  .col-right { display: block !important; }
+  .ai-panel { border: 1px solid #ccc !important; background: #fff !important; }
+  .panel-hd { background: #f5f5f5 !important; color: #111 !important; }
+  .ai-content { color: #111 !important; overflow: visible !important; }
+  .ai-hd-right .el-button { display: none !important; }
 }
 
 /* EMPTY */
