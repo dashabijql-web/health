@@ -111,6 +111,31 @@
           <div class="ep-ring ep-ring2"></div>
           <div class="ep-scan-overlay"></div>
           <img class="ep-miner" src="/assets/miner-worker.png" />
+          <!-- 身体部位异常高亮热区 -->
+          <div class="ep-hotspot ep-hs-heart"
+            :class="{ active: isHrAbnormal, danger: isHrDanger }"
+            title="心率监测区域">
+            <span class="ep-hs-pulse"></span>
+            <span class="ep-hs-label">❤ {{ vitals.heartRate || '--' }} bpm</span>
+          </div>
+          <div class="ep-hotspot ep-hs-lung"
+            :class="{ active: isSpo2Abnormal, danger: isSpo2Danger }"
+            title="血氧监测区域">
+            <span class="ep-hs-pulse"></span>
+            <span class="ep-hs-label">🩸 {{ vitals.bloodOxygen || '--' }}%</span>
+          </div>
+          <div class="ep-hotspot ep-hs-head"
+            :class="{ active: isTempAbnormal || isPressureHigh, danger: isTempDanger }"
+            title="头部监测区域">
+            <span class="ep-hs-pulse"></span>
+            <span class="ep-hs-label">{{ vitals.temperature ? vitals.temperature + '°C' : '--' }}</span>
+          </div>
+          <div class="ep-hotspot ep-hs-arm"
+            :class="{ active: isBpAbnormal, danger: isBpDanger }"
+            title="血压监测区域">
+            <span class="ep-hs-pulse"></span>
+            <span class="ep-hs-label">{{ (vitals.systolic && vitals.diastolic) ? vitals.systolic + '/' + vitals.diastolic : '--' }}</span>
+          </div>
           <div class="ep-glow-base"></div>
         </div>
 
@@ -287,6 +312,17 @@ const hrClass  = (v) => !v ? '' : (v < 60 || v > 100) ? 'red' : (v < 65 || v > 9
 const spo2Class= (v) => !v ? '' : v < 90 ? 'red' : v < 95 ? 'yellow' : 'green'
 const tempClass= (v) => { if (!v) return ''; const t = v > 100 ? v/10 : v; return (t > 37.3 || t < 36) ? 'red' : t > 37 ? 'yellow' : 'green' }
 const pressClass=(v) => !v ? '' : v > 70 ? 'red' : v > 50 ? 'yellow' : 'green'
+
+// 身体部位热区异常判断
+const isHrAbnormal   = computed(() => { const v = vitals.value.heartRate;   return v && (v < 60 || v > 100) })
+const isHrDanger     = computed(() => { const v = vitals.value.heartRate;   return v && (v < 50 || v > 120) })
+const isSpo2Abnormal = computed(() => { const v = vitals.value.bloodOxygen; return v && v < 95 })
+const isSpo2Danger   = computed(() => { const v = vitals.value.bloodOxygen; return v && v < 90 })
+const isTempAbnormal = computed(() => { const v = vitals.value.temperature; const t = v > 100 ? v/10 : v; return t && (t < 36 || t > 37.3) })
+const isTempDanger   = computed(() => { const v = vitals.value.temperature; const t = v > 100 ? v/10 : v; return t && (t < 35 || t > 38.5) })
+const isBpAbnormal   = computed(() => { const s = vitals.value.systolic, d = vitals.value.diastolic; return (s && s >= 140) || (d && d >= 90) })
+const isBpDanger     = computed(() => { const s = vitals.value.systolic, d = vitals.value.diastolic; return (s && s >= 160) || (d && d >= 100) })
+const isPressureHigh = computed(() => { const v = vitals.value.pressure; return v && v >= 70 })
 const hrPct    = (v) => !v ? 0 : Math.min(100, Math.max(0, (v - 40) / 80 * 100))
 const spo2Pct  = (v) => !v ? 0 : Math.min(100, Math.max(0, (v - 85) / 15 * 100))
 const tempPct  = (v) => { if (!v) return 0; const t = v > 100 ? v/10 : v; return Math.min(100, Math.max(0, (t - 35) / 5 * 100)) }
@@ -697,6 +733,34 @@ onUnmounted(() => {
 }
 .ep-fv.dim    { color: #5a8090; font-size: 13px; }
 .ep-fu { font-size: 11px; color: #4a7090; }
+
+/* ── 身体部位热区高亮 ── */
+.ep-hotspot {
+  position: absolute; z-index: 5; pointer-events: none;
+  opacity: 0; transition: opacity 0.4s;
+  display: flex; flex-direction: column; align-items: center;
+}
+.ep-hotspot.active { opacity: 1; }
+.ep-hs-pulse {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(255,180,50,0.3); border: 2px solid #FFB84D;
+  animation: hsPulse 1.5s ease-in-out infinite;
+  .ep-hotspot.danger & { background: rgba(255,80,80,0.35); border-color: #ff5252; }
+}
+@keyframes hsPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.6); opacity: 0.4; }
+}
+.ep-hs-label {
+  font-size: 10px; color: #FFB84D; margin-top: 3px; white-space: nowrap;
+  text-shadow: 0 0 6px rgba(255,180,50,0.8);
+  .ep-hotspot.danger & { color: #ff5252; text-shadow: 0 0 6px rgba(255,80,80,0.8); }
+}
+/* 各部位位置（相对 ep-miner-stage） */
+.ep-hs-heart { top: 28%; left: 54%; }   /* 心脏 */
+.ep-hs-lung  { top: 28%; left: 38%; }   /* 肺部（血氧） */
+.ep-hs-head  { top: 5%;  left: 50%; transform: translateX(-50%); }  /* 头部（体温/压力） */
+.ep-hs-arm   { top: 38%; left: 72%; }   /* 手臂（血压） */
 
 /* ═══ 右栏 ═══ */
 .ep-right { display: flex; flex-direction: column; overflow: hidden; }

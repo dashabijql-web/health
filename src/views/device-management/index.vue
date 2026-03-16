@@ -91,10 +91,10 @@
         @row-click="openDetail">
         <el-table-column type="index" label="#" width="50" align="center" :index="getTableIndex" />
         <el-table-column prop="imei" label="设备IMEI" width="160" />
-        <el-table-column label="在线状态" width="100" align="center" sortable :sort-method="(a,b) => a.status - b.status">
+        <el-table-column label="在线状态" width="110" align="center" sortable :sort-method="(a,b) => deviceOnlineLevel(b) - deviceOnlineLevel(a)">
           <template #default="{ row }">
-            <span :class="['online-dot', row.status === 1 ? 'online' : 'offline']"></span>
-            <span class="online-text">{{ row.status === 1 ? '在线' : '离线' }}</span>
+            <span :class="['online-dot', deviceOnlineLevel(row) === 2 ? 'online' : deviceOnlineLevel(row) === 1 ? 'recent' : 'offline']"></span>
+            <span class="online-text">{{ deviceOnlineLabel(row) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="绑定状态" width="100" align="center" sortable :sort-method="(a,b) => (a.bindStatus ? 1 : 0) - (b.bindStatus ? 1 : 0)">
@@ -360,6 +360,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed, onBeforeUnmount } from 'vue'
+import dayjs from 'dayjs'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Monitor, Timer, CircleCheck, Connection, Document, Link, Unlock, Upload, Delete, ChatDotRound, Search } from '@element-plus/icons-vue'
@@ -381,6 +382,19 @@ const route = useRoute()
 // 设备列表数据
 const deviceList = ref([])
 const loading = ref(false)
+
+// 设备在线状态：2=活跃连接, 1=30分钟内有报告, 0=离线
+function deviceOnlineLevel(row) {
+  if (row.status === 1) return 2
+  if (row.lastOnlineTime && dayjs().diff(dayjs(row.lastOnlineTime), 'minute') <= 30) return 1
+  return 0
+}
+function deviceOnlineLabel(row) {
+  const l = deviceOnlineLevel(row)
+  if (l === 2) return '在线'
+  if (l === 1) return '最近活跃'
+  return '离线'
+}
 
 // 搜索筛选
 const searchImei = ref('')
@@ -501,7 +515,7 @@ const confirmSendMessage = async () => {
 // 计算统计数据
 const deviceStats = computed(() => {
   const total = deviceList.value.length
-  const online = deviceList.value.filter(d => d.status === 1).length
+  const online = deviceList.value.filter(d => deviceOnlineLevel(d) >= 1).length
   const bound = deviceList.value.filter(d => d.bindStatus).length
   const bufferTotal = deviceList.value.reduce((sum, d) => sum + (d.bufferCount || 0), 0)
   return { total, online, bound, bufferTotal }
@@ -879,6 +893,7 @@ onBeforeUnmount(() => {
 .online-dot {
   display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px;
   &.online  { background: #38ef7d; box-shadow: 0 0 6px #38ef7d; }
+  &.recent  { background: #FFB84D; box-shadow: 0 0 4px #FFB84D; }
   &.offline { background: #4a5578; }
 }
 .online-text { font-size: 12px; }

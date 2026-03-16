@@ -22,6 +22,7 @@
       </div>
 
       <div class="bp-hd-time">{{ currentTime }}</div>
+      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">⬇ 导出</button>
     </header>
 
     <!-- ══ 主体 ══ -->
@@ -262,6 +263,7 @@
 
 <script>
 import dayjs from 'dayjs'
+import * as XLSX from 'xlsx'
 import {
   getBPOverview,
   getBPTrend,
@@ -376,6 +378,22 @@ export default {
     if (this._top5ScrollTimer) clearInterval(this._top5ScrollTimer)
   },
   methods: {
+
+    exportExcel() {
+      const list = this.realtimeList
+      if (!list.length) { alert('暂无数据可导出'); return }
+      const data = list.map(r => ({
+        '姓名': r.userName || '--', '部门': r.deptName || '--', '工号': r.empCode || '--',
+        '收缩压(mmHg)': r.systolic ?? '--', '舒张压(mmHg)': r.diastolic ?? '--',
+        '状态': (r.systolic >= 140 || r.diastolic >= 90) ? '偏高' : r.systolic < 90 ? '偏低' : '正常',
+        '记录时间': r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
+      }))
+      const ws = XLSX.utils.json_to_sheet(data)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, '血压数据')
+      XLSX.writeFile(wb, `血压分析_${dayjs().format('YYYYMMDD')}.xlsx`)
+    },
+
     async fetchData() {
       await Promise.allSettled([
         this.loadOverview(),

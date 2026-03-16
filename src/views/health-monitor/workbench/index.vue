@@ -65,6 +65,10 @@
                 <span class="cm-item cm-hr" title="心率">❤ {{ cell.data.avgHeartRate || '--' }}</span>
                 <span class="cm-item cm-bo" title="血氧">🩸 {{ cell.data.avgBloodOxygen || '--' }}</span>
               </div>
+              <div class="cell-metrics cell-metrics-2" v-if="cell.data.avgSteps || cell.data.avgPressure">
+                <span class="cm-item cm-steps" v-if="cell.data.avgSteps" title="步数">👟 {{ cell.data.avgSteps >= 1000 ? (cell.data.avgSteps/1000).toFixed(1)+'k' : cell.data.avgSteps }}</span>
+                <span class="cm-item cm-pres" v-if="cell.data.avgPressure" title="压力指数">⚡ {{ Math.round(cell.data.avgPressure) }}</span>
+              </div>
               <div class="cell-warn" v-if="cell.data.warningCount > 0">
                 <span :class="['warn-badge-custom', cell.data.warningCount >= 100 ? 'wbc-high' : cell.data.warningCount >= 30 ? 'wbc-mid' : 'wbc-low']">
                   {{ cell.data.warningCount >= 1000 ? Math.round(cell.data.warningCount/100)/10+'k' : cell.data.warningCount }}
@@ -434,6 +438,9 @@ function warnLevelClass(level) {
 }
 .cm-hr { color: #f87171; }
 .cm-bo { color: #60a5fa; }
+.cm-steps { color: #22c55e; }
+.cm-pres  { color: #a78bfa; }
+.cell-metrics-2 { margin-top: 1px; }
 .cell-no-data {
   font-size: 11px;
   color: #374151;

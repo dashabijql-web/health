@@ -45,9 +45,9 @@
         <div class="ea-health-bar">
           <div class="ea-hb-label">健康状态</div>
           <div class="ea-hb-track">
-            <div class="ea-hb-fill" :style="{ width: (emp._healthScore || 72) + '%', background: healthBarColor(emp._healthScore || 72) }"></div>
+            <div class="ea-hb-fill" :style="{ width: (emp._healthScore || 0) + '%', background: healthBarColor(emp._healthScore || 0) }"></div>
           </div>
-          <div class="ea-hb-score" :style="{ color: healthBarColor(emp._healthScore || 72) }">{{ emp._healthScore || 72 }}</div>
+          <div class="ea-hb-score" :style="{ color: healthBarColor(emp._healthScore || 0) }">{{ emp._healthScore || '--' }}</div>
         </div>
         <!-- 操作按钮区 -->
         <div class="ea-card-actions" @click.stop>
@@ -146,14 +146,31 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="紧急联系"><el-input v-model="form.emergencyContact" placeholder="姓名+电话" /></el-form-item>
+            <el-form-item label="紧急联系人"><el-input v-model="form.emergencyContact" placeholder="联系人姓名" /></el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
+            <el-form-item label="紧急电话"><el-input v-model="form.emergencyPhone" placeholder="联系人手机号" /></el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="状态">
               <el-switch v-model="form.statusBool" active-text="在职" inactive-text="离职"
                 active-color="#38ef7d" inactive-color="#ff6b6b" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="24">
+            <el-form-item label="既往病史">
+              <el-checkbox-group v-model="form.medicalHistory">
+                <el-checkbox label="高血压">高血压</el-checkbox>
+                <el-checkbox label="糖尿病">糖尿病</el-checkbox>
+                <el-checkbox label="心脏病">心脏病</el-checkbox>
+                <el-checkbox label="哮喘">哮喘</el-checkbox>
+                <el-checkbox label="颈椎病">颈椎病</el-checkbox>
+                <el-checkbox label="腰椎病">腰椎病</el-checkbox>
+              </el-checkbox-group>
             </el-form-item>
           </el-col>
         </el-row>
@@ -226,7 +243,7 @@ async function loadData() {
   try {
     const res = await getEmployeeListDetail()
     if (res.code === 200) {
-      employees.value = (res.data || []).map(e => ({ ...e, _healthScore: e.healthScore || 0 }))
+      employees.value = (res.data || []).map(e => ({ ...e, _healthScore: e.healthScore ?? null }))
     }
   } catch (e) { /* ignore */ } finally { loading.value = false }
 }
@@ -266,7 +283,10 @@ const isEdit = ref(false)
 const emptyForm = () => ({
   id: null, empName: '', empCode: '', gender: 1, phone: '',
   deptId: null, jobTypeId: null, birthDate: '', hireDate: '',
-  height: null, weight: null, bloodType: '', emergencyContact: '', statusBool: true
+  height: null, weight: null, bloodType: '',
+  emergencyContact: '', emergencyPhone: '',
+  medicalHistory: [],
+  statusBool: true
 })
 const form = reactive(emptyForm())
 
@@ -293,7 +313,10 @@ function handleEdit(emp) {
     deptId: emp.deptId || null, jobTypeId: emp.jobTypeId || null,
     birthDate: emp.birthDate || '', hireDate: emp.hireDate || '',
     height: emp.height || null, weight: emp.weight || null,
-    bloodType: emp.bloodType || '', emergencyContact: emp.emergencyContact || '',
+    bloodType: emp.bloodType || '',
+    emergencyContact: emp.emergencyContact || '',
+    emergencyPhone: emp.emergencyPhone || '',
+    medicalHistory: emp.medicalHistory ? (Array.isArray(emp.medicalHistory) ? emp.medicalHistory : emp.medicalHistory.split(',').filter(Boolean)) : [],
     statusBool: emp.status === 0
   })
   dialogVisible.value = true

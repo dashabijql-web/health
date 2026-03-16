@@ -15,6 +15,7 @@
         </div>
       </div>
       <div class="sl-hd-time">{{ currentTime }}</div>
+      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">⬇ 导出</button>
     </header>
 
     <!-- ══ Body ══ -->
@@ -262,6 +263,7 @@
 
 <script>
 import dayjs from 'dayjs'
+import * as XLSX from 'xlsx'
 import { getSleepPageData, getSleepTrend, getSleepQualityDistribution } from '@/api/sleep'
 import { emptyOption, chartTooltip, trendGrid, hourlyGrid } from '@/utils/echarts-config'
 import { initChart, gradV } from '@/utils/chart-helpers'
@@ -341,6 +343,23 @@ export default {
     this.refreshTimer = setInterval(() => this.fetchData(), 60000)
   },
   methods: {
+
+    exportExcel() {
+      const list = this.detailList
+      if (!list.length) { alert('暂无数据可导出'); return }
+      const data = list.map(r => ({
+        '姓名': r.userName || '--', '部门': r.deptName || '--', '工号': r.empCode || '--',
+        '睡眠时长': r.sleepHours || '--',
+        '睡眠评分': r.score ?? '--',
+        '睡眠质量': r.levelText || '--',
+        '记录时间': r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
+      }))
+      const ws = XLSX.utils.json_to_sheet(data)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, '睡眠数据')
+      XLSX.writeFile(wb, `睡眠分析_${dayjs().format('YYYYMMDD')}.xlsx`)
+    },
+
     async fetchData() {
       await Promise.allSettled([
         this.loadPageData(),

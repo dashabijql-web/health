@@ -22,6 +22,7 @@
       </div>
 
       <div class="hr-hd-time">{{ currentTime }}</div>
+      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">⬇ 导出</button>
     </header>
 
     <!-- ══ 主体 ══ -->
@@ -263,6 +264,7 @@
 
 <script>
 import dayjs from 'dayjs'
+import * as XLSX from 'xlsx'
 import {
   getHeartRateOverview,
   getHeartRateTrend,
@@ -399,6 +401,21 @@ export default {
     if (this._ro) this._ro.disconnect()
   },
   methods: {
+
+    exportExcel() {
+      const list = this.realtimeList
+      if (!list.length) { alert('暂无数据可导出'); return }
+      const data = list.map(r => ({
+        '姓名': r.userName || '--', '部门': r.deptName || '--', '工号': r.empCode || '--',
+        '心率(bpm)': r.heartRate ?? '--',
+        '状态': (r.heartRate && (r.heartRate < 55 || r.heartRate > 120)) ? '异常' : '正常',
+        '记录时间': r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
+      }))
+      const ws = XLSX.utils.json_to_sheet(data)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, '心率数据')
+      XLSX.writeFile(wb, `心率分析_${dayjs().format('YYYYMMDD')}.xlsx`)
+    },
 
     async fetchData() {
       await Promise.allSettled([

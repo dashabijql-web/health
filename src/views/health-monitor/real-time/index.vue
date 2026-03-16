@@ -568,7 +568,14 @@ export default {
     resumeAutoScroll() { this.scrollPaused = false },
 
     rowClass({ row }) {
-      return row.status === 'warning' ? 'row-warning' : ''
+      if (row.status !== 'warning') return ''
+      // 区分高危（danger）和普通预警（warning）
+      const isDanger = (row.heartRate && (row.heartRate < 45 || row.heartRate > 130))
+        || (row.bloodOxygen && row.bloodOxygen < 88)
+        || (row.temperature && (row.temperature < 34.5 || row.temperature > 39))
+        || (row.bloodPressureHigh && row.bloodPressureHigh >= 180)
+        || (row.pressure && row.pressure >= 90)
+      return isDanger ? 'row-danger' : 'row-warning'
     },
 
     getUserIndicator(u) {
@@ -1022,7 +1029,14 @@ export default {
 
   /* 预警行高亮 */
   :deep(.row-warning) td {
-    background: rgba(230,162,60,0.06) !important;
+    background: rgba(230,162,60,0.08) !important;
+  }
+  :deep(.row-danger) td {
+    background: rgba(245,108,108,0.12) !important;
+    border-bottom-color: rgba(245,108,108,0.2) !important;
+  }
+  :deep(.row-danger td:first-child) {
+    border-left: 3px solid #F56C6C !important;
   }
 }
 

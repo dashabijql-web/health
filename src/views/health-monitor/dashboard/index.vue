@@ -36,6 +36,9 @@
           <span class="dm-refresh-icon" :class="{ 'is-spinning': isRefreshing }">↻</span>
           <span class="dm-refresh-time">{{ lastRefreshText }}</span>
         </div>
+        <div class="dm-fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏展示'">
+          <span>{{ isFullscreen ? '⊡' : '⛶' }}</span>
+        </div>
       </div>
     </header>
 
@@ -631,6 +634,8 @@ export default {
       deviceStats: { total: 0, activeRate: 0, usageRate: 0, warningRate: 0 },
       warningEvents: [],
       warningTypesData: [],
+      isFullscreen: false,
+      seenAlertIds: new Set(),
       charts: {},
       metricList: [
         { key: 'heartRate',   label: '心率',  color: '#00d4ff', icon: 'Monitor' },
@@ -1040,6 +1045,13 @@ export default {
     window.addEventListener('resize', this._resizeHandler)
     document.addEventListener('visibilitychange', this._onVisibilityChange = () => this.onVisibilityChange())
     this.refreshTextTimer = setInterval(() => this.updateRefreshText(), 5000)
+    // 全屏变化监听
+    this._fullscreenHandler = () => { this.isFullscreen = !!document.fullscreenElement }
+    document.addEventListener('fullscreenchange', this._fullscreenHandler)
+    // 申请桌面通知权限
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
   },
   activated() {
     this.fetchData()
@@ -1058,6 +1070,7 @@ export default {
     clearTimeout(this.resizeTimer)
     window.removeEventListener('resize', this._resizeHandler)
     document.removeEventListener('visibilitychange', this._onVisibilityChange)
+    document.removeEventListener('fullscreenchange', this._fullscreenHandler)
     Object.values(this.charts).forEach(c => c && c.dispose())
     if (this.empDrawer.trendChart) this.empDrawer.trendChart.dispose()
     if (this.empDrawer.radarChart) this.empDrawer.radarChart.dispose()
@@ -1072,6 +1085,26 @@ export default {
     },
     updateTime() {
       this.currentTime = dayjs().format('YYYY年MM月DD日 HH:mm:ss')
+    },
+
+    toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {})
+      } else {
+        document.exitFullscreen().catch(() => {})
+      }
+    },
+
+    triggerDangerNotification(event) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return
+      const typeNames = { heartRate: '心率异常', bloodOxygen: '血氧偏低', temperature: '体温异常', pressure: '压力异常', SOS: 'SOS求助', fall: '跌倒' }
+      const typeName = typeNames[event.type] || event.type || '健康预警'
+      const n = new Notification(`⚠️ 高危预警：${event.userName || '未知人员'}`, {
+        body: `${typeName}  ${event.value || ''}  —  请立即处理`,
+        icon: '/favicon.ico',
+        tag: `alert-${event.id}`
+      })
+      n.onclick = () => { window.focus(); n.close() }
     },
 
     async fetchData() {
@@ -1283,6 +1316,13 @@ export default {
               .filter(Boolean)
           )
           this.onDutyStats.abnormal = abnormalUsers.size
+          // 桌面通知：发现新的危险级未处理预警
+          this.warningEvents.filter(e => e.level === 'danger' && !e.handled && e.id).forEach(e => {
+            if (!this.seenAlertIds.has(e.id)) {
+              this.seenAlertIds.add(e.id)
+              this.triggerDangerNotification(e)
+            }
+          })
           this.$nextTick(() => { this.startAutoScroll(); this.startListScroll('top5List', 'top5ScrollInterval', 45) })
         }
       } catch(e) { this.warningEvents = [] }
@@ -3003,6 +3043,12 @@ $white:  #e8f4ff;
 }
 @keyframes dmSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .dm-refresh-time { font-size: 11px; color: $dim; }
+.dm-fullscreen-btn {
+  cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: 4px; border: 1px solid rgba(0,212,255,0.3); color: rgba(0,212,255,0.8); font-size: 16px;
+  transition: all 0.2s; margin-left: 8px;
+  &:hover { background: rgba(0,212,255,0.15); border-color: #00d4ff; color: #00d4ff; }
+}
 
 // ══ 员工健康档案 Drawer ══
 .dm-emp-drawer {

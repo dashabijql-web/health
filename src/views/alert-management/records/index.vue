@@ -86,6 +86,7 @@
             size="small"
             @click="batchHandle"
           >批量处理 ({{ selectedRows.length }})</el-button>
+          <el-button type="success" size="small" :icon="Download" @click="exportExcel">导出Excel</el-button>
           <span class="total-badge">共 {{ pagination.total }} 条</span>
         </div>
       </div>
@@ -217,8 +218,9 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { Timer, Search, Refresh, Edit, Bell, WarningFilled, WarnTriangleFilled, CircleCheck } from '@element-plus/icons-vue'
+import { Timer, Search, Refresh, Edit, Bell, WarningFilled, WarnTriangleFilled, CircleCheck, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import * as XLSX from 'xlsx'
 import { formatDate } from '@/utils'
 import { useClock } from '@/composables/useClock'
 import { getRiskWarningList, getRiskWarningOverview, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
@@ -334,6 +336,39 @@ const submitHandle = async () => {
     else ElMessage.error(res.message||'处理失败')
   } catch(e) { ElMessage.error('处理失败') }
   finally { handleSubmitting.value=false }
+}
+
+const exportExcel = async () => {
+  try {
+    // 导出所有符合当前筛选条件的数据（最多5000条）
+    const p = { page: 1, size: 5000 }
+    if (searchForm.dateRange?.length === 2) { p.startDate = searchForm.dateRange[0]; p.endDate = searchForm.dateRange[1] }
+    if (searchForm.warningType) p.warningType = searchForm.warningType
+    if (searchForm.warningLevel) p.level = searchForm.warningLevel
+    if (searchForm.handleStatus === 'handled') p.handled = true
+    else if (searchForm.handleStatus === 'unhandled') p.handled = false
+    if (searchForm.keyword) p.userCode = searchForm.keyword
+    const res = await getRiskWarningList(p)
+    const rows = res.data?.list || []
+    if (!rows.length) { ElMessage.warning('无数据可导出'); return }
+    const data = rows.map(r => ({
+      '预警时间': formatDate(r.createTime),
+      '姓名': r.userName || '-',
+      '性别': r.gender === 1 ? '男' : r.gender === 2 ? '女' : '-',
+      '年龄': r.age ?? '-',
+      '预警类型': typeLabel(r.warningType),
+      '预警值': r.warningValue || '-',
+      '预警级别': levelLabel(r.warningLevel),
+      '处理状态': r.handled ? '已处理' : '未处理',
+      '处理人': r.handleBy || '-',
+      '处理备注': r.handleNote || '-'
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '预警记录')
+    XLSX.writeFile(wb, `预警记录_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`)
+    ElMessage.success(`已导出 ${rows.length} 条记录`)
+  } catch (e) { ElMessage.error('导出失败') }
 }
 
 onMounted(() => {
