@@ -39,6 +39,8 @@ public class Employee implements Serializable {
 
     private String emergencyPhone;
 
+    private String medicalHistory;
+
     private String bloodType;
 
     private BigDecimal height;

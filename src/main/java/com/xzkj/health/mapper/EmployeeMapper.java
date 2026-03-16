@@ -17,6 +17,7 @@ public interface EmployeeMapper extends BaseMapper<Employee> {
             "e.height, e.weight, e.blood_type AS bloodType, e.status, " +
             "e.emergency_contact AS emergencyContact, " +
             "e.emergency_phone AS emergencyPhone, " +
+            "e.medical_history AS medicalHistory, " +
             "d.dept_name AS deptName, j.type_name AS jobTypeName, " +
             "ISNULL(( " +
             "  SELECT CASE WHEN pts IS NULL OR pts <= 0 THEN 100 " +
