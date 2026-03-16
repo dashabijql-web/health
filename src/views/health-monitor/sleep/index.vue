@@ -413,7 +413,16 @@ export default {
 
     async loadQualityDist() {
       let d = []
-      try { const r = await getSleepQualityDistribution(); if (r.code === 200) d = r.data || [] } catch {}
+      try {
+        const r = await getSleepQualityDistribution()
+        if (r.code === 200 && r.data) {
+          const colorMap = { excellent: '#52c41a', good: '#4FC3F7', fair: '#FFB84D', poor: '#ff5252' }
+          const labelMap = { excellent: '优秀(≥8h)', good: '良好(7-8h)', fair: '一般(6-7h)', poor: '较差(<6h)' }
+          d = ['excellent', 'good', 'fair', 'poor']
+            .filter(k => r.data[k] > 0)
+            .map(k => ({ label: labelMap[k], count: r.data[k], color: colorMap[k] }))
+        }
+      } catch {}
       this.$nextTick(() => this.initScore(d))
     },
 

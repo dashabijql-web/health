@@ -45,6 +45,7 @@
                 <div class="hr-top5-bar" :style="{width: (item.count / top5Max * 100) + '%'}"></div>
               </div>
               <span class="hr-top5-val">{{ item.count }}</span>
+              <span class="hr-top5-days" v-if="item.anomalyDays">{{ item.anomalyDays }}天</span>
             </div>
           </div>
         </div>
@@ -54,10 +55,7 @@
           <div class="hr-ph">
             <span class="hr-ph-bar"></span>
             <span class="hr-ph-title">部门心率异常统计</span>
-            <div class="hr-ph-legend">
-              <span class="hr-leg-dot" style="background:#4FC3F7"></span><span class="hr-leg-txt">偏低</span>
-              <span class="hr-leg-dot" style="background:#FFB84D"></span><span class="hr-leg-txt">偏高</span>
-            </div>
+            <span v-if="filterDept" class="hr-dept-tag" @click="filterDept=''" title="点击取消筛选">{{ filterDept }} ×</span>
           </div>
           <div class="hr-pc">
             <div ref="deptRef" style="width:100%;height:100%"></div>
@@ -125,25 +123,6 @@
             </div>
           </div>
 
-          <div class="hr-panel hr-panel-dist">
-            <div class="hr-ph">
-              <span class="hr-ph-bar"></span>
-              <span class="hr-ph-title">心率区间分布</span>
-            </div>
-            <div class="hr-dist-body">
-              <div ref="distRef" class="hr-dist-chart"></div>
-              <div class="hr-dist-legend">
-                <div class="hr-dist-row" v-for="d in distLegend" :key="d.name">
-                  <div class="hr-dist-dot" :style="{background: d.color}"></div>
-                  <span class="hr-dist-name">{{ d.name }}</span>
-                  <div class="hr-dist-bar-wrap">
-                    <div class="hr-dist-bar" :style="{width: d.value + '%', background: d.color}"></div>
-                  </div>
-                  <span class="hr-dist-pct" :style="{color: d.color}">{{ d.value }}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- 趋势：固定高度 -->
@@ -191,7 +170,7 @@
           </div>
           <div v-else class="hr-anomaly-body">
             <div class="hr-anomaly-hd">
-              <span>姓名</span><span>部门</span><span>心率</span><span>类型</span><span>时间</span>
+              <span>姓名</span><span>性别/年龄</span><span>部门</span><span>工种</span><span>心率</span><span>类型</span><span>时间</span>
             </div>
             <div class="hr-anomaly-list">
               <div
@@ -203,7 +182,12 @@
                 style="cursor:pointer"
               >
                 <span class="ha-name">{{ item.userName }}</span>
+                <span class="ha-gender">
+                  <em :class="item.gender === '男' ? 'g-m' : 'g-f'">{{ item.gender || '--' }}</em>
+                  <i v-if="item.age">{{ item.age }}岁</i>
+                </span>
                 <span class="ha-dept">{{ item.deptName || item.dept_name || '--' }}</span>
+                <span class="ha-job">{{ item.jobType || '--' }}</span>
                 <span class="ha-val">{{ item.heartRate }} bpm</span>
                 <span class="ha-type">{{ item.heartRate > 120 ? '偏高↑' : '偏低↓' }}</span>
                 <span class="ha-time">{{ fmtTime(item.recordTime) }}</span>
@@ -224,18 +208,19 @@
           </div>
 
           <div class="hr-rt-hd">
-            <span>姓名</span><span>心率</span><span>状态</span><span>时间</span>
+            <span>#</span><span>姓名</span><span>心率</span><span>状态</span><span>时间</span>
           </div>
 
           <div class="hr-rt-body" ref="listRef">
             <div
               class="hr-rt-row"
-              v-for="(item, i) in pagedList"
+              v-for="(item, i) in sortedRealtimeList"
               :key="i"
               :class="hrLevel(item.heartRate)"
               @click="showDetail(item)"
               style="cursor:pointer"
             >
+              <span class="hr-rt-idx">{{ i + 1 }}</span>
               <span class="hr-rt-name">{{ item.userName }}</span>
               <span class="hr-rt-val">
                 {{ item.heartRate }}
@@ -245,17 +230,10 @@
               <span class="hr-rt-badge" :class="hrLevel(item.heartRate)">
                 {{ item.heartRate > 120 ? '偏高' : item.heartRate < 55 ? '偏低' : '正常' }}
               </span>
-              <span class="hr-rt-time">{{ fmtTime(item.recordTime) }}</span>
+              <span class="hr-rt-time">{{ fmtRtTime(item.recordTime) }}</span>
             </div>
           </div>
 
-          <div class="hr-rt-pg">
-            <button class="hr-pg-btn" :disabled="currentPage===1" @click="currentPage=1">首页</button>
-            <button class="hr-pg-btn" :disabled="currentPage===1" @click="currentPage--">‹</button>
-            <span class="hr-pg-info">{{ currentPage }} / {{ totalPages }}</span>
-            <button class="hr-pg-btn" :disabled="currentPage>=totalPages" @click="currentPage++">›</button>
-            <button class="hr-pg-btn" :disabled="currentPage>=totalPages" @click="currentPage=totalPages">末页</button>
-          </div>
         </div>
       </div>
 
@@ -288,15 +266,15 @@ import dayjs from 'dayjs'
 import {
   getHeartRateOverview,
   getHeartRateTrend,
-  getHeartRateDistribution,
   getAgeHeartRate,
   getRealtimeHeartRate,
   getHeartRateTopUsers,
   getHeartRateDeptStats,
-  getHourlyHeartRate
+  getHourlyHeartRate,
+  getDailyAnomalyHeartRate
 } from '@/api/heart-rate'
 import { hrLevel, HR } from '@/constants/health-thresholds'
-import { initChart, distOption, gaugeOption, gradH, gradV } from '@/utils/chart-helpers'
+import { initChart, gaugeOption, gradH, gradV } from '@/utils/chart-helpers'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, ageGrid, barLabel } from '@/utils/echarts-config'
@@ -311,7 +289,6 @@ export default {
         avgHeartRate: 0, minHeartRate: 0, maxHeartRate: 0,
         detectionRate: 0, abnormalCount: 0, totalCount: 0
       },
-      distLegend: [],
       top5Data: [],
 
       hrRanges: [
@@ -356,7 +333,7 @@ export default {
       return { day: '今日心率概况', week: '近7日心率概况', month: '近30日心率概况' }[this.activePeriod]
     },
     hourlyTitle() {
-      return { day: '今日24小时波动', week: '近7日每日均值', month: '近30日每日均值' }[this.activePeriod]
+      return { day: '今日24小时波动', week: '近7日异常人数', month: '近30日异常人数' }[this.activePeriod]
     },
     trendTitle() {
       return { day: '今日心率趋势', week: '近7天心率趋势', month: '近30天心率趋势' }[this.activePeriod]
@@ -364,7 +341,13 @@ export default {
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.count)) : 1
     },
-    /* pagedList / totalPages from chartPageMixin */
+    sortedRealtimeList() {
+      return [...this.filteredRealtimeList].sort((a, b) => {
+        const aAbnormal = a.heartRate && (a.heartRate > 120 || a.heartRate < 55) ? 1 : 0
+        const bAbnormal = b.heartRate && (b.heartRate > 120 || b.heartRate < 55) ? 1 : 0
+        return bAbnormal - aAbnormal
+      })
+    },
     anomalyList() {
       return this.filteredRealtimeList.filter(x => x.heartRate > 120 || x.heartRate < 55)
     },
@@ -423,7 +406,6 @@ export default {
         this.loadTopUsers(),
         this.loadDept(),
         this.loadAge(),
-        this.loadDist(),
         this.loadTrend(),
         this.loadHourly(),
         this.loadRealtime()
@@ -450,18 +432,6 @@ export default {
       let d = []; try { const r = await getAgeHeartRate(startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
       this.$nextTick(() => this.initAge(d))
     },
-    async loadDist() {
-      const { startDate, endDate } = this.periodRange
-      let d = []
-      try {
-        const r = await getHeartRateDistribution(startDate, endDate)
-        if (r.code === 200) {
-          d = (r.data || []).filter(x => x.name && x.value > 0)
-          this.distLegend = d
-        }
-      } catch {}
-      this.$nextTick(() => this.initDist(d))
-    },
     async loadHourly() {
       if (this.activePeriod === 'day') {
         const today = new Date().toISOString().slice(0, 10)
@@ -476,16 +446,16 @@ export default {
         } catch {}
         this.$nextTick(() => this.renderHourly(vals))
       } else {
-        const days = this.activePeriod === 'week' ? 7 : 30
-        let dates = [], vals = []
+        const { startDate, endDate } = this.periodRange
+        let dates = [], counts = []
         try {
-          const r = await getHeartRateTrend(days)
-          if (r.code === 200 && r.data) {
-            dates = r.data.dates || []
-            vals  = r.data.values || []
+          const r = await getDailyAnomalyHeartRate(startDate, endDate)
+          if (r.code === 200 && Array.isArray(r.data)) {
+            dates  = r.data.map(x => x.date)
+            counts = r.data.map(x => x.anomalyCount)
           }
         } catch {}
-        this.$nextTick(() => this.renderHourlyDaily(dates, vals))
+        this.$nextTick(() => this.renderDailyAnomaly(dates, counts))
       }
     },
     async loadTrend() {
@@ -509,7 +479,10 @@ export default {
       }
     },
     async loadRealtime() {
-      try { const r = await getRealtimeHeartRate(200); if (r.code === 200) this.realtimeList = r.data || [] } catch {}
+      try { const r = await getRealtimeHeartRate(1000); if (r.code === 200) this.realtimeList = r.data || [] } catch {}
+    },
+    fmtRtTime(ts) {
+      return ts ? dayjs(ts).format('HH:mm:ss') : ''
     },
 
     // ── ECharts 初始化 ──
@@ -523,32 +496,30 @@ export default {
     initDept(data) {
       const c = initChart(this.charts, 'dept', this.$refs.deptRef); if (!c) return
       if (!data.length) { c.setOption(emptyOption()); return }
-      const d = data.map(x => ({
-        deptName:  x.deptName  || x.name,
-        lowCount:  x.lowCount  || x.lowHeartRateCount  || 0,
-        highCount: x.highCount || x.highHeartRateCount || x.abnormalCount || 0
-      }))
+      const d = data.map(x => {
+        const low   = x.lowCount  || 0
+        const high  = x.highCount || 0
+        const total = x.totalCount || 1
+        return {
+          deptName: x.deptName || x.name,
+          rate: Math.round((low + high) / total * 100)
+        }
+      })
       c.setOption({
         backgroundColor: 'transparent',
-        legend: { data: ['偏低','偏高'], right: 10, top: 6, textStyle: { color: '#8ba6c8', fontSize: 11 }, itemWidth: 10, itemHeight: 10, icon: 'rect' },
         grid: deptGrid(),
-        xAxis: valueAxis(),
-        yAxis: { ...categoryAxis(d.map(x => x.deptName), { show: false }), inverse: true },
-        series: [
-          { name:'偏低', type:'bar', stack:'total', barWidth:'46%', data: d.map(x => x.lowCount),
-            itemStyle: { color: gradH('#4FC3F7','#29B6F6') },
-            label: barLabel()
-          },
-          { name:'偏高', type:'bar', stack:'total', barWidth:'46%', data: d.map(x => x.highCount),
-            itemStyle: { color: gradH('#FFB84D','#FFA726'), borderRadius:[0,4,4,0] },
-            label: barLabel()
-          }
-        ]
+        xAxis: { ...valueAxis(), max: v => Math.ceil(v.max) + 1 },
+        yAxis: { ...categoryAxis(d.map(x => x.deptName)), inverse: true },
+        series: [{
+          type: 'bar', barWidth: '46%', data: d.map(x => x.rate),
+          itemStyle: { color: gradH('#FFB84D', '#FF6B35'), borderRadius: [0, 4, 4, 0] },
+          label: { show: true, position: 'right', color: '#FFB84D', fontSize: 11, fontFamily: 'Consolas',
+                   formatter: p => p.value + '%' }
+        }]
       })
       c.off('click')
       c.on('click', (params) => {
         this.filterDept = this.filterDept === params.name ? '' : params.name
-        this.currentPage = 1
       })
     },
 
@@ -569,11 +540,6 @@ export default {
           label: { show: true, position: 'top', color: '#00d4ff', fontSize: 11, fontWeight: 'bold' }
         }]
       })
-    },
-
-    initDist(data) {
-      const c = initChart(this.charts, 'dist', this.$refs.distRef)
-      if (c) c.setOption(distOption(data))
     },
 
     initTrend(data) {
@@ -643,6 +609,36 @@ export default {
           itemStyle: {
             color: gradV('#a78bfa', 'rgba(167,139,250,0.2)'),
             borderRadius: [3, 3, 0, 0]
+          }
+        }]
+      })
+    },
+
+    renderDailyAnomaly(dates, counts) {
+      const c = initChart(this.charts, 'hourly', this.$refs.hourlyRef); if (!c) return
+      if (!dates.length) { c.setOption(emptyOption('暂无数据', 13)); return }
+      // 用中位数的3倍截断y轴，防止离群值压扁其他柱子
+      const sorted = [...counts].sort((a, b) => a - b)
+      const median = sorted[Math.floor(sorted.length / 2)] || 1
+      const yMax = Math.max(median * 3, 10)
+      c.setOption({
+        backgroundColor: 'transparent',
+        tooltip: chartTooltip(p => `${p[0].name}<br/>异常人数：<b style="color:#FFB84D">${p[0].value}</b> 人`),
+        grid: hourlyGrid(),
+        xAxis: { ...categoryAxis(dates, { fontSize: 9, interval: Math.floor(dates.length / 5), lineColor: 'rgba(0,212,255,0.15)' }), boundaryGap: true },
+        yAxis: valueAxis({ fontSize: 9, splitColor: 'rgba(0,212,255,0.06)', max: yMax }),
+        series: [{
+          type: 'bar', data: counts, barMaxWidth: 14,
+          itemStyle: { color: gradV('#FFB84D', 'rgba(255,184,77,0.2)'), borderRadius: [3, 3, 0, 0] },
+          label: {
+            show: true, position: 'top', color: '#FFB84D', fontSize: 9, fontFamily: 'Consolas',
+            formatter: p => {
+              if (p.value > yMax) {
+                const v = p.value >= 1000 ? (p.value / 1000).toFixed(1) + 'k' : p.value
+                return v + '↑'
+              }
+              return p.value
+            }
           }
         }]
       })
@@ -796,7 +792,8 @@ export default {
 .hr-top5-name { font-size: 12px; color: $white; width: 64px; flex-shrink: 0; }
 .hr-top5-bar-wrap { flex: 1; height: 6px; background: rgba(0,212,255,0.08); border-radius: 3px; overflow: hidden; }
 .hr-top5-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #00d4ff, #0066cc); transition: width 0.8s ease; }
-.hr-top5-val { font-size: 13px; font-weight: 700; color: #00d4ff; font-family: 'Consolas', monospace; width: 22px; text-align: right; flex-shrink: 0; }
+.hr-top5-val  { font-size: 13px; font-weight: 700; color: #00d4ff; font-family: 'Consolas', monospace; width: 22px; text-align: right; flex-shrink: 0; }
+.hr-top5-days { font-size: 10px; color: #FFB84D; width: 28px; text-align: right; flex-shrink: 0; }
 
 // panel header legend → hm-panel mixin
 
@@ -804,8 +801,7 @@ export default {
 .hr-overview-panel { height: 162px; flex-shrink: 0; }
 .hr-mid-row        { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }
 .hr-panel-age      { flex: 1; }
-.hr-panel-hourly   { flex: 1; }
-.hr-panel-dist     { flex: 1; }
+.hr-panel-hourly   { flex: 1.4; }
 .hr-panel-trend    { flex: 1; min-height: 160px; max-height: 220px; }
 
 // ── Right list ──
@@ -828,6 +824,12 @@ export default {
   border-radius: 2px;
   box-shadow: 0 0 6px rgba(0,212,255,0.7);
 }
+.hr-dept-tag {
+  font-size: 11px; padding: 1px 6px; border-radius: 3px;
+  background: rgba(0,212,255,0.15); color: $accent; border: 1px solid rgba(0,212,255,0.35);
+  cursor: pointer; white-space: nowrap;
+  &:hover { background: rgba(0,212,255,0.25); }
+}
 .hr-period-tabs {
   display: flex;
   background: rgba(0,212,255,0.06);
@@ -848,33 +850,23 @@ export default {
 // overview/kpi-cards/range-info → hm-overview + hm-kpi-cards + hm-range-info mixins
 .hr-range-name { width: 78px; } // override mixin default 38px
 
-// ── 分布图 ──
-.hr-dist-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
-.hr-dist-chart { width: 120px; height: 120px; flex-shrink: 0; }
-.hr-dist-legend { flex: 1; display: flex; flex-direction: column; gap: 12px; }
-.hr-dist-row { display: flex; align-items: center; gap: 7px; }
-.hr-dist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.hr-dist-name { font-size: 11px; color: $text; flex-shrink: 0; width: 56px; }
-.hr-dist-bar-wrap { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
-.hr-dist-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; opacity: 0.85; }
-.hr-dist-pct { font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; width: 34px; text-align: right; flex-shrink: 0; }
-
 // ── 实时列表 ──
 .hr-rt-hd {
-  display: grid; grid-template-columns: 64px 46px 40px 1fr;
-  gap: 6px; padding: 6px 10px; flex-shrink: 0;
+  display: grid; grid-template-columns: 28px 1fr 52px 44px 44px;
+  gap: 8px; padding: 7px 12px; flex-shrink: 0;
   background: rgba(0,212,255,0.06);
   span { font-size: 11px; color: $dim; font-weight: 600; }
 }
 .hr-rt-body {
-  flex: 1; overflow-y: auto; padding: 3px 6px; min-height: 0;
+  flex: 1; overflow-y: auto; padding: 4px 8px; min-height: 0;
+  scrollbar-width: thin; scrollbar-color: rgba(0,212,255,0.2) transparent;
   &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.18); border-radius: 2px; }
+  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
 }
 .hr-rt-row {
-  display: grid; grid-template-columns: 64px 46px 40px 1fr;
-  gap: 6px; padding: 6px 4px; margin-bottom: 1px;
-  border-radius: 5px; align-items: center;
+  display: grid; grid-template-columns: 28px 1fr 52px 44px 44px;
+  gap: 8px; padding: 9px 6px; margin-bottom: 2px;
+  border-radius: 6px; align-items: center;
   border-left: 2px solid transparent;
   transition: background 0.2s;
   &:hover { background: rgba(0,212,255,0.055); }
@@ -882,7 +874,8 @@ export default {
   &.high   { border-left-color: rgba(255,184,77,0.55); }
   &.low    { border-left-color: rgba(79,195,247,0.55); }
 }
-.hr-rt-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hr-rt-idx  { font-size: 11px; color: $dim; font-family: 'Consolas', monospace; text-align: center; }
+.hr-rt-name { font-size: 13px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hr-rt-val {
   font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; color: #52c41a;
   .hr-rt-row.high & { color: #FFB84D; }
@@ -896,7 +889,7 @@ export default {
   &.high   { background: rgba(255,184,77,0.13); color: #FFB84D; border: 1px solid rgba(255,184,77,0.28); }
   &.low    { background: rgba(79,195,247,0.13); color: #4FC3F7; border: 1px solid rgba(79,195,247,0.28); }
 }
-.hr-rt-time { font-size: 10px; color: $dim; }
+.hr-rt-time { font-size: 11px; color: $dim; }
 
 // pagination → hm-pagination mixin
 .hr-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; } // override mixin
@@ -936,7 +929,7 @@ export default {
   em { font-size: 11px; font-style: normal; color: #8ba6c8; margin-left: 2px; }
 }
 .hr-zone-bar  { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; }
-.hr-zone-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+.hr-zone-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; min-width: 3px; }
 .zone-low      { border-color: rgba(79,195,247,0.35); }
 .zone-normal   { border-color: rgba(82,196,26,0.35); }
 .zone-elevated { border-color: rgba(255,184,77,0.35); }
@@ -952,19 +945,22 @@ export default {
 }
 .hr-anomaly-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .hr-anomaly-hd {
-  display: grid; grid-template-columns: 64px 1fr 72px 52px 88px;
-  gap: 6px; padding: 4px 10px; flex-shrink: 0;
+  display: grid; grid-template-columns: 58px 68px 1fr 80px 76px 54px 88px;
+  gap: 6px; padding: 5px 12px; flex-shrink: 0;
   background: rgba(255,184,77,0.06);
   span { font-size: 11px; color: $dim; font-weight: 600; }
 }
 .hr-anomaly-list {
-  flex: 1; overflow-y: auto; padding: 3px 6px;
+  flex: 1; overflow-y: auto; padding: 4px 8px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,184,77,0.25) transparent;
   &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(255,184,77,0.2); border-radius: 2px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,184,77,0.25); border-radius: 2px; }
+  &::-webkit-scrollbar-thumb:hover { background: rgba(255,184,77,0.5); }
 }
 .hr-anomaly-row {
-  display: grid; grid-template-columns: 64px 1fr 72px 52px 88px;
-  gap: 6px; padding: 5px 4px; margin-bottom: 1px;
+  display: grid; grid-template-columns: 58px 68px 1fr 80px 76px 54px 88px;
+  gap: 6px; padding: 7px 6px; margin-bottom: 2px;
   border-radius: 4px; align-items: center;
   border-left: 2px solid transparent;
   transition: background 0.15s;
@@ -973,7 +969,15 @@ export default {
   &.anom-low  { border-left-color: rgba(79,195,247,0.6); background: rgba(79,195,247,0.04); }
 }
 .ha-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ha-gender {
+  display: flex; align-items: center; gap: 3px; font-size: 11px;
+  em { font-style: normal; font-size: 11px; font-weight: 600; padding: 0 3px; border-radius: 2px; }
+  em.g-m { color: #4FC3F7; background: rgba(79,195,247,0.1); }
+  em.g-f { color: #f48fb1; background: rgba(244,143,177,0.1); }
+  i { font-style: normal; color: #5a7090; font-size: 11px; }
+}
 .ha-dept { font-size: 11px; color: $dim; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ha-job  { font-size: 11px; color: #6a8aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ha-val  {
   font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace;
   .anom-high & { color: #FFB84D; }

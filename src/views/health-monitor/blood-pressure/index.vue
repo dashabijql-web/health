@@ -232,18 +232,19 @@
           </div>
 
           <div class="bp-rt-hd">
-            <span>姓名</span><span>收缩</span><span>舒张</span><span>状态</span>
+            <span>#</span><span>姓名</span><span>收缩</span><span>舒张</span><span>状态</span>
           </div>
 
           <div class="bp-rt-body" ref="listRef">
             <div
               class="bp-rt-row"
-              v-for="(item, i) in pagedList"
+              v-for="(item, i) in filteredRealtimeList"
               :key="i"
               :class="bpLevel(item)"
               @click="goToPortrait(item)"
               style="cursor:pointer"
             >
+              <span class="bp-rt-idx">{{ i + 1 }}</span>
               <span class="bp-rt-name">{{ item.userName }}</span>
               <span class="bp-rt-sys">{{ item.systolic }}</span>
               <span class="bp-rt-dia">{{ item.diastolic }}</span>
@@ -251,14 +252,6 @@
                 {{ bpLevelLabel(item) }}
               </span>
             </div>
-          </div>
-
-          <div class="bp-rt-pg">
-            <button class="bp-pg-btn" :disabled="currentPage===1" @click="currentPage=1">首页</button>
-            <button class="bp-pg-btn" :disabled="currentPage===1" @click="currentPage--">‹</button>
-            <span class="bp-pg-info">{{ currentPage }} / {{ totalPages }}</span>
-            <button class="bp-pg-btn" :disabled="currentPage>=totalPages" @click="currentPage++">›</button>
-            <button class="bp-pg-btn" :disabled="currentPage>=totalPages" @click="currentPage=totalPages">末页</button>
           </div>
         </div>
       </div>
@@ -931,7 +924,7 @@ $sky:    #38bdf8;
 
 // ── 实时列表 ──
 .bp-rt-hd {
-  display: grid; grid-template-columns: 64px 40px 40px 1fr;
+  display: grid; grid-template-columns: 28px 1fr 40px 40px 80px;
   gap: 6px; padding: 6px 10px; flex-shrink: 0;
   background: rgba(167,139,250,0.06);
   span { font-size: 11px; color: $dim; font-weight: 600; }
@@ -942,7 +935,7 @@ $sky:    #38bdf8;
   &::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.18); border-radius: 2px; }
 }
 .bp-rt-row {
-  display: grid; grid-template-columns: 64px 40px 40px 1fr;
+  display: grid; grid-template-columns: 28px 1fr 40px 40px 80px;
   gap: 6px; padding: 6px 4px; margin-bottom: 1px;
   border-radius: 5px; align-items: center;
   border-left: 2px solid transparent;
@@ -953,6 +946,7 @@ $sky:    #38bdf8;
   &.stage1 { border-left-color: rgba(255,112,67,0.6); }
   &.danger { border-left-color: rgba(255,82,82,0.7); }
 }
+.bp-rt-idx  { font-size: 11px; color: $dim; font-family: 'Consolas', monospace; text-align: center; }
 .bp-rt-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bp-rt-sys  {
   font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; color: $purple;

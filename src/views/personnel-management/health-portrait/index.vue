@@ -473,7 +473,13 @@ const fetchPortrait = async (isFirstLoad = false) => {
           temperature:  tmp ? (tmp >= 36.0 && tmp <= 37.5 ? 90 : tmp >= 35.5 && tmp <= 38.0 ? 65 : 50) : 0,
           bloodPressure: (sbp && dbp) ? (sbp <= 135 && dbp <= 85 ? 85 : sbp <= 145 && dbp <= 95 ? 65 : 50) : 0,
           pressure: prs != null ? (prs < 70 ? 90 : prs < 85 ? 65 : 40) : 0,
-          activity: 0
+          activity: (() => {
+            const steps = d.exercise?.todaySteps ?? 0
+            if (steps >= 10000) return 90
+            if (steps >= 5000)  return 65
+            if (steps >= 2000)  return 45
+            return steps > 0 ? 30 : 0
+          })()
         }
       }
       warnings.value = d.warnings || d.recentWarnings || []

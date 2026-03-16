@@ -112,6 +112,11 @@
               :cell-style="tblCellStyle"
               :row-class-name="rowClass"
               @row-click="showUserDetail">
+              <el-table-column label="#" width="52" align="center">
+                <template #default="{ $index }">
+                  <span class="c-idx">{{ (currentPage - 1) * pageSize + $index + 1 }}</span>
+                </template>
+              </el-table-column>
               <el-table-column prop="userName" label="姓名" min-width="70" align="center">
                 <template #default="{ row }">
                   <span class="c-name">{{ row.userName || '--' }}</span>
@@ -230,15 +235,6 @@
             </el-table>
           </div>
 
-          <!-- pagination -->
-          <div class="rt-pg">
-            <button class="rt-pg-btn" :disabled="currentPage === 1" @click="currentPage = 1">首页</button>
-            <button class="rt-pg-btn" :disabled="currentPage === 1" @click="currentPage--">&#8249;</button>
-            <span class="rt-pg-info">{{ currentPage }} / {{ totalPages }}</span>
-            <button class="rt-pg-btn" :disabled="currentPage >= totalPages" @click="currentPage++">&#8250;</button>
-            <button class="rt-pg-btn" :disabled="currentPage >= totalPages" @click="currentPage = totalPages">末页</button>
-            <span class="rt-pg-total">共 {{ filteredUserList.length }} 条</span>
-          </div>
         </div>
       </main>
     </section>
@@ -336,7 +332,7 @@ export default {
       hrFilter: null,
       deptList: [],
       currentPage: 1,
-      pageSize: 20,
+      pageSize: 50,
       autoScrollEnabled: true,
       scrollPaused: false,
       refreshTimer: null,
@@ -403,7 +399,12 @@ export default {
       if (this.hrFilter) {
         list = list.filter(u => u.heartRate >= this.hrFilter.min && u.heartRate <= this.hrFilter.max)
       }
-      return list
+      // 预警用户置顶
+      return [...list].sort((a, b) => {
+        if (a.status === 'warning' && b.status !== 'warning') return -1
+        if (a.status !== 'warning' && b.status === 'warning') return 1
+        return 0
+      })
     },
     paginatedUserList() {
       const s = (this.currentPage - 1) * this.pageSize
@@ -463,32 +464,16 @@ export default {
     this.fetchOnlineUsers()
     this.autoRefresh()
     this.startAutoScroll()
+    this.$nextTick(() => this.bindScrollFlip())
     document.addEventListener('visibilitychange', this.onVisibilityChange)
-    this.$nextTick(() => {
-      this._ro = new ResizeObserver(() => this.updatePageSize())
-      const el = this.$refs.tableWrapper
-      if (el) { this._ro.observe(el); this.updatePageSize() }
-    })
   },
   beforeUnmount() {
     clearInterval(this.refreshTimer)
     clearInterval(this.autoScrollTimer)
     clearInterval(this.clockTimer)
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
-    if (this._ro) this._ro.disconnect()
   },
   methods: {
-    updatePageSize() {
-      const el = this.$refs.tableWrapper
-      if (!el) return
-      const HEADER_H = 44
-      const ROW_H    = 41
-      const n = Math.max(10, Math.floor((el.clientHeight - HEADER_H) / ROW_H))
-      if (n !== this.pageSize) {
-        this.pageSize = n
-        this.currentPage = 1
-      }
-    },
     initTime() {
       this.currentTime = dayjs().format('HH:mm:ss')
       this.clockTimer = setInterval(() => {
@@ -502,7 +487,7 @@ export default {
       const isFirst = !this._loaded
       if (isFirst) this.isLoading = true
       try {
-        const r = await getOnlineUsers(1, 10000)
+        const r = await getOnlineUsers(1, 1000)
         if (r.code === 200) {
           this.onlineUsers = r.data
           const depts = new Set((r.data.list || []).map(u => u.deptName).filter(Boolean))
@@ -552,20 +537,32 @@ export default {
           this.scrollPaused = true
           setTimeout(() => {
             if (this.currentPage < this.totalPages) {
-              // 翻到下一页，滚到顶
               this.currentPage++
-              this.$nextTick(() => { if (el) el.scrollTop = 0 })
             } else {
-              // 最后一页回到第一页
               this.currentPage = 1
-              this.$nextTick(() => { if (el) el.scrollTop = 0 })
             }
+            this.$nextTick(() => { if (el) el.scrollTop = 0 })
             this.scrollPaused = false
           }, 1500)
         }
       }, 50)
     },
 
+    bindScrollFlip() {
+      const el = this.$el?.querySelector('.el-table__body-wrapper .el-scrollbar__wrap')
+      if (!el) return
+      el.addEventListener('scroll', () => {
+        if (this._flipPending) return
+        const max = el.scrollHeight - el.clientHeight
+        if (max <= 0 || el.scrollTop < max - 2) return
+        this._flipPending = true
+        setTimeout(() => {
+          this.currentPage = this.currentPage < this.totalPages ? this.currentPage + 1 : 1
+          this.$nextTick(() => { el.scrollTop = 0 })
+          this._flipPending = false
+        }, 800)
+      })
+    },
     toggleAutoScroll() { this.autoScrollEnabled = !this.autoScrollEnabled },
     pauseAutoScroll()  { this.scrollPaused = true },
     resumeAutoScroll() { this.scrollPaused = false },
@@ -760,6 +757,15 @@ export default {
   height: 28px;
   display: flex;
   align-items: center;
+  &::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0;
+    width: 56px; height: 100%;
+    background: linear-gradient(to right, transparent, #0a0e27);
+    pointer-events: none;
+    z-index: 1;
+  }
 }
 
 .rt-ticker-inner {
@@ -1020,6 +1026,7 @@ export default {
   }
 }
 
+.c-idx      { color: #3d5470; font-size: 11px; font-family: Consolas; }
 .c-name     { color: #00d4ff; font-weight: 500; }
 .c-code     { color: #8ba6c8; }
 .c-dept     { color: #a8c5e6; }
@@ -1027,7 +1034,7 @@ export default {
 .c-calories { color: #f97316; font-weight: 500; }
 .c-time     { color: #8ba6c8; font-size: 12px; }
 .c-dim      { color: #6b7b94; }
-.c-na       { color: #3d4a5c; cursor: help; }
+.c-na       { color: #283040; font-size: 10px; cursor: help; }
 .c-ok       { color: #67C23A; font-weight: 600; }
 .c-warn     { color: #E6A23C; font-weight: 600; }
 .c-danger   { color: #F56C6C; font-weight: 600; }

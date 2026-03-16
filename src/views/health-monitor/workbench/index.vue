@@ -38,8 +38,8 @@
         <div class="sc-lbl">月均血氧 (%)</div>
       </div>
       <div class="stat-card">
-        <div class="sc-val text-red">{{ summary.totalWarnings }}</div>
-        <div class="sc-lbl">月度总预警</div>
+        <div class="sc-val text-red">{{ summary.totalWarnings.toLocaleString() }}</div>
+        <div class="sc-lbl">月度预警人次</div>
       </div>
     </div>
 
@@ -66,7 +66,9 @@
                 <span class="cm-item cm-bo" title="血氧">🩸 {{ cell.data.avgBloodOxygen || '--' }}</span>
               </div>
               <div class="cell-warn" v-if="cell.data.warningCount > 0">
-                <el-badge :value="cell.data.warningCount" type="danger" class="warn-badge" />
+                <span :class="['warn-badge-custom', cell.data.warningCount >= 100 ? 'wbc-high' : cell.data.warningCount >= 30 ? 'wbc-mid' : 'wbc-low']">
+                  {{ cell.data.warningCount >= 1000 ? Math.round(cell.data.warningCount/100)/10+'k' : cell.data.warningCount }}
+                </span>
               </div>
             </template>
             <div v-else class="cell-no-data">无数据</div>
@@ -433,21 +435,30 @@ function warnLevelClass(level) {
 .cm-hr { color: #f87171; }
 .cm-bo { color: #60a5fa; }
 .cell-no-data {
-  font-size: 12px;
-  color: #4b5563;
-  margin-top: 8px;
+  font-size: 11px;
+  color: #374151;
+  margin-top: 10px;
+  letter-spacing: 1px;
 }
 .cell-warn {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 5px;
+  right: 5px;
 }
-:deep(.warn-badge .el-badge__content) {
+.warn-badge-custom {
+  display: inline-block;
   font-size: 10px;
-  padding: 0 4px;
-  height: 16px;
+  font-weight: 700;
+  font-family: 'Consolas', monospace;
+  padding: 1px 5px;
+  border-radius: 8px;
   line-height: 16px;
+  min-width: 20px;
+  text-align: center;
 }
+.wbc-low  { background: rgba(249,115,22,0.2);  color: #fb923c; border: 1px solid rgba(249,115,22,0.4); }
+.wbc-mid  { background: rgba(239,68,68,0.2);   color: #f87171; border: 1px solid rgba(239,68,68,0.4); }
+.wbc-high { background: rgba(239,68,68,0.35);  color: #fff;    border: 1px solid #ef4444; }
 
 /* 详情面板 */
 .wb-detail {

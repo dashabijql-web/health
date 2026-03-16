@@ -58,6 +58,7 @@ export default {
     clearInterval(this.refreshTimer)
     clearTimeout(this.resizeTimer)
     window.removeEventListener('resize', this.handleResize)
+    if (this._listScrollCleanup) this._listScrollCleanup()
     if (this.charts) Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
@@ -76,7 +77,21 @@ export default {
       const el = this.$refs.listRef
       if (!el) return
       let top = 0
+      let pausedUntil = 0
+
+      const onScroll = () => {
+        // If the scroll position differs significantly from what the timer set,
+        // the user manually scrolled — sync top and pause auto-scroll for 2s
+        if (Math.abs(el.scrollTop - top) > 2) {
+          top = el.scrollTop
+          pausedUntil = Date.now() + 2000
+        }
+      }
+      el.addEventListener('scroll', onScroll)
+      this._listScrollCleanup = () => el.removeEventListener('scroll', onScroll)
+
       this.scrollTimer = setInterval(() => {
+        if (Date.now() < pausedUntil) return
         const max = el.scrollHeight - el.clientHeight
         if (max <= 0) return
         if (top >= max) { setTimeout(() => { top = 0; el.scrollTop = 0 }, 1500) }

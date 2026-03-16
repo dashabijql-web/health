@@ -13,7 +13,7 @@
     </div>
 
     <!-- 统计卡片 -->
-    <el-row :gutter="16" class="mb-16">
+    <el-row :gutter="16" class="mb-16" v-loading="loading" element-loading-background="rgba(10,14,39,0.6)">
       <el-col :span="6">
         <div class="stat-card">
           <div class="stat-icon-wrap primary"><el-icon size="26"><Monitor /></el-icon></div>

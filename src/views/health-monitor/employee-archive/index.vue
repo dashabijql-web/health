@@ -7,7 +7,7 @@
         职工健康档案库
       </div>
       <div class="ea-header-right">
-        <span class="ea-total">共 <b>{{ filtered.length }}</b> 名员工</span>
+        <span class="ea-total">共 <b>{{ loading ? '--' : filtered.length }}</b> 名员工</span>
       </div>
     </div>
 

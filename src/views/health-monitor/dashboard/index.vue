@@ -99,10 +99,16 @@
               <div class="dm-metric-val" :style="{color: m.color}">
                 {{ m.val.toLocaleString() }}
               </div>
+              <div class="dm-metric-label">{{ m.label }}</div>
               <div class="dm-metric-bar-wrap">
                 <div class="dm-metric-bar" :style="{width: m.pct+'%', background: m.color}"></div>
               </div>
-              <div class="dm-metric-label">{{ m.label }}</div>
+              <div class="dm-metric-records" :title="m.records.toLocaleString()+'条记录'">
+                {{ m.records >= 10000 ? (m.records/10000).toFixed(1)+'万次' : m.records.toLocaleString()+'次' }}
+              </div>
+              <div class="dm-metric-rec-bar-wrap">
+                <div class="dm-metric-rec-bar" :style="{width: m.recPct+'%', background: m.color+'66'}"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -124,16 +130,14 @@
                   <span class="dm-event-title">实时预警</span>
                   <span class="dm-event-page-info">
                     共 <b style="color:#00d4ff">{{ warningEvents.length }}</b> 条
-                    <template v-if="warningTotalPages > 1">· 第 {{ warningCurrentPage }} / {{ warningTotalPages }} 页</template>
                   </span>
-                  <div class="dm-event-page-btns" v-if="warningTotalPages > 1">
-                    <button class="dm-page-btn-sm" :disabled="warningCurrentPage === 1" @click="goToWarningPage('prev')">‹</button>
-                    <button class="dm-page-btn-sm" :disabled="warningCurrentPage === warningTotalPages" @click="goToWarningPage('next')">›</button>
-                  </div>
                 </div>
-                <div class="dm-event-list" ref="warningListMid" style="max-height:740px;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none">
+                <div class="dm-event-list dm-event-list--scroll" ref="warningListMid"
+                  style="max-height:740px;overflow-y:auto"
+                  @mouseenter="_warnHovered = true"
+                  @mouseleave="e => { _warnScrollTop = e.currentTarget.scrollTop; _warnHovered = false }">
                   <div
-                    v-for="(ev, i) in paginatedWarningEvents" :key="i"
+                    v-for="(ev, i) in warningEvents" :key="i"
                     :class="['dm-event', ev.level === 'danger' ? 'ev-danger' : 'ev-warn', ev.level === 'danger' ? 'alert-item--critical' : '', ev.handled ? 'ev-handled' : '']"
                     style="cursor:pointer"
                     @click="openWarnCurve(ev)"
@@ -156,11 +160,6 @@
                     </div>
                   </div>
                   <div v-if="!warningEvents.length" class="dm-empty">暂无预警事件</div>
-                </div>
-                <div class="dm-event-page" v-if="warningTotalPages > 1" style="margin-top:8px">
-                  <button class="dm-page-btn" :disabled="warningCurrentPage === 1" @click="goToWarningPage('prev')">‹</button>
-                  <span class="dm-page-info">{{ warningCurrentPage }} / {{ warningTotalPages }}</span>
-                  <button class="dm-page-btn" :disabled="warningCurrentPage === warningTotalPages" @click="goToWarningPage('next')">›</button>
                 </div>
               </div>
 
@@ -632,8 +631,6 @@ export default {
       deviceStats: { total: 0, activeRate: 0, usageRate: 0, warningRate: 0 },
       warningEvents: [],
       warningTypesData: [],
-      warningCurrentPage: 1,
-      warningPageSize: 15,
       charts: {},
       metricList: [
         { key: 'heartRate',   label: '心率',  color: '#00d4ff', icon: 'Monitor' },
@@ -788,8 +785,8 @@ export default {
         ? Math.round(this.kpiRealtimeOnline / this.kpiRealtimeTotal * 100) : 0
       const delta = this.kpiWarningDelta
       const deltaText = delta !== null
-        ? `昨日${this.kpiYesterdayWarnings} ${delta > 0 ? '↑' : '↓'}${Math.abs(delta)}%`
-        : `昨日 ${this.kpiYesterdayWarnings}`
+        ? `${delta > 0 ? '↑' : '↓'}${Math.abs(delta)}% 较昨${this.kpiYesterdayWarnings}件`
+        : `昨日 ${this.kpiYesterdayWarnings}件`
       // 计算异常人员数（从 warningEvents 中去重统计，优先使用唯一标识）
       const abnormalUsers = new Set(
         this.warningEvents
@@ -840,13 +837,17 @@ export default {
       return v != null ? Number(v) : null
     },
     metricCards() {
-      const maxVal = Math.max(...this.metricList.map(m => Number(this.personCounts[m.key]||0)), 1)
+      const total = this.kpiRealtimeTotal || 1
+      const maxRec = Math.max(...this.metricList.map(m => Number(this.checkData[m.key]||0)), 1)
       return this.metricList.map(m => ({
         key: m.key,
         label: m.label,
         color: m.color,
         val: Number(this.personCounts[m.key] || 0),
-        pct: Math.round(Number(this.personCounts[m.key]||0) / maxVal * 100)
+        rate: Math.round(Number(this.personCounts[m.key]||0) / total * 100),
+        records: Number(this.checkData[m.key] || 0),
+        recPct: Math.round(Number(this.checkData[m.key]||0) / maxRec * 100),
+        pct: Math.round(Number(this.personCounts[m.key]||0) / total * 100)
       }))
     },
     vitalCards() {
@@ -1018,13 +1019,6 @@ export default {
         { label: '电量不足', val: showVal(this.lowBatteryCount),     cls: 'dc-orange', route: { path: '/admin/device-list', query: { filter: 'lowBattery' } } }
       ]
     },
-    paginatedWarningEvents() {
-      const start = (this.warningCurrentPage - 1) * this.warningPageSize
-      return this.warningEvents.slice(start, start + this.warningPageSize)
-    },
-    warningTotalPages() {
-      return Math.ceil(this.warningEvents.length / this.warningPageSize)
-    }
   },
 
   mounted() {
@@ -1978,6 +1972,10 @@ export default {
       }
 
       const maxVal = Math.max(...vals, 1)
+      // 用中位数×3截断Y轴，防止离群值压扁其他柱子；标签超出时显示实际值+↑
+      const sorted = [...vals].filter(v => v > 0).sort((a, b) => a - b)
+      const median = sorted[Math.floor(sorted.length / 2)] || 1
+      const yMax = this.activePeriod === 'day' ? undefined : Math.max(median * 3, 5)
       chart.setOption({
         backgroundColor: 'transparent',
         tooltip: {
@@ -1995,7 +1993,7 @@ export default {
           axisLine: { show: false },
           axisTick: { show: false }
         },
-        yAxis: { type: 'value', show: false },
+        yAxis: { type: 'value', show: false, max: yMax },
         series: [{
           type: 'bar',
           data: vals,
@@ -2009,6 +2007,13 @@ export default {
               return '#00d4ff'
             },
             borderRadius: [2, 2, 0, 0]
+          },
+          label: {
+            show: this.activePeriod !== 'day',
+            position: 'top',
+            fontSize: 8,
+            color: '#8ba6c8',
+            formatter: p => yMax && p.value > yMax ? p.value + '↑' : ''
           }
         }]
       })
@@ -2284,35 +2289,9 @@ export default {
         ]
       })
     },
-    goToWarningPage(direction) {
-      if (direction === 'prev' && this.warningCurrentPage > 1) {
-        this.warningCurrentPage--
-      } else if (direction === 'next' && this.warningCurrentPage < this.warningTotalPages) {
-        this.warningCurrentPage++
-      }
-      this.$nextTick(() => {
-        const list = this.$refs.warningListMid
-        if (list) list.scrollTop = 0
-        this._warnScrollTop = 0  // 同步重置闭包变量
-      })
-    },
-
     startAutoScroll() {
       if (this.pageScrollInterval) clearInterval(this.pageScrollInterval)
       if (this.warningPageTimer)   clearInterval(this.warningPageTimer)
-
-      // 独立翻页定时器：每 8 秒切换到下一页（无论内容是否溢出）
-      this.warningPageTimer = setInterval(() => {
-        if (this.warningTotalPages > 1) {
-          this.warningCurrentPage = this.warningCurrentPage < this.warningTotalPages
-            ? this.warningCurrentPage + 1 : 1
-          this.$nextTick(() => {
-            const list = this.$refs.warningListMid
-            if (list) list.scrollTop = 0
-            this._warnScrollTop = 0  // 同步重置闭包变量
-          })
-        }
-      }, 8000)
 
       // 平滑滚动（内容溢出时）
       this._warnScrollTop = 0
@@ -2337,7 +2316,7 @@ export default {
                 this.startAutoScroll()
               }, 2000)
             }
-          } else {
+          } else if (!this._warnHovered) {
             this._warnScrollTop += 1
             list.scrollTop = this._warnScrollTop
           }
@@ -2529,7 +2508,7 @@ $white:  #e8f4ff;
   &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
 }
 // metrics 36+50=86, device 36+64=100, gaps 20 → model = 966-54-86-100-20=706px
-.dm-main-metrics { flex:0 0 96px; overflow:hidden; }
+.dm-main-metrics { flex:0 0 116px; overflow:hidden; }
 .dm-main-model   { flex:1; min-height:0; overflow:hidden; }
 .dm-main-device  { flex:0 0 100px; overflow:hidden; }
 
@@ -2547,6 +2526,9 @@ $white:  #e8f4ff;
 .dm-metric-bar-wrap { width:100%; height:4px; background:rgba(0,212,255,0.1); border-radius:2px; overflow:hidden; }
 .dm-metric-bar   { height:100%; border-radius:2px; transition:width 1s ease; min-width:2px; }
 .dm-metric-label { font-size:12px; color:$dim; }
+.dm-metric-records { font-size:10px; color:rgba(139,166,200,0.7); margin-top:3px; font-family:'Consolas',monospace; }
+.dm-metric-rec-bar-wrap { width:100%; height:2px; background:rgba(255,255,255,0.05); border-radius:1px; overflow:hidden; margin-top:2px; }
+.dm-metric-rec-bar { height:100%; border-radius:1px; transition:width 1s ease; min-width:1px; }
 
 // ── 健康监测中心 ──
 .dm-model-body { flex:1; min-height:0; display:flex; overflow:hidden; }
@@ -2828,6 +2810,15 @@ $white:  #e8f4ff;
 .dm-ev-row2    { display:flex; align-items:center; gap:8px; font-size:12px; }
 .dm-ev-user    { color:$accent; font-weight:600; }
 .dm-ev-val     { flex:1; color:$dim; em { color:#FFB84D; font-style:normal; } }
+
+.dm-event-list--scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,212,255,0.25) transparent;
+  &::-webkit-scrollbar       { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.25); border-radius: 2px; }
+  &::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.5); }
+}
 .dm-ev-pending { color:#ffd200; font-size:12px; }
 .dm-ev-done    { color:#38ef7d; font-size:12px; }
 .dm-event-page {

@@ -223,17 +223,18 @@
             <span class="bo-rt-total">{{ realtimeList.length }} 条</span>
           </div>
           <div class="bo-rt-hd">
-            <span>姓名</span><span>血氧</span><span>状态</span><span>时间</span>
+            <span>#</span><span>姓名</span><span>血氧</span><span>状态</span><span>时间</span>
           </div>
           <div class="bo-rt-body" ref="listRef">
             <div
               class="bo-rt-row"
-              v-for="(item, i) in pagedList"
+              v-for="(item, i) in filteredRealtimeList"
               :key="i"
               :class="boLevel(item.bloodOxygen)"
               @click="showDetail(item)"
               style="cursor:pointer"
             >
+              <span class="bo-rt-idx">{{ i + 1 }}</span>
               <span class="bo-rt-name">{{ item.userName }}</span>
               <span class="bo-rt-val">
                 {{ item.bloodOxygen }}%
@@ -242,15 +243,8 @@
               <span class="bo-rt-badge" :class="boLevel(item.bloodOxygen)">
                 {{ item.bloodOxygen < 90 ? '危险' : item.bloodOxygen < 95 ? '偏低' : item.bloodOxygen >= 99 ? '优秀' : '正常' }}
               </span>
-              <span class="bo-rt-time">{{ fmtTime(item.recordTime) }}</span>
+              <span class="bo-rt-time">{{ fmtRtTime(item.recordTime) }}</span>
             </div>
-          </div>
-          <div class="bo-rt-pg">
-            <button class="bo-pg-btn" :disabled="currentPage===1" @click="currentPage=1">首页</button>
-            <button class="bo-pg-btn" :disabled="currentPage===1" @click="currentPage--">‹</button>
-            <span class="bo-pg-info">{{ currentPage }} / {{ totalPages }}</span>
-            <button class="bo-pg-btn" :disabled="currentPage>=totalPages" @click="currentPage++">›</button>
-            <button class="bo-pg-btn" :disabled="currentPage>=totalPages" @click="currentPage=totalPages">末页</button>
           </div>
         </div>
       </div>
@@ -485,6 +479,9 @@ export default {
     },
     async loadRealtime() {
       try { const r = await getRealtimeBloodOxygen(200); if (r.code === 200) this.realtimeList = r.data || [] } catch {}
+    },
+    fmtRtTime(ts) {
+      return ts ? dayjs(ts).format('HH:mm:ss') : ''
     },
 
     // ── 仪表盘（80-100%）──
@@ -756,7 +753,7 @@ export default {
 .bo-panel-age   { flex: 0 0 340px; }
 .bo-panel-hourly{ flex: 1; }
 .bo-panel-dist  { flex: 0 0 258px; }
-.bo-panel-trend { flex: 1; min-height: 0; }
+.bo-panel-trend { flex: 0 0 165px; }
 
 /* ── Rtlist ── */
 .bo-rtlist {
@@ -830,7 +827,7 @@ export default {
 
 /* ── 实时列表 ── */
 .bo-rt-hd {
-  display: grid; grid-template-columns: 64px 50px 42px 1fr;
+  display: grid; grid-template-columns: 28px 1fr 50px 42px 44px;
   gap: 6px; padding: 6px 10px; flex-shrink: 0;
   background: rgba(0,212,255,0.06);
   span { font-size: 11px; color: $dim; font-weight: 600; }
@@ -841,7 +838,7 @@ export default {
   &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.18); border-radius: 2px; }
 }
 .bo-rt-row {
-  display: grid; grid-template-columns: 64px 50px 42px 1fr;
+  display: grid; grid-template-columns: 28px 1fr 50px 42px 44px;
   gap: 6px; padding: 6px 4px; margin-bottom: 1px;
   border-radius: 5px; align-items: center;
   border-left: 2px solid transparent; transition: background 0.2s;
@@ -851,6 +848,7 @@ export default {
   &.low       { border-left-color: rgba(255,184,77,0.55); }
   &.danger    { border-left-color: rgba(255,82,82,0.65); }
 }
+.bo-rt-idx  { font-size: 11px; color: $dim; font-family: 'Consolas', monospace; text-align: center; }
 .bo-rt-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bo-rt-val  {
   font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; color: #52c41a;
@@ -913,7 +911,7 @@ export default {
 }
 
 // ── 异常血氧明细面板 ──
-.bo-panel-anomaly { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.bo-panel-anomaly { flex: 1; min-height: 200px; display: flex; flex-direction: column; overflow: hidden; }
 .bo-anomaly-count {
   margin-left: auto; font-size: 12px; color: $dim;
   em { color: #ff8a80; font-style: normal; font-weight: 700; }

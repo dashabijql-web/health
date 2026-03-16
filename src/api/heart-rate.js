@@ -92,3 +92,14 @@ export function getHourlyHeartRate(startDate, endDate) {
     params: { startDate, endDate }
   })
 }
+
+/**
+ * 按日统计心率异常人次
+ */
+export function getDailyAnomalyHeartRate(startDate, endDate) {
+  return request({
+    url: '/heart-rate/daily-anomaly',
+    method: 'get',
+    params: { startDate, endDate }
+  })
+}

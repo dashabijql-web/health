@@ -210,33 +210,26 @@
           </div>
 
           <div class="ps-rt-hd">
-            <span>姓名</span><span>压力</span><span>状态</span><span>时间</span>
+            <span>#</span><span>姓名</span><span>压力</span><span>状态</span><span>时间</span>
           </div>
 
           <div class="ps-rt-body" ref="listRef">
             <div
               class="ps-rt-row"
-              v-for="(item, i) in pagedList"
+              v-for="(item, i) in filteredRealtimeList"
               :key="i"
               :class="psLevel(item.pressure)"
               @click="goToPortrait(item)"
               style="cursor:pointer"
             >
+              <span class="ps-rt-idx">{{ i + 1 }}</span>
               <span class="ps-rt-name">{{ item.userName }}</span>
               <span class="ps-rt-val">{{ item.pressure }}</span>
               <span class="ps-rt-badge" :class="psLevel(item.pressure)">
                 {{ item.pressure >= 85 ? '高压' : item.pressure >= 70 ? '偏高' : item.pressure >= 50 ? '正常' : '放松' }}
               </span>
-              <span class="ps-rt-time">{{ fmtTime(item.recordTime) }}</span>
+              <span class="ps-rt-time">{{ fmtRtTime(item.recordTime) }}</span>
             </div>
-          </div>
-
-          <div class="ps-rt-pg">
-            <button class="ps-pg-btn" :disabled="currentPage===1" @click="currentPage=1">首页</button>
-            <button class="ps-pg-btn" :disabled="currentPage===1" @click="currentPage--">‹</button>
-            <span class="ps-pg-info">{{ currentPage }} / {{ totalPages }}</span>
-            <button class="ps-pg-btn" :disabled="currentPage>=totalPages" @click="currentPage++">›</button>
-            <button class="ps-pg-btn" :disabled="currentPage>=totalPages" @click="currentPage=totalPages">末页</button>
           </div>
         </div>
       </div>
@@ -445,6 +438,9 @@ export default {
         const r = await getPressureRealtime(1000)
         if (r.code === 200) this.realtimeList = r.data || []
       } catch {}
+    },
+    fmtRtTime(ts) {
+      return ts ? dayjs(ts).format('HH:mm:ss') : ''
     },
 
     // ── ECharts ──
@@ -800,7 +796,7 @@ $cyan:   #00d4ff;
 
 // ── 实时列表 ──
 .ps-rt-hd {
-  display: grid; grid-template-columns: 64px 44px 42px 1fr;
+  display: grid; grid-template-columns: 28px 1fr 44px 42px 44px;
   gap: 6px; padding: 6px 10px; flex-shrink: 0;
   background: rgba(251,146,60,0.06);
   span { font-size: 11px; color: $dim; font-weight: 600; }
@@ -811,7 +807,7 @@ $cyan:   #00d4ff;
   &::-webkit-scrollbar-thumb { background: rgba(251,146,60,0.18); border-radius: 2px; }
 }
 .ps-rt-row {
-  display: grid; grid-template-columns: 64px 44px 42px 1fr;
+  display: grid; grid-template-columns: 28px 1fr 44px 42px 44px;
   gap: 6px; padding: 6px 4px; margin-bottom: 1px;
   border-radius: 5px; align-items: center;
   border-left: 2px solid transparent;
@@ -822,6 +818,7 @@ $cyan:   #00d4ff;
   &.elevated { border-left-color: rgba(255,184,77,0.55);  }
   &.high     { border-left-color: rgba(255,82,82,0.65);   }
 }
+.ps-rt-idx  { font-size: 11px; color: $dim; font-family: 'Consolas', monospace; text-align: center; }
 .ps-rt-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ps-rt-val {
   font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; color: #52c41a;

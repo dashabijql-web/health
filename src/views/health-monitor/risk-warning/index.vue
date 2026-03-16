@@ -108,9 +108,9 @@
             <div class="rw-list-body" ref="listRef"
               @mouseenter="pauseAutoScroll"
               @mouseleave="resumeAutoScroll">
-              <div class="rw-list-row" v-for="(item, i) in pagedList" :key="i"
+              <div class="rw-list-row" v-for="(item, i) in filteredList" :key="i"
                 :class="warnClass(item.warningLevel)" @click="openDetail(item)">
-                <span class="rw-list-idx">{{ (currentPage-1)*pageSize+i+1 }}</span>
+                <span class="rw-list-idx">{{ i + 1 }}</span>
                 <span class="rw-list-name">{{ item.userName || '--' }}</span>
                 <span class="rw-list-code">{{ item.empCode || item.userCode || '--' }}</span>
                 <span class="rw-list-dept">{{ item.deptName || '--' }}</span>
@@ -124,13 +124,6 @@
               <div v-if="filteredList.length===0" class="rw-list-empty">暂无匹配数据</div>
             </div>
 
-            <div class="rw-list-pg">
-              <button class="rw-pg-btn" :disabled="currentPage===1" @click="jumpPage(1)">首页</button>
-              <button class="rw-pg-btn" :disabled="currentPage===1" @click="jumpPage(currentPage-1)">‹</button>
-              <span class="rw-pg-info">{{ currentPage }} / {{ totalPages }}</span>
-              <button class="rw-pg-btn" :disabled="currentPage>=totalPages" @click="jumpPage(currentPage+1)">›</button>
-              <button class="rw-pg-btn" :disabled="currentPage>=totalPages" @click="jumpPage(totalPages)">末页</button>
-            </div>
           </div>
 
         </div>

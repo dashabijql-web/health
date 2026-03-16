@@ -115,14 +115,14 @@
           <template #default="{row}"><el-tag :type="levelTag(row.warningLevel)" size="small" effect="dark">{{ levelLabel(row.warningLevel) }}</el-tag></template>
         </el-table-column>
         <el-table-column label="处理状态" width="100" align="center">
-          <template #default="{row}"><el-tag :type="row.handleStatus===1?'success':'danger'" size="small" effect="dark">{{ row.handleStatus===1?'已处理':'未处理' }}</el-tag></template>
+          <template #default="{row}"><el-tag :type="row.handled?'success':'danger'" size="small" effect="dark">{{ row.handled?'已处理':'未处理' }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="handleBy" label="处理人" min-width="110">
           <template #default="{row}">{{ row.handleBy||'-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right" align="center">
           <template #default="{row}">
-            <el-button v-if="row.handleStatus!==1" type="warning" link size="small" @click.stop="openHandle(row)"><el-icon><Edit /></el-icon> 处理</el-button>
+            <el-button v-if="!row.handled" type="warning" link size="small" @click.stop="openHandle(row)"><el-icon><Edit /></el-icon> 处理</el-button>
             <span v-else class="handled-text">已处理</span>
           </template>
         </el-table-column>
@@ -159,7 +159,7 @@
           </div>
           <div class="detail-row">
             <span class="detail-label">处理状态</span>
-            <el-tag :type="detailRow.handleStatus===1?'success':'danger'" size="small" effect="dark">{{ detailRow.handleStatus===1?'已处理':'未处理' }}</el-tag>
+            <el-tag :type="detailRow.handled?'success':'danger'" size="small" effect="dark">{{ detailRow.handled?'已处理':'未处理' }}</el-tag>
           </div>
         </div>
 
@@ -182,7 +182,7 @@
           </div>
         </template>
 
-        <div class="detail-footer" v-if="detailRow.handleStatus !== 1">
+        <div class="detail-footer" v-if="!detailRow.handled">
           <el-button type="warning" style="width:100%" @click="() => { openHandle(detailRow); detailVisible = false }">
             <el-icon><Edit /></el-icon> 处理此预警
           </el-button>
@@ -286,7 +286,7 @@ const filterByCard = (type) => {
   handleSearch()
 }
 
-const typeMap = { SOS:{l:'SOS求助',t:'danger'}, fall:{l:'跌倒',t:'warning'}, heartRate:{l:'心率异常',t:''}, bloodOxygen:{l:'血氧异常',t:'info'}, temperature:{l:'体温异常',t:'warning'}, staticAlert:{l:'静态预警',t:'info'} }
+const typeMap = { SOS:{l:'SOS求助',t:'danger'}, fall:{l:'跌倒',t:'warning'}, heartRate:{l:'心率异常',t:'primary'}, bloodOxygen:{l:'血氧异常',t:'info'}, temperature:{l:'体温异常',t:'warning'}, staticAlert:{l:'静态预警',t:'info'} }
 const typeLabel = t => typeMap[t]?.l||t||'-'
 const typeTag = t => typeMap[t]?.t||''
 const levelMap = { 高危:{l:'高危',t:'danger'}, 中危:{l:'中危',t:'warning'}, 低危:{l:'低危',t:'info'} }

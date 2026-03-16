@@ -96,7 +96,7 @@ export const constantRoutes = [
     path: '/safety-command',
     component: Layout,
     name: 'SafetyCommand',
-    meta: { title: '安全指挥中心', icon: 'Aim' },
+    meta: { title: '安全指挥中心', icon: 'Aim', breadcrumb: false },
     children: [
       {
         path: 'index',
@@ -159,6 +159,13 @@ export const constantRoutes = [
         meta: { title: '工种管理', icon: 'SetUp', permCode: 'org:job-type' }
       }
     ]
+  },
+
+  // 旧预警路由兼容重定向
+  {
+    path: '/health-monitor/warnings',
+    redirect: '/alert-management/records',
+    hidden: true
   },
 
   // 兜底路由：所有未匹配的路径都跳转到 404（必须放最后）
