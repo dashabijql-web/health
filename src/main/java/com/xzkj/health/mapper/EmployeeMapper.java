@@ -17,7 +17,18 @@ public interface EmployeeMapper extends BaseMapper<Employee> {
             "e.height, e.weight, e.blood_type AS bloodType, e.status, " +
             "e.emergency_contact AS emergencyContact, " +
             "e.emergency_phone AS emergencyPhone, " +
-            "d.dept_name AS deptName, j.type_name AS jobTypeName " +
+            "d.dept_name AS deptName, j.type_name AS jobTypeName, " +
+            "ISNULL(( " +
+            "  SELECT CASE WHEN pts IS NULL OR pts <= 0 THEN 100 " +
+            "              WHEN 100 - pts < 30 THEN 30 " +
+            "              ELSE 100 - pts END " +
+            "  FROM ( " +
+            "    SELECT SUM(CASE warning_level WHEN '高危' THEN 6 WHEN '中危' THEN 3 ELSE 1 END) AS pts " +
+            "    FROM v_warning_record w " +
+            "    WHERE w.user_code = e.emp_code " +
+            "    AND w.create_time >= DATEADD(day, -30, GETDATE()) " +
+            "  ) t " +
+            "), 100) AS healthScore " +
             "FROM employee e " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
             "LEFT JOIN job_type j ON e.job_type_id = j.id " +
