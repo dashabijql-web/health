@@ -341,7 +341,9 @@ export default {
       this.startAutoScroll()
       this.initBedtime()
     })
-    this.refreshTimer = setInterval(() => this.fetchData(), 60000)
+    this.__refreshFn = () => this.fetchData()
+    this.__refreshInterval = 60000
+    this.refreshTimer = setInterval(this.__refreshFn, 60000)
   },
   methods: {
 

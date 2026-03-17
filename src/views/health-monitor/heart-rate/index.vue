@@ -395,7 +395,7 @@ export default {
           this._top5Paused = false
         }, 1500)
       }
-    }, 40)
+    }, 80)
     this.$nextTick(() => {
       this._ro = new ResizeObserver(() => this.setPageSize(27))
       const el = this.$refs.listRef

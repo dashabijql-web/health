@@ -140,7 +140,7 @@
                   @mouseenter="_warnHovered = true"
                   @mouseleave="e => { _warnScrollTop = e.currentTarget.scrollTop; _warnHovered = false }">
                   <div
-                    v-for="(ev, i) in warningEvents" :key="i"
+                    v-for="(ev, i) in warningEvents" :key="ev.id || ev.createTime || i"
                     :class="['dm-event', ev.level === 'danger' ? 'ev-danger' : 'ev-warn', ev.level === 'danger' ? 'alert-item--critical' : '', ev.handled ? 'ev-handled' : '']"
                     style="cursor:pointer"
                     @click="openWarnCurve(ev)"
@@ -282,7 +282,7 @@
             <span class="dm-ph-sub">{{ periodLabel }}累计</span>
           </div>
           <div class="dm-top5-list" ref="top5List">
-            <div class="dm-top5-row" v-for="(item,i) in top5DisplayData" :key="i"
+            <div class="dm-top5-row" v-for="(item,i) in top5DisplayData" :key="item.userCode || item.userName || i"
                  @click="openEmployeeDrawer(item)" style="cursor:pointer">
               <span class="dm-top5-rank" :class="'rk-'+(i+1)">{{i+1}}</span>
               <span class="dm-top5-name">{{item.userName||item.name}}</span>
@@ -467,7 +467,7 @@
             <span style="flex:1">描述</span>
             <span style="width:50px">级别</span>
           </div>
-          <div class="dm-wt-row" v-for="(w, i) in empDrawer.warnings.slice(0,15)" :key="i">
+          <div class="dm-wt-row" v-for="(w, i) in empDrawer.warnings.slice(0,15)" :key="w.id || w.createTime || i">
             <span style="width:120px;font-size:11px">{{ formatWarnTime(w.createTime) }}</span>
             <span style="width:90px">{{ alertTypeLabel(w.warningType) }}</span>
             <span style="width:60px;font-family:Consolas;color:#FFB84D">{{ w.warningValue }}</span>

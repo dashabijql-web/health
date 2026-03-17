@@ -51,6 +51,7 @@ export default {
   },
   mounted() {
     window.addEventListener('resize', this.handleResize)
+    document.addEventListener('visibilitychange', this._handlePageVisibility)
   },
   beforeUnmount() {
     clearInterval(this.clockTimer)
@@ -58,6 +59,7 @@ export default {
     clearInterval(this.refreshTimer)
     clearTimeout(this.resizeTimer)
     window.removeEventListener('resize', this.handleResize)
+    document.removeEventListener('visibilitychange', this._handlePageVisibility)
     if (this._listScrollCleanup) this._listScrollCleanup()
     if (this.charts) Object.values(this.charts).forEach(c => c && c.dispose())
   },
@@ -100,10 +102,22 @@ export default {
     },
     /** 通用页面初始化：时钟 + 首次加载 + 自动滚动 + 定时刷新 */
     initPage(refreshFn, interval = 30000) {
+      this.__refreshFn = refreshFn || (() => this.fetchData())
+      this.__refreshInterval = interval
       this.initClock()
       this.fetchData()
       this.$nextTick(() => this.startAutoScroll())
-      this.refreshTimer = setInterval(refreshFn || (() => this.fetchData()), interval)
+      this.refreshTimer = setInterval(this.__refreshFn, interval)
+    },
+    /** 标签页隐藏时暂停轮询，显示时立即刷新并重启定时器 */
+    _handlePageVisibility() {
+      if (document.hidden) {
+        clearInterval(this.refreshTimer)
+        this.refreshTimer = null
+      } else if (this.__refreshFn) {
+        this.__refreshFn()
+        this.refreshTimer = setInterval(this.__refreshFn, this.__refreshInterval)
+      }
     },
     switchPeriod(val) {
       if (this.activePeriod === val) return
