@@ -268,6 +268,7 @@
 <script>
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
+import { ElMessage } from 'element-plus'
 import {
   getHeartRateOverview,
   getHeartRateTrend,
@@ -412,7 +413,7 @@ export default {
 
     exportExcel() {
       const list = this.realtimeList
-      if (!list.length) { alert('暂无数据可导出'); return }
+      if (!list.length) { ElMessage.warning('暂无数据可导出'); return }
       const data = list.map(r => ({
         '姓名': r.userName || '--', '部门': r.deptName || '--', '工号': r.empCode || '--',
         '心率(bpm)': r.heartRate ?? '--',
@@ -423,6 +424,7 @@ export default {
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, '心率数据')
       XLSX.writeFile(wb, `心率分析_${dayjs().format('YYYYMMDD')}.xlsx`)
+      ElMessage.success(`已导出 ${list.length} 条记录`)
     },
 
     async fetchData() {

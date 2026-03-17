@@ -264,6 +264,7 @@
 <script>
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
+import { ElMessage } from 'element-plus'
 import { getSleepPageData, getSleepTrend, getSleepQualityDistribution } from '@/api/sleep'
 import { emptyOption, chartTooltip, trendGrid, hourlyGrid } from '@/utils/echarts-config'
 import { initChart, gradV } from '@/utils/chart-helpers'
@@ -346,7 +347,7 @@ export default {
 
     exportExcel() {
       const list = this.detailList
-      if (!list.length) { alert('暂无数据可导出'); return }
+      if (!list.length) { ElMessage.warning('暂无数据可导出'); return }
       const data = list.map(r => ({
         '姓名': r.userName || '--', '部门': r.deptName || '--', '工号': r.empCode || '--',
         '睡眠时长': r.sleepHours || '--',
@@ -358,6 +359,7 @@ export default {
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, '睡眠数据')
       XLSX.writeFile(wb, `睡眠分析_${dayjs().format('YYYYMMDD')}.xlsx`)
+      ElMessage.success(`已导出 ${list.length} 条记录`)
     },
 
     async fetchData() {

@@ -14,26 +14,26 @@
     <!-- Stat Cards -->
     <el-row :gutter="12" class="mb-16">
       <el-col :xs="12" :sm="6">
-        <div class="stat-card stat-card-clickable" @click="filterByCard('all')">
+        <div class="stat-card stat-card-clickable" :class="{ 'card-active': activeCard === 'all' }" @click="filterByCard('all')">
           <div class="stat-icon-wrap primary"><el-icon size="26"><Bell /></el-icon></div>
           <div class="stat-body"><div class="stat-value">{{ overview.todayTotal || 0 }}</div><div class="stat-label">今日预警</div></div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card stat-card-clickable" @click="filterByCard('unhandled')">
+        <div class="stat-card stat-card-clickable" :class="{ 'card-active': activeCard === 'unhandled' }" @click="filterByCard('unhandled')">
           <div class="stat-icon-wrap danger"><el-icon size="26"><WarningFilled /></el-icon></div>
           <div class="stat-body"><div class="stat-value">{{ overview.pending || 0 }}</div><div class="stat-label">待处理</div></div>
           <div class="stat-badge" v-if="overview.pending > 0">urgent</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card stat-card-clickable" @click="filterByCard('critical')">
+        <div class="stat-card stat-card-clickable" :class="{ 'card-active': activeCard === 'critical' }" @click="filterByCard('critical')">
           <div class="stat-icon-wrap warning"><el-icon size="26"><WarnTriangleFilled /></el-icon></div>
           <div class="stat-body"><div class="stat-value">{{ overview.critical || 0 }}</div><div class="stat-label">危急预警</div></div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card stat-card-clickable" @click="filterByCard('handled')">
+        <div class="stat-card stat-card-clickable" :class="{ 'card-active': activeCard === 'handled' }" @click="filterByCard('handled')">
           <div class="stat-icon-wrap success"><el-icon size="26"><CircleCheck /></el-icon></div>
           <div class="stat-body"><div class="stat-value">{{ handleRate }}<span class="unit">%</span></div><div class="stat-label">处理率</div></div>
         </div>
@@ -85,7 +85,7 @@
       <div class="panel-header">
         <div class="panel-title"><span class="title-bar"></span>预警列表</div>
         <div class="panel-header-right">
-          <el-button v-if="selectedRows.length > 0" type="warning" size="small" @click="batchHandle">批量处理 ({{ selectedRows.length }})</el-button>
+          <el-button v-if="selectedRows.length > 0" type="warning" size="small" :loading="batchLoading" @click="batchHandle">批量处理 ({{ selectedRows.length }})</el-button>
           <el-button v-if="!isMobile" type="success" size="small" :icon="Download" @click="exportExcel">导出Excel</el-button>
           <span class="total-badge">共 {{ pagination.total }} 条</span>
         </div>
@@ -195,7 +195,7 @@
           </div>
         </div>
 
-        <template v-if="detailRow.handleStatus === 1">
+        <template v-if="detailRow.handled">
           <div class="detail-divider"></div>
           <div class="detail-section">
             <div class="detail-section-title">处理信息</div>
@@ -308,16 +308,17 @@ const handleSearch = () => { pagination.page=1; loadData() }
 const handleReset = () => { Object.assign(searchForm, { dateRange:null, warningType:'', warningLevel:'', handleStatus:'', keyword:'' }); handleSearch() }
 
 // KPI card click filter
+const activeCard = ref('') // 当前高亮的 KPI 卡片
 const filterByCard = (type) => {
+  activeCard.value = activeCard.value === type ? '' : type
   Object.assign(searchForm, { dateRange: null, warningType: '', warningLevel: '', handleStatus: '', keyword: '' })
-  if (type === 'unhandled') {
+  if (activeCard.value === 'unhandled') {
     searchForm.handleStatus = 'unhandled'
-  } else if (type === 'critical') {
+  } else if (activeCard.value === 'critical') {
     searchForm.warningLevel = '高危'
-  } else if (type === 'handled') {
+  } else if (activeCard.value === 'handled') {
     searchForm.handleStatus = 'handled'
   }
-  // type === 'all': no filter, just reset and reload
   handleSearch()
 }
 
@@ -335,8 +336,10 @@ const openDetail = (row) => { detailRow.value = row; detailVisible.value = true 
 
 // Batch selection
 const selectedRows = ref([])
+const batchLoading = ref(false)
 const batchHandle = async () => {
   if (!selectedRows.value.length) return
+  batchLoading.value = true
   try {
     const ids = selectedRows.value.map(r => r.id)
     const res = await handleBatchRiskWarning(ids)
@@ -349,6 +352,7 @@ const batchHandle = async () => {
       ElMessage.error(res.message || '批量处理失败')
     }
   } catch(e) { ElMessage.error('批量处理失败') }
+  finally { batchLoading.value = false }
 }
 
 const handleDialogVisible = ref(false)
@@ -446,6 +450,11 @@ onMounted(() => {
   }
   &:active {
     transform: translateY(0);
+  }
+  &.card-active {
+    border-color: $da-accent;
+    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.25), 0 4px 20px rgba(0, 212, 255, 0.15);
+    background: rgba(0, 212, 255, 0.07);
   }
 }
 .stat-icon-wrap { @include da-icon-wrap; &.primary { background: $da-grad-primary; } &.success { background: $da-grad-success; } &.warning { background: $da-grad-warning; } &.danger { background: $da-grad-danger; } &.info { background: $da-grad-info; } }

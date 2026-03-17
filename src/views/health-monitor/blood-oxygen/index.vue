@@ -281,6 +281,7 @@
 <script>
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
+import { ElMessage } from 'element-plus'
 import {
   getBloodOxygenOverview,
   getBloodOxygenTrend,
@@ -403,7 +404,7 @@ export default {
 
     exportExcel() {
       const list = this.realtimeList
-      if (!list.length) { alert('暂无数据可导出'); return }
+      if (!list.length) { ElMessage.warning('暂无数据可导出'); return }
       const data = list.map(r => ({
         '姓名': r.userName || '--', '部门': r.deptName || '--', '工号': r.empCode || '--',
         '血氧饱和度(%)': r.bloodOxygen ?? '--',
@@ -414,6 +415,7 @@ export default {
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, '血氧数据')
       XLSX.writeFile(wb, `血氧分析_${dayjs().format('YYYYMMDD')}.xlsx`)
+      ElMessage.success(`已导出 ${list.length} 条记录`)
     },
 
     async fetchData() {
