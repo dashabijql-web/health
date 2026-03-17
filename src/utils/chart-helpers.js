@@ -2,7 +2,7 @@
  * Shared chart initialization helpers.
  * Eliminates repeated init/dispose boilerplate and common chart options.
  */
-import * as echarts from 'echarts'
+import * as echarts from '@/utils/echarts-setup'
 
 /** Vertical gradient (top→bottom). Shorthand for echarts.graphic.LinearGradient. */
 export function gradV(c1, c2) {

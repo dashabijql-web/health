@@ -37,7 +37,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
-import * as echarts from 'echarts'
+import * as echarts from '@/utils/echarts-setup'
 
 const props = defineProps({ areas: { type: Array, default: () => [] } })
 defineEmits(['fullscreen','refresh','showArea','callLeader'])

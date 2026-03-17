@@ -43,7 +43,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
-import * as echarts from 'echarts'
+import * as echarts from '@/utils/echarts-setup'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },

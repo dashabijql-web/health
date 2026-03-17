@@ -195,7 +195,7 @@
 </template>
 
 <script>
-import * as echarts from 'echarts'
+import * as echarts from '@/utils/echarts-setup'
 import dayjs from 'dayjs'
 import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getDeptWarningStats } from '@/api/risk-warning'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, barLabel } from '@/utils/echarts-config'

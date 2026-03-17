@@ -112,7 +112,7 @@
 
 <script setup>
 import { ref, watch, nextTick, onUnmounted } from 'vue'
-import * as echarts from 'echarts'
+import * as echarts from '@/utils/echarts-setup'
 import HeartRateWave from '@/components/HeartRateWave.vue'
 import { getUserRealtimeData } from '@/api/realtime'
 import { getHealthRecords } from '@/api/health'

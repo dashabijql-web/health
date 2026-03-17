@@ -261,7 +261,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import * as echarts from '@/utils/echarts-setup'
 import HeartRateWave from '@/components/HeartRateWave.vue'
 import { getUserRealtimeData } from '@/api/realtime'
 import { getRiskWarningList } from '@/api/risk-warning'

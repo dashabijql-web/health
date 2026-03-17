@@ -96,7 +96,7 @@ export default {
         if (max <= 0) return
         if (top >= max) { setTimeout(() => { top = 0; el.scrollTop = 0 }, 1500) }
         else { top += 1; el.scrollTop = top }
-      }, 40)
+      }, 80)
     },
     /** 通用页面初始化：时钟 + 首次加载 + 自动滚动 + 定时刷新 */
     initPage(refreshFn, interval = 30000) {

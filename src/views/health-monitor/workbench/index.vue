@@ -187,7 +187,7 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Close } from '@element-plus/icons-vue'
 import { getCalendarData, getDayHeartRateRank, getDayBloodOxygenRank, getDayStepsRank, getDayWarnings } from '@/api/workbench'
 import { getDeptHealthComparison } from '@/api/health'
-import * as echarts from 'echarts'
+import * as echarts from '@/utils/echarts-setup'
 
 const weekDays = ['日', '一', '二', '三', '四', '五', '六']
 

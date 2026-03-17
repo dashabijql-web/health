@@ -567,7 +567,7 @@ export default {
       clearInterval(this.autoScrollTimer)
       this.autoScrollTimer = setInterval(() => {
         if (!this.autoScrollEnabled || this.scrollPaused) return
-        const el = this.$el?.querySelector('.el-table__body-wrapper .el-scrollbar__wrap')
+        const el = this.$el?.querySelector('.el-table__body-wrapper .el-scrollbar__wrap, .el-scrollbar__wrap')
         if (!el) return
         const max = el.scrollHeight - el.clientHeight
         if (max <= 0) return
@@ -584,7 +584,7 @@ export default {
             this.scrollPaused = false
           }, 1500)
         }
-      }, 50)
+      }, 80)
     },
 
     bindScrollFlip() {

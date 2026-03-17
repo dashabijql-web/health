@@ -633,7 +633,7 @@
 </template>
 
 <script>
-import * as echarts from 'echarts'
+import * as echarts from '@/utils/echarts-setup'
 import { markRaw } from 'vue'
 import dayjs from 'dayjs'
 import {
@@ -1368,7 +1368,7 @@ export default {
         const el = this.$refs.deptPersonChartRef
         if (!el) return
         if (modal.chart) modal.chart.dispose()
-        const echarts = this.$echarts || window.echarts || (await import('echarts'))
+        const echarts = this.$echarts || window.echarts || (await import('@/utils/echarts-setup'))
         modal.chart = markRaw(echarts.init(el, null, { renderer: 'canvas' }))
         modal.chart.setOption({
           backgroundColor: '#0a1628',
@@ -1866,7 +1866,7 @@ export default {
         const el = this.$refs.deptDetailChartRef
         if (!el) return
         if (modal.chart) modal.chart.dispose()
-        const echartsLib = this.$echarts || window.echarts || (await import('echarts'))
+        const echartsLib = this.$echarts || window.echarts || (await import('@/utils/echarts-setup'))
         modal.chart = markRaw(echartsLib.init(el, null, { renderer: 'canvas' }))
         modal.chart.setOption({
           backgroundColor: '#0a1628',
@@ -2372,7 +2372,7 @@ export default {
         const el = this.$refs.metricDetailChartRef
         if (!el) return
         if (modal.chart) modal.chart.dispose()
-        const echartsLib = this.$echarts || window.echarts || (await import('echarts'))
+        const echartsLib = this.$echarts || window.echarts || (await import('@/utils/echarts-setup'))
         modal.chart = markRaw(echartsLib.init(el, null, { renderer: 'canvas' }))
         modal.chart.setOption({
           backgroundColor: '#0a1628',

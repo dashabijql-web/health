@@ -345,7 +345,7 @@ import { ElMessage } from 'element-plus'
 import { getHealthPortrait } from '@/api/health-portrait'
 import { getCachedAiReport, generateAiReport } from '@/api/ai'
 import { getBodyIndicators } from '@/api/health'
-import * as echarts from 'echarts'
+import * as echarts from '@/utils/echarts-setup'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 

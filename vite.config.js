@@ -129,7 +129,8 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             'vendor-vue': ['vue', 'vue-router', 'vuex'],
             'vendor-element': ['element-plus', '@element-plus/icons-vue'],
-            'vendor-echarts': ['echarts'],
+            // echarts 不再放入 manualChunks，让 tree-shaking 通过 echarts-setup.js 生效
+            // 只注册实际使用的图表类型（line/bar/pie/gauge/radar），减少约 50% 体积
           }
         }
       }
