@@ -12,27 +12,27 @@
     </div>
 
     <!-- Stat Cards -->
-    <el-row :gutter="16" class="mb-16">
-      <el-col :span="6">
+    <el-row :gutter="12" class="mb-16">
+      <el-col :xs="12" :sm="6">
         <div class="stat-card stat-card-clickable" @click="filterByCard('all')">
           <div class="stat-icon-wrap primary"><el-icon size="26"><Bell /></el-icon></div>
           <div class="stat-body"><div class="stat-value">{{ overview.todayTotal || 0 }}</div><div class="stat-label">今日预警</div></div>
         </div>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
         <div class="stat-card stat-card-clickable" @click="filterByCard('unhandled')">
           <div class="stat-icon-wrap danger"><el-icon size="26"><WarningFilled /></el-icon></div>
           <div class="stat-body"><div class="stat-value">{{ overview.pending || 0 }}</div><div class="stat-label">待处理</div></div>
           <div class="stat-badge" v-if="overview.pending > 0">urgent</div>
         </div>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
         <div class="stat-card stat-card-clickable" @click="filterByCard('critical')">
           <div class="stat-icon-wrap warning"><el-icon size="26"><WarnTriangleFilled /></el-icon></div>
           <div class="stat-body"><div class="stat-value">{{ overview.critical || 0 }}</div><div class="stat-label">危急预警</div></div>
         </div>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
         <div class="stat-card stat-card-clickable" @click="filterByCard('handled')">
           <div class="stat-icon-wrap success"><el-icon size="26"><CircleCheck /></el-icon></div>
           <div class="stat-body"><div class="stat-value">{{ handleRate }}<span class="unit">%</span></div><div class="stat-label">处理率</div></div>
@@ -42,10 +42,15 @@
 
     <!-- Search Panel -->
     <div class="panel mb-16">
-      <el-form :inline="true" :model="searchForm" class="search-form">
-        <el-form-item><el-date-picker v-model="searchForm.dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" style="width:260px" /></el-form-item>
+      <!-- 手机端折叠按钮 -->
+      <div v-if="isMobile" class="mob-filter-toggle" @click="filterExpanded = !filterExpanded">
+        <el-icon><Search /></el-icon> 筛选条件
+        <span class="mob-filter-arrow">{{ filterExpanded ? '▲' : '▼' }}</span>
+      </div>
+      <el-form v-if="!isMobile || filterExpanded" :inline="!isMobile" :model="searchForm" class="search-form">
+        <el-form-item><el-date-picker v-model="searchForm.dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" :style="isMobile?'width:100%':'width:260px'" /></el-form-item>
         <el-form-item>
-          <el-select v-model="searchForm.warningType" placeholder="预警类型" clearable style="width:140px">
+          <el-select v-model="searchForm.warningType" placeholder="预警类型" clearable :style="isMobile?'width:100%':'width:140px'">
             <el-option label="心率异常" value="心率" />
             <el-option label="血氧异常" value="血氧" />
             <el-option label="体温异常" value="体温" />
@@ -56,86 +61,112 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-select v-model="searchForm.warningLevel" placeholder="预警级别" clearable style="width:120px">
+          <el-select v-model="searchForm.warningLevel" placeholder="预警级别" clearable :style="isMobile?'width:100%':'width:120px'">
             <el-option label="高危" value="高危" /><el-option label="中危" value="中危" /><el-option label="低危" value="低危" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-select v-model="searchForm.handleStatus" placeholder="处理状态" clearable style="width:120px">
+          <el-select v-model="searchForm.handleStatus" placeholder="处理状态" clearable :style="isMobile?'width:100%':'width:120px'">
             <el-option label="全部" value="" /><el-option label="已处理" value="handled" /><el-option label="未处理" value="unhandled" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-input v-model="searchForm.keyword" placeholder="搜索姓名/设备号" clearable style="width:200px" @keyup.enter="handleSearch"><template #prefix><el-icon><Search /></el-icon></template></el-input>
+          <el-input v-model="searchForm.keyword" placeholder="搜索姓名/设备号" clearable :style="isMobile?'width:100%':'width:200px'" @keyup.enter="handleSearch"><template #prefix><el-icon><Search /></el-icon></template></el-input>
         </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
-          <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+        <el-form-item :style="isMobile?'width:100%':''">
+          <el-button type="primary" :icon="Search" @click="handleSearch" :style="isMobile?'width:50%':''">搜索</el-button>
+          <el-button :icon="Refresh" @click="handleReset" :style="isMobile?'width:45%':''">重置</el-button>
         </el-form-item>
       </el-form>
     </div>
 
-    <!-- Data Table -->
+    <!-- Data Table / Card List -->
     <div class="panel table-panel">
       <div class="panel-header">
         <div class="panel-title"><span class="title-bar"></span>预警列表</div>
         <div class="panel-header-right">
-          <el-button
-            v-if="selectedRows.length > 0"
-            type="warning"
-            size="small"
-            @click="batchHandle"
-          >批量处理 ({{ selectedRows.length }})</el-button>
-          <el-button type="success" size="small" :icon="Download" @click="exportExcel">导出Excel</el-button>
+          <el-button v-if="selectedRows.length > 0" type="warning" size="small" @click="batchHandle">批量处理 ({{ selectedRows.length }})</el-button>
+          <el-button v-if="!isMobile" type="success" size="small" :icon="Download" @click="exportExcel">导出Excel</el-button>
           <span class="total-badge">共 {{ pagination.total }} 条</span>
         </div>
       </div>
-      <div class="table-body">
-      <el-table :data="tableData" v-loading="loading" stripe height="100%" style="width:100%"
-        :header-cell-style="{ background:'#141830', color:'#7eb8d4', fontWeight:'600', fontSize:'13px' }"
-        :row-style="{ background:'#1a1f3a', cursor:'pointer' }"
-        @row-click="openDetail"
-        @selection-change="rows => selectedRows = rows">
-        <el-table-column type="selection" width="46" align="center" @click.stop />
-        <el-table-column type="index" label="#" width="50" align="center" />
-        <el-table-column prop="createTime" label="预警时间" width="170">
-          <template #default="{row}">{{ formatDate(row.createTime) }}</template>
-        </el-table-column>
-        <el-table-column prop="userName" label="姓名" width="100" />
-        <el-table-column label="性别" width="65" align="center">
-          <template #default="{row}">{{ row.gender === 1 ? '男' : row.gender === 2 ? '女' : '-' }}</template>
-        </el-table-column>
-        <el-table-column label="年龄" width="65" align="center">
-          <template #default="{row}">{{ row.age != null ? row.age : '-' }}</template>
-        </el-table-column>
-        <el-table-column label="预警类型" width="120" align="center">
-          <template #default="{row}"><el-tag :type="typeTag(row.warningType)" size="small" effect="dark">{{ typeLabel(row.warningType) }}</el-tag></template>
-        </el-table-column>
-        <el-table-column prop="warningValue" label="预警值" width="100" align="center" />
-        <el-table-column label="预警级别" width="100" align="center">
-          <template #default="{row}"><el-tag :type="levelTag(row.warningLevel)" size="small" effect="dark">{{ levelLabel(row.warningLevel) }}</el-tag></template>
-        </el-table-column>
-        <el-table-column label="处理状态" width="100" align="center">
-          <template #default="{row}"><el-tag :type="row.handled?'success':'danger'" size="small" effect="dark">{{ row.handled?'已处理':'未处理' }}</el-tag></template>
-        </el-table-column>
-        <el-table-column prop="handleBy" label="处理人" min-width="110">
-          <template #default="{row}">{{ row.handleBy||'-' }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right" align="center">
-          <template #default="{row}">
-            <el-button v-if="!row.handled" type="warning" link size="small" @click.stop="openHandle(row)"><el-icon><Edit /></el-icon> 处理</el-button>
-            <span v-else class="handled-text">已处理</span>
-          </template>
-        </el-table-column>
-      </el-table>
+
+      <!-- 手机端：卡片列表 -->
+      <div v-if="isMobile" class="mob-card-list" v-loading="loading">
+        <div v-for="row in tableData" :key="row.id"
+          class="mob-warn-card"
+          :class="row.warningLevel==='高危'?'card-danger':row.warningLevel==='中危'?'card-warning':'card-info'"
+          @click="openDetail(row)">
+          <div class="mob-card-top">
+            <span class="mob-card-name">{{ row.userName || '--' }}</span>
+            <el-tag :type="levelTag(row.warningLevel)" size="small" effect="dark">{{ levelLabel(row.warningLevel) }}</el-tag>
+            <el-tag :type="row.handled?'success':'danger'" size="small" effect="dark">{{ row.handled?'已处理':'未处理' }}</el-tag>
+          </div>
+          <div class="mob-card-mid">
+            <el-tag :type="typeTag(row.warningType)" size="small" effect="plain">{{ typeLabel(row.warningType) }}</el-tag>
+            <span class="mob-card-val">{{ row.warningValue || '' }}</span>
+          </div>
+          <div class="mob-card-bot">
+            <span class="mob-card-time">{{ formatDate(row.createTime) }}</span>
+            <el-button v-if="!row.handled" type="warning" size="small" @click.stop="openHandle(row)">处理</el-button>
+          </div>
+        </div>
+        <div v-if="!loading && tableData.length === 0" class="mob-empty">暂无预警记录</div>
       </div>
+
+      <!-- 桌面端：表格 -->
+      <div v-else class="table-body">
+        <el-table :data="tableData" v-loading="loading" stripe height="100%" style="width:100%"
+          :header-cell-style="{ background:'#141830', color:'#7eb8d4', fontWeight:'600', fontSize:'13px' }"
+          :row-style="{ background:'#1a1f3a', cursor:'pointer' }"
+          @row-click="openDetail"
+          @selection-change="rows => selectedRows = rows">
+          <el-table-column type="selection" width="46" align="center" @click.stop />
+          <el-table-column type="index" label="#" width="50" align="center" />
+          <el-table-column prop="createTime" label="预警时间" width="170">
+            <template #default="{row}">{{ formatDate(row.createTime) }}</template>
+          </el-table-column>
+          <el-table-column prop="userName" label="姓名" width="100" />
+          <el-table-column label="性别" width="65" align="center">
+            <template #default="{row}">{{ row.gender === 1 ? '男' : row.gender === 2 ? '女' : '-' }}</template>
+          </el-table-column>
+          <el-table-column label="年龄" width="65" align="center">
+            <template #default="{row}">{{ row.age != null ? row.age : '-' }}</template>
+          </el-table-column>
+          <el-table-column label="预警类型" width="120" align="center">
+            <template #default="{row}"><el-tag :type="typeTag(row.warningType)" size="small" effect="dark">{{ typeLabel(row.warningType) }}</el-tag></template>
+          </el-table-column>
+          <el-table-column prop="warningValue" label="预警值" width="100" align="center" />
+          <el-table-column label="预警级别" width="100" align="center">
+            <template #default="{row}"><el-tag :type="levelTag(row.warningLevel)" size="small" effect="dark">{{ levelLabel(row.warningLevel) }}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="处理状态" width="100" align="center">
+            <template #default="{row}"><el-tag :type="row.handled?'success':'danger'" size="small" effect="dark">{{ row.handled?'已处理':'未处理' }}</el-tag></template>
+          </el-table-column>
+          <el-table-column prop="handleBy" label="处理人" min-width="110">
+            <template #default="{row}">{{ row.handleBy||'-' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right" align="center">
+            <template #default="{row}">
+              <el-button v-if="!row.handled" type="warning" link size="small" @click.stop="openHandle(row)"><el-icon><Edit /></el-icon> 处理</el-button>
+              <span v-else class="handled-text">已处理</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
       <div class="pagination-wrap">
-        <el-pagination background layout="total,sizes,prev,pager,next,jumper" :current-page="pagination.page" :page-sizes="[10,20,50,100]" :page-size="pagination.size" :total="pagination.total" @size-change="s=>{pagination.size=s;loadData()}" @current-change="p=>{pagination.page=p;loadData()}" />
+        <el-pagination background
+          :layout="isMobile ? 'prev,pager,next' : 'total,sizes,prev,pager,next,jumper'"
+          :current-page="pagination.page" :page-sizes="[10,20,50,100]" :page-size="pagination.size"
+          :total="pagination.total"
+          @size-change="s=>{pagination.size=s;loadData()}"
+          @current-change="p=>{pagination.page=p;loadData()}" />
       </div>
     </div>
 
     <!-- Detail Drawer -->
-    <el-drawer v-model="detailVisible" title="预警详情" width="480px" direction="rtl" :destroy-on-close="true">
+    <el-drawer v-model="detailVisible" title="预警详情" :width="isMobile?'100%':'480px'" direction="rtl" :destroy-on-close="true">
       <div v-if="detailRow" class="detail-body">
         <div class="detail-section">
           <div class="detail-row">
@@ -192,7 +223,7 @@
     </el-drawer>
 
     <!-- Handle Dialog -->
-    <el-dialog v-model="handleDialogVisible" title="处理预警" width="520px" :close-on-click-modal="false">
+    <el-dialog v-model="handleDialogVisible" title="处理预警" :width="isMobile?'95%':'520px'" :close-on-click-modal="false">
       <div class="handle-summary">
         <div class="summary-row"><span class="summary-label">预警人员</span><span class="summary-value">{{ currentRow?.userName||'-' }}</span></div>
         <div class="summary-row"><span class="summary-label">预警类型</span><el-tag :type="typeTag(currentRow?.warningType)" size="small" effect="dark">{{ typeLabel(currentRow?.warningType) }}</el-tag></div>
@@ -228,6 +259,8 @@ import { getRiskWarningList, getRiskWarningOverview, handleRiskWarning, handleBa
 const route = useRoute()
 
 const { currentTime } = useClock()
+const isMobile = ref(window.innerWidth < 768)
+const filterExpanded = ref(false)
 
 const overview = reactive({ todayTotal: 0, pending: 0, critical: 0, handled: 0 })
 const handleRate = computed(() => { const t = overview.todayTotal||0; return t===0?0:((overview.handled/t)*100).toFixed(1) })
@@ -453,4 +486,78 @@ onMounted(() => {
 :deep(.el-drawer) { background: $da-panel; }
 :deep(.el-drawer__header) { color: $da-text-bright; border-bottom: 1px solid $da-border; margin-bottom: 0; padding: 16px 20px; }
 :deep(.el-drawer__body) { padding: 20px; color: $da-text; }
+
+/* ── 移动端适配 ── */
+@media (max-width: 768px) {
+  .page-container {
+    height: auto;
+    min-height: calc(100vh - 50px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px;
+    padding-bottom: 70px;
+  }
+  .page-header { flex-wrap: wrap; gap: 8px; padding: 10px 0; }
+  .header-time { font-size: 11px; padding: 4px 10px; }
+  .mb-16 { margin-bottom: 10px; }
+  /* stat cards 间距 */
+  :deep(.el-row) { --el-row-padding: 0; margin-bottom: 0; }
+  :deep(.el-col) { margin-bottom: 8px; }
+  .stat-value { font-size: 22px; }
+
+  /* 筛选折叠按钮 */
+  .mob-filter-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: $da-text;
+    cursor: pointer;
+    .mob-filter-arrow { margin-left: auto; font-size: 11px; color: $da-text-dim; }
+  }
+  .search-form {
+    padding: 0 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  :deep(.el-form-item) { margin-right: 0; margin-bottom: 8px; width: 100%; }
+  :deep(.el-form-item__content) { width: 100%; }
+
+  /* 手机卡片列表 */
+  .mob-card-list {
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .mob-warn-card {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    background: rgba(255,255,255,0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    cursor: pointer;
+    &.card-danger { border-left-color: #f56c6c; background: rgba(245,108,108,0.06); }
+    &.card-warning { border-left-color: #e6a23c; background: rgba(230,162,60,0.06); }
+    &.card-info { border-left-color: #409eff; background: rgba(64,158,255,0.05); }
+  }
+  .mob-card-top { display: flex; align-items: center; gap: 6px; }
+  .mob-card-name { font-size: 14px; font-weight: 700; color: #e8f4ff; flex: 1; }
+  .mob-card-mid { display: flex; align-items: center; gap: 8px; }
+  .mob-card-val { font-size: 13px; color: #a0c0e8; font-family: monospace; }
+  .mob-card-bot { display: flex; align-items: center; justify-content: space-between; }
+  .mob-card-time { font-size: 11px; color: #4a7090; }
+  .mob-empty { text-align: center; color: #4a7090; padding: 32px 0; font-size: 13px; }
+
+  /* 分页紧凑 */
+  .pagination-wrap { padding: 10px; justify-content: center; }
+  :deep(.el-pagination) { flex-wrap: wrap; justify-content: center; }
+
+  /* 表格面板高度不固定 */
+  .panel.table-panel { flex: none; }
+}
 </style>

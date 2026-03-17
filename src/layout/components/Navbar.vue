@@ -188,4 +188,12 @@ export default {
   }
 }
 
+
+.navbar {
+  @media (max-width: 768px) {
+    .breadcrumb-container { display: none; }
+    .right-menu .avatar-container { margin-right: 12px; }
+    .user-name { display: none; }
+  }
+}
 </style>

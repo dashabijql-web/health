@@ -815,4 +815,37 @@ onUnmounted(() => {
 .green  { color: #00e676; }
 .cyan   { color: #00c8ff; }
 .dim    { color: #5a8090; }
+
+/* ═══ 移动端适配 ═══ */
+@media (max-width: 768px) {
+  .ep-page {
+    height: auto;
+    min-height: calc(100vh - 50px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 64px;
+  }
+  .ep-header {
+    padding: 10px 12px;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+  /* 隐藏标题文字，手机屏幕太窄放不下 */
+  .ep-title { display: none; }
+  .ep-header-emp { flex-wrap: wrap; gap: 4px 8px; }
+  .ep-update { width: 100%; font-size: 10px; }
+  /* 主体改为单列滚动 */
+  .ep-body {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+    padding: 8px 10px;
+  }
+  .ep-left, .ep-right { overflow: visible; }
+  /* 中栏（矿工3D舞台）在移动端隐藏 */
+  .ep-center { display: none; }
+  .ep-trend-chart { height: 200px; }
+  .ep-vital-grid { grid-template-columns: 1fr 1fr; }
+  .ep-risk-grid { grid-template-columns: 1fr 1fr; }
+}
 </style>

@@ -39,7 +39,7 @@
           <div class="hr-top5-list" ref="top5ScrollRef"
                @mouseenter="_top5Paused=true" @mouseleave="_top5Paused=false">
             <div v-if="!top5Data.length" class="hr-top5-empty">暂无异常频次数据</div>
-            <div class="hr-top5-row" v-for="(item, i) in top5Data" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
+            <div class="hr-top5-row" v-for="(item, i) in displayedTop5" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
               <span class="hr-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="hr-top5-name">{{ item.userName }}</span>
               <div class="hr-top5-bar-wrap">
@@ -47,6 +47,9 @@
               </div>
               <span class="hr-top5-val">{{ item.count }}</span>
               <span class="hr-top5-days" v-if="item.anomalyDays">{{ item.anomalyDays }}天</span>
+            </div>
+            <div v-if="top5Data.length > 20" class="hr-top5-more" @click="top5Expanded = !top5Expanded">
+              {{ top5Expanded ? '▲ 收起' : `▼ 展开全部 (${top5Data.length} 条)` }}
             </div>
           </div>
         </div>
@@ -292,6 +295,7 @@ export default {
         detectionRate: 0, abnormalCount: 0, totalCount: 0
       },
       top5Data: [],
+      top5Expanded: false,
 
       hrRanges: [
         { label: '偏低 (心动过缓)', range: '< 55 次/分',     color: '#4FC3F7' },
@@ -342,6 +346,10 @@ export default {
     },
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.count)) : 1
+    },
+    displayedTop5() {
+      const limit = this.top5Expanded ? this.top5Data.length : 20
+      return this.top5Data.slice(0, limit)
     },
     sortedRealtimeList() {
       return [...this.filteredRealtimeList].sort((a, b) => {
@@ -811,6 +819,12 @@ export default {
 .hr-top5-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #00d4ff, #0066cc); transition: width 0.8s ease; }
 .hr-top5-val  { font-size: 13px; font-weight: 700; color: #00d4ff; font-family: 'Consolas', monospace; width: 22px; text-align: right; flex-shrink: 0; }
 .hr-top5-days { font-size: 10px; color: #FFB84D; width: 28px; text-align: right; flex-shrink: 0; }
+.hr-top5-more {
+  text-align: center; padding: 8px 0 4px;
+  font-size: 12px; color: $accent; cursor: pointer;
+  border-top: 1px solid rgba(0,212,255,0.1); margin-top: 4px;
+  &:hover { color: lighten(#00d4ff, 10%); }
+}
 
 // panel header legend → hm-panel mixin
 
@@ -1038,4 +1052,92 @@ export default {
   background: rgba(255,255,255,0.05); margin-bottom: 2px;
 }
 .hr-ds-seg { transition: width 0.4s ease; min-width: 0; }
+
+/* ══ 移动端适配 ══ */
+@media (max-width: 768px) {
+  /* 根容器改为可滚动 */
+  .hr-root {
+    height: auto !important;
+    min-height: calc(100vh - 50px);
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    padding-bottom: 64px;
+  }
+
+  /* Header 紧凑 */
+  .hr-hd {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  .hr-hd-kpis {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 2px;
+    &::-webkit-scrollbar { height: 2px; }
+    &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); }
+  }
+  .hr-kpi { padding: 0 14px; }
+  .hr-period-tabs { order: 2; }
+  .hr-hd-time, .hm-export-btn { display: none; }
+
+  /* Body 竖向堆叠 */
+  .hr-bd {
+    flex-direction: column !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 8px 10px;
+  }
+
+  /* 左侧面板全宽 */
+  .hr-aside {
+    width: 100% !important;
+    height: auto;
+    gap: 8px;
+  }
+  .hr-aside-top { height: auto; min-height: 180px; }
+  .hr-aside-bot { flex: none; }
+  .hr-aside-bot .hr-pc { height: 260px; }
+
+  /* 中间主区域 */
+  .hr-main {
+    overflow: visible !important;
+    height: auto;
+  }
+  /* 年龄段+异常人数两列 → 竖向堆叠 */
+  .hr-mid-row {
+    flex-direction: column !important;
+    height: auto !important;
+    gap: 8px;
+  }
+  .hr-panel-age, .hr-panel-hourly {
+    flex: none !important;
+    min-height: 220px;
+  }
+  .hr-panel-age .hr-pc, .hr-panel-hourly .hr-pc { height: 200px; }
+  .hr-panel-trend  { flex: none; min-height: 220px; max-height: none; }
+  .hr-panel-trend .hr-pc  { height: 200px; }
+  .hr-panel-dist-stat .hr-ds-body {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .hr-panel-anomaly { min-height: 300px; }
+  /* 异常明细表格隐藏不重要的列 */
+  .hr-anomaly-hd   { grid-template-columns: 60px 1fr 60px 54px; }
+  .hr-anomaly-row  { grid-template-columns: 60px 1fr 60px 54px; }
+  .hr-anomaly-hd span:nth-child(2), .hr-anomaly-row .ha-gender,
+  .hr-anomaly-hd span:nth-child(4), .hr-anomaly-row .ha-job { display: none; }
+
+  /* 右侧实时列表全宽 */
+  .hr-rtlist {
+    width: 100% !important;
+    height: 320px;
+    flex-shrink: 0;
+  }
+
+  /* 弹窗宽度 */
+  :deep(.el-dialog) { width: 95% !important; }
+}
 </style>

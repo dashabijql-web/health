@@ -42,11 +42,12 @@ export function getRealtimeOverview() {
  * @param {Number} page 页码（从 1 开始）
  * @param {Number} size 每页条数，默认 20
  */
-export function getOnlineUsers(page = 1, size = 20) {
+export function getOnlineUsers(page = 1, size = 20, timeout = 15000) {
   return request({
     url: '/realtime/online-users',
     method: 'get',
-    params: { page, size }
+    params: { page, size },
+    timeout
   })
 }
 

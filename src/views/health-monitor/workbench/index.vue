@@ -140,14 +140,54 @@
         </template>
       </div>
     </div>
+
+    <!-- 部门健康对比 -->
+    <div class="wb-dept-compare">
+      <div class="wdc-header">
+        <span class="wdc-title">部门健康对比</span>
+        <div class="wdc-tabs">
+          <span :class="['wdc-tab', deptDays === 7 && 'wdc-tab-active']" @click="setDeptDays(7)">近7天</span>
+          <span :class="['wdc-tab', deptDays === 30 && 'wdc-tab-active']" @click="setDeptDays(30)">近30天</span>
+        </div>
+        <span class="wdc-hint">{{ deptCompareData.length ? `共${deptCompareData.length}个部门` : '加载中...' }}</span>
+      </div>
+      <div class="wdc-body">
+        <div ref="deptRadarRef" class="wdc-radar"></div>
+        <div class="wdc-table">
+          <div class="wdt-head">
+            <span class="wdt-c wdt-dept">部门</span>
+            <span class="wdt-c">人数</span>
+            <span class="wdt-c">心率</span>
+            <span class="wdt-c">血氧%</span>
+            <span class="wdt-c">收缩压</span>
+            <span class="wdt-c wdt-right">压力</span>
+          </div>
+          <div v-for="(row, i) in deptCompareData" :key="i" class="wdt-row">
+            <span class="wdt-c wdt-dept">
+              <span class="wdt-color" :style="{ background: deptColors[i % deptColors.length] }"></span>
+              {{ row.deptName }}
+            </span>
+            <span class="wdt-c">{{ row.memberCount }}</span>
+            <span class="wdt-c" :class="hrClass(row.avgHeartRate)">{{ row.avgHeartRate || '--' }}</span>
+            <span class="wdt-c" :class="boClass(row.avgBloodOxygen)">{{ row.avgBloodOxygen || '--' }}</span>
+            <span class="wdt-c" :class="sbpClass(row.avgSystolic)">{{ row.avgSystolic || '--' }}</span>
+            <span class="wdt-c wdt-right" :class="pressClass(row.avgPressure)">{{ row.avgPressure || '--' }}</span>
+          </div>
+          <div v-if="!deptCompareData.length" class="wdt-empty">暂无跨部门数据（需有≥2人部门的健康记录）</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Close } from '@element-plus/icons-vue'
 import { getCalendarData, getDayHeartRateRank, getDayBloodOxygenRank, getDayStepsRank, getDayWarnings } from '@/api/workbench'
+import { getDeptHealthComparison } from '@/api/health'
+import * as echarts from 'echarts'
 
 const weekDays = ['日', '一', '二', '三', '四', '五', '六']
 
@@ -195,7 +235,6 @@ async function loadData() {
 }
 
 watch([curYear, curMonth], loadData)
-onMounted(loadData)
 
 // ── 日历格子生成 ─────────────────────────────────────────────────────
 const calCells = computed(() => {
@@ -298,6 +337,104 @@ function warnLevelClass(level) {
   if (['低'].includes(level)) return 'wl-low'
   return ''
 }
+
+// ── 部门健康对比 ──────────────────────────────────────────────────────
+const deptRadarRef    = ref(null)
+const deptCompareData = ref([])
+const deptDays        = ref(7)
+let   deptChart       = null
+
+const deptColors = ['#60a5fa','#34d399','#f59e0b','#f87171','#a78bfa','#fb923c','#38bdf8','#4ade80']
+
+async function loadDeptComparison() {
+  try {
+    const res = await getDeptHealthComparison(deptDays.value)
+    deptCompareData.value = res.code === 200 ? (res.data || []) : []
+  } catch {
+    deptCompareData.value = []
+  }
+  await nextTick()
+  renderDeptRadar()
+}
+
+function setDeptDays(d) {
+  deptDays.value = d
+  loadDeptComparison()
+}
+
+function renderDeptRadar() {
+  if (!deptRadarRef.value) return
+  if (!deptChart) deptChart = echarts.init(deptRadarRef.value, 'dark')
+  const data = deptCompareData.value
+  if (!data.length) { deptChart.clear(); return }
+
+  // 标准化各维度分数 (0-100)
+  const indicators = [
+    { name: '心率健康', max: 100 },
+    { name: '血氧水平', max: 100 },
+    { name: '血压安全', max: 100 },
+    { name: '睡眠充足', max: 100 },
+    { name: '活动量',   max: 100 },
+    { name: '压力控制', max: 100 },
+  ]
+
+  function normalize(row) {
+    const hr  = row.avgHeartRate  || 75
+    const bo  = row.avgBloodOxygen || 97
+    const sbp = row.avgSystolic   || 120
+    const slp = row.avgSleepMinutes || 360
+    const stp = row.avgSteps      || 5000
+    const prs = row.avgPressure   || 50
+
+    const hrScore  = hr >= 60 && hr <= 100 ? 90 - Math.abs(hr - 75) * 0.6 : Math.max(0, 60 - Math.abs(hr - 80))
+    const boScore  = Math.min(100, Math.max(0, (bo - 85) / 15 * 100))
+    const sbpScore = sbp < 120 ? 95 : sbp < 130 ? 80 : sbp < 140 ? 60 : Math.max(0, 40 - (sbp - 140) * 2)
+    const slpScore = Math.min(100, slp / 480 * 100)
+    const stpScore = Math.min(100, stp / 10000 * 100)
+    const prsScore = Math.max(0, 100 - prs)
+
+    return [Math.round(hrScore), Math.round(boScore), Math.round(sbpScore),
+            Math.round(slpScore), Math.round(stpScore), Math.round(prsScore)]
+  }
+
+  const seriesData = data.slice(0, 6).map((row, i) => ({
+    name: row.deptName,
+    value: normalize(row),
+    lineStyle: { color: deptColors[i % deptColors.length], width: 2 },
+    itemStyle: { color: deptColors[i % deptColors.length] },
+    areaStyle: { color: deptColors[i % deptColors.length], opacity: 0.08 },
+  }))
+
+  deptChart.setOption({
+    backgroundColor: 'transparent',
+    legend: {
+      data: seriesData.map(s => s.name),
+      bottom: 0,
+      textStyle: { color: '#9ca3af', fontSize: 11 },
+      itemWidth: 12, itemHeight: 8,
+    },
+    radar: {
+      indicator: indicators,
+      shape: 'circle',
+      radius: '62%',
+      center: ['50%', '46%'],
+      splitNumber: 4,
+      axisName: { color: '#9ca3af', fontSize: 11 },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+      splitArea: { show: false },
+      axisLine:  { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
+    },
+    series: [{ type: 'radar', data: seriesData, symbol: 'circle', symbolSize: 4 }],
+    tooltip: { trigger: 'item', backgroundColor: '#1a1f3a', borderColor: 'rgba(255,255,255,0.15)', textStyle: { color: '#e2e8f0', fontSize: 12 } },
+  }, true)
+}
+
+function hrClass(v)   { return !v ? '' : (v < 60 || v > 100) ? 'wt-red' : 'wt-green' }
+function boClass(v)   { return !v ? '' : v < 95 ? 'wt-red' : 'wt-green' }
+function sbpClass(v)  { return !v ? '' : v >= 140 ? 'wt-red' : v >= 130 ? 'wt-orange' : 'wt-green' }
+function pressClass(v){ return !v ? '' : v > 70 ? 'wt-red' : v > 50 ? 'wt-orange' : '' }
+
+onMounted(() => { loadData(); loadDeptComparison() })
 </script>
 
 <style scoped lang="scss">
@@ -570,4 +707,124 @@ function warnLevelClass(level) {
 .wl-low  { background: rgba(234,179,8,0.2);  color: #fbbf24; }
 .wl-mid  { background: rgba(249,115,22,0.2); color: #fb923c; }
 .wl-high { background: rgba(239,68,68,0.2);  color: #f87171; }
+
+/* ── 部门健康对比 ── */
+.wb-dept-compare {
+  margin-bottom: 20px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.wdc-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.03);
+}
+.wdc-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+.wdc-tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+.wdc-tab {
+  padding: 3px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #9ca3af;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.15s;
+  &:hover { color: #60a5fa; border-color: rgba(96,165,250,0.4); }
+}
+.wdc-tab-active {
+  color: #60a5fa !important;
+  background: rgba(59,130,246,0.15);
+  border-color: rgba(59,130,246,0.4) !important;
+}
+.wdc-hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: #6b7280;
+}
+.wdc-body {
+  display: flex;
+  gap: 0;
+  @media (max-width: 800px) { flex-direction: column; }
+}
+.wdc-radar {
+  width: 360px;
+  height: 280px;
+  flex-shrink: 0;
+  @media (max-width: 800px) { width: 100%; }
+}
+.wdc-table {
+  flex: 1;
+  padding: 12px 16px;
+  overflow-x: auto;
+}
+.wdt-head {
+  display: flex;
+  gap: 4px;
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 600;
+}
+.wdt-row {
+  display: flex;
+  gap: 4px;
+  padding: 7px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 12px;
+  color: #e2e8f0;
+  align-items: center;
+  &:hover { background: rgba(255,255,255,0.03); }
+}
+.wdt-c {
+  flex: 1;
+  min-width: 50px;
+  text-align: center;
+}
+.wdt-dept {
+  flex: 2;
+  min-width: 90px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wdt-color {
+  width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+}
+.wdt-right { text-align: right; }
+.wdt-empty {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+}
+.wt-green  { color: #22c55e !important; }
+.wt-orange { color: #f97316 !important; }
+.wt-red    { color: #ef4444 !important; }
+
+@media (max-width: 768px) {
+  .wb-page { padding: 10px 10px 64px; }
+  .wb-title { font-size: 16px; }
+  .wb-stats { gap: 8px; }
+  .stat-card { min-width: 80px; padding: 8px 10px; }
+  .sc-val { font-size: 18px; }
+  .wb-dept-compare { padding: 10px; }
+}
 </style>

@@ -203,7 +203,7 @@
   .el-menu--collapse .el-menu .el-sub-menu { min-width: 36px !important; }
 
   .mobile {
-    .main-container { margin-left: 0px; }
+    .main-container { margin-left: 0px; width: 100%; }
     .sidebar-container {
       transition: transform .28s;
       width: $sideBarWidth !important;

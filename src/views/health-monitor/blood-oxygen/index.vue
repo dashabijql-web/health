@@ -35,13 +35,16 @@
           </div>
           <div class="bo-top5-list" ref="top5ScrollRef">
             <div v-if="!top5Data.length" class="bo-top5-empty">暂无异常频次数据</div>
-            <div class="bo-top5-row" v-for="(item, i) in top5Data" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
+            <div class="bo-top5-row" v-for="(item, i) in displayedTop5" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
               <span class="bo-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="bo-top5-name">{{ item.userName }}</span>
               <div class="bo-top5-bar-wrap">
                 <div class="bo-top5-bar" :style="{width: (item.count / top5Max * 100) + '%'}"></div>
               </div>
               <span class="bo-top5-val">{{ item.count }}</span>
+            </div>
+            <div v-if="top5Data.length > 20" class="bo-top5-more" @click="top5Expanded = !top5Expanded">
+              {{ top5Expanded ? '▲ 收起' : '▼ 展开全部 (' + top5Data.length + '条)' }}
             </div>
           </div>
         </div>
@@ -312,6 +315,7 @@ export default {
         { label: '优秀',   range: '≥ 99%',    color: '#4FC3F7' }
       ],
       top5Data: [],
+      top5Expanded: false,
       realtimeList: [],
       currentPage: 1,
       pageSize: 20,
@@ -355,6 +359,9 @@ export default {
     },
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.count)) : 1
+    },
+    displayedTop5() {
+      return this.top5Expanded ? this.top5Data : this.top5Data.slice(0, 20)
     },
     top5Title() {
       const p = { day: '今日', week: '近7日', month: '近30日' }[this.activePeriod]
@@ -829,6 +836,7 @@ export default {
 .bo-top5-bar-wrap{ flex: 1; height: 6px; background: rgba(0,212,255,0.08); border-radius: 3px; overflow: hidden; }
 .bo-top5-bar     { height: 100%; border-radius: 3px; background: linear-gradient(90deg,$accent,#0066cc); transition: width 0.8s ease; }
 .bo-top5-val     { font-size: 13px; font-weight: 700; color: $accent; font-family: 'Consolas', monospace; width: 22px; text-align: right; flex-shrink: 0; }
+.bo-top5-more    { text-align: center; font-size: 11px; color: $accent; padding: 6px 0; cursor: pointer; opacity: 0.7; &:hover { opacity: 1; } }
 
 // 概况 / kpi-cards / range-info → hm-overview + hm-kpi-cards + hm-range-info mixins
 
@@ -964,4 +972,29 @@ export default {
 .anom-danger .ba-type { color: #ff5252; font-weight: 600; }
 .anom-low    .ba-type { color: #FFB84D; font-weight: 600; }
 .ba-time { font-size: 10px; color: $dim; }
+
+@include hm-mobile('bo');
+
+@media (max-width: 768px) {
+  /* mid-row 三个 panel 竖向堆叠 */
+  .bo-mid-row {
+    flex-direction: column !important;
+    height: auto !important;
+  }
+  .bo-panel-age,
+  .bo-panel-hourly {
+    flex: none !important;
+    height: 200px;
+    .bo-pc { height: 160px; }
+  }
+  .bo-panel-dist {
+    flex: none !important;
+    height: auto;
+    .bo-dist-body { padding: 6px 10px; }
+  }
+  /* 趋势 panel 标题不折行 */
+  .bo-ph-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55vw; }
+  /* trend legend 在手机上折行显示 */
+  .bo-ph-legend { flex-wrap: wrap; gap: 6px 10px; }
+}
 </style>

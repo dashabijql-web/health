@@ -129,3 +129,72 @@
   }
   .#{$p}-pg-info { font-size: 11px; color: $dim; margin: 0 4px; }
 }
+
+// 健康监测各分析页面共享移动端适配 mixin
+// 用法：@include hm-mobile('bo'); （在各页面 style 末尾调用）
+@mixin hm-mobile($p) {
+  @media (max-width: 768px) {
+    /* 根容器改为可滚动 */
+    .#{$p}-root {
+      height: auto !important;
+      min-height: calc(100vh - 50px);
+      overflow-y: auto !important;
+      overflow-x: hidden;
+      padding-bottom: 64px;
+    }
+
+    /* Header 紧凑，KPI 横向滚动 */
+    .#{$p}-hd {
+      height: auto;
+      flex-wrap: wrap;
+      padding: 8px 12px;
+      gap: 6px;
+    }
+    .#{$p}-hd-kpis {
+      order: 3;
+      width: 100%;
+      overflow-x: auto;
+      justify-content: flex-start;
+      padding-bottom: 2px;
+      &::-webkit-scrollbar { height: 2px; }
+      &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); }
+    }
+    .#{$p}-kpi { padding: 0 14px; }
+    .#{$p}-period-tabs { order: 2; }
+    .#{$p}-hd-time, .hm-export-btn { display: none; }
+
+    /* Body 竖向堆叠 */
+    .#{$p}-bd {
+      flex-direction: column !important;
+      overflow: visible !important;
+      height: auto !important;
+      padding: 8px 10px;
+    }
+
+    /* 左侧 Aside 全宽 */
+    .#{$p}-aside {
+      width: 100% !important;
+      height: auto;
+      gap: 8px;
+    }
+    .#{$p}-aside-top { height: auto !important; min-height: 180px; }
+    .#{$p}-aside-bot { flex: none; }
+    .#{$p}-aside-bot .#{$p}-pc { height: 260px; }
+
+    /* 中间 Main 自然高度 */
+    .#{$p}-main {
+      overflow: visible !important;
+      height: auto;
+    }
+
+    /* 右侧实时列表全宽固定高度 */
+    .#{$p}-rtlist {
+      width: 100% !important;
+      height: 300px;
+      flex-shrink: 0;
+    }
+
+    /* 弹窗宽度 */
+    :deep(.el-dialog) { width: 95% !important; }
+  }
+}

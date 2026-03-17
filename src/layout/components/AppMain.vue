@@ -19,7 +19,14 @@ export default {
   min-height: calc(100vh - 50px);
   width: 100%;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+@media (max-width: 768px) {
+  .app-main {
+    /* 54px 底部导航 + iPhone 安全区域 */
+    padding-bottom: calc(54px + env(safe-area-inset-bottom, 8px));
+  }
 }
 .fixed-header + .app-main {
   padding-top: 50px;

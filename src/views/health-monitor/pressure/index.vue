@@ -38,7 +38,7 @@
           </div>
           <div class="ps-top5-list" ref="top5ScrollRef">
             <div v-if="!top5Data.length" class="ps-top5-empty">暂无高压力数据</div>
-            <div class="ps-top5-row" v-for="(item, i) in top5Data" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
+            <div class="ps-top5-row" v-for="(item, i) in displayedTop5" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
               <span class="ps-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="ps-top5-name">{{ item.userName }}</span>
               <div class="ps-top5-bar-wrap">
@@ -49,6 +49,9 @@
                   }"></div>
               </div>
               <span class="ps-top5-val" :style="{ color: top5ValColor(item.avgPressure) }">{{ item.avgPressure }}</span>
+            </div>
+            <div v-if="top5Data.length > 20" class="ps-top5-more" @click="top5Expanded = !top5Expanded">
+              {{ top5Expanded ? '▲ 收起' : `▼ 展开全部 (${top5Data.length} 条)` }}
             </div>
           </div>
         </div>
@@ -183,7 +186,7 @@
             <div class="ps-anomaly-list">
               <div
                 class="ps-anomaly-row"
-                v-for="(item, i) in psAnomalyList"
+                v-for="(item, i) in displayedAnomalyList"
                 :key="i"
                 :class="item.pressure >= 85 ? 'anom-high' : 'anom-elevated'"
                 @click="goToPortrait(item)"
@@ -194,6 +197,9 @@
                 <span class="pa-val">{{ item.pressure }}</span>
                 <span class="pa-type">{{ item.pressure >= 85 ? '高压⚠' : '偏高!' }}</span>
                 <span class="pa-time">{{ fmtTime(item.recordTime) }}</span>
+              </div>
+              <div v-if="psAnomalyList.length > 20" class="ps-anomaly-more" @click="anomalyExpanded = !anomalyExpanded">
+                {{ anomalyExpanded ? '▲ 收起' : `▼ 展开全部 (${psAnomalyList.length} 人)` }}
               </div>
             </div>
           </div>
@@ -265,6 +271,8 @@ export default {
       overview: {},
       distLegend: [],
       top5Data: [],
+      top5Expanded: false,
+      anomalyExpanded: false,
       deptData: [],
       realtimeList: [],
       filterDept: '',
@@ -312,6 +320,9 @@ export default {
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.avgPressure || 0)) : 1
     },
+    displayedTop5() {
+      return this.top5Data.slice(0, this.top5Expanded ? this.top5Data.length : 20)
+    },
     top5Title() {
       const p = { day: '今日', week: '近7日', month: '近30日' }[this.activePeriod]
       return p + '高压力排行'
@@ -323,6 +334,9 @@ export default {
     /* pagedList / totalPages from chartPageMixin */
     psAnomalyList() {
       return this.filteredRealtimeList.filter(x => x.pressure >= 70)
+    },
+    displayedAnomalyList() {
+      return this.anomalyExpanded ? this.psAnomalyList : this.psAnomalyList.slice(0, 20)
     },
     psZones() {
       const list = this.realtimeList
@@ -748,6 +762,11 @@ $cyan:   #00d4ff;
 .ps-top5-bar-wrap { flex: 1; height: 6px; background: rgba(251,146,60,0.08); border-radius: 3px; overflow: hidden; }
 .ps-top5-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
 .ps-top5-val { font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; width: 26px; text-align: right; flex-shrink: 0; }
+.ps-top5-more {
+  text-align: center; padding: 8px 0 4px;
+  font-size: 12px; color: #a78bfa; cursor: pointer;
+  border-top: 1px solid rgba(167,139,250,0.15); margin-top: 4px;
+}
 
 // ── Main（hm-main mixin） ──
 .ps-overview-panel { height: 162px; flex-shrink: 0; }
@@ -885,6 +904,10 @@ $cyan:   #00d4ff;
   &::-webkit-scrollbar { width: 3px; }
   &::-webkit-scrollbar-thumb { background: rgba(255,184,77,0.2); border-radius: 2px; }
 }
+.ps-anomaly-more {
+  text-align: center; font-size: 11px; color: #ffb84d; padding: 6px 0; cursor: pointer; opacity: 0.7;
+  &:hover { opacity: 1; }
+}
 .ps-anomaly-row {
   display: grid; grid-template-columns: 64px 1fr 80px 52px 88px;
   gap: 6px; padding: 5px 4px; margin-bottom: 1px;
@@ -940,4 +963,6 @@ $cyan:   #00d4ff;
   background: rgba(255,255,255,0.05); margin-bottom: 2px;
 }
 .ps-ds-seg { transition: width 0.4s ease; min-width: 0; }
+
+@include hm-mobile('ps');
 </style>

@@ -259,6 +259,16 @@
           </div>
         </div>
 
+        <!-- 环境健康关联 -->
+        <div class="dm-panel dm-main-env">
+          <div class="dm-ph">
+            <span class="dm-ph-bar"></span>
+            <span class="dm-ph-title">环境健康关联</span>
+            <span class="dm-ph-sub">CO浓度/粉尘 vs 血氧趋势（模拟）</span>
+          </div>
+          <div ref="envChartRef" class="dm-env-chart"></div>
+        </div>
+
       </main>
 
       <!-- ─── 右栏 ─── -->
@@ -317,11 +327,79 @@
           </div>
         </div>
 
+        <!-- 班前健康准入 -->
+        <div class="dm-panel dm-right-preshift" style="cursor:pointer" @click="$router.push('/health-monitor/mine-entry')">
+          <div class="dm-ph">
+            <span class="dm-ph-bar" style="background:#38ef7d"></span>
+            <span class="dm-ph-title">班前健康准入</span>
+            <span class="dm-ph-sub">点击查看准入名单</span>
+          </div>
+          <div class="dm-preshift-body">
+            <div class="dm-ps-ring-wrap">
+              <svg viewBox="0 0 80 80" class="dm-ps-ring">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#1a2a4d" stroke-width="8"/>
+                <circle cx="40" cy="40" r="32" fill="none"
+                  :stroke="preShiftData.preShiftRate >= 90 ? '#38ef7d' : preShiftData.preShiftRate >= 70 ? '#ffd200' : '#ff5252'"
+                  stroke-width="8" stroke-linecap="round"
+                  :stroke-dasharray="`${(preShiftData.preShiftRate || 0) * 2.01} 201`"
+                  stroke-dashoffset="50" />
+              </svg>
+              <div class="dm-ps-ring-inner">
+                <div class="dm-ps-rate" :style="{ color: preShiftData.preShiftRate >= 90 ? '#38ef7d' : preShiftData.preShiftRate >= 70 ? '#ffd200' : '#ff5252' }">
+                  {{ preShiftData.preShiftRate !== null ? preShiftData.preShiftRate + '%' : '--' }}
+                </div>
+                <div class="dm-ps-rate-label">达标率</div>
+              </div>
+            </div>
+            <div class="dm-ps-stats">
+              <div class="dm-ps-stat">
+                <span class="dm-ps-stat-val">{{ preShiftData.totalToday }}</span>
+                <span class="dm-ps-stat-label">今日检测</span>
+              </div>
+              <div class="dm-ps-stat dm-ps-ok">
+                <span class="dm-ps-stat-val">{{ preShiftData.qualifiedCount }}</span>
+                <span class="dm-ps-stat-label">准入通过</span>
+              </div>
+              <div class="dm-ps-stat dm-ps-fail">
+                <span class="dm-ps-stat-val">{{ preShiftData.failedCount }}</span>
+                <span class="dm-ps-stat-label">禁止入井</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 全矿 AI 分析 -->
+        <div class="dm-panel dm-right-ai">
+          <div class="dm-ph">
+            <span class="dm-ph-bar dm-ph-bar-ai"></span>
+            <span class="dm-ph-title">AI 全矿健康分析</span>
+            <button class="dm-ai-btn" :disabled="mineAiLoading" @click="handleMineAi(false)">
+              {{ mineAiLoading ? '分析中…' : (mineAiReport ? '刷新' : '生成分析') }}
+            </button>
+          </div>
+          <div v-if="mineAiLoading" class="dm-ai-loading">🤖 DeepSeek 分析中，请稍候…</div>
+          <div v-else-if="mineAiReport" class="dm-ai-preview" @click="mineAiDialogVisible = true">
+            {{ mineAiReport.replace(/#+\s*/g, '').slice(0, 120) }}…
+            <span class="dm-ai-more">展开全文 ›</span>
+          </div>
+          <div v-else class="dm-ai-empty">点击「生成分析」获取全矿 AI 健康报告</div>
+        </div>
+
       </aside>
 
     </div><!-- /dm-bd -->
   </div><!-- /dm-root -->
   </div><!-- /dm-outer -->
+
+  <!-- ══ 全矿 AI 报告弹窗 ══ -->
+  <el-dialog v-model="mineAiDialogVisible" title="AI 全矿健康分析报告" width="640px" :append-to-body="true">
+    <div class="dm-ai-full" v-html="mineAiRendered"></div>
+    <template #footer>
+      <span class="dm-ai-ts" v-if="mineAiTime">生成于 {{ mineAiTime }}</span>
+      <el-button @click="mineAiDialogVisible = false">关闭</el-button>
+      <el-button type="primary" :loading="mineAiLoading" @click="handleMineAi(true)">重新生成</el-button>
+    </template>
+  </el-dialog>
 
   <!-- ══ 员工健康档案 Drawer ══ -->
   <el-drawer
@@ -572,13 +650,15 @@ import {
   getDeptPersonStats,
   getDeptDailyDetail,
   getMetricDailyDetail,
-  getHealthRecords
+  getHealthRecords,
+  getPreShiftCompliance
 } from '@/api/health'
 import { getWarningTypes } from '@/api/statistics'
 import { getHealthPortrait } from '@/api/health-portrait'
 import { handleRiskWarning } from '@/api/risk-warning'
 import { getRealtimeStatistics } from '@/api/realtime'
 import HealthTips from '@/components/HealthTips.vue'
+import { getMineAiReport, generateMineAiReport } from '@/api/ai'
 
 export default {
   name: 'HealthDashboard',
@@ -636,6 +716,10 @@ export default {
       warningTypesData: [],
       isFullscreen: false,
       seenAlertIds: new Set(),
+      mineAiReport: '',
+      mineAiTime: '',
+      mineAiLoading: false,
+      mineAiDialogVisible: false,
       charts: {},
       metricList: [
         { key: 'heartRate',   label: '心率',  color: '#00d4ff', icon: 'Monitor' },
@@ -694,10 +778,19 @@ export default {
       trendDailyData: [],
       // 预警分布数据（柱状图专用，按日/时统计）
       warningDistData: { labels: [], counts: [] },
+      // 班前健康达标率
+      preShiftData: { totalToday: 0, qualifiedCount: 0, failedCount: 0, preShiftRate: null },
     }
   },
 
   computed: {
+    mineAiRendered() {
+      if (!this.mineAiReport) return ''
+      return this.mineAiReport
+        .replace(/^## (.+)$/gm, '<h4>$1</h4>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>')
+    },
     periodRange() {
       const today = dayjs()
       if (this.activePeriod === 'day') {
@@ -834,6 +927,16 @@ export default {
           label: '健康达标率',
           val: this.healthPassRate !== null ? this.healthPassRate + '%' : '--',
           cls: 'kpi-teal', clickable: false
+        },
+        {
+          label: '班前达标率',
+          val: this.preShiftData.preShiftRate !== null ? this.preShiftData.preShiftRate + '%' : '--',
+          cls: this.preShiftData.preShiftRate !== null && this.preShiftData.preShiftRate < 80 ? 'kpi-orange' : 'kpi-teal',
+          clickable: true,
+          sub: this.preShiftData.totalToday > 0
+            ? `达标 ${this.preShiftData.qualifiedCount} / ${this.preShiftData.totalToday} 人`
+            : '今日暂无数据',
+          route: '/health-monitor/mine-entry'
         }
       ]
     },
@@ -929,7 +1032,24 @@ export default {
           tagCls: !b.avgCalories ? ''
             : b.avgCalories < 300 ? 'vtag-warn'
             : 'vtag-ok'
-        }
+        },
+        (() => {
+          // 全矿疲劳指数 = 压力40% + 心率偏差30% + 预警率30%
+          const pressure = b.avgPressure || 0
+          const hr = b.avgHeartRate || 0
+          const hrDev = hr > 0 ? Math.min(100, Math.abs(hr - 75) / 25 * 100) : 0
+          const warnRate = this.warningRates.length
+            ? this.warningRates.reduce((s, r) => s + (r.rate || 0), 0) / this.warningRates.length
+            : 0
+          const fatigue = Math.min(100, Math.round(pressure * 0.4 + hrDev * 0.3 + warnRate * 0.3))
+          return {
+            label: '全矿疲劳指数', val: pressure > 0 ? fatigue : '--', unit: '',
+            color: fatigue >= 70 ? '#ff5252' : fatigue >= 45 ? '#ffd200' : '#38ef7d',
+            icon: 'Cpu',
+            tag: fatigue >= 70 ? '高疲劳' : fatigue >= 45 ? '中疲劳' : pressure > 0 ? '良好' : '-',
+            tagCls: fatigue >= 70 ? 'vtag-danger' : fatigue >= 45 ? 'vtag-warn' : pressure > 0 ? 'vtag-ok' : ''
+          }
+        })()
       ]
     },
     healthAssess() {
@@ -1033,11 +1153,13 @@ export default {
         this.initHourDistChart()
         this.initUnifiedTrendChart()
         this.initWarnTypeChart()
+        this.initEnvHealthChart()
         this.startListScroll('top5List', 'top5ScrollInterval', 45)
         this.startListScroll('riskList', 'riskScrollInterval', 35)
       })
       this.fetchKpiData()
     })
+    this.loadMineAiCache()
     this.kpiRefreshTimer = setInterval(() => this.fetchKpiData(), 30000)
     this.startAutoRefresh()
     
@@ -1079,6 +1201,30 @@ export default {
   },
 
   methods: {
+    async handleMineAi(force = false) {
+      if (this.mineAiLoading) return
+      this.mineAiLoading = true
+      try {
+        const res = await generateMineAiReport(force)
+        if (res.code === 200 && res.data) {
+          this.mineAiReport = res.data.reportContent
+          this.mineAiTime = res.data.generateTime
+          this.$message.success('全矿 AI 分析完成')
+        } else {
+          this.$message.error(res.message || '生成失败')
+        }
+      } catch { this.$message.error('AI 服务暂时不可用，请稍后重试') }
+      finally { this.mineAiLoading = false }
+    },
+    async loadMineAiCache() {
+      try {
+        const res = await getMineAiReport()
+        if (res.code === 200 && res.data) {
+          this.mineAiReport = res.data.reportContent
+          this.mineAiTime = res.data.generateTime
+        }
+      } catch {}
+    },
     initTime() {
       this.updateTime()
       this.timeInterval = setInterval(this.updateTime, 1000)
@@ -1120,7 +1266,8 @@ export default {
         this.loadDeptData(),
         this.fetchTrendDaily(),
         this.fetchWarningDist(),
-        this.fetchWarningTypes()
+        this.fetchWarningTypes(),
+        this.fetchPreShiftRate()
       ])
       this.isRefreshing    = false
       this.lastRefreshTime = Date.now()
@@ -1159,6 +1306,12 @@ export default {
         const res = await getDashboardOverview(this.periodRange)
         if (res.code === 200) this.checkData = res.data
       } catch(e) { this.checkData = {} }
+    },
+    async fetchPreShiftRate() {
+      try {
+        const res = await getPreShiftCompliance()
+        if (res.code === 200 && res.data) this.preShiftData = res.data
+      } catch(e) {}
     },
     async fetchPersonCounts() {
       try {
@@ -1685,6 +1838,8 @@ export default {
         if (params.name) this.openDeptDetailModal(params.name)
       })
       chart.getZr().setCursorStyle('pointer')
+      // 移动端：DOM 高度确定后重绘
+      this.$nextTick(() => { chart.resize() })
     },
 
     openDeptDetailModal(deptName) {
@@ -1775,6 +1930,86 @@ export default {
       this.initGauge('activeRateChart',  this.deviceStats.activeRate  || 0, '#67C23A', '#F56C6C')
       this.initGauge('usageRateChart',   this.deviceStats.usageRate   || 0, '#a78bfa', '#E6A23C')
       this.initGauge('warningRateChart', this.deviceStats.warningRate || 0, '#F56C6C', '#67C23A')
+    },
+
+    initEnvHealthChart() {
+      const el = this.$refs.envChartRef
+      if (!el) return
+      if (this._envChart) this._envChart.dispose()
+      this._envChart = echarts.init(el, 'dark')
+
+      // 生成近7天模拟环境数据（矿区实际应接入环境监测系统）
+      const now = new Date()
+      const hours = []
+      const coData = [], dustData = [], boData = []
+      for (let i = 41; i >= 0; i--) {
+        const d = new Date(now - i * 4 * 3600000)
+        hours.push(`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}h`)
+        // CO浓度(ppm) 模拟：工班高，夜间低
+        const isShift = d.getHours() >= 8 && d.getHours() <= 20
+        const co = +(( isShift ? 8 : 2) + Math.random() * (isShift ? 6 : 2)).toFixed(1)
+        const dust = +((isShift ? 1.5 : 0.3) + Math.random() * (isShift ? 1.8 : 0.5)).toFixed(2)
+        const baseBO = 97.5 - co * 0.08 - dust * 0.3
+        const bo = +(baseBO + (Math.random() - 0.5) * 0.4).toFixed(1)
+        coData.push(co)
+        dustData.push(dust)
+        boData.push(Math.min(99, Math.max(93, bo)))
+      }
+
+      this._envChart.setOption({
+        backgroundColor: 'transparent',
+        grid: { top: 28, right: 60, bottom: 26, left: 48, containLabel: false },
+        legend: {
+          data: ['CO浓度(ppm)','粉尘(mg/m³)','平均血氧(%)'],
+          top: 4, right: 4, textStyle: { color: '#9ca3af', fontSize: 10 },
+          itemWidth: 12, itemHeight: 6,
+        },
+        tooltip: {
+          trigger: 'axis', backgroundColor: '#1a1f3a',
+          borderColor: 'rgba(255,255,255,0.15)',
+          textStyle: { color: '#e2e8f0', fontSize: 11 },
+        },
+        xAxis: {
+          type: 'category', data: hours,
+          axisLabel: { color: '#6b7280', fontSize: 9, interval: 5 },
+          axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+          splitLine: { show: false },
+        },
+        yAxis: [
+          {
+            type: 'value', name: 'ppm/mg', nameTextStyle: { color: '#6b7280', fontSize: 9 },
+            axisLabel: { color: '#6b7280', fontSize: 9 },
+            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+            min: 0, max: 20,
+          },
+          {
+            type: 'value', name: '%', nameTextStyle: { color: '#6b7280', fontSize: 9 },
+            axisLabel: { color: '#6b7280', fontSize: 9 },
+            splitLine: { show: false },
+            min: 92, max: 100,
+          },
+        ],
+        series: [
+          {
+            name: 'CO浓度(ppm)', type: 'line', yAxisIndex: 0,
+            data: coData, smooth: true, symbol: 'none',
+            lineStyle: { color: '#fbbf24', width: 1.5 },
+            areaStyle: { color: 'rgba(251,191,36,0.08)' },
+          },
+          {
+            name: '粉尘(mg/m³)', type: 'line', yAxisIndex: 0,
+            data: dustData, smooth: true, symbol: 'none',
+            lineStyle: { color: '#f87171', width: 1.5 },
+            areaStyle: { color: 'rgba(248,113,113,0.06)' },
+          },
+          {
+            name: '平均血氧(%)', type: 'line', yAxisIndex: 1,
+            data: boData, smooth: true, symbol: 'none',
+            lineStyle: { color: '#34d399', width: 2 },
+            areaStyle: { color: 'rgba(52,211,153,0.1)' },
+          },
+        ],
+      }, true)
     },
     async fetchTrendDaily() {
       const days = { day: 7, week: 7, month: 30 }[this.activePeriod] || 30
@@ -2547,10 +2782,12 @@ $white:  #e8f4ff;
   &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
   &::-webkit-scrollbar-track { background: rgba(0,212,255,0.05); }
 }
-// metrics 36+50=86, device 36+64=100, gaps 20 → model = 966-54-86-100-20=706px
+// metrics 36+50=86, device 36+64=100, env 36+100=136, gaps 30 → model shrinks
 .dm-main-metrics { flex:0 0 116px; overflow:hidden; }
 .dm-main-model   { flex:1; min-height:0; overflow:hidden; }
 .dm-main-device  { flex:0 0 100px; overflow:hidden; }
+.dm-main-env     { flex:0 0 145px; overflow:hidden; }
+.dm-env-chart    { height:100px; width:100%; }
 
 // 当月检测概览指标行
 .dm-metrics-row { display:flex; gap:8px; padding:5px 14px 6px; align-items:stretch; }
@@ -2786,6 +3023,43 @@ $white:  #e8f4ff;
 .dm-right-warnrate{ flex:0 0 220px; }
 .dm-right-rank    { flex:1; min-height:0; overflow:hidden; }
 .dm-right-tips    { flex:1; min-height:0; }
+.dm-right-ai      { flex:0 0 auto; }
+.dm-ph-bar-ai     { background: linear-gradient(135deg,#667eea,#764ba2); }
+.dm-right-preshift { flex:0 0 auto; &:hover { background: rgba(56,239,125,.03); } }
+.dm-preshift-body { display:flex; align-items:center; gap:12px; padding:8px 14px 12px; }
+.dm-ps-ring-wrap { position:relative; width:80px; height:80px; flex-shrink:0; }
+.dm-ps-ring { width:80px; height:80px; transform:rotate(-90deg); }
+.dm-ps-ring-inner {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  text-align:center;
+}
+.dm-ps-rate { font-size:18px; font-weight:700; line-height:1; }
+.dm-ps-rate-label { font-size:9px; color:#5ea4c8; margin-top:2px; }
+.dm-ps-stats { display:flex; flex-direction:column; gap:6px; flex:1; }
+.dm-ps-stat { display:flex; flex-direction:column; gap:1px; }
+.dm-ps-stat-val { font-size:18px; font-weight:700; color:#00d4ff; line-height:1; }
+.dm-ps-stat-label { font-size:9px; color:#5ea4c8; }
+.dm-ps-ok .dm-ps-stat-val { color:#38ef7d; }
+.dm-ps-fail .dm-ps-stat-val { color:#ff5252; }
+.dm-ai-btn {
+  margin-left:auto; padding:2px 10px; border-radius:4px; font-size:11px; cursor:pointer;
+  background:rgba(102,126,234,.15); border:1px solid rgba(102,126,234,.4); color:#a78bfa;
+  &:hover:not(:disabled) { background:rgba(102,126,234,.3); }
+  &:disabled { opacity:.5; cursor:not-allowed; }
+}
+.dm-ai-loading { padding:10px 14px; font-size:11px; color:#7eb8d4; }
+.dm-ai-preview {
+  padding:8px 14px 10px; font-size:11px; color:#c8d8e8; line-height:1.7;
+  cursor:pointer; &:hover { background:rgba(255,255,255,.03); }
+}
+.dm-ai-more { color:#a78bfa; margin-left:4px; }
+.dm-ai-empty { padding:10px 14px; font-size:11px; color:#4a5578; }
+.dm-ai-full {
+  font-size:13px; color:#333; line-height:1.8; max-height:60vh; overflow-y:auto;
+  :deep(h4) { font-size:14px; font-weight:700; color:#4c5fd5; margin:12px 0 4px; padding-left:8px; border-left:3px solid #667eea; }
+  :deep(strong) { color:#1a1a2e; }
+}
+.dm-ai-ts { font-size:11px; color:#999; margin-right:auto; }
 
 // 实时预警动态
 .dm-badge-count {
@@ -3246,5 +3520,111 @@ $white:  #e8f4ff;
 @keyframes criticalBlink {
   0%, 100% { border-left-color: rgba(255,59,59,0.5); }
   50%       { border-left-color: #ff3b3b; box-shadow: inset 0 0 8px rgba(255,59,59,0.15); }
+}
+
+// ═══════════════════════════════════════════════════
+// 移动端响应式（≤768px）
+// ═══════════════════════════════════════════════════
+@media (max-width: 768px) {
+  // ── 整体容器 ──
+  .dm-root  { transform: none !important; width: 100% !important; height: auto !important; min-height: 100vh; }
+  .dm-outer { height: auto !important; overflow-y: auto; overflow-x: hidden; }
+
+  // ── 顶部 Header：KPI 优先全宽显示，隐藏标题/时间/刷新 ──
+  .dm-hd {
+    flex-direction: column;
+    height: auto;
+    padding: 8px 10px 6px;
+    gap: 4px;
+  }
+  .dm-hd-left   { display: none; }  // 隐藏标题
+  .dm-hd-right  { display: none; }  // 隐藏时间/刷新/全屏
+  .dm-hd-kpis {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .dm-hd-kpi {
+    padding: 5px 6px;
+    min-width: 0;
+    background: rgba(0,212,255,0.05);
+    border-radius: 6px;
+  }
+  .dm-hd-kpi-val   { font-size: 15px; }
+  .dm-hd-kpi-label { font-size: 9px; }
+  .dm-hd-kpi-sub   { font-size: 8px; }
+
+  // ── 主体：竖向排列三栏 ──
+  .dm-bd {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 8px 80px;
+  }
+  .dm-left, .dm-main, .dm-right {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: none !important;
+  }
+  .dm-left { order: 2; }
+  .dm-main { order: 1; }
+  .dm-right { order: 3; }
+  .dm-panel { min-height: 0; }
+
+  // ── 检测人数：2列指标卡（不是5个挤一排）──
+  .dm-metrics-row {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 6px 10px 8px;
+  }
+  .dm-metric-card { flex: none !important; }
+
+  // ── 健康监测中心：预警列表 + 图表 竖向排列 ──
+  .dm-model-body {
+    flex-direction: column;
+    overflow: visible;
+    height: auto;
+  }
+  .dm-model-video-col {
+    flex: none;
+    width: 100%;
+    height: 300px;
+  }
+  .dm-model-data-col {
+    flex: none;
+    width: 100%;
+    height: 260px;
+    overflow: hidden;
+  }
+  .dm-main-model { height: auto; flex: none; }
+  .dm-main-env   { height: 160px; flex: none; }
+  .dm-left-assess, .dm-left-dept,
+  .dm-main-metrics, .dm-main-device,
+  .dm-right-rank, .dm-right-warnrate, .dm-right-preshift {
+    height: auto; flex: none;
+  }
+
+  // ── 体征评估：2列 ──
+  .dm-vitals-grid { grid-template-columns: repeat(2, 1fr); }
+
+  // ── 设备状态：3列（不是6个挤一排）──
+  .dm-device-cards { grid-template-columns: repeat(3, 1fr) !important; }
+  .dm-dcard-val   { font-size: 20px; }
+  .dm-dcard-label { font-size: 11px; }
+  .dm-device-gauges { flex-wrap: wrap; }
+
+  // ── 部门综合看板：固定高度，让 ECharts 有确定高度可渲染 ──
+  .dm-left-dept { height: 320px !important; flex: none; }
+  .dm-left-dept .dm-pc { height: 260px; flex: none; }
+  .dm-left-dept #deptDataChart { height: 260px !important; }
+}
+
+@media (max-width: 480px) {
+  .dm-hd-kpis { grid-template-columns: repeat(2, 1fr); }
+  .dm-vitals-grid { grid-template-columns: repeat(2, 1fr); }
+  .dm-metrics-row { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

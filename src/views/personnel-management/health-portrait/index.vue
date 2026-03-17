@@ -58,6 +58,7 @@
       <div class="top-bar-right">
         <div class="clock-badge"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
         <el-button size="small" type="primary" @click="goRealtime"><el-icon><Monitor /></el-icon>实时监控</el-button>
+        <el-button size="small" type="warning" :loading="complianceExporting" @click="exportComplianceReport"><el-icon><Document /></el-icon>职业健康档案</el-button>
         <el-button size="small" @click="router.back()"><el-icon><Back /></el-icon>返回</el-button>
       </div>
     </div>
@@ -77,7 +78,10 @@
           <div class="panel-hd"><span class="title-bar"></span>7天趋势</div>
           <div ref="trendChartRef" class="trend-chart"></div>
         </div>
-        <div class="panel warn-panel">
+        <div class="panel warn-panel" ref="warnPanelRef"
+          @mouseenter="scrollPaused = true"
+          @mouseleave="scrollPaused = false"
+          @wheel="onWarnWheel">
           <div class="panel-hd">
             <span class="title-bar warn-bar"></span>近30天预警记录
             <span class="badge">共 {{ warnings.length }} 条</span>
@@ -87,12 +91,12 @@
             :row-style="{ background:'#1a1f3a' }"
             :cell-style="{ padding:'5px 0', fontSize:'12px' }">
             <el-table-column prop="createTime" label="时间" min-width="110" :formatter="fmtTime" />
-            <el-table-column prop="warningType" label="类型" min-width="88" />
+            <el-table-column prop="warningType" label="类型" width="72" />
             <el-table-column prop="indicatorName" label="指标" width="72" align="center" />
-            <el-table-column prop="warningValue" label="数值" width="72" align="center" />
-            <el-table-column label="级别" width="60" align="center">
+            <el-table-column prop="warningValue" label="数值" width="100" align="center" />
+            <el-table-column label="级别" width="72" align="center">
               <template #default="{ row }">
-                <el-tag :type="levelTagType(row.warningLevel)" size="small" effect="dark">{{ row.warningLevel || '--' }}</el-tag>
+                <el-tag :type="levelTagType(row.warningLevel)" size="small" effect="dark">{{ levelLabel(row.warningLevel) }}</el-tag>
               </template>
             </el-table-column>
           </el-table>
@@ -197,21 +201,94 @@
             </div>
           </div>
 
+          <!-- ⑨ 疲劳指数 -->
+          <div class="section-label">疲劳指数评估</div>
+          <div class="fatigue-card" :class="fatigueInfo.cls">
+            <div class="fatigue-gauge">
+              <div class="fatigue-ring" :style="{ '--pct': fatigueInfo.index + '%', '--color': fatigueInfo.color }">
+                <span class="fatigue-val">{{ fatigueInfo.index }}</span>
+                <span class="fatigue-unit">/100</span>
+              </div>
+            </div>
+            <div class="fatigue-body">
+              <div class="fatigue-level" :style="{ color: fatigueInfo.color }">{{ fatigueInfo.label }}</div>
+              <div class="fatigue-factors">
+                <div v-for="f in fatigueInfo.factors" :key="f.name" class="fatigue-factor">
+                  <span class="ff-name">{{ f.name }}</span>
+                  <div class="ff-bar"><div class="ff-fill" :style="{ width: f.pct + '%', background: f.color }"></div></div>
+                  <span class="ff-val" :style="{ color: f.color }">{{ f.label }}</span>
+                </div>
+              </div>
+              <div class="fatigue-tip">{{ fatigueInfo.tip }}</div>
+            </div>
+          </div>
+
+          <!-- ⑩ 职业病风险评分 -->
+          <div class="section-label">职业风险评估</div>
+          <div class="occ-risk-list">
+            <div v-for="risk in occRisks" :key="risk.name" class="occ-risk-row">
+              <div class="occ-risk-name">{{ risk.name }}</div>
+              <div class="occ-risk-bar-wrap">
+                <div class="occ-risk-fill" :style="{ width: risk.score + '%', background: risk.color }"></div>
+              </div>
+              <div class="occ-risk-score" :style="{ color: risk.color }">{{ risk.level }}</div>
+              <div class="occ-risk-tip" :title="risk.tip">{{ risk.tip }}</div>
+            </div>
+          </div>
+
+          <!-- ⑪ 与全矿平均对比 -->
+          <div class="section-label">与全矿平均对比</div>
+          <div class="mine-avg-compare">
+            <div v-for="item in mineAvgCompare" :key="item.name" class="mac-row">
+              <div class="mac-name">{{ item.name }}</div>
+              <div class="mac-bars">
+                <div class="mac-bar-wrap">
+                  <div class="mac-label-my">本人</div>
+                  <div class="mac-track">
+                    <div class="mac-fill mac-fill-my" :style="{ width: item.myPct + '%', background: item.myColor }"></div>
+                  </div>
+                  <div class="mac-val-my" :style="{ color: item.myColor }">{{ item.myVal }}</div>
+                </div>
+                <div class="mac-bar-wrap">
+                  <div class="mac-label-avg">全矿均</div>
+                  <div class="mac-track">
+                    <div class="mac-fill mac-fill-avg" :style="{ width: item.avgPct + '%' }"></div>
+                  </div>
+                  <div class="mac-val-avg">{{ item.avgVal }}</div>
+                </div>
+              </div>
+              <div class="mac-rank" :class="item.rankCls">{{ item.rankLabel }}</div>
+            </div>
+          </div>
+
           <div style="flex:1"></div>
         </div>
       </div>
 
-      <!-- RIGHT: ECG + AI 报告 + 诊断历史 -->
+      <!-- RIGHT: 心理健康 + AI 报告 + 诊断历史 -->
       <div class="col-right">
 
-        <!-- ECG 实时心电图 -->
-        <div class="panel ecg-panel">
+        <!-- 心理健康评估 -->
+        <div class="panel mh-panel">
           <div class="panel-hd">
-            <span class="title-bar ecg-bar"></span>实时心电图
-            <span v-if="vitals.heartRate" class="ecg-hr">❤ {{ vitals.heartRate }} bpm</span>
-            <span v-else class="ecg-hr ecg-hr-na">等待心率数据…</span>
+            <span class="title-bar mh-bar"></span>心理健康评估
+            <span class="badge mh-badge" :class="mentalHealthInfo.badgeCls">{{ mentalHealthInfo.level }}</span>
           </div>
-          <canvas ref="ecgCanvasRef" class="ecg-canvas"></canvas>
+          <div class="mh-body">
+            <div class="mh-score-row">
+              <div class="mh-score-circle" :style="{ '--color': mentalHealthInfo.color, '--pct': mentalHealthInfo.score }">
+                <span class="mh-score-val">{{ mentalHealthInfo.score }}</span>
+              </div>
+              <div class="mh-dims">
+                <div v-for="d in mentalHealthInfo.dims" :key="d.name" class="mh-dim">
+                  <span class="mh-dim-name">{{ d.name }}</span>
+                  <div class="mh-dim-bar"><div class="mh-dim-fill" :style="{ width: d.score + '%', background: d.color }"></div></div>
+                  <span class="mh-dim-val" :style="{ color: d.color }">{{ d.label }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="mh-advice">{{ mentalHealthInfo.advice }}</div>
+          </div>
         </div>
 
         <div class="panel ai-panel">
@@ -263,10 +340,11 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Timer, UserFilled, Back, Postcard, OfficeBuilding, Suitcase, Monitor } from '@element-plus/icons-vue'
+import { Timer, UserFilled, Back, Postcard, OfficeBuilding, Suitcase, Monitor, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getHealthPortrait } from '@/api/health-portrait'
 import { getCachedAiReport, generateAiReport } from '@/api/ai'
+import { getBodyIndicators } from '@/api/health'
 import * as echarts from 'echarts'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -308,11 +386,33 @@ const warnings = ref([])
 
 const trendChartRef = ref(null)
 const radarChartRef = ref(null)
-const ecgCanvasRef = ref(null)
+const warnPanelRef = ref(null)
 let trendChart = null
 let radarChart = null
 let pollTimer = null
-let ecgAnimId = null
+let scrollTimer = null
+let scrollPaused = false
+let wheelResumeTimer = null
+
+function startAutoScroll() {
+  if (scrollTimer) clearInterval(scrollTimer)
+  scrollTimer = setInterval(() => {
+    if (scrollPaused) return
+    const el = warnPanelRef.value?.querySelector('.el-scrollbar__wrap')
+    if (!el) return
+    const maxScroll = el.scrollHeight - el.clientHeight
+    if (maxScroll <= 0) return
+    el.scrollTop += 1
+    if (el.scrollTop >= maxScroll) el.scrollTop = 0
+  }, 40)
+}
+
+function onWarnWheel() {
+  scrollPaused = true
+  clearTimeout(wheelResumeTimer)
+  wheelResumeTimer = setTimeout(() => { scrollPaused = false }, 2000)
+}
+
 
 const aiReport = reactive({ content: '', generateTime: '', expiresAt: '' })
 const aiLoading = ref(false)
@@ -388,6 +488,141 @@ const heatmapCells = computed(() => {
   })
 })
 
+// ── 疲劳指数（0-100，越高越疲劳）──
+const fatigueInfo = computed(() => {
+  const pressure = vitals.pressure || 0          // 0-100
+  const hr = vitals.heartRate || 0
+  const hrFatigue = hr > 100 ? 70 : hr < 60 ? 30 : Math.max(0, (hr - 60) / 40 * 50)  // 心率正常区间内推算
+  const warnFatigue = Math.min(100, warnings.value.length * 5) // 预警次数贡献
+  // 综合计算：压力40% + 心率30% + 预警30%
+  const index = Math.min(100, Math.round(pressure * 0.4 + hrFatigue * 0.3 + warnFatigue * 0.3))
+  const color = index >= 70 ? '#ff5252' : index >= 45 ? '#ffd200' : '#38ef7d'
+  const label = index >= 70 ? '严重疲劳，建议休息' : index >= 45 ? '中度疲劳，适当减负' : '精力状态良好'
+  const cls   = index >= 70 ? 'fatigue-high' : index >= 45 ? 'fatigue-mid' : 'fatigue-low'
+  const tip   = index >= 70 ? '⚠ 建议暂停作业，立即休息' : index >= 45 ? '建议控制连续工时，补充休息' : '当前状态良好，可正常作业'
+  return {
+    index, color, label, cls, tip,
+    factors: [
+      { name: '压力指数', pct: pressure, color: pressure > 75 ? '#ff5252' : pressure > 50 ? '#ffd200' : '#38ef7d', label: pressure > 75 ? '偏高' : pressure > 50 ? '中等' : '正常' },
+      { name: '心率状态', pct: Math.min(100, hr ? Math.round((hr - 40) / 80 * 100) : 0), color: (hr > 100 || hr < 60) ? '#ff5252' : '#38ef7d', label: hr > 100 ? '偏快' : hr < 60 ? '偏慢' : '正常' },
+      { name: '近期预警', pct: Math.min(100, warnings.value.length * 10), color: warnings.value.length > 5 ? '#ff5252' : warnings.value.length > 2 ? '#ffd200' : '#38ef7d', label: warnings.value.length > 5 ? '频繁' : warnings.value.length > 0 ? '有预警' : '良好' }
+    ]
+  }
+})
+
+// ── 职业病风险评分 ──
+const occRisks = computed(() => {
+  const dept = portrait.deptName || ''
+  const job  = portrait.jobTypeName || ''
+  // 煤矿高风险工种判断
+  const isDustJob  = /掘进|综采|炮采|采煤|矿工/.test(job) || /综采|掘进/.test(dept)
+  const isNoiseJob = /机电|泵房|压风|通风|运输/.test(job)
+  const isChemJob  = /化验|检测|火药|爆破/.test(job)
+  // 心血管风险（基于血压+心率）
+  const cvRisk = Math.min(100, ((vitals.systolic > 130 ? 30 : 0) + (vitals.diastolic > 85 ? 20 : 0) + (vitals.heartRate > 95 ? 20 : 0) + (warnings.value.filter(w => /心率|血压/.test(w.warningType || '')).length * 5)))
+  // 尘肺风险（基于工种+血氧）
+  const dustRisk = Math.min(100, (isDustJob ? 40 : 10) + (vitals.bloodOxygen < 96 ? 20 : 0) + (vitals.bloodOxygen < 94 ? 20 : 0))
+  // 噪声风险（基于工种）
+  const noiseRisk = Math.min(100, isNoiseJob ? 35 : isChemJob ? 15 : 8)
+
+  const mkItem = (name, score, tip) => {
+    const color = score >= 60 ? '#ff5252' : score >= 35 ? '#ffd200' : '#38ef7d'
+    const level = score >= 60 ? '高风险' : score >= 35 ? '中风险' : '低风险'
+    return { name, score, color, level, tip }
+  }
+  return [
+    mkItem('心血管疾病', cvRisk, cvRisk >= 60 ? '建议尽快复查血压、心率，避免高强度作业' : '保持健康生活习惯'),
+    mkItem('尘肺病风险', dustRisk, isDustJob ? '处于高粉尘作业环境，注意佩戴防尘装备' : '当前工种粉尘暴露较低'),
+    mkItem('噪声性耳聋', noiseRisk, isNoiseJob ? '长期噪声暴露，建议定期听力检查' : '当前噪声暴露风险较低'),
+  ]
+})
+
+// ── 心理健康评估（综合评分0-100，越高越健康）──
+const mentalHealthInfo = computed(() => {
+  const pressure = vitals.pressure || 0
+  const hr = vitals.heartRate || 0
+  const warnCount = warnings.value.length
+  // 各维度评分（100 = 最健康）
+  const stressScore = Math.max(0, 100 - pressure)                               // 压力维度
+  const hrScore = hr > 0 ? (hr >= 60 && hr <= 85 ? 90 : hr <= 100 ? 70 : 40) : 50 // 心率稳定性
+  const warnScore = Math.max(0, 100 - warnCount * 8)                            // 预警历史
+  const score = Math.round((stressScore * 0.45 + hrScore * 0.3 + warnScore * 0.25))
+  const level = score >= 80 ? '心理状态良好' : score >= 60 ? '轻度压力状态' : score >= 40 ? '中度压力状态' : '压力较大，需关注'
+  const color = score >= 80 ? '#38ef7d' : score >= 60 ? '#ffd200' : '#ff5252'
+  const badgeCls = score >= 80 ? 'badge-ok' : score >= 60 ? 'badge-warn' : 'badge-danger'
+  const advice = score >= 80 ? '当前心理状态健康，保持规律作息和适度运动。'
+    : score >= 60 ? '建议关注工作压力，适当进行放松调节，保证充足睡眠。'
+    : score >= 40 ? '心理压力较大，建议与心理辅导人员沟通，减少高强度作业。'
+    : '请立即关注该员工心理健康状态，建议暂停作业并安排心理疏导。'
+  return {
+    score, level, color, badgeCls, advice,
+    dims: [
+      { name: '压力状态', score: stressScore, color: stressScore >= 70 ? '#38ef7d' : stressScore >= 40 ? '#ffd200' : '#ff5252', label: stressScore >= 70 ? '轻松' : stressScore >= 40 ? '适中' : '偏高' },
+      { name: '心率稳定', score: hrScore,    color: hrScore >= 70 ? '#38ef7d' : hrScore >= 50 ? '#ffd200' : '#ff5252',    label: hrScore >= 70 ? '平稳' : hrScore >= 50 ? '轻波' : '波动' },
+      { name: '近期健康', score: warnScore,  color: warnScore >= 70 ? '#38ef7d' : warnScore >= 40 ? '#ffd200' : '#ff5252',  label: warnScore >= 70 ? '稳定' : warnScore >= 40 ? '偶发' : '频发' }
+    ]
+  }
+})
+
+// ── 与全矿平均对比 ──
+const mineAvgData = ref({ avgHeartRate: null, avgBloodOxygen: null, avgCalories: null, avgPressure: null, avgSteps: null })
+
+const mineAvgCompare = computed(() => {
+  const avg = mineAvgData.value
+  const v = vitals
+  const items = []
+
+  function pct(val, min, max) { return val != null ? Math.min(100, Math.max(0, (val - min) / (max - min) * 100)) : 0 }
+
+  if (v.heartRate && avg.avgHeartRate) {
+    const myPct  = pct(v.heartRate, 40, 120)
+    const avgPct = pct(avg.avgHeartRate, 40, 120)
+    const diff   = v.heartRate - avg.avgHeartRate
+    const normal = v.heartRate >= 60 && v.heartRate <= 100
+    items.push({
+      name: '心率 (bpm)', myVal: v.heartRate, avgVal: Math.round(avg.avgHeartRate),
+      myPct, avgPct,
+      myColor: normal ? '#38ef7d' : '#ff5252',
+      rankCls: Math.abs(diff) <= 5 ? 'mac-same' : normal ? 'mac-better' : 'mac-worse',
+      rankLabel: Math.abs(diff) <= 5 ? '≈均值' : diff > 0 ? `+${Math.round(diff)}` : `${Math.round(diff)}`
+    })
+  }
+  if (v.bloodOxygen && avg.avgBloodOxygen) {
+    const myPct  = pct(v.bloodOxygen, 85, 100)
+    const avgPct = pct(avg.avgBloodOxygen, 85, 100)
+    const diff   = v.bloodOxygen - avg.avgBloodOxygen
+    items.push({
+      name: '血氧 (%)', myVal: v.bloodOxygen, avgVal: avg.avgBloodOxygen?.toFixed(1),
+      myPct, avgPct,
+      myColor: v.bloodOxygen >= 95 ? '#38ef7d' : '#ff5252',
+      rankCls: diff >= 0 ? 'mac-better' : 'mac-worse',
+      rankLabel: diff >= 0 ? `优+${diff.toFixed(1)}%` : `低${diff.toFixed(1)}%`
+    })
+  }
+  if (v.pressure && avg.avgPressure) {
+    const myPct  = pct(v.pressure, 0, 100)
+    const avgPct = pct(avg.avgPressure, 0, 100)
+    const diff   = v.pressure - avg.avgPressure
+    items.push({
+      name: '压力指数', myVal: v.pressure, avgVal: Math.round(avg.avgPressure),
+      myPct, avgPct,
+      myColor: v.pressure <= 50 ? '#38ef7d' : v.pressure <= 70 ? '#ffd200' : '#ff5252',
+      rankCls: diff <= 0 ? 'mac-better' : 'mac-worse',
+      rankLabel: diff <= 0 ? `低${Math.abs(Math.round(diff))}` : `高+${Math.round(diff)}`
+    })
+  }
+  return items
+})
+
+async function loadMineAvg() {
+  try {
+    const res = await getBodyIndicators()
+    if (res.code === 200 && res.data) {
+      mineAvgData.value = res.data
+    }
+  } catch {}
+}
+
 // ── AI ──
 const renderedReport = computed(() => {
   if (!aiReport.content) return ''
@@ -457,69 +692,101 @@ async function exportPdf() {
   } finally { pdfExporting.value = false }
 }
 
-// ── ECG 心电图模拟 ──
-function startEcg() {
-  const canvas = ecgCanvasRef.value
-  if (!canvas) return
-  stopEcg()
-  const ctx = canvas.getContext('2d')
-  function resize() {
-    canvas.width = canvas.offsetWidth || 400
-    canvas.height = canvas.offsetHeight || 72
-  }
-  resize()
-  let W = canvas.width, H = canvas.height
-  let buf = new Float32Array(W).fill(H / 2)
-  let phase = 0
 
-  function beatSample(t) {
-    let v = 0
-    v += 0.15 * Math.exp(-((t - 0.2) / 0.04) ** 2)  // P
-    v -= 0.1  * Math.exp(-((t - 0.44) / 0.02) ** 2) // Q
-    v += 1.0  * Math.exp(-((t - 0.50) / 0.018) ** 2) // R
-    v -= 0.28 * Math.exp(-((t - 0.56) / 0.02) ** 2) // S
-    v += 0.35 * Math.exp(-((t - 0.72) / 0.055) ** 2) // T
-    return v
-  }
+// ── 职业健康档案 PDF 导出（合规报表）──
+const complianceExporting = ref(false)
+async function exportComplianceReport() {
+  if (complianceExporting.value) return
+  complianceExporting.value = true
+  try {
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' })
+    const W = pdf.internal.pageSize.getWidth()
+    const today = new Date().toLocaleDateString('zh-CN')
 
-  let last = 0
-  function draw(now) {
-    if (now - last < 16) { ecgAnimId = requestAnimationFrame(draw); return }
-    last = now
-    if (canvas.offsetWidth !== W || canvas.offsetHeight !== H) {
-      resize(); W = canvas.width; H = canvas.height; buf = new Float32Array(W).fill(H / 2)
+    // ── 标题 ──
+    pdf.setFontSize(18); pdf.setTextColor(30, 30, 80)
+    pdf.text('职业健康档案报告', W / 2, 20, { align: 'center' })
+    pdf.setFontSize(10); pdf.setTextColor(100, 100, 100)
+    pdf.text(`生成日期：${today}    员工编号：${portrait.empCode || '--'}`, W / 2, 28, { align: 'center' })
+    pdf.setDrawColor(180, 180, 200)
+    pdf.line(15, 32, W - 15, 32)
+
+    // ── 基本信息 ──
+    pdf.setFontSize(13); pdf.setTextColor(40, 40, 120)
+    pdf.text('一、基本信息', 15, 42)
+    pdf.setFontSize(10); pdf.setTextColor(60, 60, 60)
+    const info = [
+      [`姓名：${portrait.empName || '--'}`, `员工编号：${portrait.empCode || '--'}`],
+      [`部门：${portrait.deptName || '--'}`, `工种：${portrait.jobTypeName || '--'}`],
+      [`性别：${portrait.gender === 1 ? '男' : portrait.gender === 2 ? '女' : '--'}`, `血型：${portrait.bloodType || '--'}`],
+      [`身高：${portrait.height ? portrait.height + ' cm' : '--'}`, `体重：${portrait.weight ? portrait.weight + ' kg' : '--'}`],
+    ]
+    info.forEach((row, i) => {
+      pdf.text(row[0], 20, 52 + i * 7)
+      pdf.text(row[1], W / 2, 52 + i * 7)
+    })
+
+    // ── 当前体征 ──
+    pdf.setFontSize(13); pdf.setTextColor(40, 40, 120)
+    pdf.text('二、当前体征', 15, 86)
+    pdf.setFontSize(10); pdf.setTextColor(60, 60, 60)
+    const vitalRows = [
+      [`心率：${vitals.heartRate ?? '--'} bpm`, `血氧：${vitals.bloodOxygen ?? '--'} %`],
+      [`体温：${vitals.temperature ?? '--'} °C`, `压力指数：${vitals.pressure ?? '--'}`],
+      [`血压（高）：${vitals.systolic ?? '--'} mmHg`, `血压（低）：${vitals.diastolic ?? '--'} mmHg`],
+    ]
+    vitalRows.forEach((row, i) => {
+      pdf.text(row[0], 20, 96 + i * 7)
+      pdf.text(row[1], W / 2, 96 + i * 7)
+    })
+
+    // ── 健康评分 ──
+    pdf.setFontSize(13); pdf.setTextColor(40, 40, 120)
+    pdf.text('三、健康综合评分', 15, 124)
+    pdf.setFontSize(10); pdf.setTextColor(60, 60, 60)
+    const grade = gradeInfo.value
+    pdf.text(`综合等级：${grade.grade}级  评分：${grade.score} / 100  评价：${grade.label}`, 20, 134)
+    pdf.text(`疲劳指数：${fatigueInfo.value.index} / 100  状态：${fatigueInfo.value.label}`, 20, 143)
+    pdf.text(`心理健康：${mentalHealthInfo.value.score} / 100  状态：${mentalHealthInfo.value.level}`, 20, 152)
+
+    // ── 职业病风险 ──
+    pdf.setFontSize(13); pdf.setTextColor(40, 40, 120)
+    pdf.text('四、职业病风险评估', 15, 165)
+    pdf.setFontSize(10); pdf.setTextColor(60, 60, 60)
+    occRisks.value.forEach((r, i) => {
+      pdf.text(`${r.name}：风险分 ${r.score}  评级：${r.level}  建议：${r.tip}`, 20, 175 + i * 8)
+    })
+
+    // ── 近期预警 ──
+    pdf.setFontSize(13); pdf.setTextColor(40, 40, 120)
+    pdf.text('五、近期预警记录（近30天）', 15, 202)
+    pdf.setFontSize(10); pdf.setTextColor(60, 60, 60)
+    if (!warnings.value.length) {
+      pdf.text('近30天内无预警记录', 20, 212)
+    } else {
+      warnings.value.slice(0, 10).forEach((w, i) => {
+        const time = w.createTime ? new Date(w.createTime).toLocaleString('zh-CN') : '--'
+        pdf.text(`${i+1}. [${w.warningLevel || '--'}] ${w.warningType || '--'} ${w.warningValue || ''} — ${time}`, 20, 212 + i * 7, { maxWidth: W - 30 })
+      })
     }
-    const hr = vitals.heartRate || 75
-    const beatsPerSec = hr / 60
-    const pxPerFrame = beatsPerSec * (W / 4)  // 4s window
-    phase += pxPerFrame / 60
-    const beatLenPx = W / 4 * (1 / beatsPerSec)
-    const t = (phase % beatLenPx) / beatLenPx
-    const amp = H * 0.36
-    buf.copyWithin(0, 1)
-    buf[W - 1] = H / 2 - beatSample(t) * amp
 
-    ctx.fillStyle = '#071020'
-    ctx.fillRect(0, 0, W, H)
-    // grid
-    ctx.strokeStyle = 'rgba(0,212,255,0.07)'
-    ctx.lineWidth = 0.5
-    for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
-    for (let y = 0; y < H; y += 20) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
-    // waveform
-    ctx.beginPath()
-    ctx.strokeStyle = '#00ff88'
-    ctx.lineWidth = 1.5
-    ctx.shadowColor = '#00ff88'
-    ctx.shadowBlur = 5
-    for (let i = 0; i < W; i++) { i === 0 ? ctx.moveTo(i, buf[i]) : ctx.lineTo(i, buf[i]) }
-    ctx.stroke()
-    ctx.shadowBlur = 0
-    ecgAnimId = requestAnimationFrame(draw)
-  }
-  ecgAnimId = requestAnimationFrame(draw)
+    // ── AI 摘要 ──
+    if (aiReport.content) {
+      pdf.addPage()
+      pdf.setFontSize(13); pdf.setTextColor(40, 40, 120)
+      pdf.text('六、AI 健康分析报告摘要', 15, 20)
+      pdf.setFontSize(9); pdf.setTextColor(60, 60, 60)
+      const lines = pdf.splitTextToSize(aiReport.content.replace(/#+\s*/g, '').replace(/\*\*/g, ''), W - 30)
+      pdf.text(lines, 15, 30)
+    }
+
+    const name = portrait.empName || empCode.value
+    pdf.save(`职业健康档案_${name}_${today.replace(/\//g, '')}.pdf`)
+    ElMessage.success('职业健康档案导出成功')
+  } catch (e) {
+    ElMessage.error('导出失败：' + e.message)
+  } finally { complianceExporting.value = false }
 }
-function stopEcg() { if (ecgAnimId) { cancelAnimationFrame(ecgAnimId); ecgAnimId = null } }
 
 const loadCachedReport = async () => {
   if (!empCode.value) return
@@ -547,7 +814,26 @@ const handleGenerateReport = async (force = false) => {
     } else {
       ElMessage.error(res.message || 'AI 分析失败')
     }
-  } catch (_) {} finally { aiLoading.value = false }
+  } catch (err) {
+    const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')
+    if (isTimeout) {
+      ElMessage.warning('DeepSeek 响应较慢，报告后台仍在生成，30秒后自动加载…')
+      setTimeout(async () => {
+        try {
+          const r = await getCachedAiReport(empCode.value)
+          if (r.code === 200 && r.data) {
+            aiReport.content = r.data.reportContent
+            aiReport.generateTime = r.data.generateTime
+            aiReport.expiresAt = r.data.expiresAt
+            saveToHistory(aiReport)
+            ElMessage.success('AI 报告已就绪')
+          }
+        } catch {}
+      }, 30000)
+    } else {
+      ElMessage.error('AI 分析失败，请稍后重试')
+    }
+  } finally { aiLoading.value = false }
 }
 
 const fmtTime = (row, col, val) => {
@@ -557,9 +843,16 @@ const fmtTime = (row, col, val) => {
 }
 
 const levelTagType = (level) => {
-  if (level === '高危' || level === '危急' || level === '高') return 'danger'
-  if (level === '中') return 'warning'
+  if (!level) return 'info'
+  if (level.includes('高') || level.includes('危急')) return 'danger'
+  if (level.includes('中')) return 'warning'
   return 'info'
+}
+
+const levelLabel = (level) => {
+  if (!level) return '--'
+  const map = { '低': '低危', '中': '中危', '高': '高危' }
+  return map[level] || level
 }
 
 const vitalStatus = (val, min, max) => {
@@ -629,10 +922,12 @@ const fetchPortrait = async (isFirstLoad = false) => {
           })()
         }
       }
-      warnings.value = d.warnings || d.recentWarnings || []
+      const raw = d.warnings || d.recentWarnings || []
+      warnings.value = raw.sort((a, b) => new Date(b.createTime || b.time || 0) - new Date(a.createTime || a.time || 0))
       await nextTick()
       initTrendChart()
       initRadarChart()
+      if (isFirstLoad) startAutoScroll()
     }
   } catch (e) {
     if (isFirstLoad) ElMessage.error('加载健康画像失败')
@@ -702,19 +997,19 @@ onMounted(async () => {
   fetchPortrait(true)
   loadCachedReport()
   loadHistory()
+  loadMineAvg()
   window.addEventListener('resize', handleResize)
   pollTimer = setInterval(() => fetchPortrait(false), 10000)
-  await nextTick()
-  startEcg()
 })
 
 onBeforeUnmount(() => {
   clearInterval(clockTimer)
   clearInterval(pollTimer)
+  clearInterval(scrollTimer)
+  clearTimeout(wheelResumeTimer)
   window.removeEventListener('resize', handleResize)
   trendChart?.dispose()
   radarChart?.dispose()
-  stopEcg()
 })
 </script>
 
@@ -929,12 +1224,47 @@ onBeforeUnmount(() => {
 .heat-legend { display: flex; align-items: center; gap: 3px; font-size: 9px; color: #4a5578; margin-top: 5px; }
 .hl-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 
-/* ECG */
-.ecg-panel { flex-shrink: 0; }
-.ecg-bar { background: #00ff88; }
-.ecg-canvas { width: 100%; height: 72px; display: block; background: #071020; border-radius: 0 0 10px 10px; }
-.ecg-hr { margin-left: auto; font-size: 11px; color: #00ff88; font-weight: 700; }
-.ecg-hr-na { color: #4a5578; }
+
+/* ⑨ 疲劳指数 */
+.fatigue-card {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 8px 12px; margin: 4px 12px 0; border-radius: 8px;
+  background: rgba(255,255,255,0.03); border: 1px solid #232b4d; flex-shrink: 0;
+}
+.fatigue-high { border-color: rgba(255,82,82,.35); background: rgba(255,82,82,.05); }
+.fatigue-mid  { border-color: rgba(255,210,0,.25); background: rgba(255,210,0,.04); }
+.fatigue-low  { border-color: rgba(56,239,125,.2); background: rgba(56,239,125,.04); }
+.fatigue-gauge { flex-shrink:0; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+.fatigue-ring {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: conic-gradient(var(--color) calc(var(--pct) * 3.6deg), #1a1f3a 0);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color) 30%, transparent);
+}
+.fatigue-ring::before {
+  content: ''; position: absolute; inset: 7px; border-radius: 50%; background: #0d1224;
+}
+.fatigue-val { font-size: 16px; font-weight: 700; color: #e8f4ff; position: relative; z-index: 1; line-height: 1; }
+.fatigue-unit { font-size: 9px; color: #7eb8d4; position: relative; z-index: 1; }
+.fatigue-body { flex: 1; }
+.fatigue-level { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.fatigue-factors { display: flex; flex-direction: column; gap: 4px; }
+.fatigue-factor { display: flex; align-items: center; gap: 6px; }
+.ff-name { font-size: 10px; color: #7eb8d4; width: 52px; flex-shrink: 0; }
+.ff-bar { flex: 1; height: 5px; background: #1a1f3a; border-radius: 3px; overflow: hidden; }
+.ff-fill { height: 100%; border-radius: 3px; transition: width 0.6s; }
+.ff-val { font-size: 10px; font-weight: 600; width: 28px; text-align: right; flex-shrink: 0; }
+.fatigue-tip { font-size: 10px; color: #7eb8d4; margin-top: 6px; }
+
+/* ⑩ 职业病风险 */
+.occ-risk-list { padding: 4px 12px 0; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.occ-risk-row { display: flex; align-items: center; gap: 8px; }
+.occ-risk-name { font-size: 10px; color: #7eb8d4; width: 60px; flex-shrink: 0; }
+.occ-risk-bar-wrap { flex: 1; height: 6px; background: #1a1f3a; border-radius: 3px; overflow: hidden; }
+.occ-risk-fill { height: 100%; border-radius: 3px; transition: width 0.6s; }
+.occ-risk-score { font-size: 10px; font-weight: 600; width: 36px; text-align: right; flex-shrink: 0; }
+.occ-risk-tip { display: none; }
 
 /* 诊断历史 */
 .hist-panel { flex-shrink: 0; }
@@ -949,6 +1279,31 @@ onBeforeUnmount(() => {
 }
 .hist-time { font-size: 10px; color: #7eb8d4; margin-bottom: 2px; }
 .hist-preview { font-size: 11px; color: #4a5578; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 心理健康评估 */
+.mh-panel { flex-shrink: 0; }
+.mh-bar { background: #667eea; }
+.mh-badge { font-size: 10px; margin-left: auto; padding: 2px 8px; border-radius: 8px; }
+.badge-ok     { background: rgba(56,239,125,.15); color: #38ef7d; border: 1px solid rgba(56,239,125,.3); }
+.badge-warn   { background: rgba(255,210,0,.15);  color: #ffd200; border: 1px solid rgba(255,210,0,.3);  }
+.badge-danger { background: rgba(255,82,82,.15);  color: #ff5252; border: 1px solid rgba(255,82,82,.3);  }
+.mh-body { padding: 8px 14px 12px; }
+.mh-score-row { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; }
+.mh-score-circle {
+  width: 60px; height: 60px; border-radius: 50%; flex-shrink: 0;
+  background: conic-gradient(var(--color) calc(var(--pct) * 3.6deg), #1a1f3a 0);
+  display: flex; align-items: center; justify-content: center; position: relative;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color) 25%, transparent);
+}
+.mh-score-circle::before { content:''; position:absolute; inset:8px; border-radius:50%; background:#0d1224; }
+.mh-score-val { position:relative;z-index:1;font-size:16px;font-weight:700;color:#e8f4ff; }
+.mh-dims { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.mh-dim { display: flex; align-items: center; gap: 6px; }
+.mh-dim-name { font-size: 10px; color: #7eb8d4; width: 48px; flex-shrink: 0; }
+.mh-dim-bar { flex: 1; height: 5px; background: #1a1f3a; border-radius: 3px; overflow: hidden; }
+.mh-dim-fill { height: 100%; border-radius: 3px; transition: width 0.6s; }
+.mh-dim-val { font-size: 10px; font-weight: 600; width: 28px; text-align: right; flex-shrink: 0; }
+.mh-advice { font-size: 11px; color: #7eb8d4; line-height: 1.6; padding-top: 2px; }
 
 /* RIGHT COL */
 .ai-panel { flex: 1; }
@@ -996,4 +1351,68 @@ onBeforeUnmount(() => {
   justify-content: center; flex: 1; gap: 14px;
   p { color: #7eb8d4; font-size: 13px; margin: 0; }
 }
+
+/* ═══ 移动端响应式 ═══ */
+@media (max-width: 768px) {
+  .portrait-root {
+    height: auto;
+    min-height: calc(100vh - 50px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 10px;
+    padding-bottom: 64px;
+  }
+  .top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-height: auto;
+    padding: 10px 12px;
+  }
+  .top-bar-left { min-width: 0; width: 100%; }
+  .vitals-strip {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    width: 100%;
+  }
+  .top-bar-right { width: 100%; justify-content: flex-end; }
+  .main-grid {
+    grid-template-columns: 1fr;
+    overflow: visible;
+    height: auto;
+  }
+  .col-left, .col-center, .col-right {
+    overflow: visible;
+    min-height: 0;
+  }
+  .trend-panel { flex: none; }
+  .trend-chart { height: 220px !important; flex: none; }
+}
+
+/* ── 与全矿平均对比 ── */
+.mine-avg-compare { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.mac-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 6px;
+}
+.mac-name { font-size: 11px; color: #9ca3af; min-width: 64px; flex-shrink: 0; }
+.mac-bars { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.mac-bar-wrap { display: flex; align-items: center; gap: 6px; }
+.mac-label-my  { font-size: 10px; color: #60a5fa; min-width: 28px; }
+.mac-label-avg { font-size: 10px; color: #9ca3af; min-width: 28px; }
+.mac-track { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+.mac-fill  { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+.mac-fill-avg { background: rgba(255,255,255,0.25) !important; }
+.mac-val-my  { font-size: 11px; font-weight: 700; min-width: 28px; text-align: right; }
+.mac-val-avg { font-size: 11px; color: #9ca3af; min-width: 28px; text-align: right; }
+.mac-rank { font-size: 11px; font-weight: 700; min-width: 48px; text-align: right; border-radius: 3px; padding: 1px 5px; }
+.mac-better { background: rgba(56,239,125,0.1); color: #38ef7d; }
+.mac-worse  { background: rgba(255,82,82,0.1); color: #ff5252; }
+.mac-same   { background: rgba(147,197,253,0.1); color: #93c5fd; }
 </style>

@@ -225,3 +225,19 @@ export function getMetricDailyDetail(params) {
 export function getDeptPersonStats(params) {
   return request({ url: '/dashboard/dept-person-stats', method: 'get', params })
 }
+
+/** 今日班前健康达标率 */
+export function getPreShiftCompliance() {
+  return request({ url: '/dashboard/pre-shift-compliance', method: 'get' })
+}
+
+/** 今日入井准入名单 */
+export function getMineEntryList(size = 1000) {
+  return request({ url: '/dashboard/mine-entry-list', method: 'get', params: { size }, timeout: 15000 })
+    .catch(() => ({ code: 200, data: [] }))  // 列表加载失败时静默处理，不弹错误提示
+}
+
+/** 部门健康对比雷达图数据 */
+export function getDeptHealthComparison(days = 7) {
+  return request({ url: '/dashboard/dept-health-comparison', method: 'get', params: { days } })
+}

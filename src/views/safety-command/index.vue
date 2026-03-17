@@ -372,12 +372,25 @@
       </div>
     </el-dialog>
 
-    <el-dialog v-model="deptDialogVisible" :title="(currentDept?.name || '') + ' - 详细信息'" width="500px">
+    <el-dialog v-model="deptDialogVisible" :title="(currentDept?.name || '') + ' — 部门详情'" width="580px" @open="onDeptDialogOpen">
       <div v-if="currentDept" class="dlg">
         <div class="dlg-cards">
           <div class="dc"><div class="dc-l">在线/总数</div><div class="dc-v big">{{ currentDept.online }}/{{ currentDept.total }}</div></div>
           <div class="dc"><div class="dc-l">健康率</div><div class="dc-v">{{ currentDept.healthRate }}%</div></div>
           <div class="dc dg" v-if="currentDept.sos > 0"><div class="dc-l">SOS</div><div class="dc-v red">{{ currentDept.sos }}</div></div>
+        </div>
+        <!-- 部门 AI 分析 -->
+        <div class="dlg-ai-section">
+          <div class="dlg-ai-hd">
+            <span class="dlg-ai-title">🤖 AI 部门健康分析</span>
+            <button class="dlg-ai-btn" :disabled="deptAiLoading" @click="handleDeptAi(false)">
+              {{ deptAiLoading ? '分析中…' : (deptAiReport ? '刷新' : '生成分析') }}
+            </button>
+          </div>
+          <div v-if="deptAiLoading" class="dlg-ai-loading">DeepSeek 正在分析，约15-30秒…</div>
+          <div v-else-if="deptAiReport" class="dlg-ai-content" v-html="deptAiRendered"></div>
+          <div v-else class="dlg-ai-empty">点击「生成分析」获取 AI 部门健康报告</div>
+          <div v-if="deptAiTime" class="dlg-ai-ts">生成于 {{ deptAiTime }}</div>
         </div>
       </div>
     </el-dialog>
@@ -426,6 +439,7 @@ import { getDeviceActivation, getBodyIndicators } from '@/api/health'
 import { getEmployeeStats } from '@/api/employee'
 import { getHourlyHeartRate } from '@/api/heart-rate'
 import { getHourlyBloodOxygen } from '@/api/blood-oxygen'
+import { getDeptAiReport, generateDeptAiReport } from '@/api/ai'
 
 // ── Time ──────────────────────────────────────────────────────────────────────
 const currentDate = ref('')
@@ -627,6 +641,45 @@ const eventDialogVisible = ref(false), areaDialogVisible = ref(false), deptDialo
 const broadcastDialogVisible = ref(false), contactDialogVisible = ref(false), infoDialogVisible = ref(false)
 const broadcastContent = ref(''), infoDialogTitle = ref(''), infoDialogContent = ref('')
 const currentArea = ref(null), currentDept = ref(null), currentEvent = ref(null)
+
+// ── 部门 AI 分析 ──────────────────────────────────────────────────────────────
+const deptAiReport = ref('')
+const deptAiTime = ref('')
+const deptAiLoading = ref(false)
+const deptAiRendered = computed(() => {
+  if (!deptAiReport.value) return ''
+  return deptAiReport.value
+    .replace(/^## (.+)$/gm, '<h4>$1</h4>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>')
+})
+
+async function onDeptDialogOpen() {
+  deptAiReport.value = ''
+  deptAiTime.value = ''
+  if (!currentDept.value?.name) return
+  try {
+    const res = await getDeptAiReport(currentDept.value.name)
+    if (res.code === 200 && res.data) {
+      deptAiReport.value = res.data.reportContent
+      deptAiTime.value = res.data.generateTime
+    }
+  } catch {}
+}
+
+async function handleDeptAi(force = false) {
+  if (deptAiLoading.value || !currentDept.value?.name) return
+  deptAiLoading.value = true
+  try {
+    const res = await generateDeptAiReport(currentDept.value.name, force)
+    if (res.code === 200 && res.data) {
+      deptAiReport.value = res.data.reportContent
+      deptAiTime.value = res.data.generateTime
+      ElMessage.success('部门 AI 分析完成')
+    } else { ElMessage.error(res.message || '生成失败') }
+  } catch { ElMessage.error('AI 服务暂时不可用') }
+  finally { deptAiLoading.value = false }
+}
 const handleDialogVisible = ref(false), handleEvent = ref(null)
 const personDrawerVisible = ref(false), personDrawerUserCode = ref(''), personDrawerUserName = ref('')
 
@@ -1188,6 +1241,33 @@ $mono: 'JetBrains Mono','Courier New',monospace;
   .lv-critical { color: $red; font-weight: bold; } .lv-high { color: $orange; font-weight: bold; } .lv-medium { color: $yellow; }
   .red { color: $red; }
   .dlg-act { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,.06); }
+  .dlg-ai-section { margin-top: 12px; border-top: 1px solid rgba(0,0,0,.08); padding-top: 12px; }
+  .dlg-ai-hd { display: flex; align-items: center; margin-bottom: 8px; }
+  .dlg-ai-title { font-size: 13px; font-weight: 600; color: #333; }
+  .dlg-ai-btn {
+    margin-left: auto; padding: 3px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;
+    background: rgba(102,126,234,.12); border: 1px solid rgba(102,126,234,.4); color: #5b6ef5;
+    &:hover:not(:disabled) { background: rgba(102,126,234,.25); }
+    &:disabled { opacity: .5; cursor: not-allowed; }
+  }
+  .dlg-ai-loading { font-size: 12px; color: #888; padding: 8px 0; }
+  .dlg-ai-content {
+    font-size: 12px; color: #333; line-height: 1.8; max-height: 300px; overflow-y: auto;
+    :deep(h4) { font-size: 13px; font-weight: 700; color: #4c5fd5; margin: 8px 0 4px; padding-left: 7px; border-left: 3px solid #667eea; }
+    :deep(strong) { color: #1a1a2e; }
+  }
+  .dlg-ai-empty { font-size: 12px; color: #aaa; padding: 8px 0; }
+  .dlg-ai-ts { font-size: 11px; color: #bbb; margin-top: 6px; }
 }
 .info-html { padding: 6px; line-height: 1.8; }
+
+@media (max-width: 768px) {
+  .cc {
+    height: auto;
+    min-height: calc(100vh - 50px);
+    overflow-y: auto;
+    overflow-x: auto;
+    padding-bottom: 64px;
+  }
+}
 </style>

@@ -87,6 +87,7 @@
                 <el-icon><RefreshLeft /></el-icon>
               </button>
               <button
+                v-if="!isMobile"
                 class="rt-btn rt-btn-g"
                 @click="toggleAutoScroll"
                 :title="autoScrollEnabled ? '暂停滚动' : '开启滚动'">
@@ -106,7 +107,7 @@
               v-loading="isLoading"
               element-loading-background="rgba(10,30,61,0.8)"
               element-loading-text="加载中..."
-              height="100%"
+              :height="isMobile ? undefined : '100%'"
               style="width: 100%"
               :header-cell-style="tblHeadStyle"
               :cell-style="tblCellStyle"
@@ -139,12 +140,12 @@
                   <span class="c-code">{{ row.userCode || '--' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="deptName" label="部门" min-width="100" align="center">
+              <el-table-column prop="deptName" label="部门" min-width="80" align="center">
                 <template #default="{ row }">
                   <span class="c-dept">{{ row.deptName || '--' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="heartRate" label="心率(bpm)" width="85" align="center">
+              <el-table-column prop="heartRate" label="心率" width="65" align="center">
                 <template #default="{ row }">
                   <el-tooltip v-if="!row.heartRate" content="设备暂未上报该项数据" placement="top" :show-after="500">
                     <span class="c-na">--</span>
@@ -220,7 +221,7 @@
                   <span class="c-time">{{ fmtTime(row.lastUpdate) }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="100" align="center" fixed="right">
+              <el-table-column label="操作" width="80" align="center" fixed="right">
                 <template #default="{ row }">
                   <div v-if="row.imei" style="display:flex;gap:4px;justify-content:center">
                     <button class="rt-msg-btn" @click.stop="handleSendMessage(row)" title="文字消息" aria-label="发送文字消息">
@@ -312,6 +313,7 @@
         </div>
       </div>
     </el-dialog>
+
   </div>
 </template>
 
@@ -343,6 +345,7 @@ export default {
       messageTarget: null,
       messageDialogVisible: false,
       messageText: '',
+      debugLogs: [],
       voiceTarget: null,
       voiceDialogVisible: false,
       voiceTemplateId: '',
@@ -367,6 +370,10 @@ export default {
     }
   },
   computed: {
+    isMobile() {
+      // 直接用窗口宽度判断，不依赖 Vuex store 的设备状态（store 在子组件 mounted 时可能还未更新）
+      return window.innerWidth < 992
+    },
     allUsers() {
       return this.onlineUsers.list || []
     },
@@ -407,10 +414,13 @@ export default {
       })
     },
     paginatedUserList() {
+      // 移动端不分页，显示全部
+      if (this.isMobile) return this.filteredUserList
       const s = (this.currentPage - 1) * this.pageSize
       return this.filteredUserList.slice(s, s + this.pageSize)
     },
     totalPages() {
+      if (this.isMobile) return 1
       return Math.max(1, Math.ceil(this.filteredUserList.length / this.pageSize))
     },
     detailItems() {
@@ -460,11 +470,15 @@ export default {
     }
   },
   mounted() {
+    this.dbg(`mounted device=${this.$store.state.app.device} isMobile=${this.isMobile} w=${window.innerWidth}`)
     this.initTime()
     this.fetchOnlineUsers()
     this.autoRefresh()
-    this.startAutoScroll()
-    this.$nextTick(() => this.bindScrollFlip())
+    // 移动端不启动自动滚动翻页，让用户手动滑动
+    if (!this.isMobile) {
+      this.startAutoScroll()
+      this.$nextTick(() => this.bindScrollFlip())
+    }
     document.addEventListener('visibilitychange', this.onVisibilityChange)
   },
   beforeUnmount() {
@@ -481,22 +495,47 @@ export default {
       }, 1000)
     },
 
+    dbg(msg, type = 'info') {
+      const t = new Date().toTimeString().slice(0, 8)
+      const line = `[${t}] ${msg}`
+      console[type === 'error' ? 'error' : type === 'warn' ? 'warn' : 'log'](line)
+      this.debugLogs.push({ msg: line, type })
+      if (this.debugLogs.length > 60) this.debugLogs.shift()
+    },
+
     async fetchOnlineUsers() {
-      if (this._fetching) return
+      this.dbg(`fetch: _fetching=${this._fetching} _loaded=${this._loaded} isLoading=${this.isLoading}`)
+      if (this._fetching) {
+        this.dbg('skip: already fetching')
+        return
+      }
       this._fetching = true
       const isFirst = !this._loaded
+      this.dbg(`isFirst=${isFirst}`)
       if (isFirst) this.isLoading = true
       try {
-        const r = await getOnlineUsers(1, 1000)
-        if (r.code === 200) {
-          this.onlineUsers = r.data
-          const depts = new Set((r.data.list || []).map(u => u.deptName).filter(Boolean))
+        // 手机端请求 200 条（减少 WiFi 传输量），桌面端请求 1000 条
+        const fetchSize = window.innerWidth < 992 ? 200 : 1000
+        this.dbg(`calling API size=${fetchSize} w=${window.innerWidth}`)
+        const r = await getOnlineUsers(1, fetchSize, 20000)
+        this.dbg(`resp: code=${r?.code} dataType=${typeof r?.data} isArray=${Array.isArray(r?.data)} hasList=${!!(r?.data?.list)} listLen=${r?.data?.list?.length ?? r?.data?.length ?? '?'}`)
+        if (r && r.code === 200) {
+          const list = (r.data && r.data.list) ? r.data.list : (Array.isArray(r.data) ? r.data : [])
+          const total = r.data && r.data.total != null ? r.data.total : list.length
+          this.dbg(`OK: list.length=${list.length} total=${total}`)
+          this.onlineUsers = { list, total }
+          const depts = new Set(list.map(u => u.deptName).filter(Boolean))
           this.deptList = [...depts].sort()
+        } else {
+          this.dbg(`WARN: code=${r?.code}`, 'warn')
         }
-        this._loaded = true
+      } catch (err) {
+        this.dbg(`CATCH: ${err?.message || String(err)}`, 'error')
       } finally {
+        this._loaded = true
         this._fetching = false
         if (isFirst) this.isLoading = false
+        this.dbg(`finally done: isLoading=${this.isLoading}`)
       }
     },
 
@@ -1156,5 +1195,46 @@ export default {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.3; }
+}
+
+@media (max-width: 768px) {
+  .rt-root {
+    height: auto;
+    min-height: calc(100vh - 50px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-bottom: 64px;
+  }
+  .rt-bd {
+    overflow: visible;
+    height: auto !important;
+    flex-direction: column;
+  }
+  /* 表格容器允许横向滚动 */
+  .rt-table-panel {
+    overflow-x: auto;
+  }
+  :deep(.el-table) {
+    overflow-x: auto;
+  }
+  :deep(.el-table__body-wrapper) {
+    overflow-x: auto !important;
+  }
+  .rt-hd {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .rt-hd-left { width: 100%; }
+  .rt-ticker-wrap { width: 100%; order: 3; }
+  .rt-hd-right { margin-left: auto; }
+  .rt-filter-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  :deep(.el-table .el-table__cell) { padding: 4px 0; font-size: 11px; }
+  :deep(.el-table th) { font-size: 11px; }
 }
 </style>

@@ -13,5 +13,19 @@ export function getCachedAiReport(empCode) {
  * @param {boolean} force - true: 强制刷新忽略缓存
  */
 export function generateAiReport(empCode, force = false) {
-  return request({ url: '/ai/health-report/generate', method: 'post', params: { empCode, force }, timeout: 90000 })
+  return request({ url: '/ai/health-report/generate', method: 'post', params: { empCode, force }, timeout: 150000 })
+}
+
+export function getMineAiReport() {
+  return request({ url: '/ai/health-report/mine', method: 'get' })
+}
+export function generateMineAiReport(force = false) {
+  return request({ url: '/ai/health-report/mine/generate', method: 'post', params: { force }, timeout: 150000 })
+}
+
+export function getDeptAiReport(deptName) {
+  return request({ url: '/ai/health-report/dept', method: 'get', params: { deptName } })
+}
+export function generateDeptAiReport(deptName, force = false) {
+  return request({ url: '/ai/health-report/dept/generate', method: 'post', params: { deptName, force }, timeout: 150000 })
 }

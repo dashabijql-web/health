@@ -8,11 +8,12 @@
       </div>
       <app-main />
     </div>
+    <mobile-bottom-nav />
   </div>
 </template>
 
 <script>
-import { Navbar, Sidebar, AppMain } from './components'
+import { Navbar, Sidebar, AppMain, MobileBottomNav } from './components'
 import ResizeMixin from './mixin/ResizeHandler'
 
 export default {
@@ -20,7 +21,8 @@ export default {
   components: {
     Navbar,
     Sidebar,
-    AppMain
+    AppMain,
+    MobileBottomNav
   },
   mixins: [ResizeMixin],
   computed: {
@@ -40,6 +42,18 @@ export default {
         withoutAnimation: this.sidebar.withoutAnimation,
         mobile: this.device === 'mobile'
       }
+    }
+  },
+  watch: {
+    device(val) {
+      const mc = document.querySelector('.main-container')
+      const am = document.querySelector('.app-main')
+      console.log('[Layout] device:', val,
+        '| viewport:', window.innerWidth + 'x' + window.innerHeight,
+        '| main-container width:', mc ? mc.offsetWidth : 'N/A',
+        '| app-main overflow:', am ? getComputedStyle(am).overflow : 'N/A',
+        '| classObj:', JSON.stringify(this.classObj)
+      )
     }
   },
   methods: {

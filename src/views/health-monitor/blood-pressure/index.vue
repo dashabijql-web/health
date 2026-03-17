@@ -38,13 +38,16 @@
           </div>
           <div class="bp-top5-list" ref="top5ScrollRef">
             <div v-if="!top5Data.length" class="bp-top5-empty">暂无高收缩压人员数据</div>
-            <div class="bp-top5-row" v-for="(item, i) in top5Data" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
+            <div class="bp-top5-row" v-for="(item, i) in displayedTop5" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
               <span class="bp-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="bp-top5-name">{{ item.userName }}</span>
               <div class="bp-top5-bar-wrap">
                 <div class="bp-top5-bar" :style="{width: (item.avgSystolic / top5Max * 100) + '%'}"></div>
               </div>
               <span class="bp-top5-val">{{ item.avgSystolic }}</span>
+            </div>
+            <div v-if="top5Data.length > 20" class="bp-top5-more" @click="top5Expanded = !top5Expanded">
+              {{ top5Expanded ? '▲ 收起' : '▼ 展开全部 (' + top5Data.length + '条)' }}
             </div>
           </div>
         </div>
@@ -201,7 +204,7 @@
             <div class="bp-anomaly-list">
               <div
                 class="bp-anomaly-row"
-                v-for="(item, i) in bpAnomalyList"
+                v-for="(item, i) in displayedBpAnomalyList"
                 :key="i"
                 :class="item.systolic >= 160 || item.diastolic >= 100 ? 'anom-danger' : 'anom-stage1'"
                 @click="goToPortrait(item)"
@@ -216,6 +219,9 @@
                      item.systolic >= 140 || item.diastolic >= 90  ? '1级高血压' : '偏高' }}
                 </span>
                 <span class="ba-time">{{ fmtTime(item.recordTime) }}</span>
+              </div>
+              <div v-if="bpAnomalyList.length > 20" class="bp-anomaly-more" @click="anomalyExpanded = !anomalyExpanded">
+                {{ anomalyExpanded ? '▲ 收起' : `▼ 展开全部 (${bpAnomalyList.length} 人)` }}
               </div>
             </div>
           </div>
@@ -291,6 +297,8 @@ export default {
       },
       distLegend: [],
       top5Data: [],
+      top5Expanded: false,
+      anomalyExpanded: false,
       filterDept: '',
       _top5ScrollTimer: null,
       bpGrades: [
@@ -337,6 +345,9 @@ export default {
     top5Max() {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.avgSystolic || 0), 160) : 160
     },
+    displayedTop5() {
+      return this.top5Expanded ? this.top5Data : this.top5Data.slice(0, 20)
+    },
     top5Title() {
       const p = { day: '今日', week: '近7日', month: '近30日' }[this.activePeriod]
       return p + '高收缩压排行'
@@ -348,6 +359,9 @@ export default {
     /* pagedList / totalPages from chartPageMixin */
     bpAnomalyList() {
       return this.filteredRealtimeList.filter(x => x.systolic >= 140 || x.diastolic >= 90)
+    },
+    displayedBpAnomalyList() {
+      return this.anomalyExpanded ? this.bpAnomalyList : this.bpAnomalyList.slice(0, 20)
     },
     bpZones() {
       const list = this.realtimeList
@@ -798,6 +812,7 @@ $sky:    #38bdf8;
 .bp-top5-bar-wrap { flex: 1; height: 6px; background: rgba(167,139,250,0.08); border-radius: 3px; overflow: hidden; }
 .bp-top5-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, $purple, #7c3aed); transition: width 0.8s ease; }
 .bp-top5-val { font-size: 13px; font-weight: 700; color: $purple; font-family: 'Consolas', monospace; width: 28px; text-align: right; flex-shrink: 0; }
+.bp-top5-more { text-align: center; font-size: 11px; color: $purple; padding: 6px 0; cursor: pointer; opacity: 0.7; &:hover { opacity: 1; } }
 
 // 部门筛选标签
 .bp-dept-tag {
@@ -913,6 +928,10 @@ $sky:    #38bdf8;
   &::-webkit-scrollbar { width: 3px; }
   &::-webkit-scrollbar-thumb { background: rgba(255,112,67,0.2); border-radius: 2px; }
 }
+.bp-anomaly-more {
+  text-align: center; font-size: 11px; color: $purple; padding: 6px 0; cursor: pointer; opacity: 0.7;
+  &:hover { opacity: 1; }
+}
 .bp-anomaly-row {
   display: grid; grid-template-columns: 64px 1fr 72px 72px 80px 90px;
   gap: 6px; padding: 5px 4px; margin-bottom: 1px;
@@ -991,4 +1010,6 @@ $sky:    #38bdf8;
   &:hover:not(:disabled) { background: rgba(167,139,250,0.16); }
 }
 .bp-pg-info { font-size: 12px; color: $purple; min-width: 44px; text-align: center; }
+
+@include hm-mobile('bp');
 </style>

@@ -37,6 +37,7 @@ import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // Vite dev server 插件：接收前端 POST /perf-log，追加写入 perf.log
 const perfLogPlugin = () => ({
@@ -70,6 +71,42 @@ export default defineConfig(({ mode }) => {
       createSvgIconsPlugin({
         iconDirs: [path.resolve(process.cwd(), 'src/icons/svg')],
         symbolId: 'icon-[name]',  // 图标 ID 格式：icon-文件名
+      }),
+      // PWA 支持：手机上"添加到主屏幕"后像原生 App 使用
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.ico', 'pwa-192.png', 'pwa-512.png'],
+        manifest: {
+          name: '职业健康监测管理系统',
+          short_name: '健康监测',
+          description: '信智科技职业健康监测管理系统',
+          theme_color: '#0d2847',
+          background_color: '#0a1e3d',
+          display: 'standalone',
+          orientation: 'portrait',
+          start_url: '/',
+          scope: '/',
+          lang: 'zh-CN',
+          icons: [
+            { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
+            { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          ],
+        },
+        workbox: {
+          // 只缓存静态资源，API 请求不走缓存（始终走网络）
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          runtimeCaching: [
+            {
+              urlPattern: /^\/dev-api\//,
+              handler: 'NetworkOnly',
+            },
+          ],
+          // 跳过等待，新版本立即生效
+          skipWaiting: true,
+          clientsClaim: true,
+        },
+        // 开发环境也启用 PWA（方便调试）
+        devOptions: { enabled: false },
       }),
     ],
     // 路径别名：@ 映射到 src/ 目录，import '@/api/user' = import 'src/api/user'

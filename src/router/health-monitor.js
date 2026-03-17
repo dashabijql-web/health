@@ -196,6 +196,12 @@ const healthMonitorRouter = {
       name: 'EmployeeArchive',
       component: () => import('@/views/health-monitor/employee-archive/index.vue'),
       meta: { title: '职工健康档案库', icon: 'UserFilled', permCode: 'health:employee' }
+    },
+    {
+      path: 'mine-entry',
+      name: 'MineEntry',
+      component: () => import('@/views/health-monitor/mine-entry/index.vue'),
+      meta: { title: '入井准入管理', icon: 'CircleCheck', permCode: 'health:mine-entry' }
     }
   ]
 }

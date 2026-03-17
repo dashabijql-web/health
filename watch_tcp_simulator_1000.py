@@ -194,6 +194,18 @@ class WatchSimulator:
 
     # ──── 单轮发送（connect → login → 发 3~5 包 → disconnect）────────────────
 
+    def send_alert(self, alert_code='05'):
+        """AP10：报警事件（01=SOS, 05/06=跌倒, 03=脱落）"""
+        now = datetime.now()
+        date_str = now.strftime('%y%m%d')
+        time_str = now.strftime('%H%M%S')
+        # 格式：IW*AP10*date,time,lat,lon,speed,dir,alertCode#
+        lat = f"3736.{random.randint(1000,9999)}N"
+        lon = f"11208.{random.randint(1000,9999)}E"
+        return self.send_packet(
+            f"IW*AP10*{date_str},{time_str},{lat},{lon},000,000,{alert_code}#"
+        )
+
     def run_one_cycle(self):
         if not self.connect():
             return False
@@ -201,6 +213,15 @@ class WatchSimulator:
             if not self.login():
                 return False
             time.sleep(2)   # 等服务器完成注册
+
+            # 低概率触发报警事件（跌倒1%，SOS 0.2%）
+            rnd = random.random()
+            if rnd < 0.002:
+                self.send_alert('01')  # SOS
+                time.sleep(random.uniform(0.5, 1.0))
+            elif rnd < 0.012:
+                self.send_alert(random.choice(['05', '06']))  # 跌倒
+                time.sleep(random.uniform(0.5, 1.0))
 
             # 每次连接发 3~5 个不同类型的包
             choices = ['apht', 'aphp', 'temp', 'heartbeat', 'sleep', 'gps']
