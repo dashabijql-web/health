@@ -510,6 +510,7 @@ export default {
 
           if (res.code === 200) {
             ElMessage.success(this.formDialog.isEdit ? '修改成功' : '新增成功')
+            this.$refs.userFormRef?.clearValidate()
             this.formDialog.visible = false
             this.loadUserList()
             this.loadUserStats()

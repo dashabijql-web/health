@@ -435,6 +435,7 @@ export default {
             : await createRole(data)
           if (res.code === 200) {
             ElMessage.success(this.formDialog.isEdit ? '修改成功' : '新增成功')
+            this.$refs.roleFormRef?.clearValidate()
             this.formDialog.visible = false
             this.loadRoleList()
             this.loadRoleStats()

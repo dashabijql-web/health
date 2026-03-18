@@ -329,6 +329,7 @@ async function submitForm() {
   try {
     const data = { ...form, status: form.statusBool ? 0 : 1 }
     delete data.statusBool
+    if (Array.isArray(data.medicalHistory)) data.medicalHistory = data.medicalHistory.join(',')
     const res = isEdit.value ? await updateEmployee(data) : await createEmployee(data)
     if (res.code === 200) {
       ElMessage.success(isEdit.value ? '修改成功' : '新增成功')

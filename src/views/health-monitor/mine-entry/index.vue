@@ -80,6 +80,8 @@
             v-for="item in failList"
             :key="item.empCode"
             class="me-card me-card-fail"
+            style="cursor:pointer"
+            @click="goPortrait(item)"
           >
             <div class="me-card-avatar fail-avatar">{{ (item.empName || '?').charAt(0) }}</div>
             <div class="me-card-body">
@@ -117,7 +119,8 @@
         </div>
         <el-table
           :data="paginatedPassList"
-          style="width:100%;table-layout:fixed"
+          style="width:100%;table-layout:fixed;cursor:pointer"
+          @row-click="goPortrait"
           :header-cell-style="{ background:'#0d1830', color:'#5ea4c8', fontWeight:'600', fontSize:'12px' }"
           :row-style="{ background:'#0a1225', color:'#c0d4e8' }"
           :cell-style="{ padding:'7px 0', fontSize:'12px', color:'#c0d4e8' }"
@@ -178,9 +181,15 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { Refresh, CircleCheck, CircleClose, UserFilled } from '@element-plus/icons-vue'
 import { getMineEntryList, getPreShiftCompliance } from '@/api/health'
 import dayjs from 'dayjs'
+
+const router = useRouter()
+function goPortrait(item) {
+  if (item?.empCode) router.push({ path: '/health-monitor/health-portrait', query: { empCode: item.empCode } })
+}
 
 const loading = ref(false)
 const searchText = ref('')

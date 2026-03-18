@@ -51,7 +51,7 @@
         </div>
         <div class="kpi kpi-p" :class="{ 'kpi-flash': kpiFlash.anomaly }">
           <div class="kpi-lbl">今日异常次数</div>
-          <div class="kpi-num">{{ displayKPIs.anomaly || '--' }}</div>
+          <div class="kpi-num">{{ displayKPIs.anomaly }}</div>
           <div class="kpi-sub">触发超阈值次数</div>
         </div>
       </div>
@@ -759,7 +759,7 @@ const fetchCritical = async () => {
     if (r0.status === 'fulfilled' && r0.value?.data) {
       const d = r0.value.data
       handledCount.value = d.handledWarnings || d.handledCount || d.handled || handledCount.value
-      anomalyCount.value = d.pendingWarnings || d.totalWarnings || anomalyCount.value
+      anomalyCount.value = d.totalWarnings ?? d.pendingWarnings ?? anomalyCount.value
     }
   } catch { /* silent */ }
 }
@@ -800,7 +800,7 @@ const fetchAllData = async () => {
         total: d.totalUsers || d.total || stats.value.total
       }
       handledCount.value = d.handledWarnings || d.handledCount || d.handled || 0
-      anomalyCount.value = d.pendingWarnings || d.totalWarnings || 0
+      anomalyCount.value = d.totalWarnings ?? d.pendingWarnings ?? 0
     }
     if (results[2].status === 'fulfilled' && results[2].value?.data) {
       const deptData = results[2].value.data

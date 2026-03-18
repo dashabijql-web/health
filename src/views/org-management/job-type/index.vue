@@ -314,6 +314,7 @@ const submitForm = async () => {
       : await createJobType(data)
     if (res.code === 200) {
       ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
+      formRef.value?.clearValidate()
       dialogVisible.value = false
       loadTableData()
     } else {
