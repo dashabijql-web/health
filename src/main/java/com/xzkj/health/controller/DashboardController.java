@@ -24,6 +24,9 @@ public class DashboardController {
     @Autowired
     private RealtimeService realtimeService;
 
+    @Autowired
+    private com.xzkj.health.mapper.DashboardMapper dashboardMapper;
+
     // ═══════════════════════════════════════════════════════════════
     // 支持时间范围筛选的接口（startTime/endTime 不传则默认当月）
     // ═══════════════════════════════════════════════════════════════
@@ -68,6 +71,60 @@ public class DashboardController {
             @RequestParam(required = false) String endTime) {
         // 限制返回最近 200 条预警记录（按时间倒序），避免数据量过大
         return Result.ok("获取成功", dashboardService.getRecentWarnings(200, startTime, endTime));
+    }
+
+    /** 各指标检测人数（DISTINCT 人数，非条数） */
+    @GetMapping("/person-counts")
+    public Result<Map<String, Object>> getPersonCounts(
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        String[] range = DateParamUtil.range30(startTime, endTime);
+        return Result.ok("获取成功", dashboardMapper.getPersonCountsByRange(range[0], range[1]));
+    }
+
+    /** 各部门检测人数 + 异常人数（部门综合看板图表用） */
+    @GetMapping("/dept-person-stats")
+    public Result<List<Map<String, Object>>> getDeptPersonStats(
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        String[] range = DateParamUtil.range30(startTime, endTime);
+        DateTimeFormatter mFmt = DateTimeFormatter.ofPattern("yyyyMM");
+        String m1 = LocalDate.parse(range[0]).format(mFmt);
+        String m2 = LocalDate.parse(range[1]).format(mFmt);
+        String hSrc = m1.equals(m2) ? "health_record_" + m1
+            : "(SELECT user_code,record_time FROM health_record_" + m1 + " UNION ALL SELECT user_code,record_time FROM health_record_" + m2 + ")";
+        String wSrc = m1.equals(m2) ? "warning_record_" + m1
+            : "(SELECT user_code,create_time FROM warning_record_" + m1 + " UNION ALL SELECT user_code,create_time FROM warning_record_" + m2 + ")";
+        return Result.ok("获取成功", dashboardMapper.getDeptPersonStatsDirect(hSrc, wSrc, range[0], range[1]));
+    }
+
+    /** 指标每日检测人数+异常人数（点击指标卡片弹窗用） */
+    @GetMapping("/metric-daily-detail")
+    public Result<List<Map<String, Object>>> getMetricDailyDetail(
+            @RequestParam String metricType,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        String[] range = DateParamUtil.range30(startTime, endTime);
+        return Result.ok("获取成功", dashboardMapper.getMetricDailyDetail(metricType, range[0], range[1]));
+    }
+
+    /** 单部门每日检测人数+异常人数（点击看板弹窗用） */
+    @GetMapping("/dept-daily-detail")
+    public Result<List<Map<String, Object>>> getDeptDailyDetail(
+            @RequestParam String deptName,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        String[] range = DateParamUtil.range30(startTime, endTime);
+        return Result.ok("获取成功", dashboardMapper.getDeptDailyDetail(deptName, range[0], range[1]));
+    }
+
+    /** 各部门每日检测人数（弹窗折线图用） */
+    @GetMapping("/dept-daily-persons")
+    public Result<List<Map<String, Object>>> getDeptDailyPersons(
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        String[] range = DateParamUtil.range30(startTime, endTime);
+        return Result.ok("获取成功", dashboardMapper.getDeptDailyPersons(range[0], range[1]));
     }
 
     @GetMapping("/dept-stats")
@@ -188,5 +245,62 @@ public class DashboardController {
     @GetMapping("/calendar/day-warnings")
     public Result<List<Map<String, Object>>> getDayWarnings(@RequestParam String date) {
         return Result.ok("获取成功", dashboardService.getDayWarnings(date));
+    }
+
+    /** 今日班前健康达标率 */
+    @GetMapping("/pre-shift-compliance")
+    public Result<Map<String, Object>> getPreShiftCompliance() {
+        try {
+            Map<String, Object> data = dashboardMapper.getTodayPreShiftCompliance();
+            if (data == null) data = new HashMap<>();
+            int total = data.get("totalToday") != null ? ((Number) data.get("totalToday")).intValue() : 0;
+            int qualified = data.get("qualifiedCount") != null ? ((Number) data.get("qualifiedCount")).intValue() : 0;
+            int failed = data.get("failedCount") != null ? ((Number) data.get("failedCount")).intValue() : 0;
+            int rate = total > 0 ? Math.round(qualified * 100f / total) : 0;
+            data.put("totalToday", total);
+            data.put("qualifiedCount", qualified);
+            data.put("failedCount", failed);
+            data.put("preShiftRate", rate);
+            return Result.ok("获取成功", data);
+        } catch (Exception e) {
+            log.error("获取班前达标率失败", e);
+            return Result.error("获取失败");
+        }
+    }
+
+    /** 今日入井准入名单 */
+    @GetMapping("/mine-entry-list")
+    public Result<List<Map<String, Object>>> getMineEntryList(
+            @RequestParam(defaultValue = "1000") int size) {
+        try {
+            return Result.ok("获取成功", dashboardMapper.getTodayMineEntryList(size));
+        } catch (Exception e) {
+            log.error("获取入井名单失败", e);
+            return Result.error("获取失败");
+        }
+    }
+
+    /** 部门健康对比（雷达图数据） — 直接查分区表，避免扫 v_health_record UNION ALL 视图 */
+    @GetMapping("/dept-health-comparison")
+    public Result<List<Map<String, Object>>> getDeptHealthComparison(
+            @RequestParam(defaultValue = "7") int days) {
+        try {
+            DateTimeFormatter mFmt = DateTimeFormatter.ofPattern("yyyyMM");
+            String curMonth  = LocalDate.now().format(mFmt);
+            String prevMonth = LocalDate.now().minusDays(days).format(mFmt);
+            String tblSrc;
+            if (curMonth.equals(prevMonth)) {
+                tblSrc = "health_record_" + curMonth;
+            } else {
+                String cols = "user_code,heart_rate,blood_oxygen,blood_pressure_high," +
+                              "sleep_minutes,steps,pressure,record_time";
+                tblSrc = "(SELECT " + cols + " FROM health_record_" + prevMonth +
+                         " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ") _dh";
+            }
+            return Result.ok("获取成功", dashboardMapper.getDeptHealthComparisonDirect(tblSrc, days));
+        } catch (Exception e) {
+            log.error("获取部门健康对比数据失败", e);
+            return Result.error("获取失败");
+        }
     }
 }

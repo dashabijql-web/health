@@ -548,4 +548,27 @@ public interface DashboardMapper {
             "HAVING COUNT(DISTINCT hr.user_code) >= 2 " +
             "ORDER BY memberCount DESC")
     List<Map<String, Object>> getDeptHealthComparison(@Param("days") int days);
+
+    /**
+     * 部门健康对比 — 直接查分区表，避免扫 v_health_record UNION ALL 视图
+     * tableSource = "health_record_YYYYMM" 或 "(SELECT ... FROM t1 UNION ALL SELECT ... FROM t2) _dh"
+     */
+    @Select("SELECT " +
+            "  d.dept_name AS deptName, " +
+            "  COUNT(DISTINCT hr.user_code) AS memberCount, " +
+            "  ROUND(AVG(CAST(hr.heart_rate AS FLOAT)), 1) AS avgHeartRate, " +
+            "  ROUND(AVG(CAST(hr.blood_oxygen AS FLOAT)), 1) AS avgBloodOxygen, " +
+            "  ROUND(AVG(CAST(hr.blood_pressure_high AS FLOAT)), 1) AS avgSystolic, " +
+            "  ROUND(AVG(CAST(hr.sleep_minutes AS FLOAT)), 0) AS avgSleepMinutes, " +
+            "  ROUND(AVG(CAST(hr.steps AS FLOAT)), 0) AS avgSteps, " +
+            "  ROUND(AVG(CAST(hr.pressure AS FLOAT)), 1) AS avgPressure " +
+            "FROM ${tableSource} hr " +
+            "JOIN employee e ON hr.user_code = e.emp_code " +
+            "JOIN department d ON e.dept_id = d.id " +
+            "WHERE hr.record_time >= DATEADD(DAY, -#{days}, GETDATE()) " +
+            "GROUP BY d.dept_name " +
+            "HAVING COUNT(DISTINCT hr.user_code) >= 2 " +
+            "ORDER BY memberCount DESC")
+    List<Map<String, Object>> getDeptHealthComparisonDirect(@Param("tableSource") String tableSource,
+                                                             @Param("days") int days);
 }

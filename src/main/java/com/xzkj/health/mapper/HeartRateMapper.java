@@ -305,4 +305,63 @@ public interface HeartRateMapper {
             ") t WHERE rn = 1 " +
             "ORDER BY recordTime DESC")
     List<Map<String, Object>> getRealtime(@Param("limit") int limit);
+
+    /** 实时心率列表 — 直接查当月分区表，避免扫 v_health_record UNION ALL */
+    @Select("SELECT TOP (#{limit}) " +
+            "userCode, userName, deptName, gender, age, jobType, heartRate, recordTime " +
+            "FROM ( " +
+            "  SELECT " +
+            "    hr.user_code AS userCode, " +
+            "    ISNULL(e.emp_name, hr.user_code) AS userName, " +
+            "    ISNULL(d.dept_name, '') AS deptName, " +
+            "    CASE WHEN e.gender = 1 THEN '男' WHEN e.gender = 2 THEN '女' ELSE '' END AS gender, " +
+            "    DATEDIFF(YEAR, e.birth_date, GETDATE()) AS age, " +
+            "    ISNULL(jt.type_name, '') AS jobType, " +
+            "    hr.heart_rate AS heartRate, " +
+            "    hr.record_time AS recordTime, " +
+            "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
+            "  FROM ${tableSource} hr " +
+            "  LEFT JOIN employee e ON hr.user_code = e.emp_code " +
+            "  LEFT JOIN department d ON e.dept_id = d.id " +
+            "  LEFT JOIN job_type jt ON e.job_type_id = jt.id " +
+            "  WHERE hr.heart_rate IS NOT NULL AND hr.heart_rate > 0 " +
+            "  AND hr.record_time >= DATEADD(HOUR, -2, GETDATE()) " +
+            ") t WHERE rn = 1 " +
+            "ORDER BY recordTime DESC")
+    List<Map<String, Object>> getRealtimeDirect(@Param("tableSource") String tableSource,
+                                                 @Param("limit") int limit);
+
+    /** 心率趋势 — 直接查分区表，避免扫 UNION ALL 视图 */
+    @Select("SELECT " +
+            "CONVERT(VARCHAR(10), record_time, 23) AS date, " +
+            "CAST(AVG(CAST(heart_rate AS FLOAT)) AS INT) AS avgHeartRate " +
+            "FROM ${tableSource} " +
+            "WHERE heart_rate IS NOT NULL " +
+            "AND heart_rate > 0 " +
+            "AND record_time >= DATEADD(DAY, -#{days}, GETDATE()) " +
+            "GROUP BY CONVERT(VARCHAR(10), record_time, 23) " +
+            "ORDER BY date")
+    List<Map<String, Object>> getHeartRateTrendDirect(@Param("tableSource") String tableSource,
+                                                       @Param("days") int days);
+
+    /** 部门心率统计 — 直接查分区表，避免扫 UNION ALL 视图 */
+    @Select("SELECT " +
+            "d.dept_name AS deptName, " +
+            "CAST(AVG(CAST(hr.heart_rate AS FLOAT)) AS INT) AS avgHeartRate, " +
+            "SUM(CASE WHEN hr.heart_rate < 55 THEN 1 ELSE 0 END) AS lowCount, " +
+            "SUM(CASE WHEN hr.heart_rate > 120 THEN 1 ELSE 0 END) AS highCount, " +
+            "SUM(CASE WHEN hr.heart_rate < 55 OR hr.heart_rate > 120 THEN 1 ELSE 0 END) AS abnormalCount, " +
+            "COUNT(*) AS totalCount " +
+            "FROM ${tableSource} hr " +
+            "INNER JOIN employee e ON hr.user_code = e.emp_code " +
+            "INNER JOIN department d ON e.dept_id = d.id " +
+            "WHERE hr.heart_rate IS NOT NULL " +
+            "AND hr.heart_rate > 0 " +
+            "AND hr.record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND hr.record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            "GROUP BY d.dept_name " +
+            "ORDER BY avgHeartRate DESC")
+    List<Map<String, Object>> getDepartmentStatsDirect(@Param("tableSource") String tableSource,
+                                                        @Param("startDate") String startDate,
+                                                        @Param("endDate") String endDate);
 }

@@ -84,6 +84,61 @@ public interface RealtimeMapper {
     int countOnlineUsers();
 
     /**
+     * 获取活跃用户列表 — 直接查分区表，避免扫 UNION ALL 视图
+     * 当168h跨月时 tableSource = "(SELECT ... FROM t1 UNION ALL SELECT ... FROM t2) v"
+     * 当168h在当月时 tableSource = "health_record_YYYYMM"
+     */
+    @Select("SELECT " +
+            "e.id, " +
+            "e.emp_code AS userCode, " +
+            "e.emp_name AS userName, " +
+            "e.gender, " +
+            "CASE WHEN e.birth_date IS NOT NULL THEN FLOOR(DATEDIFF(day, e.birth_date, GETDATE()) / 365.25) ELSE NULL END AS age, " +
+            "d.dept_name AS deptName, " +
+            "hr.heart_rate AS heartRate, " +
+            "hr.blood_oxygen AS bloodOxygen, " +
+            "hr.steps, " +
+            "hr.calories, " +
+            "hr.temperature / 10.0 AS temperature, " +
+            "hr.sleep_minutes / 60.0 AS sleepHours, " +
+            "hr.blood_pressure_high AS bloodPressureHigh, " +
+            "hr.blood_pressure_low AS bloodPressureLow, " +
+            "hr.pressure, " +
+            "CASE " +
+            "    WHEN hr.heart_rate < 60 OR hr.heart_rate > 100 THEN 'warning' " +
+            "    WHEN hr.blood_oxygen < 95 THEN 'warning' " +
+            "    WHEN hr.temperature < 360 OR hr.temperature > 375 THEN 'warning' " +
+            "    WHEN hr.blood_pressure_high > 139 OR hr.blood_pressure_low > 89 THEN 'warning' " +
+            "    WHEN hr.pressure > 84 THEN 'warning' " +
+            "    ELSE 'normal' " +
+            "END AS status, " +
+            "hr.record_time AS lastUpdate, " +
+            "dv.imei AS imei " +
+            "FROM employee e " +
+            "LEFT JOIN department d ON e.dept_id = d.id " +
+            "LEFT JOIN device_user du ON du.emp_id = e.id AND du.unbind_time IS NULL " +
+            "LEFT JOIN device dv ON dv.id = du.device_id " +
+            "INNER JOIN ( " +
+            "    SELECT user_code, heart_rate, blood_oxygen, temperature, steps, calories, sleep_minutes, " +
+            "           blood_pressure_high, blood_pressure_low, pressure, record_time, " +
+            "           ROW_NUMBER() OVER (PARTITION BY user_code ORDER BY record_time DESC) AS rn " +
+            "    FROM ${tableSource} " +
+            "    WHERE record_time >= DATEADD(HOUR, -168, GETDATE()) " +
+            ") hr ON e.emp_code = hr.user_code AND hr.rn = 1 " +
+            "WHERE (e.status IS NULL OR e.status = 0) " +
+            "ORDER BY hr.record_time DESC " +
+            "OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY")
+    List<Map<String, Object>> getOnlineUsersDirect(@Param("tableSource") String tableSource,
+                                                    @Param("offset") int offset,
+                                                    @Param("size") int size);
+
+    /**
+     * 活跃用户总数 — 直接查分区表
+     */
+    @Select("SELECT COUNT(DISTINCT user_code) FROM ${tableSource} WHERE record_time >= DATEADD(HOUR, -168, GETDATE())")
+    int countOnlineUsersDirect(@Param("tableSource") String tableSource);
+
+    /**
      * 获取实时统计数据（近7天口径）
      * 优化：用 CTE 将 v_health_record 的 168h 窗口扫描从 5 次缩减为 1 次
      */

@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -44,13 +46,29 @@ public class RealtimeService {
         return result;
     }
 
+    /** 计算近168h查询所需的分区表表达式（避免扫全部UNION ALL视图） */
+    private static String onlineUsersTableSource() {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyMM");
+        String curMonth = LocalDate.now().format(fmt);
+        String prevMonth = LocalDate.now().minusDays(7).format(fmt);
+        if (curMonth.equals(prevMonth)) {
+            return "health_record_" + curMonth;
+        }
+        // 168h跨月：只需当月+上月两张表
+        String cols = "user_code,heart_rate,blood_oxygen,temperature,steps,calories," +
+                      "sleep_minutes,blood_pressure_high,blood_pressure_low,pressure,record_time";
+        return "(SELECT " + cols + " FROM health_record_" + prevMonth +
+               " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ") _rt";
+    }
+
     /**
      * 获取在线用户列表(无分页版本)
      */
     public Map<String, Object> getOnlineUsers(int page, int size) {
         int offset = (page - 1) * size;
+        String tblSrc = onlineUsersTableSource();
 
-        List<Map<String, Object>> list = realtimeMapper.getOnlineUsers(offset, size);
+        List<Map<String, Object>> list = realtimeMapper.getOnlineUsersDirect(tblSrc, offset, size);
         if (list == null) list = Collections.emptyList();
 
         // 格式化数据
@@ -68,7 +86,7 @@ public class RealtimeService {
             }
         }
 
-        int total = realtimeMapper.countOnlineUsers();
+        int total = realtimeMapper.countOnlineUsersDirect(tblSrc);
 
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);
