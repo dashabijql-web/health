@@ -5,6 +5,8 @@ import com.xzkj.health.mapper.RealtimeMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -46,7 +48,13 @@ public class RealtimeService {
         return result;
     }
 
-    /** 计算近168h查询所需的分区表表达式（避免扫全部UNION ALL视图） */
+    /** 计算近168h查询所需的分区表表达式（避免扫全部UNION ALL视图）
+     *
+     * 注意：跨月情况返回的是不含 AS 别名的裸 UNION 子查询，
+     * 供 Mapper 中的 ${tableSource} 使用时由 Mapper SQL 自行提供别名（t / mx 等）。
+     * 对于 getStatisticsDirect 等 RealtimeStatsSqlProvider 内嵌 AS 别名的情况，
+     * 那些 SQL 是独立构建的，不依赖此方法。
+     */
     private static String onlineUsersTableSource() {
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyMM");
         String curMonth = LocalDate.now().format(fmt);
@@ -55,16 +63,17 @@ public class RealtimeService {
             return "health_record_" + curMonth;
         }
         // 168h跨月：只需当月+上月两张表
+        // 不加 AS 别名 — Mapper 中每处 ${tableSource} 出现时自行指定别名（AS t / AS mx）
         String cols = "user_code,heart_rate,blood_oxygen,temperature,steps,calories," +
                       "sleep_minutes,blood_pressure_high,blood_pressure_low,pressure,record_time";
-        // 必须用 AS 关键字，否则 Druid SQL 防火墙（SQL Server 模式）拒绝子查询别名
         return "(SELECT " + cols + " FROM health_record_" + prevMonth +
-               " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ") AS _rt";
+               " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ")";
     }
 
     /**
      * 获取在线用户列表(无分页版本)
      */
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
     public Map<String, Object> getOnlineUsers(int page, int size) {
         int offset = (page - 1) * size;
         String tblSrc = onlineUsersTableSource();
@@ -128,6 +137,7 @@ public class RealtimeService {
     /**
      * 获取实时统计数据 — 使用直接查分区表版本（2月表 vs 13张全扫描，性能提升约5-10x）
      */
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
     public Map<String, Object> getStatistics() {
         Map<String, Object> data = realtimeMapper.getStatisticsDirect();
         if (data == null) data = new HashMap<>();

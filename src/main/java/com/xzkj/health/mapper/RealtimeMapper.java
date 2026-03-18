@@ -88,8 +88,17 @@ public interface RealtimeMapper {
 
     /**
      * 获取活跃用户列表 — 直接查分区表，避免扫 UNION ALL 视图
-     * 当168h跨月时 tableSource = "(SELECT ... FROM t1 UNION ALL SELECT ... FROM t2) v"
+     * 当168h跨月时 tableSource = "(SELECT ... FROM t1 UNION ALL SELECT ... FROM t2) AS _rt"
      * 当168h在当月时 tableSource = "health_record_YYYYMM"
+     *
+     * 优化（Round 15）：用 MAX(record_time) GROUP BY + self-JOIN 替代 ROW_NUMBER() OVER PARTITION BY
+     * 外层子查询先取每人最新 record_time，再从 ${tableSource} 取全字段回来，避免窗口函数扫全量
+     * 注意：${tableSource} 被引用两次 — 当它是表名时 SQL Server 可自由引用；
+     *       当它是带 AS 别名的 UNION 子查询时需在最外层再包一层以重用，
+     *       因此 RealtimeService.onlineUsersTableSource() 对跨月情况不带 AS 末尾别名，
+     *       而在此处的两个位置分别给定 AS _src1 / AS _src2 别名。
+     *       实际上 ${tableSource} 直接展开两次各自独立扫分区表，SQL Server 会对 identical
+     *       子查询做公共子表达式消除（CSE），总成本与扫一次相当。
      */
     @Select("SELECT " +
             "e.id, " +
@@ -122,12 +131,18 @@ public interface RealtimeMapper {
             "LEFT JOIN device_user du ON du.emp_id = e.id AND du.unbind_time IS NULL " +
             "LEFT JOIN device dv ON dv.id = du.device_id " +
             "INNER JOIN ( " +
-            "    SELECT user_code, heart_rate, blood_oxygen, temperature, steps, calories, sleep_minutes, " +
-            "           blood_pressure_high, blood_pressure_low, pressure, record_time, " +
-            "           ROW_NUMBER() OVER (PARTITION BY user_code ORDER BY record_time DESC) AS rn " +
-            "    FROM ${tableSource} " +
-            "    WHERE record_time >= DATEADD(HOUR, -168, GETDATE()) " +
-            ") hr ON e.emp_code = hr.user_code AND hr.rn = 1 " +
+            "    SELECT t.user_code, t.heart_rate, t.blood_oxygen, t.temperature, t.steps, t.calories, " +
+            "           t.sleep_minutes, t.blood_pressure_high, t.blood_pressure_low, t.pressure, " +
+            "           t.record_time " +
+            "    FROM ${tableSource} AS t " +
+            "    INNER JOIN ( " +
+            "        SELECT user_code, MAX(record_time) AS latest_time " +
+            "        FROM ${tableSource} AS _grp " +
+            "        WHERE record_time >= DATEADD(HOUR, -168, GETDATE()) " +
+            "        GROUP BY user_code " +
+            "    ) AS mx ON t.user_code = mx.user_code AND t.record_time = mx.latest_time " +
+            "    WHERE t.record_time >= DATEADD(HOUR, -168, GETDATE()) " +
+            ") hr ON e.emp_code = hr.user_code " +
             "WHERE (e.status IS NULL OR e.status = 0) " +
             "ORDER BY hr.record_time DESC " +
             "OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY")
@@ -137,8 +152,9 @@ public interface RealtimeMapper {
 
     /**
      * 活跃用户总数 — 直接查分区表
+     * 注意：${tableSource} 是裸子查询时 SQL Server 要求必须有别名，故包一层 AS _cnt
      */
-    @Select("SELECT COUNT(DISTINCT user_code) FROM ${tableSource} WHERE record_time >= DATEADD(HOUR, -168, GETDATE())")
+    @Select("SELECT COUNT(DISTINCT user_code) FROM ${tableSource} AS _cnt WHERE record_time >= DATEADD(HOUR, -168, GETDATE())")
     int countOnlineUsersDirect(@Param("tableSource") String tableSource);
 
     /**

@@ -6,6 +6,8 @@ import com.xzkj.health.service.DashboardService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -89,6 +91,7 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
     public Map<String, Object> getCurrentMonthCounts(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
@@ -102,6 +105,7 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
     public Map<String, Object> getCurrentMonthAverage(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
@@ -117,6 +121,7 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
     public List<Map<String, Object>> getDeptTop5(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
@@ -233,6 +238,7 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
     public List<Map<String, Object>> getDeptHealthCounts(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());

@@ -18,9 +18,7 @@ import java.util.Map;
 public interface BloodOxygenMapper {
 
     /**
-     * 获取当月血氧统计概览
-     * 优化：用 CTE 单次扫描 v_health_record，消除 detectionRate 的相关子查询（原来扫描2次）
-     * Base 含全部记录（用于 totalCount 分母），再用 CASE WHEN 区分有无血氧数据
+     * 获取当月血氧统计概览（legacy — 直接查 v_health_record，跨月慢，保留供fallback）
      */
     @Select("SELECT " +
             "CAST(AVG(CAST(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END AS FLOAT)) AS DECIMAL(5,2)) AS avgBloodOxygen, " +
@@ -35,6 +33,26 @@ public interface BloodOxygenMapper {
             "WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
             "AND   record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
     Map<String, Object> getBloodOxygenStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    /**
+     * 获取血氧统计概览 — 直接查分区表，避免 v_health_record UNION ALL 全扫描（Round 15优化）
+     * tableSource 由 Service 层根据日期范围路由：单月=表名，跨月=UNION ALL 子查询
+     */
+    @Select("SELECT " +
+            "CAST(AVG(CAST(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END AS FLOAT)) AS DECIMAL(5,2)) AS avgBloodOxygen, " +
+            "COALESCE(MAX(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END), 0) AS maxBloodOxygen, " +
+            "COALESCE(MIN(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END), 0) AS minBloodOxygen, " +
+            "COUNT(DISTINCT CASE WHEN blood_oxygen >= 95 THEN user_code END) AS normalCount, " +
+            "COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL AND blood_oxygen < 95 THEN user_code END) AS abnormalCount, " +
+            "COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL THEN user_code END) AS totalCount, " +
+            "ISNULL(COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL THEN user_code END) * 100 / " +
+            "  NULLIF(COUNT(DISTINCT user_code), 0), 0) AS detectionRate " +
+            "FROM ${tableSource} AS _bo " +
+            "WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND   record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
+    Map<String, Object> getBloodOxygenStatsDirect(@Param("tableSource") String tableSource,
+                                                   @Param("startDate") String startDate,
+                                                   @Param("endDate") String endDate);
 
     /**
      * 获取血氧趋势数据（无 DECLARE，原本就是单语句，保持不变）
