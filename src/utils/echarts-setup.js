@@ -15,7 +15,8 @@ import {
   MarkPointComponent,
   RadarComponent,
   TitleComponent,
-  DataZoomComponent
+  DataZoomComponent,
+  GraphicComponent
 } from 'echarts/components'
 
 use([
@@ -33,7 +34,8 @@ use([
   MarkPointComponent,
   RadarComponent,
   TitleComponent,
-  DataZoomComponent
+  DataZoomComponent,
+  GraphicComponent
 ])
 
 // 导出使用到的核心 API（命名导出，让文件通过 echarts.init / echarts.graphic 调用）

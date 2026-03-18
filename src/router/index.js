@@ -96,6 +96,7 @@ export const constantRoutes = [
     path: '/safety-command',
     component: Layout,
     name: 'SafetyCommand',
+    redirect: '/safety-command/index',
     meta: { title: '安全指挥中心', icon: 'Aim', breadcrumb: false },
     children: [
       {

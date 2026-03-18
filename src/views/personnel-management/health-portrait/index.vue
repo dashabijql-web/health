@@ -124,8 +124,11 @@
           <div class="score-pills">
             <div v-for="(item, key) in scorePills" :key="key" class="pill">
               <div class="pill-label">{{ item.label }}</div>
-              <div class="pill-bar"><div class="pill-fill" :style="{ width: item.value + '%', background: item.color }"></div></div>
-              <div class="pill-val" :style="{ color: item.color }">{{ item.value }}</div>
+              <div class="pill-bar">
+                <div v-if="item.value > 0" class="pill-fill" :style="{ width: item.value + '%', background: item.color }"></div>
+                <div v-else class="pill-fill" style="width:0%;background:#2a3a5a"></div>
+              </div>
+              <div class="pill-val" :style="{ color: item.value > 0 ? item.color : '#4a6080' }">{{ item.value || '--' }}</div>
             </div>
           </div>
 
@@ -987,7 +990,7 @@ const initRadarChart = () => {
       splitLine: { lineStyle: { color: '#232b4d' } },
       splitArea: { areaStyle: { color: ['rgba(0,212,255,.02)', 'rgba(0,212,255,.05)'] } }
     },
-    series: [{ type: 'radar', data: [{ value: [scores.heartRate||0, scores.bloodOxygen||0, scores.activity||0, scores.bloodPressure||0, scores.temperature||0, scores.pressure||0], name: '健康评分', areaStyle: { color: 'rgba(0,212,255,.18)' }, lineStyle: { color: '#00d4ff', width: 2 }, itemStyle: { color: '#00d4ff' } }] }]
+    series: [{ type: 'radar', data: [{ value: [scores.heartRate||null, scores.bloodOxygen||null, scores.activity||null, scores.bloodPressure||null, scores.temperature||null, scores.pressure||null], name: '健康评分', areaStyle: { color: 'rgba(0,212,255,.18)' }, lineStyle: { color: '#00d4ff', width: 2 }, itemStyle: { color: '#00d4ff' } }] }]
   })
 }
 

@@ -162,7 +162,7 @@
             :total="passList.length"
             layout="total, prev, pager, next, jumper"
             background
-            small
+            size="small"
           />
         </div>
       </div>

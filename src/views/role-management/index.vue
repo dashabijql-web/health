@@ -209,6 +209,7 @@
           :default-expanded-keys="permDialog.expandedKeys"
           :props="{ label: 'name', children: 'children' }"
           class="perm-tree"
+          @check="updatePermCheckedCount"
         >
           <template #default="{ node, data }">
             <span class="tree-node">
@@ -223,7 +224,7 @@
       </div>
       <template #footer>
         <div class="perm-footer">
-          <span class="perm-tip">已选 <strong>{{ checkedCount }}</strong> 项权限</span>
+          <span class="perm-tip">已选 <strong>{{ permDialog.checkedCount }}</strong> 项权限</span>
           <div>
             <el-button @click="permDialog.visible = false">取消</el-button>
             <el-button type="primary" :loading="permDialog.submitting" @click="handleSavePermissions">保存权限</el-button>
@@ -267,6 +268,7 @@
 
 <script>
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { markRaw } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import {
   getRoleList, getRoleDetail, getRoleUsers, getRoleStats,
@@ -287,7 +289,7 @@ export default {
   name: 'RoleManagement',
   data() {
     return {
-      Search, Refresh, Plus,
+      Search: markRaw(Search), Refresh: markRaw(Refresh), Plus: markRaw(Plus),
       currentTime: '',
       loading: false,
       roleList: [],
@@ -313,7 +315,8 @@ export default {
         roleCode: '',
         treeData: [],
         checkedKeys: [],
-        expandedKeys: []
+        expandedKeys: [],
+        checkedCount: 0
       },
 
       // 角色用户弹窗
@@ -334,13 +337,7 @@ export default {
       }
     }
   },
-  computed: {
-    checkedCount() {
-      if (!this.$refs.permTreeRef) return 0
-      return this.$refs.permTreeRef.getCheckedKeys().length +
-             this.$refs.permTreeRef.getHalfCheckedKeys().length
-    }
-  },
+  computed: {},
   mounted() {
     this.updateTime()
     this._timer = setInterval(this.updateTime, 1000)
@@ -529,12 +526,20 @@ export default {
           // 二次打开弹窗时树已挂载，必须用 setCheckedKeys() 强制刷新勾选状态
           await this.$nextTick()
           this.$refs.permTreeRef?.setCheckedKeys(permRes.data)
+          this.updatePermCheckedCount()
         }
       } catch (e) {
         ElMessage.error('加载权限数据失败')
       } finally {
         this.permDialog.loading = false
       }
+    },
+
+    // ── 权限树勾选数量更新
+    updatePermCheckedCount() {
+      const tree = this.$refs.permTreeRef
+      if (!tree) return
+      this.permDialog.checkedCount = tree.getCheckedKeys().length + tree.getHalfCheckedKeys().length
     },
 
     // ── 保存权限

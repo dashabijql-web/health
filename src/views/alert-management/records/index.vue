@@ -322,12 +322,12 @@ const filterByCard = (type) => {
   handleSearch()
 }
 
-const typeMap = { SOS:{l:'SOS求助',t:'danger'}, fall:{l:'跌倒',t:'warning'}, heartRate:{l:'心率异常',t:'primary'}, bloodOxygen:{l:'血氧异常',t:'info'}, temperature:{l:'体温异常',t:'warning'}, staticAlert:{l:'静态预警',t:'info'} }
+const typeMap = { SOS:{l:'SOS求助',t:'danger'}, fall:{l:'跌倒',t:'warning'}, heartRate:{l:'心率异常',t:'primary'}, bloodOxygen:{l:'血氧异常',t:'info'}, temperature:{l:'体温异常',t:'warning'}, bloodPressure:{l:'血压偏高',t:'danger'}, pressure:{l:'压力偏高',t:'warning'}, staticAlert:{l:'静态预警',t:'info'} }
 const typeLabel = t => typeMap[t]?.l||t||'-'
-const typeTag = t => typeMap[t]?.t||''
+const typeTag = t => typeMap[t]?.t||'primary'
 const levelMap = { 高危:{l:'高危',t:'danger'}, 中危:{l:'中危',t:'warning'}, 低危:{l:'低危',t:'info'} }
 const levelLabel = l => levelMap[l]?.l||l||'-'
-const levelTag = l => levelMap[l]?.t||'info'
+const levelTag = l => levelMap[l]?.t||'primary'
 
 // Detail drawer
 const detailVisible = ref(false)

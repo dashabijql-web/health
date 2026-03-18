@@ -1,6 +1,6 @@
 <template>
   <section class="app-main">
-    <router-view v-slot="{ Component, route }">
+    <router-view :key="$route.matched[0]?.path" v-slot="{ Component, route }">
       <transition name="fade-page">
         <component :is="Component" :key="route.path" />
       </transition>

@@ -305,6 +305,7 @@
 
 <script>
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { markRaw } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import {
   getUserList, getUserDetail, getUserStats, getUserHealthStats,
@@ -332,7 +333,7 @@ export default {
   name: 'UserList',
   data() {
     return {
-      Search, Refresh, Plus,
+      Search: markRaw(Search), Refresh: markRaw(Refresh), Plus: markRaw(Plus),
       currentTime: '',
       loading: false,
       userList: [],
