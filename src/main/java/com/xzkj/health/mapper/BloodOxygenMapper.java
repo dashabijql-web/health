@@ -56,24 +56,40 @@ public interface BloodOxygenMapper {
 
     /**
      * 获取血氧分布统计
+     * 优化：原来6次 UNION ALL 各自独立扫描 v_health_record（6次全扫）
+     *      改为单 CTE 扫描一次，再用 CASE WHEN 分组聚合（1次扫描）
      */
-    @Select("SELECT '<90' AS range, COUNT(*) AS count FROM v_health_record " +
-            "WHERE blood_oxygen < 90 AND record_time >= CONVERT(DATETIME, #{startDate}) AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            "UNION ALL " +
-            "SELECT '90-93', COUNT(*) FROM v_health_record " +
-            "WHERE blood_oxygen >= 90 AND blood_oxygen < 93 AND record_time >= CONVERT(DATETIME, #{startDate}) AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            "UNION ALL " +
-            "SELECT '93-95', COUNT(*) FROM v_health_record " +
-            "WHERE blood_oxygen >= 93 AND blood_oxygen < 95 AND record_time >= CONVERT(DATETIME, #{startDate}) AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            "UNION ALL " +
-            "SELECT '95-97', COUNT(*) FROM v_health_record " +
-            "WHERE blood_oxygen >= 95 AND blood_oxygen < 97 AND record_time >= CONVERT(DATETIME, #{startDate}) AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            "UNION ALL " +
-            "SELECT '97-99', COUNT(*) FROM v_health_record " +
-            "WHERE blood_oxygen >= 97 AND blood_oxygen < 99 AND record_time >= CONVERT(DATETIME, #{startDate}) AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            "UNION ALL " +
-            "SELECT '≥99', COUNT(*) FROM v_health_record " +
-            "WHERE blood_oxygen >= 99 AND record_time >= CONVERT(DATETIME, #{startDate}) AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
+    @Select("WITH Base AS ( " +
+            "  SELECT blood_oxygen " +
+            "  FROM v_health_record " +
+            "  WHERE blood_oxygen IS NOT NULL " +
+            "  AND record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "  AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            "), " +
+            "Grouped AS ( " +
+            "  SELECT " +
+            "    CASE " +
+            "      WHEN blood_oxygen <  90 THEN '<90' " +
+            "      WHEN blood_oxygen <  93 THEN '90-93' " +
+            "      WHEN blood_oxygen <  95 THEN '93-95' " +
+            "      WHEN blood_oxygen <  97 THEN '95-97' " +
+            "      WHEN blood_oxygen <  99 THEN '97-99' " +
+            "      ELSE '≥99' " +
+            "    END AS range, " +
+            "    CASE " +
+            "      WHEN blood_oxygen <  90 THEN 1 " +
+            "      WHEN blood_oxygen <  93 THEN 2 " +
+            "      WHEN blood_oxygen <  95 THEN 3 " +
+            "      WHEN blood_oxygen <  97 THEN 4 " +
+            "      WHEN blood_oxygen <  99 THEN 5 " +
+            "      ELSE 6 " +
+            "    END AS sort_order " +
+            "  FROM Base " +
+            ") " +
+            "SELECT range, COUNT(*) AS count " +
+            "FROM Grouped " +
+            "GROUP BY range, sort_order " +
+            "ORDER BY sort_order")
     List<Map<String, Object>> getBloodOxygenDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**

@@ -42,6 +42,32 @@ public interface HeartRateMapper {
     Map<String, Object> getHeartRateOverview(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
+     * 获取心率概览统计 — 直接查分区表，避免扫 v_health_record UNION ALL 视图
+     * 优化：使用 ${tableSource} 参数化表名，由 Service 层路由到对应月份分区表
+     */
+    @Select("WITH HeartData AS ( " +
+            "  SELECT user_code, heart_rate " +
+            "  FROM ${tableSource} " +
+            "  WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "  AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            ") " +
+            "SELECT " +
+            "COALESCE(CAST(AVG(CAST(CASE WHEN heart_rate > 0 THEN CAST(heart_rate AS FLOAT) END) AS FLOAT) AS INT), 0) AS avgHeartRate, " +
+            "COALESCE(MIN(CASE WHEN heart_rate > 0 THEN heart_rate END), 0) AS minHeartRate, " +
+            "COALESCE(MAX(CASE WHEN heart_rate > 0 THEN heart_rate END), 0) AS maxHeartRate, " +
+            "COALESCE(CAST(" +
+            "  COUNT(DISTINCT CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 THEN user_code END) * 100.0 / " +
+            "  NULLIF(COUNT(DISTINCT user_code), 0)" +
+            "AS INT), 0) AS detectionRate, " +
+            "COALESCE(SUM(CASE WHEN heart_rate BETWEEN 55 AND 120 THEN 1 ELSE 0 END), 0) AS normalCount, " +
+            "COALESCE(SUM(CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 AND (heart_rate < 55 OR heart_rate > 120) THEN 1 ELSE 0 END), 0) AS abnormalCount, " +
+            "COUNT(CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 THEN 1 END) AS totalCount " +
+            "FROM HeartData")
+    Map<String, Object> getHeartRateOverviewDirect(@Param("tableSource") String tableSource,
+                                                    @Param("startDate") String startDate,
+                                                    @Param("endDate") String endDate);
+
+    /**
      * 获取TOP N心率异常人员统计
      * 返回: userName, count (异常次数), anomalyDays (异常天数)
      */
@@ -64,6 +90,7 @@ public interface HeartRateMapper {
     /**
      * 按日统计心率异常人次
      * 返回: date (YYYY-MM-DD), anomalyCount
+     * 优化：去掉 CAST(record_time AS DATE) 函数包装（禁止索引），改用直接范围比较（允许索引扫描）
      */
     @Select("SELECT " +
             "CONVERT(VARCHAR(10), record_time, 23) AS date, " +
@@ -71,8 +98,8 @@ public interface HeartRateMapper {
             "FROM v_health_record " +
             "WHERE heart_rate IS NOT NULL AND heart_rate > 0 " +
             "AND (heart_rate < 55 OR heart_rate > 120) " +
-            "AND CAST(record_time AS DATE) >= CONVERT(DATE, #{startDate}) " +
-            "AND CAST(record_time AS DATE) <= CONVERT(DATE, #{endDate}) " +
+            "AND record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
             "GROUP BY CONVERT(VARCHAR(10), record_time, 23) " +
             "ORDER BY date")
     List<Map<String, Object>> getDailyAnomalyCount(@Param("startDate") String startDate, @Param("endDate") String endDate);

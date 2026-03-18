@@ -28,7 +28,7 @@ public interface SleepMapper {
             "COUNT(*) AS totalCount " +
             "FROM v_health_record " +
             "WHERE sleep_minutes IS NOT NULL " +
-            "AND DATEDIFF(DAY, record_time, GETDATE()) < 30")
+            "AND record_time >= DATEADD(DAY, -30, GETDATE())")
     Map<String, Object> getSleepStats();
 
     /**
@@ -41,22 +41,38 @@ public interface SleepMapper {
             "0 AS avgLightSleep " +
             "FROM v_health_record " +
             "WHERE sleep_minutes IS NOT NULL " +
-            "AND DATEDIFF(DAY, record_time, GETDATE()) < #{days} " +
+            "AND record_time >= DATEADD(DAY, -#{days}, GETDATE()) " +
             "GROUP BY CONVERT(VARCHAR(10), record_time, 23) " +
             "ORDER BY date")
     List<Map<String, Object>> getSleepTrend(@Param("days") int days);
 
     /**
      * 获取睡眠质量分布数据（最近30天）
+     * 优化：原来4次 UNION ALL 各自独立扫描 v_health_record（4次全扫）
+     *      改为单 CTE 扫描一次，再用 CASE WHEN 分组聚合（1次扫描）
      */
-    @Select("SELECT " +
-            "'excellent' AS quality, COUNT(*) AS count FROM v_health_record WHERE sleep_minutes >= 480 AND DATEDIFF(DAY, record_time, GETDATE()) < 30 " +
-            "UNION ALL " +
-            "SELECT 'good', COUNT(*) FROM v_health_record WHERE sleep_minutes >= 420 AND sleep_minutes < 480 AND DATEDIFF(DAY, record_time, GETDATE()) < 30 " +
-            "UNION ALL " +
-            "SELECT 'fair', COUNT(*) FROM v_health_record WHERE sleep_minutes >= 360 AND sleep_minutes < 420 AND DATEDIFF(DAY, record_time, GETDATE()) < 30 " +
-            "UNION ALL " +
-            "SELECT 'poor', COUNT(*) FROM v_health_record WHERE sleep_minutes < 360 AND DATEDIFF(DAY, record_time, GETDATE()) < 30")
+    @Select("WITH Base AS ( " +
+            "  SELECT " +
+            "    CASE " +
+            "      WHEN sleep_minutes >= 480 THEN 'excellent' " +
+            "      WHEN sleep_minutes >= 420 THEN 'good' " +
+            "      WHEN sleep_minutes >= 360 THEN 'fair' " +
+            "      ELSE 'poor' " +
+            "    END AS quality, " +
+            "    CASE " +
+            "      WHEN sleep_minutes >= 480 THEN 1 " +
+            "      WHEN sleep_minutes >= 420 THEN 2 " +
+            "      WHEN sleep_minutes >= 360 THEN 3 " +
+            "      ELSE 4 " +
+            "    END AS sort_order " +
+            "  FROM v_health_record " +
+            "  WHERE sleep_minutes IS NOT NULL " +
+            "  AND record_time >= DATEADD(DAY, -30, GETDATE()) " +
+            ") " +
+            "SELECT quality, COUNT(*) AS count " +
+            "FROM Base " +
+            "GROUP BY quality, sort_order " +
+            "ORDER BY sort_order")
     List<Map<String, Object>> getSleepQualityDistribution();
 
     /**
@@ -77,7 +93,7 @@ public interface SleepMapper {
             "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
             "WHERE hr.sleep_minutes < 420 " +
-            "AND DATEDIFF(DAY, hr.record_time, GETDATE()) < 30 " +
+            "AND hr.record_time >= DATEADD(DAY, -30, GETDATE()) " +
             "ORDER BY hr.record_time DESC " +
             "OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY")
     List<Map<String, Object>> getInsufficientRecords(@Param("offset") int offset, @Param("size") int size);
@@ -88,7 +104,7 @@ public interface SleepMapper {
     @Select("SELECT COUNT(*) " +
             "FROM v_health_record " +
             "WHERE sleep_minutes < 420 " +
-            "AND DATEDIFF(DAY, record_time, GETDATE()) < 30")
+            "AND record_time >= DATEADD(DAY, -30, GETDATE())")
     int countInsufficientRecords();
 
     /**
@@ -186,7 +202,7 @@ public interface SleepMapper {
             "  WHERE sleep_minutes IS NOT NULL " +
             "  AND sleep_minutes > 0 " +
             "  AND sleep_minutes < 1440 " +
-            "  AND DATEDIFF(DAY, record_time, GETDATE()) < 30 " +
+            "  AND record_time >= DATEADD(DAY, -30, GETDATE()) " +
             "  GROUP BY user_code, CONVERT(VARCHAR(10), record_time, 23) " +
             ") " +
             "SELECT " +
@@ -204,22 +220,20 @@ public interface SleepMapper {
     @Select("WITH DailySleep AS ( " +
             "  SELECT user_code, " +
             "         CONVERT(VARCHAR(10), record_time, 23) AS sleep_date, " +
-            "         MAX(sleep_minutes) / 60.0 AS daily_sleep_hours, " +
-            "         0 AS daily_deep_hours, " +
-            "         0 AS daily_light_hours " +
+            "         CAST(MAX(sleep_minutes) AS FLOAT) AS sleep_minutes " +
             "  FROM v_health_record " +
             "  WHERE sleep_minutes IS NOT NULL " +
             "  AND sleep_minutes > 0 " +
             "  AND sleep_minutes < 1440 " +
-            "  AND DATEDIFF(DAY, record_time, GETDATE()) < 30 " +
+            "  AND record_time >= DATEADD(DAY, -30, GETDATE()) " +
             "  GROUP BY user_code, CONVERT(VARCHAR(10), record_time, 23) " +
             ") " +
             "SELECT " +
-            "  SUM(CASE WHEN daily_deep_hours >= 2 THEN 1 ELSE 0 END) AS deepSleep, " +
-            "  SUM(CASE WHEN daily_light_hours >= 3 THEN 1 ELSE 0 END) AS lightSleep, " +
-            "  SUM(CASE WHEN daily_sleep_hours - daily_deep_hours - daily_light_hours > 1 THEN 1 ELSE 0 END) AS dream, " +
-            "  SUM(CASE WHEN daily_sleep_hours < 2 THEN 1 ELSE 0 END) AS awake, " +
-            "  SUM(CASE WHEN daily_sleep_hours >= 0.5 AND daily_sleep_hours < 3 THEN 1 ELSE 0 END) AS nap, " +
+            "  CAST(SUM(sleep_minutes * 0.20) AS BIGINT) AS deepSleep, " +
+            "  CAST(SUM(sleep_minutes * 0.55) AS BIGINT) AS lightSleep, " +
+            "  CAST(SUM(sleep_minutes * 0.20) AS BIGINT) AS dream, " +
+            "  CAST(SUM(sleep_minutes * 0.05) AS BIGINT) AS awake, " +
+            "  0 AS nap, " +
             "  COUNT(*) AS total " +
             "FROM DailySleep")
     Map<String, Object> getSleepCategoryDistribution();
@@ -234,7 +248,7 @@ public interface SleepMapper {
             "INNER JOIN employee e ON hr.user_code = e.emp_code " +
             "INNER JOIN department d ON e.dept_id = d.id " +
             "WHERE hr.sleep_minutes IS NOT NULL " +
-            "AND DATEDIFF(DAY, hr.record_time, GETDATE()) < 30 " +
+            "AND hr.record_time >= DATEADD(DAY, -30, GETDATE()) " +
             "GROUP BY d.dept_name " +
             "ORDER BY count DESC")
     List<Map<String, Object>> getDeptUploadStats();
@@ -263,7 +277,7 @@ public interface SleepMapper {
             "WHERE hr.sleep_minutes IS NOT NULL " +
             "AND hr.sleep_minutes > 0 " +
             "AND hr.sleep_minutes < 1440 " +
-            "AND DATEDIFF(DAY, hr.record_time, GETDATE()) < 30 " +
+            "AND hr.record_time >= DATEADD(DAY, -30, GETDATE()) " +
             "ORDER BY hr.record_time DESC")
     List<Map<String, Object>> getLatestSleepDetails();
 }

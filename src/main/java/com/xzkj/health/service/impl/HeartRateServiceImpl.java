@@ -22,7 +22,9 @@ public class HeartRateServiceImpl implements HeartRateService {
 
     @Override
     public Map<String, Object> getHeartRateOverview(String startDate, String endDate) {
-        return heartRateMapper.getHeartRateOverview(startDate, endDate);
+        // 优化：路由到分区表，避免 v_health_record UNION ALL 全扫描
+        String tblSrc = heartRateTableSourceByRange(startDate, endDate);
+        return heartRateMapper.getHeartRateOverviewDirect(tblSrc, startDate, endDate);
     }
 
     @Override

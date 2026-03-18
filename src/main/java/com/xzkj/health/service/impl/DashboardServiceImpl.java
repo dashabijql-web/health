@@ -68,7 +68,8 @@ public class DashboardServiceImpl implements DashboardService {
     public Map<String, Object> getCurrentMonthCounts(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
-        Map<String, Object> data = dashboardMapper.getCountsByRange(s, e);
+        // 优化：路由到分区表，避免 v_health_record UNION ALL 全扫描
+        Map<String, Object> data = dashboardMapper.getCountsByRangeDirect(healthSource(s, e), s, e);
 
         Map<String, Object> result = new HashMap<>();
         MapValueUtil.copyIntFields(data, result,

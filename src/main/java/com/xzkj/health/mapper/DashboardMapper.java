@@ -34,6 +34,23 @@ public interface DashboardMapper {
                                          @Param("endTime")   String endTime);
 
     /**
+     * 获取指定日期范围内各指标有记录的人次 — 直接查分区表，避免 v_health_record UNION ALL 全扫描
+     */
+    @Select("SELECT " +
+            "COUNT(CASE WHEN heart_rate   IS NOT NULL THEN 1 END) AS heartRate, " +
+            "COUNT(CASE WHEN blood_oxygen IS NOT NULL THEN 1 END) AS bloodOxygen, " +
+            "COUNT(CASE WHEN sleep_minutes IS NOT NULL THEN 1 END) AS sleep, " +
+            "COUNT(CASE WHEN steps        IS NOT NULL THEN 1 END) AS steps, " +
+            "COUNT(CASE WHEN temperature  IS NOT NULL THEN 1 END) AS temperature, " +
+            "COUNT(CASE WHEN pressure     IS NOT NULL THEN 1 END) AS pressure " +
+            "FROM ${healthSource} " +
+            "WHERE record_time >= CONVERT(date, #{startTime}) " +
+            "AND   record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime}))")
+    Map<String, Object> getCountsByRangeDirect(@Param("healthSource") String healthSource,
+                                               @Param("startTime")    String startTime,
+                                               @Param("endTime")      String endTime);
+
+    /**
      * 获取指定日期范围内各指标平均值
      */
     @Select("SELECT " +
