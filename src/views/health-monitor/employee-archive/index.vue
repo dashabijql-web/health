@@ -164,12 +164,12 @@
           <el-col :span="24">
             <el-form-item label="既往病史">
               <el-checkbox-group v-model="form.medicalHistory">
-                <el-checkbox label="高血压">高血压</el-checkbox>
-                <el-checkbox label="糖尿病">糖尿病</el-checkbox>
-                <el-checkbox label="心脏病">心脏病</el-checkbox>
-                <el-checkbox label="哮喘">哮喘</el-checkbox>
-                <el-checkbox label="颈椎病">颈椎病</el-checkbox>
-                <el-checkbox label="腰椎病">腰椎病</el-checkbox>
+                <el-checkbox value="高血压">高血压</el-checkbox>
+                <el-checkbox value="糖尿病">糖尿病</el-checkbox>
+                <el-checkbox value="心脏病">心脏病</el-checkbox>
+                <el-checkbox value="哮喘">哮喘</el-checkbox>
+                <el-checkbox value="颈椎病">颈椎病</el-checkbox>
+                <el-checkbox value="腰椎病">腰椎病</el-checkbox>
               </el-checkbox-group>
             </el-form-item>
           </el-col>
