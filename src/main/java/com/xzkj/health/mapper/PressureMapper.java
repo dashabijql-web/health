@@ -62,6 +62,7 @@ public interface PressureMapper {
 
     /** TOP N 高压力人员 */
     @Select("SELECT TOP (#{limit}) " +
+            "hr.user_code AS userCode, " +
             "ISNULL(e.emp_name, hr.user_code) AS userName, " +
             "ISNULL(d.dept_name, '') AS deptName, " +
             "CAST(AVG(CAST(hr.pressure AS FLOAT)) AS INT) AS avgPressure, " +
@@ -121,6 +122,7 @@ public interface PressureMapper {
 
     /** 实时压力列表（近2小时最新记录） */
     @Select("SELECT TOP (#{limit}) " +
+            "hr.user_code AS userCode, " +
             "ISNULL(e.emp_name, hr.user_code) AS userName, " +
             "ISNULL(d.dept_name, '') AS deptName, " +
             "hr.pressure, " +
@@ -138,7 +140,8 @@ public interface PressureMapper {
             "CAST(AVG(CAST(pressure AS FLOAT)) AS INT) AS avgPressure " +
             "FROM v_health_record " +
             "WHERE pressure IS NOT NULL AND pressure > 0 " +
-            "AND CONVERT(DATE, record_time) = CONVERT(DATE, #{date}) " +
+            "AND record_time >= CONVERT(DATETIME, #{date}) " +
+            "AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{date})) " +
             "GROUP BY DATEPART(HOUR, record_time) " +
             "ORDER BY hour")
     List<Map<String, Object>> getHourlyStats(@Param("date") String date);

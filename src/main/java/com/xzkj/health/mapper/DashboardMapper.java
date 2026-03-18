@@ -410,7 +410,8 @@ public interface DashboardMapper {
             "FROM v_health_record hr " +
             "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
-            "WHERE CAST(hr.record_time AS DATE) = CAST(#{date} AS DATE) " +
+            "WHERE hr.record_time >= CONVERT(DATETIME, #{date}) " +
+            "AND hr.record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{date})) " +
             "AND hr.heart_rate IS NOT NULL " +
             "GROUP BY hr.user_code, e.emp_name, d.dept_name " +
             "ORDER BY ABS(AVG(CAST(hr.heart_rate AS FLOAT)) - 80) DESC")
@@ -424,7 +425,8 @@ public interface DashboardMapper {
             "FROM v_health_record hr " +
             "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
-            "WHERE CAST(hr.record_time AS DATE) = CAST(#{date} AS DATE) " +
+            "WHERE hr.record_time >= CONVERT(DATETIME, #{date}) " +
+            "AND hr.record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{date})) " +
             "AND hr.blood_oxygen IS NOT NULL " +
             "GROUP BY hr.user_code, e.emp_name, d.dept_name " +
             "ORDER BY AVG(CAST(hr.blood_oxygen AS FLOAT)) ASC")
@@ -438,7 +440,8 @@ public interface DashboardMapper {
             "FROM v_health_record hr " +
             "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
-            "WHERE CAST(hr.record_time AS DATE) = CAST(#{date} AS DATE) " +
+            "WHERE hr.record_time >= CONVERT(DATETIME, #{date}) " +
+            "AND hr.record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{date})) " +
             "AND hr.steps IS NOT NULL " +
             "GROUP BY hr.user_code, e.emp_name, d.dept_name " +
             "ORDER BY AVG(CAST(hr.steps AS FLOAT)) ASC")
@@ -456,7 +459,8 @@ public interface DashboardMapper {
             "FROM v_warning_record w " +
             "LEFT JOIN employee e ON w.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
-            "WHERE CAST(w.create_time AS DATE) = CAST(#{date} AS DATE) " +
+            "WHERE w.create_time >= CONVERT(DATETIME, #{date}) " +
+            "AND w.create_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{date})) " +
             "ORDER BY CASE w.warning_level " +
             "  WHEN '危急' THEN 5 WHEN '高危' THEN 4 " +
             "  WHEN '高'   THEN 4 WHEN '危险' THEN 3 " +

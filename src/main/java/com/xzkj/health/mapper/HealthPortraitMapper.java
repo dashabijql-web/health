@@ -20,25 +20,42 @@ public interface HealthPortraitMapper {
             "WHERE e.emp_code = #{empCode}")
     Map<String, Object> getEmployeeDetail(@Param("empCode") String empCode);
 
-    @Select("SELECT TOP 1 " +
-            "heart_rate AS heartRate, " +
-            "blood_oxygen AS bloodOxygen, " +
-            "CAST(temperature AS FLOAT) / 10.0 AS temperature, " +
-            "blood_pressure_high AS systolic, " +
-            "blood_pressure_low AS diastolic, " +
-            "pressure, steps, calories " +
-            "FROM v_health_record " +
-            "WHERE user_code = #{empCode} " +
-            "AND record_time >= DATEADD(DAY, -30, GETDATE()) " +
-            "ORDER BY record_time DESC")
+    @Select("WITH Base AS ( " +
+            "  SELECT heart_rate, blood_oxygen, temperature, blood_pressure_high, blood_pressure_low, pressure, steps, calories, record_time, " +
+            "    ROW_NUMBER() OVER (ORDER BY record_time DESC) AS rn_any, " +
+            "    ROW_NUMBER() OVER (PARTITION BY CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 THEN 1 END ORDER BY record_time DESC) AS rn_hr, " +
+            "    ROW_NUMBER() OVER (PARTITION BY CASE WHEN blood_oxygen IS NOT NULL AND blood_oxygen > 0 THEN 1 END ORDER BY record_time DESC) AS rn_bo, " +
+            "    ROW_NUMBER() OVER (PARTITION BY CASE WHEN temperature IS NOT NULL AND temperature > 0 THEN 1 END ORDER BY record_time DESC) AS rn_tp, " +
+            "    ROW_NUMBER() OVER (PARTITION BY CASE WHEN blood_pressure_high IS NOT NULL AND blood_pressure_high > 0 THEN 1 END ORDER BY record_time DESC) AS rn_bph, " +
+            "    ROW_NUMBER() OVER (PARTITION BY CASE WHEN blood_pressure_low IS NOT NULL AND blood_pressure_low > 0 THEN 1 END ORDER BY record_time DESC) AS rn_bpl, " +
+            "    ROW_NUMBER() OVER (PARTITION BY CASE WHEN pressure IS NOT NULL THEN 1 END ORDER BY record_time DESC) AS rn_pr, " +
+            "    ROW_NUMBER() OVER (PARTITION BY CASE WHEN steps IS NOT NULL THEN 1 END ORDER BY record_time DESC) AS rn_st, " +
+            "    ROW_NUMBER() OVER (PARTITION BY CASE WHEN calories IS NOT NULL THEN 1 END ORDER BY record_time DESC) AS rn_cal " +
+            "  FROM v_health_record " +
+            "  WHERE user_code = #{empCode} " +
+            "  AND record_time >= DATEADD(DAY, -30, GETDATE()) " +
+            ") " +
+            "SELECT " +
+            "  MAX(CASE WHEN rn_hr  = 1 AND heart_rate IS NOT NULL AND heart_rate > 0 THEN heart_rate END) AS heartRate, " +
+            "  MAX(CASE WHEN rn_bo  = 1 AND blood_oxygen IS NOT NULL AND blood_oxygen > 0 THEN blood_oxygen END) AS bloodOxygen, " +
+            "  MAX(CASE WHEN rn_tp  = 1 AND temperature IS NOT NULL AND temperature > 0 THEN CAST(temperature AS FLOAT) / 10.0 END) AS temperature, " +
+            "  MAX(CASE WHEN rn_bph = 1 AND blood_pressure_high IS NOT NULL AND blood_pressure_high > 0 THEN blood_pressure_high END) AS systolic, " +
+            "  MAX(CASE WHEN rn_bpl = 1 AND blood_pressure_low  IS NOT NULL AND blood_pressure_low  > 0 THEN blood_pressure_low  END) AS diastolic, " +
+            "  MAX(CASE WHEN rn_pr  = 1 AND pressure IS NOT NULL THEN pressure END) AS pressure, " +
+            "  MAX(CASE WHEN rn_st  = 1 AND steps    IS NOT NULL THEN steps    END) AS steps, " +
+            "  MAX(CASE WHEN rn_cal = 1 AND calories IS NOT NULL THEN calories END) AS calories " +
+            "FROM Base")
     Map<String, Object> getLatestVitals(@Param("empCode") String empCode);
 
-    @Select("SELECT " +
-            "ISNULL(MAX(steps), 0) AS todaySteps, " +
-            "ISNULL(MAX(calories), 0) AS todayCalories " +
+    @Select("SELECT TOP 1 " +
+            "ISNULL(steps, 0) AS todaySteps, " +
+            "ISNULL(calories, 0) AS todayCalories " +
             "FROM v_health_record " +
             "WHERE user_code = #{empCode} " +
-            "AND CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)")
+            "AND record_time >= CONVERT(DATETIME, CONVERT(DATE, GETDATE())) " +
+            "AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, CONVERT(DATE, GETDATE()))) " +
+            "AND (steps IS NOT NULL OR calories IS NOT NULL) " +
+            "ORDER BY record_time DESC")
     Map<String, Object> getTodayExercise(@Param("empCode") String empCode);
 
     @Select("SELECT CONVERT(VARCHAR(10), record_time, 120) AS date, " +
@@ -68,7 +85,8 @@ public interface HealthPortraitMapper {
             "AVG(CAST(heart_rate AS FLOAT)) AS avgHr " +
             "FROM v_health_record " +
             "WHERE user_code = #{empCode} " +
-            "AND CAST(record_time AS DATE) = #{date} " +
+            "AND record_time >= CONVERT(DATETIME, #{date}) " +
+            "AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{date})) " +
             "AND heart_rate IS NOT NULL AND heart_rate > 0 " +
             "GROUP BY DATEPART(HOUR, record_time) " +
             "ORDER BY hour ASC")

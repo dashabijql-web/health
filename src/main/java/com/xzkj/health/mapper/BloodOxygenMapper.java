@@ -115,6 +115,7 @@ public interface BloodOxygenMapper {
      * 获取TOP异常人员统计
      */
     @Select("SELECT TOP (#{limit}) " +
+            "hr.user_code AS userCode, " +
             "ISNULL(e.emp_name, hr.user_code) AS userName, " +
             "COUNT(*) AS count " +
             "FROM v_health_record hr " +
@@ -163,7 +164,8 @@ public interface BloodOxygenMapper {
             "INNER JOIN employee e ON hr.user_code = e.emp_code " +
             "WHERE hr.blood_oxygen IS NOT NULL AND hr.blood_oxygen > 0 " +
             "AND e.birth_date IS NOT NULL " +
-            "AND hr.record_time >= DATEADD(DAY, -30, GETDATE()) " +
+            "AND hr.record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND hr.record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
             "GROUP BY " +
             "CASE " +
             "  WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 30 THEN '20-30' " +
@@ -172,12 +174,13 @@ public interface BloodOxygenMapper {
             "  ELSE '50+' " +
             "END " +
             "ORDER BY MIN(DATEDIFF(YEAR, e.birth_date, GETDATE()))")
-    List<Map<String, Object>> getAgeDistribution();
+    List<Map<String, Object>> getAgeDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取实时血氧数据
      */
     @Select("SELECT TOP (#{limit}) " +
+            "hr.user_code AS userCode, " +
             "ISNULL(e.emp_name, hr.user_code) AS userName, " +
             "ISNULL(d.dept_name, '') AS deptName, " +
             "hr.blood_oxygen AS bloodOxygen, " +
@@ -205,6 +208,7 @@ public interface BloodOxygenMapper {
 
     /** 实时血氧列表（近2小时最新记录，按时间倒序） */
     @Select("SELECT TOP (#{limit}) " +
+            "hr.user_code AS userCode, " +
             "ISNULL(e.emp_name, hr.user_code) AS userName, " +
             "ISNULL(d.dept_name, '') AS deptName, " +
             "hr.blood_oxygen AS bloodOxygen, " +

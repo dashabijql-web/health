@@ -96,6 +96,7 @@ public interface BloodPressureMapper {
 
     /** TOP N 高收缩压人员 */
     @Select("SELECT TOP (#{limit}) " +
+            "hr.user_code AS userCode, " +
             "ISNULL(e.emp_name, hr.user_code) AS userName, " +
             "ISNULL(d.dept_name, '') AS deptName, " +
             "CAST(AVG(CAST(hr.blood_pressure_high AS FLOAT)) AS INT) AS avgSystolic, " +
@@ -161,6 +162,7 @@ public interface BloodPressureMapper {
 
     /** 实时血压列表（近2小时最新记录，按时间倒序） */
     @Select("SELECT TOP (#{limit}) " +
+            "hr.user_code AS userCode, " +
             "ISNULL(e.emp_name, hr.user_code) AS userName, " +
             "ISNULL(d.dept_name, '') AS deptName, " +
             "hr.blood_pressure_high AS systolic, " +
@@ -180,7 +182,8 @@ public interface BloodPressureMapper {
             "CAST(AVG(CAST(blood_pressure_low  AS FLOAT)) AS INT) AS avgDiastolic " +
             "FROM v_health_record " +
             "WHERE blood_pressure_high IS NOT NULL AND blood_pressure_high > 0 " +
-            "AND CONVERT(DATE, record_time) = CONVERT(DATE, #{date}) " +
+            "AND record_time >= CONVERT(DATETIME, #{date}) " +
+            "AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{date})) " +
             "GROUP BY DATEPART(HOUR, record_time) " +
             "ORDER BY hour")
     List<Map<String, Object>> getHourlyStats(@Param("date") String date);
