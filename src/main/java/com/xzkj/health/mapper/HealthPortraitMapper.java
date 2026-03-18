@@ -26,19 +26,16 @@ public interface HealthPortraitMapper {
             "CAST(temperature AS FLOAT) / 10.0 AS temperature, " +
             "blood_pressure_high AS systolic, " +
             "blood_pressure_low AS diastolic, " +
-            "pressure, " +
-            "steps, " +
-            "calories, " +
-            "record_time AS recordTime " +
+            "pressure, steps, calories " +
             "FROM v_health_record " +
             "WHERE user_code = #{empCode} " +
-            "AND (heart_rate IS NOT NULL OR blood_oxygen IS NOT NULL OR temperature IS NOT NULL) " +
+            "AND record_time >= DATEADD(DAY, -30, GETDATE()) " +
             "ORDER BY record_time DESC")
     Map<String, Object> getLatestVitals(@Param("empCode") String empCode);
 
     @Select("SELECT " +
-            "ISNULL(SUM(steps), 0) AS todaySteps, " +
-            "ISNULL(SUM(calories), 0) AS todayCalories " +
+            "ISNULL(MAX(steps), 0) AS todaySteps, " +
+            "ISNULL(MAX(calories), 0) AS todayCalories " +
             "FROM v_health_record " +
             "WHERE user_code = #{empCode} " +
             "AND CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)")
