@@ -225,7 +225,6 @@
       </div>
 
     </section>
-  </div>
 
   <!-- ══ 睡眠记录详情弹窗 ══ -->
   <el-dialog
@@ -259,6 +258,7 @@
       <el-button @click="recordDialog.visible = false">关闭</el-button>
     </template>
   </el-dialog>
+</div><!-- /sl-root -->
 </template>
 
 <script>

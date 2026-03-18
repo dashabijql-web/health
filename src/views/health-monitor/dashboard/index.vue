@@ -389,7 +389,6 @@
 
     </div><!-- /dm-bd -->
   </div><!-- /dm-root -->
-  </div><!-- /dm-outer -->
 
   <!-- ══ 全矿 AI 报告弹窗 ══ -->
   <el-dialog v-model="mineAiDialogVisible" title="AI 全矿健康分析报告" width="640px" :append-to-body="true">
@@ -629,6 +628,8 @@
     <div v-loading="warnCurveModal.loading" ref="warnCurveChartRef" style="width:100%;height:360px;margin-top:12px"></div>
     <div v-if="!warnCurveModal.loading && !warnCurveModal.hasData" style="text-align:center;color:#4a6080;padding:60px 0;font-size:13px">该时段暂无健康记录数据</div>
   </el-dialog>
+
+  </div><!-- /dm-outer -->
 
 </template>
 
