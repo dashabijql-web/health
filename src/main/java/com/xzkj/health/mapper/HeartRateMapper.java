@@ -21,31 +21,35 @@ public interface HeartRateMapper {
      * 获取心率概览统计
      * 返回: avgHeartRate, detectionRate, minHeartRate, maxHeartRate, normalCount, abnormalCount, totalCount
      */
-    @Select("SELECT " +
-            "COALESCE(CAST(AVG(CAST(heart_rate AS FLOAT)) AS INT), 0) AS avgHeartRate, " +
-            "COALESCE(MIN(heart_rate), 0) AS minHeartRate, " +
-            "COALESCE(MAX(heart_rate), 0) AS maxHeartRate, " +
-            "COALESCE(CAST(COUNT(DISTINCT user_code) * 100.0 / " +
-            "  NULLIF((SELECT COUNT(DISTINCT user_code) FROM v_health_record " +
-            "    WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
-            "    AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))), 0) AS INT), 0) AS detectionRate, " +
+    @Select("WITH HeartData AS ( " +
+            "  SELECT user_code, heart_rate " +
+            "  FROM v_health_record " +
+            "  WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "  AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            ") " +
+            "SELECT " +
+            "COALESCE(CAST(AVG(CAST(CASE WHEN heart_rate > 0 THEN CAST(heart_rate AS FLOAT) END) AS FLOAT) AS INT), 0) AS avgHeartRate, " +
+            "COALESCE(MIN(CASE WHEN heart_rate > 0 THEN heart_rate END), 0) AS minHeartRate, " +
+            "COALESCE(MAX(CASE WHEN heart_rate > 0 THEN heart_rate END), 0) AS maxHeartRate, " +
+            "COALESCE(CAST(" +
+            "  COUNT(DISTINCT CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 THEN user_code END) * 100.0 / " +
+            "  NULLIF(COUNT(DISTINCT user_code), 0)" +
+            "AS INT), 0) AS detectionRate, " +
             "COALESCE(SUM(CASE WHEN heart_rate BETWEEN 55 AND 120 THEN 1 ELSE 0 END), 0) AS normalCount, " +
-            "COALESCE(SUM(CASE WHEN heart_rate < 55 OR heart_rate > 120 THEN 1 ELSE 0 END), 0) AS abnormalCount, " +
-            "COUNT(*) AS totalCount " +
-            "FROM v_health_record " +
-            "WHERE heart_rate IS NOT NULL " +
-            "AND heart_rate > 0 " +
-            "AND record_time >= CONVERT(DATETIME, #{startDate}) " +
-            "AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
+            "COALESCE(SUM(CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 AND (heart_rate < 55 OR heart_rate > 120) THEN 1 ELSE 0 END), 0) AS abnormalCount, " +
+            "COUNT(CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 THEN 1 END) AS totalCount " +
+            "FROM HeartData")
     Map<String, Object> getHeartRateOverview(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取TOP N心率异常人员统计
-     * 返回: userName, count (异常次数)
+     * 返回: userName, count (异常次数), anomalyDays (异常天数)
      */
     @Select("SELECT TOP (#{limit}) " +
+            "hr.user_code AS userCode, " +
             "ISNULL(e.emp_name, hr.user_code) AS userName, " +
-            "COUNT(*) AS count " +
+            "COUNT(*) AS count, " +
+            "COUNT(DISTINCT CAST(hr.record_time AS DATE)) AS anomalyDays " +
             "FROM v_health_record hr " +
             "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
             "WHERE hr.heart_rate IS NOT NULL " +
@@ -56,6 +60,22 @@ public interface HeartRateMapper {
             "GROUP BY hr.user_code, e.emp_name " +
             "ORDER BY count DESC")
     List<Map<String, Object>> getTopUsers(@Param("limit") int limit, @Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    /**
+     * 按日统计心率异常人次
+     * 返回: date (YYYY-MM-DD), anomalyCount
+     */
+    @Select("SELECT " +
+            "CONVERT(VARCHAR(10), record_time, 23) AS date, " +
+            "COUNT(DISTINCT user_code) AS anomalyCount " +
+            "FROM v_health_record " +
+            "WHERE heart_rate IS NOT NULL AND heart_rate > 0 " +
+            "AND (heart_rate < 55 OR heart_rate > 120) " +
+            "AND CAST(record_time AS DATE) >= CONVERT(DATE, #{startDate}) " +
+            "AND CAST(record_time AS DATE) <= CONVERT(DATE, #{endDate}) " +
+            "GROUP BY CONVERT(VARCHAR(10), record_time, 23) " +
+            "ORDER BY date")
+    List<Map<String, Object>> getDailyAnomalyCount(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取年龄段心率统计（关联 employee.birth_date 计算真实年龄）
@@ -73,7 +93,8 @@ public interface HeartRateMapper {
             "INNER JOIN employee e ON hr.user_code = e.emp_code " +
             "WHERE hr.heart_rate IS NOT NULL AND hr.heart_rate > 0 " +
             "AND e.birth_date IS NOT NULL " +
-            "AND hr.record_time >= DATEADD(DAY, -30, GETDATE()) " +
+            "AND CAST(hr.record_time AS DATE) >= CONVERT(DATE, #{startDate}) " +
+            "AND CAST(hr.record_time AS DATE) <= CONVERT(DATE, #{endDate}) " +
             "GROUP BY " +
             "CASE " +
             "  WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 30 THEN '20-30' " +
@@ -82,7 +103,7 @@ public interface HeartRateMapper {
             "  ELSE '50+' " +
             "END " +
             "ORDER BY MIN(DATEDIFF(YEAR, e.birth_date, GETDATE()))")
-    List<Map<String, Object>> getAgeDistribution();
+    List<Map<String, Object>> getAgeDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取心率分布统计(新版 - 北路风格)
@@ -152,6 +173,7 @@ public interface HeartRateMapper {
      * 返回: userName, heartRate, recordTime
      */
     @Select("SELECT TOP (#{limit}) " +
+            "hr.user_code AS userCode, " +
             "ISNULL(e.emp_name, hr.user_code) AS userName, " +
             "hr.heart_rate AS heartRate, " +
             "hr.record_time AS recordTime " +
@@ -259,17 +281,27 @@ public interface HeartRateMapper {
             "ORDER BY hour")
     List<Map<String, Object>> getHourlyStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
-    /** 实时心率列表（近2小时最新记录，按时间倒序） */
+    /** 实时心率列表：每人取最新一条（近2小时），用窗口函数去重 */
     @Select("SELECT TOP (#{limit}) " +
-            "ISNULL(e.emp_name, hr.user_code) AS userName, " +
-            "ISNULL(d.dept_name, '') AS deptName, " +
-            "hr.heart_rate AS heartRate, " +
-            "hr.record_time AS recordTime " +
-            "FROM v_health_record hr " +
-            "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
-            "LEFT JOIN department d ON e.dept_id = d.id " +
-            "WHERE hr.heart_rate IS NOT NULL AND hr.heart_rate > 0 " +
-            "AND hr.record_time >= DATEADD(HOUR, -2, GETDATE()) " +
-            "ORDER BY hr.record_time DESC")
+            "userCode, userName, deptName, gender, age, jobType, heartRate, recordTime " +
+            "FROM ( " +
+            "  SELECT " +
+            "    hr.user_code AS userCode, " +
+            "    ISNULL(e.emp_name, hr.user_code) AS userName, " +
+            "    ISNULL(d.dept_name, '') AS deptName, " +
+            "    CASE WHEN e.gender = 1 THEN '男' WHEN e.gender = 2 THEN '女' ELSE '' END AS gender, " +
+            "    DATEDIFF(YEAR, e.birth_date, GETDATE()) AS age, " +
+            "    ISNULL(jt.type_name, '') AS jobType, " +
+            "    hr.heart_rate AS heartRate, " +
+            "    hr.record_time AS recordTime, " +
+            "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
+            "  FROM v_health_record hr " +
+            "  LEFT JOIN employee e ON hr.user_code = e.emp_code " +
+            "  LEFT JOIN department d ON e.dept_id = d.id " +
+            "  LEFT JOIN job_type jt ON e.job_type_id = jt.id " +
+            "  WHERE hr.heart_rate IS NOT NULL AND hr.heart_rate > 0 " +
+            "  AND hr.record_time >= DATEADD(HOUR, -2, GETDATE()) " +
+            ") t WHERE rn = 1 " +
+            "ORDER BY recordTime DESC")
     List<Map<String, Object>> getRealtime(@Param("limit") int limit);
 }
