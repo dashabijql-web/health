@@ -21,48 +21,35 @@ public interface HeartRateMapper {
      * 获取心率概览统计
      * 返回: avgHeartRate, detectionRate, minHeartRate, maxHeartRate, normalCount, abnormalCount, totalCount
      */
-    @Select("WITH HeartData AS ( " +
-            "  SELECT user_code, heart_rate " +
-            "  FROM v_health_record " +
-            "  WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
-            "  AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            ") " +
-            "SELECT " +
-            "COALESCE(CAST(AVG(CAST(CASE WHEN heart_rate > 0 THEN CAST(heart_rate AS FLOAT) END) AS FLOAT) AS INT), 0) AS avgHeartRate, " +
-            "COALESCE(MIN(CASE WHEN heart_rate > 0 THEN heart_rate END), 0) AS minHeartRate, " +
-            "COALESCE(MAX(CASE WHEN heart_rate > 0 THEN heart_rate END), 0) AS maxHeartRate, " +
-            "COALESCE(CAST(" +
-            "  COUNT(DISTINCT CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 THEN user_code END) * 100.0 / " +
-            "  NULLIF(COUNT(DISTINCT user_code), 0)" +
-            "AS INT), 0) AS detectionRate, " +
-            "COALESCE(SUM(CASE WHEN heart_rate BETWEEN 55 AND 120 THEN 1 ELSE 0 END), 0) AS normalCount, " +
-            "COALESCE(SUM(CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 AND (heart_rate < 55 OR heart_rate > 120) THEN 1 ELSE 0 END), 0) AS abnormalCount, " +
-            "COUNT(CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 THEN 1 END) AS totalCount " +
-            "FROM HeartData")
+    @Select("SELECT " +
+            "ISNULL(AVG(CASE WHEN heart_rate > 0 THEN heart_rate ELSE NULL END), 0) AS avgHeartRate, " +
+            "ISNULL(MIN(CASE WHEN heart_rate > 0 THEN heart_rate ELSE NULL END), 0) AS minHeartRate, " +
+            "ISNULL(MAX(CASE WHEN heart_rate > 0 THEN heart_rate ELSE NULL END), 0) AS maxHeartRate, " +
+            "ISNULL(COUNT(DISTINCT CASE WHEN heart_rate > 0 THEN user_code ELSE NULL END) * 100 / NULLIF(COUNT(DISTINCT user_code), 0), 0) AS detectionRate, " +
+            "SUM(CASE WHEN heart_rate >= 55 AND heart_rate <= 120 THEN 1 ELSE 0 END) AS normalCount, " +
+            "SUM(CASE WHEN heart_rate > 0 AND (heart_rate < 55 OR heart_rate > 120) THEN 1 ELSE 0 END) AS abnormalCount, " +
+            "COUNT(CASE WHEN heart_rate > 0 THEN 1 ELSE NULL END) AS totalCount " +
+            "FROM v_health_record " +
+            "WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
     Map<String, Object> getHeartRateOverview(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取心率概览统计 — 直接查分区表，避免扫 v_health_record UNION ALL 视图
-     * 优化：使用 ${tableSource} 参数化表名，由 Service 层路由到对应月份分区表
+     * 注意：不用 CTE，因为 Druid SQL 防火墙不支持 CTE 内嵌子查询（UNION ALL）作为表源
+     * ${tableSource} 可为单月表名（如 health_record_202603）或无别名的 UNION ALL 子查询
      */
-    @Select("WITH HeartData AS ( " +
-            "  SELECT user_code, heart_rate " +
-            "  FROM ${tableSource} " +
-            "  WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
-            "  AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            ") " +
-            "SELECT " +
-            "COALESCE(CAST(AVG(CAST(CASE WHEN heart_rate > 0 THEN CAST(heart_rate AS FLOAT) END) AS FLOAT) AS INT), 0) AS avgHeartRate, " +
-            "COALESCE(MIN(CASE WHEN heart_rate > 0 THEN heart_rate END), 0) AS minHeartRate, " +
-            "COALESCE(MAX(CASE WHEN heart_rate > 0 THEN heart_rate END), 0) AS maxHeartRate, " +
-            "COALESCE(CAST(" +
-            "  COUNT(DISTINCT CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 THEN user_code END) * 100.0 / " +
-            "  NULLIF(COUNT(DISTINCT user_code), 0)" +
-            "AS INT), 0) AS detectionRate, " +
-            "COALESCE(SUM(CASE WHEN heart_rate BETWEEN 55 AND 120 THEN 1 ELSE 0 END), 0) AS normalCount, " +
-            "COALESCE(SUM(CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 AND (heart_rate < 55 OR heart_rate > 120) THEN 1 ELSE 0 END), 0) AS abnormalCount, " +
-            "COUNT(CASE WHEN heart_rate IS NOT NULL AND heart_rate > 0 THEN 1 END) AS totalCount " +
-            "FROM HeartData")
+    @Select("SELECT " +
+            "ISNULL(AVG(CASE WHEN heart_rate > 0 THEN heart_rate ELSE NULL END), 0) AS avgHeartRate, " +
+            "ISNULL(MIN(CASE WHEN heart_rate > 0 THEN heart_rate ELSE NULL END), 0) AS minHeartRate, " +
+            "ISNULL(MAX(CASE WHEN heart_rate > 0 THEN heart_rate ELSE NULL END), 0) AS maxHeartRate, " +
+            "ISNULL(COUNT(DISTINCT CASE WHEN heart_rate > 0 THEN user_code ELSE NULL END) * 100 / NULLIF(COUNT(DISTINCT user_code), 0), 0) AS detectionRate, " +
+            "SUM(CASE WHEN heart_rate >= 55 AND heart_rate <= 120 THEN 1 ELSE 0 END) AS normalCount, " +
+            "SUM(CASE WHEN heart_rate > 0 AND (heart_rate < 55 OR heart_rate > 120) THEN 1 ELSE 0 END) AS abnormalCount, " +
+            "COUNT(CASE WHEN heart_rate > 0 THEN 1 ELSE NULL END) AS totalCount " +
+            "FROM ${tableSource} " +
+            "WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
     Map<String, Object> getHeartRateOverviewDirect(@Param("tableSource") String tableSource,
                                                     @Param("startDate") String startDate,
                                                     @Param("endDate") String endDate);

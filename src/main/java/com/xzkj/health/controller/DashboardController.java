@@ -302,8 +302,9 @@ public class DashboardController {
             } else {
                 String cols = "user_code,heart_rate,blood_oxygen,blood_pressure_high," +
                               "sleep_minutes,steps,pressure,record_time";
+                // 无内嵌别名，mapper SQL 中 "FROM ${tableSource} hr" 会追加 "hr" 作为唯一别名
                 tblSrc = "(SELECT " + cols + " FROM health_record_" + prevMonth +
-                         " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ") _dh";
+                         " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ")";
             }
             return Result.ok("获取成功", dashboardMapper.getDeptHealthComparisonDirect(tblSrc, days));
         } catch (Exception e) {

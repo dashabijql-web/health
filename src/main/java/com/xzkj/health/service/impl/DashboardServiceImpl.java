@@ -68,15 +68,15 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     /**
-     * 用于 JOIN 语法的预警记录分区表源（不含内嵌别名，mapper 中会用 wr 做别名）
-     * 单月直接返回表名，跨月返回仅含所需列的 UNION ALL 子查询（无 AS xxx）
+     * 用于 JOIN 语法的预警记录分区表源（不含内嵌别名，mapper 中会用 wr/w 做别名）
+     * 单月直接返回表名，跨月返回 UNION ALL 子查询（无 AS xxx，包含 id 用于 COUNT DISTINCT）
      */
     private String warningSourceForJoin(String start, String end) {
         String m1 = LocalDate.parse(start).format(MONTH_FMT);
         String m2 = LocalDate.parse(end).format(MONTH_FMT);
         if (m1.equals(m2)) return "warning_record_" + m1;
-        return "(SELECT user_code,create_time,is_handled FROM warning_record_" + m1 +
-               " UNION ALL SELECT user_code,create_time,is_handled FROM warning_record_" + m2 + ")";
+        return "(SELECT id,user_code,create_time,warning_type,indicator_name,warning_level,is_handled FROM warning_record_" + m1 +
+               " UNION ALL SELECT id,user_code,create_time,warning_type,indicator_name,warning_level,is_handled FROM warning_record_" + m2 + ")";
     }
 
     /** 根据日期范围构建预警记录分区表源（单月直接用表名，跨月用 UNION ALL 子查询） */
@@ -120,7 +120,8 @@ public class DashboardServiceImpl implements DashboardService {
     public List<Map<String, Object>> getDeptTop5(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
-        List<Map<String, Object>> list = dashboardMapper.getTop5ByRangeDirect(warningSource(s, e), s, e);
+        // 使用 warningSourceForJoin (无内嵌别名)，因为 mapper SQL 末尾会追加 "w" 作为别名
+        List<Map<String, Object>> list = dashboardMapper.getTop5ByRangeDirect(warningSourceForJoin(s, e), s, e);
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> item : list) {
@@ -243,7 +244,8 @@ public class DashboardServiceImpl implements DashboardService {
         } catch (Exception ex) {
             log.debug("日期范围解析失败，使用默认30天: {}", ex.getMessage());
         }
-        List<Map<String, Object>> list = dashboardMapper.getDeptWarningWithTrendDirect(warningSource(s, e), s, e, days);
+        // 使用 warningSourceForJoin (无内嵌别名)，因为 mapper SQL 中 LEFT JOIN ${warningSource} w 会追加 "w" 别名
+        List<Map<String, Object>> list = dashboardMapper.getDeptWarningWithTrendDirect(warningSourceForJoin(s, e), s, e, days);
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> item : list) {

@@ -22,9 +22,15 @@ public class HeartRateServiceImpl implements HeartRateService {
 
     @Override
     public Map<String, Object> getHeartRateOverview(String startDate, String endDate) {
-        // 优化：路由到分区表，避免 v_health_record UNION ALL 全扫描
-        String tblSrc = heartRateTableSourceByRange(startDate, endDate);
-        return heartRateMapper.getHeartRateOverviewDirect(tblSrc, startDate, endDate);
+        // 当日期范围在同一月份时，直接查分区表（单表名，Druid wall 可接受）
+        // 跨月时 Druid SQL Server wall 拒绝 UNION ALL 子查询作为直接表源，回退到视图查询
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyMM");
+        String m1 = LocalDate.parse(startDate).format(fmt);
+        String m2 = LocalDate.parse(endDate).format(fmt);
+        if (m1.equals(m2)) {
+            return heartRateMapper.getHeartRateOverviewDirect("health_record_" + m1, startDate, endDate);
+        }
+        return heartRateMapper.getHeartRateOverview(startDate, endDate);
     }
 
     @Override
@@ -51,11 +57,12 @@ public class HeartRateServiceImpl implements HeartRateService {
             return "health_record_" + curMonth;
         }
         String cols = "user_code,heart_rate,record_time";
+        // 必须用 AS 关键字，否则 Druid SQL 防火墙（SQL Server 模式）拒绝子查询别名
         return "(SELECT " + cols + " FROM health_record_" + prevMonth +
-               " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ") _hr";
+               " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ") AS _hr";
     }
 
-    /** 根据显式日期范围计算分区表表达式 */
+    /** 根据显式日期范围计算分区表表达式（带 AS _hr 别名，用于 CTE 内 FROM ${tableSource}） */
     private static String heartRateTableSourceByRange(String startDate, String endDate) {
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyMM");
         String m1 = LocalDate.parse(startDate).format(fmt);
@@ -65,8 +72,24 @@ public class HeartRateServiceImpl implements HeartRateService {
         }
         String cols = "user_code,heart_rate,blood_oxygen,temperature,steps,calories," +
                       "sleep_minutes,blood_pressure_high,blood_pressure_low,pressure,record_time";
+        // 必须用 AS 关键字，否则 Druid SQL 防火墙（SQL Server 模式）拒绝子查询别名
         return "(SELECT " + cols + " FROM health_record_" + m1 +
-               " UNION ALL SELECT " + cols + " FROM health_record_" + m2 + ") _hr";
+               " UNION ALL SELECT " + cols + " FROM health_record_" + m2 + ") AS _hr";
+    }
+
+    /** 根据显式日期范围计算分区表表达式（无别名，用于 mapper 中 FROM ${tableSource} hr 带独立别名的场景） */
+    private static String heartRateTableSourceForJoin(String startDate, String endDate) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyMM");
+        String m1 = LocalDate.parse(startDate).format(fmt);
+        String m2 = LocalDate.parse(endDate).format(fmt);
+        if (m1.equals(m2)) {
+            return "health_record_" + m1;
+        }
+        String cols = "user_code,heart_rate,blood_oxygen,temperature,steps,calories," +
+                      "sleep_minutes,blood_pressure_high,blood_pressure_low,pressure,record_time";
+        // 无内嵌别名，mapper SQL 中的 "hr" 或 "AS hr" 会作为唯一别名
+        return "(SELECT " + cols + " FROM health_record_" + m1 +
+               " UNION ALL SELECT " + cols + " FROM health_record_" + m2 + ")";
     }
 
     @Override
@@ -77,7 +100,8 @@ public class HeartRateServiceImpl implements HeartRateService {
 
     @Override
     public List<Map<String, Object>> getDepartmentStats(String startDate, String endDate) {
-        String tblSrc = heartRateTableSourceByRange(startDate, endDate);
+        // 使用 ForJoin 版本（无内嵌别名），因为 mapper SQL 末尾会追加 "hr" 作为别名
+        String tblSrc = heartRateTableSourceForJoin(startDate, endDate);
         return heartRateMapper.getDepartmentStatsDirect(tblSrc, startDate, endDate);
     }
 

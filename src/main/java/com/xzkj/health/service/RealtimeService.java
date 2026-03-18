@@ -57,8 +57,9 @@ public class RealtimeService {
         // 168h跨月：只需当月+上月两张表
         String cols = "user_code,heart_rate,blood_oxygen,temperature,steps,calories," +
                       "sleep_minutes,blood_pressure_high,blood_pressure_low,pressure,record_time";
+        // 必须用 AS 关键字，否则 Druid SQL 防火墙（SQL Server 模式）拒绝子查询别名
         return "(SELECT " + cols + " FROM health_record_" + prevMonth +
-               " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ") _rt";
+               " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ") AS _rt";
     }
 
     /**
@@ -125,10 +126,10 @@ public class RealtimeService {
     }
 
     /**
-     * 获取实时统计数据
+     * 获取实时统计数据 — 使用直接查分区表版本（2月表 vs 13张全扫描，性能提升约5-10x）
      */
     public Map<String, Object> getStatistics() {
-        Map<String, Object> data = realtimeMapper.getStatistics();
+        Map<String, Object> data = realtimeMapper.getStatisticsDirect();
         if (data == null) data = new HashMap<>();
 
         // 格式化百分比数据

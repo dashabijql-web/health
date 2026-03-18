@@ -3,7 +3,10 @@ package com.xzkj.health.mapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.SelectProvider;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -137,6 +140,40 @@ public interface RealtimeMapper {
      */
     @Select("SELECT COUNT(DISTINCT user_code) FROM ${tableSource} WHERE record_time >= DATEADD(HOUR, -168, GETDATE())")
     int countOnlineUsersDirect(@Param("tableSource") String tableSource);
+
+    /**
+     * 获取实时统计数据（近7天口径）— 直接查分区表版本
+     * 168h 窗口最多跨当月+上月两张表，避免扫 v_health_record UNION ALL 13 张表
+     */
+    @SelectProvider(type = RealtimeStatsSqlProvider.class, method = "getStatisticsDirect")
+    Map<String, Object> getStatisticsDirect();
+
+    /**
+     * 动态 SQL 提供器：只 UNION 当月+上月两张分区表，而非 v_health_record 全部13张
+     */
+    class RealtimeStatsSqlProvider {
+        public String getStatisticsDirect() {
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyMM");
+            String cur  = "health_record_" + LocalDate.now().format(fmt);
+            String prev = "health_record_" + LocalDate.now().minusMonths(1).format(fmt);
+            // 必须用 AS 关键字，否则 Druid SQL 防火墙（SQL Server 模式）拒绝子查询别名
+            String src = "(SELECT user_code, heart_rate, blood_oxygen, record_time FROM " + cur +
+                         " UNION ALL SELECT user_code, heart_rate, blood_oxygen, record_time FROM " + prev + ") AS hr168";
+            return "WITH Stats7d AS ( " +
+                   "  SELECT COUNT(*) AS totalRecords, " +
+                   "    COUNT(DISTINCT user_code) AS distinctUsers, " +
+                   "    SUM(CASE WHEN heart_rate >= 60 AND heart_rate <= 100 AND blood_oxygen >= 95 THEN 1 ELSE 0 END) AS healthyRecords " +
+                   "  FROM " + src + " " +
+                   "  WHERE record_time >= DATEADD(HOUR, -168, GETDATE()) " +
+                   "), TotalEmp AS (SELECT COUNT(*) AS cnt FROM employee WHERE status IS NULL OR status = 0) " +
+                   "SELECT (SELECT distinctUsers FROM Stats7d) AS onlineUsers, " +
+                   "  (SELECT cnt FROM TotalEmp) AS totalUsers, " +
+                   "  (SELECT totalRecords FROM Stats7d) AS weekRecords, " +
+                   "  (SELECT totalRecords FROM Stats7d) AS todayRecords, " +
+                   "  CASE WHEN (SELECT cnt FROM TotalEmp) > 0 THEN (SELECT distinctUsers FROM Stats7d) * 100 / (SELECT cnt FROM TotalEmp) ELSE 0 END AS onlineRate, " +
+                   "  CASE WHEN (SELECT totalRecords FROM Stats7d) > 0 THEN (SELECT healthyRecords FROM Stats7d) * 100 / (SELECT totalRecords FROM Stats7d) ELSE 0 END AS normalRate";
+        }
+    }
 
     /**
      * 获取实时统计数据（近7天口径）
