@@ -39,6 +39,8 @@ public interface RealtimeMapper {
             "e.id, " +
             "e.emp_code AS userCode, " +
             "e.emp_name AS userName, " +
+            "e.gender, " +
+            "CASE WHEN e.birth_date IS NOT NULL THEN FLOOR(DATEDIFF(day, e.birth_date, GETDATE()) / 365.25) ELSE NULL END AS age, " +
             "d.dept_name AS deptName, " +
             "hr.heart_rate AS heartRate, " +
             "hr.blood_oxygen AS bloodOxygen, " +
@@ -83,20 +85,30 @@ public interface RealtimeMapper {
 
     /**
      * 获取实时统计数据（近7天口径）
+     * 优化：用 CTE 将 v_health_record 的 168h 窗口扫描从 5 次缩减为 1 次
      */
-    @Select("SELECT " +
-            "(SELECT COUNT(DISTINCT user_code) FROM v_health_record WHERE record_time >= DATEADD(HOUR, -168, GETDATE())) AS onlineUsers, " +
-            "(SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0) AS totalUsers, " +
-            "(SELECT COUNT(*) FROM v_health_record WHERE record_time >= DATEADD(DAY, -7, GETDATE())) AS weekRecords, " +
-            "(SELECT COUNT(*) FROM v_health_record WHERE record_time >= DATEADD(HOUR, -168, GETDATE())) AS todayRecords, " +
-            "CASE WHEN (SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0) > 0 " +
-            "     THEN (SELECT COUNT(DISTINCT user_code) FROM v_health_record WHERE record_time >= DATEADD(HOUR, -168, GETDATE())) * 100 / (SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0) " +
-            "     ELSE 0 END AS onlineRate, " +
-            "CASE WHEN (SELECT COUNT(*) FROM v_health_record WHERE record_time >= DATEADD(HOUR, -168, GETDATE())) > 0 " +
-            "     THEN (SELECT COUNT(*) FROM v_health_record WHERE record_time >= DATEADD(HOUR, -168, GETDATE()) AND " +
-            "          heart_rate >= 60 AND heart_rate <= 100 AND " +
-            "          blood_oxygen >= 95) * 100 / (SELECT COUNT(*) FROM v_health_record WHERE record_time >= DATEADD(HOUR, -168, GETDATE())) " +
-            "     ELSE 0 END AS normalRate")
+    @Select("WITH Stats7d AS ( " +
+            "  SELECT " +
+            "    COUNT(*) AS totalRecords, " +
+            "    COUNT(DISTINCT user_code) AS distinctUsers, " +
+            "    SUM(CASE WHEN heart_rate >= 60 AND heart_rate <= 100 AND blood_oxygen >= 95 THEN 1 ELSE 0 END) AS healthyRecords " +
+            "  FROM v_health_record " +
+            "  WHERE record_time >= DATEADD(HOUR, -168, GETDATE()) " +
+            "), " +
+            "TotalEmp AS ( " +
+            "  SELECT COUNT(*) AS cnt FROM employee WHERE status IS NULL OR status = 0 " +
+            ") " +
+            "SELECT " +
+            "  (SELECT distinctUsers  FROM Stats7d) AS onlineUsers, " +
+            "  (SELECT cnt            FROM TotalEmp) AS totalUsers, " +
+            "  (SELECT totalRecords   FROM Stats7d) AS weekRecords, " +
+            "  (SELECT totalRecords   FROM Stats7d) AS todayRecords, " +
+            "  CASE WHEN (SELECT cnt FROM TotalEmp) > 0 " +
+            "       THEN (SELECT distinctUsers FROM Stats7d) * 100 / (SELECT cnt FROM TotalEmp) " +
+            "       ELSE 0 END AS onlineRate, " +
+            "  CASE WHEN (SELECT totalRecords FROM Stats7d) > 0 " +
+            "       THEN (SELECT healthyRecords FROM Stats7d) * 100 / (SELECT totalRecords FROM Stats7d) " +
+            "       ELSE 0 END AS normalRate")
     Map<String, Object> getStatistics();
 
     /**
@@ -117,6 +129,7 @@ public interface RealtimeMapper {
             "LEFT JOIN employee e ON w.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
             "WHERE w.is_handled = 0 " +
+            "AND w.create_time >= DATEADD(DAY, -7, GETDATE()) " +
             "ORDER BY w.create_time DESC")
     List<Map<String, Object>> getRecentAlerts(@Param("limit") int limit);
 

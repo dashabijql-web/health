@@ -70,35 +70,34 @@ public interface DashboardMapper {
 
     /**
      * 设备统计：boundDevices=当前绑定设备数，activeRate/usageRate/warningRate 均按时间段计算
+     * 优化：用 CTE 将 v_health_record 的昂贵扫描从 2 次缩减为 1 次；activeRate 与 usageRate 逻辑相同合并计算
      */
-    @Select("SELECT " +
-            "(SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0) AS total, " +
+    @Select("WITH TotalEmp AS ( " +
+            "  SELECT COUNT(*) AS cnt FROM employee WHERE status IS NULL OR status = 0 " +
+            "), " +
+            "ActiveEmp AS ( " +
+            "  SELECT COUNT(DISTINCT e.emp_code) AS cnt " +
+            "  FROM employee e " +
+            "  INNER JOIN v_health_record hr ON e.emp_code = hr.user_code " +
+            "  WHERE (e.status IS NULL OR e.status = 0) " +
+            "  AND hr.record_time >= CONVERT(date, #{startTime}) " +
+            "  AND hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "), " +
+            "WarnEmp AS ( " +
+            "  SELECT COUNT(DISTINCT e.emp_code) AS cnt " +
+            "  FROM employee e " +
+            "  INNER JOIN v_warning_record wr ON e.emp_code = wr.user_code " +
+            "  WHERE (e.status IS NULL OR e.status = 0) " +
+            "  AND wr.create_time >= CONVERT(date, #{startTime}) " +
+            "  AND wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  AND wr.is_handled = 0 " +
+            ") " +
+            "SELECT " +
+            "(SELECT cnt FROM TotalEmp) AS total, " +
             "(SELECT COUNT(*) FROM device_user WHERE is_current = 1) AS boundDevices, " +
-            "ISNULL(" +
-            "  (SELECT COUNT(DISTINCT e.emp_code) " +
-            "   FROM employee e " +
-            "   INNER JOIN v_health_record hr ON e.emp_code = hr.user_code " +
-            "   WHERE (e.status IS NULL OR e.status = 0) " +
-            "   AND hr.record_time >= CONVERT(date, #{startTime}) " +
-            "   AND hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime}))) " +
-            "  * 100 / NULLIF((SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0), 0), 0) AS activeRate, " +
-            "ISNULL(" +
-            "  (SELECT COUNT(DISTINCT e.emp_code) " +
-            "   FROM employee e " +
-            "   INNER JOIN v_health_record hr ON e.emp_code = hr.user_code " +
-            "   WHERE (e.status IS NULL OR e.status = 0) " +
-            "   AND hr.record_time >= CONVERT(date, #{startTime}) " +
-            "   AND hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime}))) " +
-            "  * 100 / NULLIF((SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0), 0), 0) AS usageRate, " +
-            "ISNULL(" +
-            "  (SELECT COUNT(DISTINCT e.emp_code) " +
-            "   FROM employee e " +
-            "   INNER JOIN v_warning_record wr ON e.emp_code = wr.user_code " +
-            "   WHERE (e.status IS NULL OR e.status = 0) " +
-            "   AND wr.create_time >= CONVERT(date, #{startTime}) " +
-            "   AND wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
-            "   AND wr.is_handled = 0) " +
-            "  * 100 / NULLIF((SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0), 0), 0) AS warningRate, " +
+            "ISNULL((SELECT cnt FROM ActiveEmp) * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS activeRate, " +
+            "ISNULL((SELECT cnt FROM ActiveEmp) * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS usageRate, " +
+            "ISNULL((SELECT cnt FROM WarnEmp)   * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS warningRate, " +
             "(SELECT COUNT(*) FROM device WHERE battery_level IS NOT NULL AND battery_level > 0 AND battery_level < 20) AS lowBattery")
     Map<String, Object> getDeviceStatsByRange(@Param("startTime") String startTime,
                                                @Param("endTime")   String endTime);
@@ -221,7 +220,7 @@ public interface DashboardMapper {
     /**
      * 按日期统计预警数量（用于柱状图，不受 TOP 限制）
      */
-    @Select("SELECT CONVERT(VARCHAR(10), create_time, 120) AS stat_date, COUNT(*) AS cnt " +
+    @Select("SELECT CONVERT(VARCHAR(10), create_time, 120) AS stat_date, COUNT(DISTINCT user_code) AS cnt " +
             "FROM v_warning_record " +
             "WHERE create_time >= CONVERT(date, #{startTime}) " +
             "AND   create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
@@ -512,4 +511,89 @@ public interface DashboardMapper {
     List<Map<String, Object>> getMetricDailyDetail(@Param("metricType") String metricType,
                                                     @Param("startTime")  String startTime,
                                                     @Param("endTime")    String endTime);
+
+    /**
+     * 班前健康达标率：今日有记录的员工中，最新一条记录符合准入标准的比例
+     * 准入标准：心率60-100，血氧≥95，血压高<140，血压低<90
+     */
+    @Select(";WITH latest_records AS ( " +
+            "  SELECT hr.user_code, hr.heart_rate, hr.blood_oxygen, " +
+            "    hr.blood_pressure_high, hr.blood_pressure_low, " +
+            "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
+            "  FROM v_health_record hr " +
+            "  WHERE hr.record_time >= CONVERT(date, GETDATE()) " +
+            ") " +
+            "SELECT " +
+            "  COUNT(*) AS totalToday, " +
+            "  SUM(CASE WHEN " +
+            "    (heart_rate IS NULL OR (heart_rate >= 60 AND heart_rate <= 100)) " +
+            "    AND (blood_oxygen IS NULL OR blood_oxygen >= 95) " +
+            "    AND (blood_pressure_high IS NULL OR blood_pressure_high < 140) " +
+            "    AND (blood_pressure_low IS NULL OR blood_pressure_low < 90) " +
+            "    THEN 1 ELSE 0 END) AS qualifiedCount, " +
+            "  SUM(CASE WHEN " +
+            "    (heart_rate IS NOT NULL AND (heart_rate < 60 OR heart_rate > 100)) " +
+            "    OR (blood_oxygen IS NOT NULL AND blood_oxygen < 95) " +
+            "    OR (blood_pressure_high IS NOT NULL AND blood_pressure_high >= 140) " +
+            "    OR (blood_pressure_low IS NOT NULL AND blood_pressure_low >= 90) " +
+            "    THEN 1 ELSE 0 END) AS failedCount " +
+            "FROM latest_records WHERE rn = 1")
+    Map<String, Object> getTodayPreShiftCompliance();
+
+    /**
+     * 入井准入名单：今日有健康记录的所有员工及其最新体征和准入状态
+     */
+    @Select(";WITH latest_records AS ( " +
+            "  SELECT hr.user_code, hr.heart_rate, hr.blood_oxygen, " +
+            "    hr.blood_pressure_high, hr.blood_pressure_low, hr.temperature, " +
+            "    hr.record_time, " +
+            "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
+            "  FROM v_health_record hr " +
+            "  WHERE hr.record_time >= CONVERT(date, GETDATE()) " +
+            ") " +
+            "SELECT TOP ${size} " +
+            "  ISNULL(e.emp_name, lr.user_code) AS empName, " +
+            "  ISNULL(e.emp_code, lr.user_code) AS empCode, " +
+            "  ISNULL(d.dept_name, '') AS deptName, " +
+            "  ISNULL(jt.type_name, '') AS jobTypeName," +
+            "  lr.heart_rate AS heartRate, " +
+            "  lr.blood_oxygen AS bloodOxygen, " +
+            "  lr.blood_pressure_high AS systolic, " +
+            "  lr.blood_pressure_low AS diastolic, " +
+            "  lr.temperature AS temperature, " +
+            "  lr.record_time AS recordTime, " +
+            "  CASE WHEN " +
+            "    (lr.heart_rate IS NULL OR (lr.heart_rate >= 60 AND lr.heart_rate <= 100)) " +
+            "    AND (lr.blood_oxygen IS NULL OR lr.blood_oxygen >= 95) " +
+            "    AND (lr.blood_pressure_high IS NULL OR lr.blood_pressure_high < 140) " +
+            "    AND (lr.blood_pressure_low IS NULL OR lr.blood_pressure_low < 90) " +
+            "    THEN 1 ELSE 0 END AS qualified " +
+            "FROM latest_records lr " +
+            "LEFT JOIN employee e ON lr.user_code = e.emp_code " +
+            "LEFT JOIN department d ON e.dept_id = d.id " +
+            "LEFT JOIN job_type jt ON e.job_type_id = jt.id " +
+            "WHERE lr.rn = 1 " +
+            "ORDER BY qualified ASC, lr.record_time DESC")
+    List<Map<String, Object>> getTodayMineEntryList(@Param("size") int size);
+
+    /**
+     * 部门健康对比：各部门近N天的多维均值
+     */
+    @Select("SELECT " +
+            "  d.dept_name AS deptName, " +
+            "  COUNT(DISTINCT hr.user_code) AS memberCount, " +
+            "  ROUND(AVG(CAST(hr.heart_rate AS FLOAT)), 1) AS avgHeartRate, " +
+            "  ROUND(AVG(CAST(hr.blood_oxygen AS FLOAT)), 1) AS avgBloodOxygen, " +
+            "  ROUND(AVG(CAST(hr.blood_pressure_high AS FLOAT)), 1) AS avgSystolic, " +
+            "  ROUND(AVG(CAST(hr.sleep_minutes AS FLOAT)), 0) AS avgSleepMinutes, " +
+            "  ROUND(AVG(CAST(hr.steps AS FLOAT)), 0) AS avgSteps, " +
+            "  ROUND(AVG(CAST(hr.pressure AS FLOAT)), 1) AS avgPressure " +
+            "FROM v_health_record hr " +
+            "JOIN employee e ON hr.user_code = e.emp_code " +
+            "JOIN department d ON e.dept_id = d.id " +
+            "WHERE hr.record_time >= DATEADD(DAY, -#{days}, GETDATE()) " +
+            "GROUP BY d.dept_name " +
+            "HAVING COUNT(DISTINCT hr.user_code) >= 2 " +
+            "ORDER BY memberCount DESC")
+    List<Map<String, Object>> getDeptHealthComparison(@Param("days") int days);
 }
