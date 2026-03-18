@@ -79,7 +79,15 @@ public class DashboardController {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
         String[] range = DateParamUtil.range30(startTime, endTime);
-        return Result.ok("获取成功", dashboardMapper.getPersonCountsByRange(range[0], range[1]));
+        DateTimeFormatter mFmt = DateTimeFormatter.ofPattern("yyyyMM");
+        String m1 = LocalDate.parse(range[0]).format(mFmt);
+        String m2 = LocalDate.parse(range[1]).format(mFmt);
+        String hSrc = m1.equals(m2) ? "health_record_" + m1
+            : "(SELECT user_code,record_time,heart_rate,blood_oxygen,blood_pressure_high,blood_pressure_low," +
+              "temperature,sleep_minutes,steps,calories,pressure FROM health_record_" + m1 +
+              " UNION ALL SELECT user_code,record_time,heart_rate,blood_oxygen,blood_pressure_high,blood_pressure_low," +
+              "temperature,sleep_minutes,steps,calories,pressure FROM health_record_" + m2 + ") AS hr_combined";
+        return Result.ok("获取成功", dashboardMapper.getPersonCountsByRangeDirect(hSrc, range[0], range[1]));
     }
 
     /** 各部门检测人数 + 异常人数（部门综合看板图表用） */

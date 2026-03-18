@@ -53,6 +53,26 @@ public interface DashboardMapper {
                                           @Param("endTime")   String endTime);
 
     /**
+     * 优化版：直接查分区表，避免 v_health_record UNION ALL 视图全扫描
+     */
+    @Select("SELECT " +
+            "AVG(CAST(sleep_minutes AS FLOAT)) / 60.0 AS avgSleep, " +
+            "AVG(CAST(pressure     AS FLOAT)) AS avgPressure, " +
+            "AVG(CAST(blood_oxygen AS FLOAT)) AS avgBloodOxygen, " +
+            "AVG(CAST(heart_rate   AS FLOAT)) AS avgHeartRate, " +
+            "AVG(CAST(steps        AS FLOAT)) AS avgSteps, " +
+            "AVG(CAST(temperature  AS FLOAT)) / 10.0 AS avgTemperature, " +
+            "AVG(CAST(blood_pressure_high AS FLOAT)) AS avgBloodPressureHigh, " +
+            "AVG(CAST(blood_pressure_low AS FLOAT)) AS avgBloodPressureLow, " +
+            "AVG(CAST(calories AS FLOAT)) AS avgCalories " +
+            "FROM ${healthSource} " +
+            "WHERE record_time >= CONVERT(date, #{startTime}) " +
+            "AND   record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime}))")
+    Map<String, Object> getAverageByRangeDirect(@Param("healthSource") String healthSource,
+                                                @Param("startTime")    String startTime,
+                                                @Param("endTime")      String endTime);
+
+    /**
      * 按预警次数排行，取 TOP 15 员工（用于"异常人员排行"）
      */
     @Select("SELECT TOP 15 " +
@@ -67,6 +87,23 @@ public interface DashboardMapper {
             "ORDER BY count DESC")
     List<Map<String, Object>> getTop5ByRange(@Param("startTime") String startTime,
                                               @Param("endTime")   String endTime);
+
+    /**
+     * 优化版：直接查分区表，避免 v_warning_record UNION ALL 全扫描
+     */
+    @Select("SELECT TOP 15 " +
+            "ISNULL(e.emp_name, w.user_code) AS userName, " +
+            "w.user_code AS userCode, " +
+            "COUNT(*) AS count " +
+            "FROM ${warningSource} w " +
+            "LEFT JOIN employee e ON w.user_code = e.emp_code " +
+            "WHERE w.create_time >= CONVERT(date, #{startTime}) " +
+            "AND   w.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "GROUP BY w.user_code, e.emp_name " +
+            "ORDER BY count DESC")
+    List<Map<String, Object>> getTop5ByRangeDirect(@Param("warningSource") String warningSource,
+                                                   @Param("startTime")     String startTime,
+                                                   @Param("endTime")       String endTime);
 
     /**
      * 设备统计：boundDevices=当前绑定设备数，activeRate/usageRate/warningRate 均按时间段计算
@@ -178,6 +215,26 @@ public interface DashboardMapper {
                                                       @Param("days")      int    days);
 
     /**
+     * 优化版：直接查 warning 分区表，避免 v_warning_record UNION ALL 全扫描（~1s → ~150ms）
+     */
+    @Select("SELECT d.dept_name AS name, " +
+            "COUNT(DISTINCT CASE WHEN w.create_time >= CONVERT(date, #{startTime}) " +
+            "  AND w.create_time < DATEADD(DAY,1,CONVERT(date,#{endTime})) THEN w.id END) AS count, " +
+            "COUNT(DISTINCT CASE WHEN w.create_time >= DATEADD(DAY,-#{days},CONVERT(date,#{startTime})) " +
+            "  AND w.create_time < CONVERT(date,#{startTime}) THEN w.id END) AS prevCount " +
+            "FROM department d " +
+            "LEFT JOIN employee e ON d.id = e.dept_id AND (e.status IS NULL OR e.status = 0) " +
+            "LEFT JOIN ${warningSource} w ON e.emp_code = w.user_code " +
+            "GROUP BY d.dept_name " +
+            "HAVING COUNT(DISTINCT CASE WHEN w.create_time >= CONVERT(date, #{startTime}) " +
+            "  AND w.create_time < DATEADD(DAY,1,CONVERT(date,#{endTime})) THEN w.id END) > 0 " +
+            "ORDER BY count DESC")
+    List<Map<String, Object>> getDeptWarningWithTrendDirect(@Param("warningSource") String warningSource,
+                                                            @Param("startTime")     String startTime,
+                                                            @Param("endTime")       String endTime,
+                                                            @Param("days")          int    days);
+
+    /**
      * 获取每日各指标异常率（用于趋势折线图）
      */
     @Select("SELECT " +
@@ -233,6 +290,19 @@ public interface DashboardMapper {
                                                      @Param("endTime")   String endTime);
 
     /**
+     * 优化版：直接查分区表，避免 v_warning_record UNION ALL 视图全扫描
+     */
+    @Select("SELECT CONVERT(VARCHAR(10), create_time, 120) AS stat_date, COUNT(DISTINCT user_code) AS cnt " +
+            "FROM ${warningSource} " +
+            "WHERE create_time >= CONVERT(date, #{startTime}) " +
+            "AND   create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "GROUP BY CONVERT(VARCHAR(10), create_time, 120) " +
+            "ORDER BY stat_date ASC")
+    List<Map<String, Object>> getWarningCountsByDateDirect(@Param("warningSource") String warningSource,
+                                                           @Param("startTime")     String startTime,
+                                                           @Param("endTime")       String endTime);
+
+    /**
      * 按小时统计当日预警数量（用于今日柱状图）
      */
     @Select("SELECT DATEPART(HOUR, create_time) AS hour_num, COUNT(*) AS cnt " +
@@ -259,6 +329,24 @@ public interface DashboardMapper {
             "ORDER BY date ASC")
     List<Map<String, Object>> getDailyHealthTrend(@Param("startDate") String startDate,
                                                   @Param("endDate")   String endDate);
+
+    /**
+     * 优化版：直接查分区表，避免 v_health_record UNION ALL 视图全扫描
+     */
+    @Select("SELECT " +
+            "CONVERT(VARCHAR(10), record_time, 120) AS date, " +
+            "ROUND(AVG(CAST(heart_rate   AS FLOAT)), 0) AS avgHeartRate, " +
+            "ROUND(AVG(CAST(blood_oxygen AS FLOAT)), 0) AS avgBloodOxygen, " +
+            "ROUND(AVG(CAST(steps        AS FLOAT)), 0) AS avgSteps " +
+            "FROM ${healthSource} " +
+            "WHERE record_time >= CONVERT(date, #{startDate}) " +
+            "AND   record_time <  DATEADD(DAY, 1, CONVERT(date, #{endDate})) " +
+            "AND (heart_rate IS NOT NULL OR blood_oxygen IS NOT NULL OR steps IS NOT NULL) " +
+            "GROUP BY CONVERT(VARCHAR(10), record_time, 120) " +
+            "ORDER BY date ASC")
+    List<Map<String, Object>> getDailyHealthTrendDirect(@Param("healthSource") String healthSource,
+                                                        @Param("startDate")    String startDate,
+                                                        @Param("endDate")      String endDate);
 
     /**
      * 获取部门健康排名（基于真实预警率）
@@ -398,6 +486,29 @@ public interface DashboardMapper {
             "FROM user_flags")
     Map<String, Object> getPersonCountsByRange(@Param("startTime") String startTime,
                                                @Param("endTime")   String endTime);
+
+    /**
+     * 优化版：直接查分区表，避免 v_health_record UNION ALL 全扫描
+     */
+    @Select(";WITH user_flags AS ( " +
+            "  SELECT user_code, " +
+            "    MAX(CASE WHEN heart_rate   IS NOT NULL THEN 1 ELSE 0 END) AS has_hr, " +
+            "    MAX(CASE WHEN blood_oxygen IS NOT NULL THEN 1 ELSE 0 END) AS has_bo, " +
+            "    MAX(CASE WHEN steps        IS NOT NULL THEN 1 ELSE 0 END) AS has_st, " +
+            "    MAX(CASE WHEN temperature  IS NOT NULL THEN 1 ELSE 0 END) AS has_tp, " +
+            "    MAX(CASE WHEN pressure     IS NOT NULL THEN 1 ELSE 0 END) AS has_pr " +
+            "  FROM ${healthSource} " +
+            "  WHERE record_time >= CONVERT(date, #{startTime}) " +
+            "  AND   record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  GROUP BY user_code " +
+            ") " +
+            "SELECT SUM(has_hr) AS heartRate, SUM(has_bo) AS bloodOxygen, " +
+            "SUM(has_st) AS steps, SUM(has_tp) AS temperature, " +
+            "SUM(has_pr) AS pressure, COUNT(*) AS totalPersons " +
+            "FROM user_flags")
+    Map<String, Object> getPersonCountsByRangeDirect(@Param("healthSource") String healthSource,
+                                                     @Param("startTime")    String startTime,
+                                                     @Param("endTime")      String endTime);
 
     /**
      * 获取指定日期范围内各部门每日检测人数（用于弹窗折线图）

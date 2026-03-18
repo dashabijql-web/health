@@ -42,6 +42,28 @@ public class DashboardServiceImpl implements DashboardService {
         return (val != null && !val.isBlank()) ? val : fallback;
     }
 
+    private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("yyyyMM");
+
+    /** 根据日期范围构建健康记录分区表源（单月直接用表名，跨月用 UNION ALL 子查询） */
+    private String healthSource(String start, String end) {
+        String m1 = LocalDate.parse(start).format(MONTH_FMT);
+        String m2 = LocalDate.parse(end).format(MONTH_FMT);
+        if (m1.equals(m2)) return "health_record_" + m1;
+        return "(SELECT user_code,record_time,heart_rate,blood_oxygen,blood_pressure_high,blood_pressure_low," +
+               "temperature,sleep_minutes,steps,calories,pressure FROM health_record_" + m1 +
+               " UNION ALL SELECT user_code,record_time,heart_rate,blood_oxygen,blood_pressure_high,blood_pressure_low," +
+               "temperature,sleep_minutes,steps,calories,pressure FROM health_record_" + m2 + ") AS hr_combined";
+    }
+
+    /** 根据日期范围构建预警记录分区表源（单月直接用表名，跨月用 UNION ALL 子查询） */
+    private String warningSource(String start, String end) {
+        String m1 = LocalDate.parse(start).format(MONTH_FMT);
+        String m2 = LocalDate.parse(end).format(MONTH_FMT);
+        if (m1.equals(m2)) return "warning_record_" + m1;
+        return "(SELECT id,user_code,create_time,warning_type,indicator_name,warning_level FROM warning_record_" + m1 +
+               " UNION ALL SELECT id,user_code,create_time,warning_type,indicator_name,warning_level FROM warning_record_" + m2 + ") AS wr_combined";
+    }
+
     @Override
     public Map<String, Object> getCurrentMonthCounts(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
@@ -58,7 +80,7 @@ public class DashboardServiceImpl implements DashboardService {
     public Map<String, Object> getCurrentMonthAverage(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
-        Map<String, Object> data = dashboardMapper.getAverageByRange(s, e);
+        Map<String, Object> data = dashboardMapper.getAverageByRangeDirect(healthSource(s, e), s, e);
 
         Map<String, Object> result = new HashMap<>();
         MapValueUtil.copyIntFields(data, result,
@@ -73,7 +95,7 @@ public class DashboardServiceImpl implements DashboardService {
     public List<Map<String, Object>> getDeptTop5(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
-        List<Map<String, Object>> list = dashboardMapper.getTop5ByRange(s, e);
+        List<Map<String, Object>> list = dashboardMapper.getTop5ByRangeDirect(warningSource(s, e), s, e);
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> item : list) {
@@ -156,7 +178,7 @@ public class DashboardServiceImpl implements DashboardService {
             result.put("labels", java.util.stream.IntStream.range(0, 24).mapToObj(String::valueOf).collect(java.util.stream.Collectors.toList()));
             result.put("counts", java.util.Arrays.stream(counts).boxed().collect(java.util.stream.Collectors.toList()));
         } else {
-            List<Map<String, Object>> rows = dashboardMapper.getWarningCountsByDate(s, e);
+            List<Map<String, Object>> rows = dashboardMapper.getWarningCountsByDateDirect(warningSource(s, e), s, e);
             List<String> labels = new java.util.ArrayList<>();
             List<Integer> counts = new java.util.ArrayList<>();
             for (Map<String, Object> row : rows) {
@@ -191,7 +213,7 @@ public class DashboardServiceImpl implements DashboardService {
         } catch (Exception ex) {
             log.debug("日期范围解析失败，使用默认30天: {}", ex.getMessage());
         }
-        List<Map<String, Object>> list = dashboardMapper.getDeptWarningWithTrend(s, e, days);
+        List<Map<String, Object>> list = dashboardMapper.getDeptWarningWithTrendDirect(warningSource(s, e), s, e, days);
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> item : list) {
@@ -269,12 +291,12 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public List<Map<String, Object>> getDailyHealthTrendByRange(String startDate, String endDate) {
-        return dashboardMapper.getDailyHealthTrend(startDate, endDate);
+        return dashboardMapper.getDailyHealthTrendDirect(healthSource(startDate, endDate), startDate, endDate);
     }
 
     @Override
     public List<Map<String, Object>> getWarningCountsByDate(String startDate, String endDate) {
-        return dashboardMapper.getWarningCountsByDate(startDate, endDate);
+        return dashboardMapper.getWarningCountsByDateDirect(warningSource(startDate, endDate), startDate, endDate);
     }
 
     @Override

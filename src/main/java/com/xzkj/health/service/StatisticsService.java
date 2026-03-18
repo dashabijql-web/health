@@ -24,8 +24,9 @@ public class StatisticsService {
     public List<Map<String, Object>> getMonthlySummary(String month) {
         String[] range = monthToRange(month);
         String tableName = "health_record_" + month.replace("-", "");
+        String warningTableName = "warning_record_" + month.replace("-", "");
         try {
-            return statisticsMapper.getMonthlySummary(tableName, range[0], range[1]);
+            return statisticsMapper.getMonthlySummary(tableName, warningTableName, range[0], range[1]);
         } catch (Exception e) {
             log.warn("月度汇总查询失败(表 {} 可能不存在): {}", tableName, e.getMessage());
             return Collections.emptyList();
@@ -45,7 +46,13 @@ public class StatisticsService {
 
     public List<Map<String, Object>> getWarningTypeCounts(String month) {
         String[] range = monthToRange(month);
-        return statisticsMapper.getWarningTypeCounts(range[0], range[1]);
+        String warningTableName = "warning_record_" + month.replace("-", "");
+        try {
+            return statisticsMapper.getWarningTypeCountsDirect(warningTableName, range[0], range[1]);
+        } catch (Exception e) {
+            log.warn("预警类型统计查询失败(表 {} 可能不存在), fallback 到视图: {}", warningTableName, e.getMessage());
+            return statisticsMapper.getWarningTypeCounts(range[0], range[1]);
+        }
     }
 
     /** 将 "YYYY-MM" 转为 [startDate, endDate)，如 ["2026-03-01", "2026-04-01"] */
