@@ -112,7 +112,7 @@ public interface DashboardMapper {
             "ISNULL(e.emp_name, w.user_code) AS userName, " +
             "w.user_code AS userCode, " +
             "COUNT(*) AS count " +
-            "FROM ${warningSource} w " +
+            "FROM ${warningSource} AS w " +
             "LEFT JOIN employee e ON w.user_code = e.emp_code " +
             "WHERE w.create_time >= CONVERT(date, #{startTime}) " +
             "AND   w.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
@@ -201,39 +201,38 @@ public interface DashboardMapper {
     /**
      * 预警率 — 直接查分区表，避免 v_warning_record UNION ALL 全扫描
      */
-    @Select("WITH WarnData AS ( " +
-            "  SELECT user_code, warning_type " +
-            "  FROM ${warningSource} " +
-            "  WHERE create_time >= CONVERT(date, #{startTime}) " +
-            "  AND   create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
-            "), " +
-            "TotalEmp AS ( " +
-            "  SELECT COUNT(*) AS cnt FROM employee WHERE status IS NULL OR status = 0 " +
-            ") " +
-            "SELECT name, " +
-            "ISNULL(cnt * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS rate, " +
+    @Select("SELECT name, " +
+            "ISNULL(cnt * 100 / NULLIF((SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0), 0), 0) AS rate, " +
             "icon " +
             "FROM ( " +
             "  SELECT '心率预警率' AS name, " +
             "  COUNT(DISTINCT CASE WHEN warning_type LIKE '%心率%' THEN user_code END) AS cnt, " +
             "  'el-icon-heart' AS icon " +
-            "  FROM WarnData " +
+            "  FROM ${warningSource} " +
+            "  WHERE create_time >= CONVERT(date, #{startTime}) " +
+            "  AND   create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  UNION ALL " +
             "  SELECT '血氧预警率', " +
             "  COUNT(DISTINCT CASE WHEN warning_type LIKE '%血氧%' THEN user_code END), " +
             "  'el-icon-data-analysis' " +
-            "  FROM WarnData " +
+            "  FROM ${warningSource} " +
+            "  WHERE create_time >= CONVERT(date, #{startTime}) " +
+            "  AND   create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  UNION ALL " +
             "  SELECT '体温预警率', " +
             "  COUNT(DISTINCT CASE WHEN warning_type LIKE '%体温%' THEN user_code END), " +
             "  'el-icon-thermometer' " +
-            "  FROM WarnData " +
+            "  FROM ${warningSource} " +
+            "  WHERE create_time >= CONVERT(date, #{startTime}) " +
+            "  AND   create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  UNION ALL " +
             "  SELECT '压力预警率', " +
             "  COUNT(DISTINCT CASE WHEN warning_type LIKE '%压力%' THEN user_code END), " +
             "  'el-icon-warning' " +
-            "  FROM WarnData " +
-            ") t")
+            "  FROM ${warningSource} " +
+            "  WHERE create_time >= CONVERT(date, #{startTime}) " +
+            "  AND   create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            ") AS t")
     List<Map<String, Object>> getWarningRatesByRangeDirect(@Param("warningSource") String warningSource,
                                                             @Param("startTime")     String startTime,
                                                             @Param("endTime")       String endTime);
@@ -281,7 +280,7 @@ public interface DashboardMapper {
             "  AND w.create_time < CONVERT(date,#{startTime}) THEN w.id END) AS prevCount " +
             "FROM department d " +
             "LEFT JOIN employee e ON d.id = e.dept_id AND (e.status IS NULL OR e.status = 0) " +
-            "LEFT JOIN ${warningSource} w ON e.emp_code = w.user_code " +
+            "LEFT JOIN ${warningSource} AS w ON e.emp_code = w.user_code " +
             "GROUP BY d.dept_name " +
             "HAVING COUNT(DISTINCT CASE WHEN w.create_time >= CONVERT(date, #{startTime}) " +
             "  AND w.create_time < DATEADD(DAY,1,CONVERT(date,#{endTime})) THEN w.id END) > 0 " +
@@ -339,32 +338,31 @@ public interface DashboardMapper {
      * healthSource  = "health_record_YYYYMM" 或两月 UNION ALL 子查询
      * warningSource = "warning_record_YYYYMM" 或两月 UNION ALL 子查询
      */
-    @Select("WITH TotalEmp AS ( " +
-            "  SELECT COUNT(*) AS cnt FROM employee WHERE status IS NULL OR status = 0 " +
-            "), " +
-            "ActiveEmp AS ( " +
-            "  SELECT COUNT(DISTINCT e.emp_code) AS cnt " +
-            "  FROM employee e " +
-            "  INNER JOIN ${healthSource} hr ON e.emp_code = hr.user_code " +
-            "  WHERE (e.status IS NULL OR e.status = 0) " +
-            "  AND hr.record_time >= CONVERT(date, #{startTime}) " +
-            "  AND hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
-            "), " +
-            "WarnEmp AS ( " +
-            "  SELECT COUNT(DISTINCT e.emp_code) AS cnt " +
-            "  FROM employee e " +
-            "  INNER JOIN ${warningSource} wr ON e.emp_code = wr.user_code " +
-            "  WHERE (e.status IS NULL OR e.status = 0) " +
-            "  AND wr.create_time >= CONVERT(date, #{startTime}) " +
-            "  AND wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
-            "  AND wr.is_handled = 0 " +
-            ") " +
-            "SELECT " +
-            "(SELECT cnt FROM TotalEmp) AS total, " +
+    @Select("SELECT " +
+            "(SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0) AS total, " +
             "(SELECT COUNT(*) FROM device_user WHERE is_current = 1) AS boundDevices, " +
-            "ISNULL((SELECT cnt FROM ActiveEmp) * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS activeRate, " +
-            "ISNULL((SELECT cnt FROM ActiveEmp) * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS usageRate, " +
-            "ISNULL((SELECT cnt FROM WarnEmp)   * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS warningRate, " +
+            "ISNULL( " +
+            "  (SELECT COUNT(DISTINCT e.emp_code) FROM employee e " +
+            "   INNER JOIN ${healthSource} AS hr ON e.emp_code = hr.user_code " +
+            "   WHERE (e.status IS NULL OR e.status = 0) " +
+            "   AND hr.record_time >= CONVERT(date, #{startTime}) " +
+            "   AND hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime}))) * 100 " +
+            "  / NULLIF((SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0), 0), 0) AS activeRate, " +
+            "ISNULL( " +
+            "  (SELECT COUNT(DISTINCT e.emp_code) FROM employee e " +
+            "   INNER JOIN ${healthSource} AS hr ON e.emp_code = hr.user_code " +
+            "   WHERE (e.status IS NULL OR e.status = 0) " +
+            "   AND hr.record_time >= CONVERT(date, #{startTime}) " +
+            "   AND hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime}))) * 100 " +
+            "  / NULLIF((SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0), 0), 0) AS usageRate, " +
+            "ISNULL( " +
+            "  (SELECT COUNT(DISTINCT e.emp_code) FROM employee e " +
+            "   INNER JOIN ${warningSource} AS wr ON e.emp_code = wr.user_code " +
+            "   WHERE (e.status IS NULL OR e.status = 0) " +
+            "   AND wr.create_time >= CONVERT(date, #{startTime}) " +
+            "   AND wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "   AND wr.is_handled = 0) * 100 " +
+            "  / NULLIF((SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0), 0), 0) AS warningRate, " +
             "(SELECT COUNT(*) FROM device WHERE battery_level IS NOT NULL AND battery_level > 0 AND battery_level < 20) AS lowBattery")
     Map<String, Object> getDeviceStatsByRangeDirect(@Param("healthSource")  String healthSource,
                                                      @Param("warningSource") String warningSource,
@@ -566,7 +564,10 @@ public interface DashboardMapper {
      * 获取指定日期范围内各指标的检测人数（DISTINCT user_code）
      * 使用 CTE 先 GROUP BY user_code 再 SUM，避免多次 COUNT DISTINCT 全表扫描（原 ~2.3s → CTE ~180ms）
      */
-    @Select(";WITH user_flags AS ( " +
+    @Select("SELECT SUM(has_hr) AS heartRate, SUM(has_bo) AS bloodOxygen, " +
+            "SUM(has_st) AS steps, SUM(has_tp) AS temperature, " +
+            "SUM(has_pr) AS pressure, COUNT(*) AS totalPersons " +
+            "FROM ( " +
             "  SELECT user_code, " +
             "    MAX(CASE WHEN heart_rate   IS NOT NULL THEN 1 ELSE 0 END) AS has_hr, " +
             "    MAX(CASE WHEN blood_oxygen IS NOT NULL THEN 1 ELSE 0 END) AS has_bo, " +
@@ -577,18 +578,17 @@ public interface DashboardMapper {
             "  WHERE record_time >= CONVERT(date, #{startTime}) " +
             "  AND   record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  GROUP BY user_code " +
-            ") " +
-            "SELECT SUM(has_hr) AS heartRate, SUM(has_bo) AS bloodOxygen, " +
-            "SUM(has_st) AS steps, SUM(has_tp) AS temperature, " +
-            "SUM(has_pr) AS pressure, COUNT(*) AS totalPersons " +
-            "FROM user_flags")
+            ") AS user_flags")
     Map<String, Object> getPersonCountsByRange(@Param("startTime") String startTime,
                                                @Param("endTime")   String endTime);
 
     /**
      * 优化版：直接查分区表，避免 v_health_record UNION ALL 全扫描
      */
-    @Select(";WITH user_flags AS ( " +
+    @Select("SELECT SUM(has_hr) AS heartRate, SUM(has_bo) AS bloodOxygen, " +
+            "SUM(has_st) AS steps, SUM(has_tp) AS temperature, " +
+            "SUM(has_pr) AS pressure, COUNT(*) AS totalPersons " +
+            "FROM ( " +
             "  SELECT user_code, " +
             "    MAX(CASE WHEN heart_rate   IS NOT NULL THEN 1 ELSE 0 END) AS has_hr, " +
             "    MAX(CASE WHEN blood_oxygen IS NOT NULL THEN 1 ELSE 0 END) AS has_bo, " +
@@ -599,11 +599,7 @@ public interface DashboardMapper {
             "  WHERE record_time >= CONVERT(date, #{startTime}) " +
             "  AND   record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  GROUP BY user_code " +
-            ") " +
-            "SELECT SUM(has_hr) AS heartRate, SUM(has_bo) AS bloodOxygen, " +
-            "SUM(has_st) AS steps, SUM(has_tp) AS temperature, " +
-            "SUM(has_pr) AS pressure, COUNT(*) AS totalPersons " +
-            "FROM user_flags")
+            ") AS user_flags")
     Map<String, Object> getPersonCountsByRangeDirect(@Param("healthSource") String healthSource,
                                                      @Param("startTime")    String startTime,
                                                      @Param("endTime")      String endTime);
@@ -628,7 +624,9 @@ public interface DashboardMapper {
      * 各部门检测人数 + 异常人数（用于部门综合看板图表）
      * 使用 CTE 分别聚合两张 UNION-ALL 视图，避免跨视图 JOIN 全表扫描（原写法 ~10s，CTE ~400ms）
      */
-    @Select(";WITH dept_persons AS ( " +
+    @Select("SELECT dp.deptName, dp.personCount, " +
+            "ISNULL(da.abnormalPersonCount, 0) AS abnormalPersonCount " +
+            "FROM ( " +
             "  SELECT d.dept_name AS deptName, COUNT(DISTINCT hr.user_code) AS personCount " +
             "  FROM v_health_record hr " +
             "  INNER JOIN employee e   ON hr.user_code = e.emp_code " +
@@ -636,8 +634,8 @@ public interface DashboardMapper {
             "  WHERE hr.record_time >= CONVERT(date, #{startTime}) " +
             "  AND   hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  GROUP BY d.dept_name " +
-            "), " +
-            "dept_abnormal AS ( " +
+            ") AS dp " +
+            "LEFT JOIN ( " +
             "  SELECT d.dept_name AS deptName, COUNT(DISTINCT wr.user_code) AS abnormalPersonCount " +
             "  FROM v_warning_record wr " +
             "  INNER JOIN employee e   ON wr.user_code = e.emp_code " +
@@ -645,38 +643,32 @@ public interface DashboardMapper {
             "  WHERE wr.create_time >= CONVERT(date, #{startTime}) " +
             "  AND   wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  GROUP BY d.dept_name " +
-            ") " +
-            "SELECT dp.deptName, dp.personCount, " +
-            "ISNULL(da.abnormalPersonCount, 0) AS abnormalPersonCount " +
-            "FROM dept_persons dp " +
-            "LEFT JOIN dept_abnormal da ON dp.deptName = da.deptName " +
+            ") AS da ON dp.deptName = da.deptName " +
             "ORDER BY dp.personCount DESC")
     List<Map<String, Object>> getDeptPersonStats(@Param("startTime") String startTime,
                                                   @Param("endTime")   String endTime);
 
     // 直接查分区表，避免扫 UNION ALL 视图（由 Controller 传入具体表名）
-    @Select(";WITH dept_persons AS ( " +
+    @Select("SELECT dp.deptName, dp.personCount, " +
+            "ISNULL(da.abnormalPersonCount, 0) AS abnormalPersonCount " +
+            "FROM ( " +
             "  SELECT d.dept_name AS deptName, COUNT(DISTINCT hr.user_code) AS personCount " +
-            "  FROM ${healthSource} hr " +
+            "  FROM ${healthSource} AS hr " +
             "  INNER JOIN employee e   ON hr.user_code = e.emp_code " +
             "  INNER JOIN department d ON e.dept_id    = d.id " +
             "  WHERE hr.record_time >= CONVERT(date, #{startTime}) " +
             "  AND   hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  GROUP BY d.dept_name " +
-            "), " +
-            "dept_abnormal AS ( " +
+            ") AS dp " +
+            "LEFT JOIN ( " +
             "  SELECT d.dept_name AS deptName, COUNT(DISTINCT wr.user_code) AS abnormalPersonCount " +
-            "  FROM ${warningSource} wr " +
+            "  FROM ${warningSource} AS wr " +
             "  INNER JOIN employee e   ON wr.user_code = e.emp_code " +
             "  INNER JOIN department d ON e.dept_id    = d.id " +
             "  WHERE wr.create_time >= CONVERT(date, #{startTime}) " +
             "  AND   wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  GROUP BY d.dept_name " +
-            ") " +
-            "SELECT dp.deptName, dp.personCount, " +
-            "ISNULL(da.abnormalPersonCount, 0) AS abnormalPersonCount " +
-            "FROM dept_persons dp " +
-            "LEFT JOIN dept_abnormal da ON dp.deptName = da.deptName " +
+            ") AS da ON dp.deptName = da.deptName " +
             "ORDER BY dp.personCount DESC")
     List<Map<String, Object>> getDeptPersonStatsDirect(@Param("healthSource")  String healthSource,
                                                         @Param("warningSource") String warningSource,

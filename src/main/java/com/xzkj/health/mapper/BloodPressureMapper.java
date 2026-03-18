@@ -54,7 +54,10 @@ public interface BloodPressureMapper {
     List<Map<String, Object>> getTrend(@Param("days") int days);
 
     /** 分布统计：正常 / 偏高 / 高血压 */
-    @Select("WITH BP AS ( " +
+    @Select("SELECT category AS name, " +
+            "  CAST(cnt * 100.0 / NULLIF(SUM(cnt) OVER(), 0) AS INT) AS value, " +
+            "  color " +
+            "FROM ( " +
             "  SELECT " +
             "    CASE " +
             "      WHEN blood_pressure_high < 90  OR blood_pressure_low < 60  THEN '偏低' " +
@@ -86,11 +89,7 @@ public interface BloodPressureMapper {
             "      WHEN blood_pressure_high <= 159 OR blood_pressure_low <= 99  THEN '#FFB84D' " +
             "      ELSE '#F06292' " +
             "    END " +
-            ") " +
-            "SELECT category AS name, " +
-            "  CAST(cnt * 100.0 / NULLIF(SUM(cnt) OVER(), 0) AS INT) AS value, " +
-            "  color " +
-            "FROM BP " +
+            ") AS bp " +
             "ORDER BY CASE category WHEN '偏低' THEN 1 WHEN '正常' THEN 2 WHEN '偏高' THEN 3 ELSE 4 END")
     List<Map<String, Object>> getDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
 

@@ -22,13 +22,7 @@ public interface BloodOxygenMapper {
      * 优化：用 CTE 单次扫描 v_health_record，消除 detectionRate 的相关子查询（原来扫描2次）
      * Base 含全部记录（用于 totalCount 分母），再用 CASE WHEN 区分有无血氧数据
      */
-    @Select("WITH Base AS ( " +
-            "  SELECT user_code, blood_oxygen " +
-            "  FROM v_health_record " +
-            "  WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
-            "  AND   record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            ") " +
-            "SELECT " +
+    @Select("SELECT " +
             "CAST(AVG(CAST(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END AS FLOAT)) AS DECIMAL(5,2)) AS avgBloodOxygen, " +
             "COALESCE(MAX(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END), 0) AS maxBloodOxygen, " +
             "COALESCE(MIN(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END), 0) AS minBloodOxygen, " +
@@ -37,7 +31,9 @@ public interface BloodOxygenMapper {
             "COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL THEN user_code END) AS totalCount, " +
             "ISNULL(COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL THEN user_code END) * 100 / " +
             "  NULLIF(COUNT(DISTINCT user_code), 0), 0) AS detectionRate " +
-            "FROM Base")
+            "FROM v_health_record " +
+            "WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND   record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
     Map<String, Object> getBloodOxygenStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
@@ -60,14 +56,8 @@ public interface BloodOxygenMapper {
      * 优化：原来6次 UNION ALL 各自独立扫描 v_health_record（6次全扫）
      *      改为单 CTE 扫描一次，再用 CASE WHEN 分组聚合（1次扫描）
      */
-    @Select("WITH Base AS ( " +
-            "  SELECT blood_oxygen " +
-            "  FROM v_health_record " +
-            "  WHERE blood_oxygen IS NOT NULL " +
-            "  AND record_time >= CONVERT(DATETIME, #{startDate}) " +
-            "  AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            "), " +
-            "Grouped AS ( " +
+    @Select("SELECT range, COUNT(*) AS count " +
+            "FROM ( " +
             "  SELECT " +
             "    CASE " +
             "      WHEN blood_oxygen <  90 THEN '<90' " +
@@ -85,10 +75,11 @@ public interface BloodOxygenMapper {
             "      WHEN blood_oxygen <  99 THEN 5 " +
             "      ELSE 6 " +
             "    END AS sort_order " +
-            "  FROM Base " +
-            ") " +
-            "SELECT range, COUNT(*) AS count " +
-            "FROM Grouped " +
+            "  FROM v_health_record " +
+            "  WHERE blood_oxygen IS NOT NULL " +
+            "  AND record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "  AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            ") AS grouped " +
             "GROUP BY range, sort_order " +
             "ORDER BY sort_order")
     List<Map<String, Object>> getBloodOxygenDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);

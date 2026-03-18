@@ -157,21 +157,18 @@ public interface RealtimeMapper {
             String cur  = "health_record_" + LocalDate.now().format(fmt);
             String prev = "health_record_" + LocalDate.now().minusMonths(1).format(fmt);
             // 必须用 AS 关键字，否则 Druid SQL 防火墙（SQL Server 模式）拒绝子查询别名
+            // 不使用 CTE，改为纯子查询，避免 Druid wall filter 拒绝 WITH xxx AS
             String src = "(SELECT user_code, heart_rate, blood_oxygen, record_time FROM " + cur +
                          " UNION ALL SELECT user_code, heart_rate, blood_oxygen, record_time FROM " + prev + ") AS hr168";
-            return "WITH Stats7d AS ( " +
-                   "  SELECT COUNT(*) AS totalRecords, " +
-                   "    COUNT(DISTINCT user_code) AS distinctUsers, " +
-                   "    SUM(CASE WHEN heart_rate >= 60 AND heart_rate <= 100 AND blood_oxygen >= 95 THEN 1 ELSE 0 END) AS healthyRecords " +
-                   "  FROM " + src + " " +
-                   "  WHERE record_time >= DATEADD(HOUR, -168, GETDATE()) " +
-                   "), TotalEmp AS (SELECT COUNT(*) AS cnt FROM employee WHERE status IS NULL OR status = 0) " +
-                   "SELECT (SELECT distinctUsers FROM Stats7d) AS onlineUsers, " +
-                   "  (SELECT cnt FROM TotalEmp) AS totalUsers, " +
-                   "  (SELECT totalRecords FROM Stats7d) AS weekRecords, " +
-                   "  (SELECT totalRecords FROM Stats7d) AS todayRecords, " +
-                   "  CASE WHEN (SELECT cnt FROM TotalEmp) > 0 THEN (SELECT distinctUsers FROM Stats7d) * 100 / (SELECT cnt FROM TotalEmp) ELSE 0 END AS onlineRate, " +
-                   "  CASE WHEN (SELECT totalRecords FROM Stats7d) > 0 THEN (SELECT healthyRecords FROM Stats7d) * 100 / (SELECT totalRecords FROM Stats7d) ELSE 0 END AS normalRate";
+            return "SELECT " +
+                   "  (SELECT COUNT(DISTINCT user_code) FROM " + src + " WHERE record_time >= DATEADD(HOUR, -168, GETDATE())) AS onlineUsers, " +
+                   "  (SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0) AS totalUsers, " +
+                   "  (SELECT COUNT(*) FROM " + src + " WHERE record_time >= DATEADD(HOUR, -168, GETDATE())) AS weekRecords, " +
+                   "  (SELECT COUNT(*) FROM " + src + " WHERE record_time >= DATEADD(HOUR, -168, GETDATE())) AS todayRecords, " +
+                   "  ISNULL((SELECT COUNT(DISTINCT user_code) FROM " + src + " WHERE record_time >= DATEADD(HOUR, -168, GETDATE())) * 100 " +
+                   "    / NULLIF((SELECT COUNT(*) FROM employee WHERE status IS NULL OR status = 0), 0), 0) AS onlineRate, " +
+                   "  ISNULL((SELECT SUM(CASE WHEN heart_rate >= 60 AND heart_rate <= 100 AND blood_oxygen >= 95 THEN 1 ELSE 0 END) FROM " + src + " WHERE record_time >= DATEADD(HOUR, -168, GETDATE())) * 100 " +
+                   "    / NULLIF((SELECT COUNT(*) FROM " + src + " WHERE record_time >= DATEADD(HOUR, -168, GETDATE())), 0), 0) AS normalRate";
         }
     }
 

@@ -42,7 +42,8 @@ public interface PressureMapper {
     List<Map<String, Object>> getTrend(@Param("days") int days);
 
     /** 分布统计：正常 / 偏高 / 高压 */
-    @Select("WITH PS AS ( " +
+    @Select("SELECT category AS name, CAST(cnt * 100.0 / NULLIF(SUM(cnt) OVER(), 0) AS INT) AS value, color " +
+            "FROM ( " +
             "  SELECT " +
             "    CASE WHEN pressure < 70 THEN '正常' WHEN pressure < 85 THEN '偏高' ELSE '高压' END AS category, " +
             "    CASE WHEN pressure < 70 THEN '#66BB6A' WHEN pressure < 85 THEN '#FFB84D' ELSE '#F06292' END AS color, " +
@@ -54,9 +55,7 @@ public interface PressureMapper {
             "  GROUP BY " +
             "    CASE WHEN pressure < 70 THEN '正常' WHEN pressure < 85 THEN '偏高' ELSE '高压' END, " +
             "    CASE WHEN pressure < 70 THEN '#66BB6A' WHEN pressure < 85 THEN '#FFB84D' ELSE '#F06292' END " +
-            ") " +
-            "SELECT category AS name, CAST(cnt * 100.0 / NULLIF(SUM(cnt) OVER(), 0) AS INT) AS value, color " +
-            "FROM PS " +
+            ") AS ps " +
             "ORDER BY CASE category WHEN '正常' THEN 1 WHEN '偏高' THEN 2 ELSE 3 END")
     List<Map<String, Object>> getDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
 

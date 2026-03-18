@@ -97,7 +97,8 @@ public interface HeartRateMapper {
      * 优化：去掉 CAST(record_time AS DATE) 函数包装，改用直接范围比较（允许索引扫描）；
      *       用 CTE 预先关联 employee，避免 GROUP BY 重复计算 DATEDIFF
      */
-    @Select("WITH AgedData AS ( " +
+    @Select("SELECT ageRange, CAST(AVG(CAST(heart_rate AS FLOAT)) AS INT) AS avgHeartRate " +
+            "FROM ( " +
             "  SELECT " +
             "    CASE " +
             "      WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 30 THEN '20-30' " +
@@ -113,9 +114,7 @@ public interface HeartRateMapper {
             "  AND e.birth_date IS NOT NULL " +
             "  AND hr.record_time >= CONVERT(DATETIME, #{startDate}) " +
             "  AND hr.record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            ") " +
-            "SELECT ageRange, CAST(AVG(CAST(heart_rate AS FLOAT)) AS INT) AS avgHeartRate " +
-            "FROM AgedData " +
+            ") AS aged_data " +
             "GROUP BY ageRange " +
             "ORDER BY MIN(age)")
     List<Map<String, Object>> getAgeDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
@@ -125,7 +124,11 @@ public interface HeartRateMapper {
      * 分类: 心率偏低(<55)、心率正常(55-120)、心率偏高(>120)
      * 返回: name, value(百分比), color
      */
-    @Select("WITH HeartRateStats AS ( " +
+    @Select("SELECT " +
+            "  category AS name, " +
+            "  CAST(cnt * 100.0 / NULLIF(SUM(cnt) OVER(), 0) AS INT) AS value, " +
+            "  color " +
+            "FROM ( " +
             "  SELECT " +
             "    CASE " +
             "      WHEN heart_rate < 55 THEN '心率偏低' " +
@@ -154,12 +157,7 @@ public interface HeartRateMapper {
             "      WHEN heart_rate BETWEEN 55 AND 120 THEN '#66BB6A' " +
             "      ELSE '#FFB84D' " +
             "    END " +
-            ") " +
-            "SELECT " +
-            "  category AS name, " +
-            "  CAST(cnt * 100.0 / NULLIF(SUM(cnt) OVER(), 0) AS INT) AS value, " +
-            "  color " +
-            "FROM HeartRateStats " +
+            ") AS hr_stats " +
             "ORDER BY " +
             "  CASE category " +
             "    WHEN '心率偏低' THEN 1 " +
