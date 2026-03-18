@@ -19,24 +19,25 @@ public interface BloodOxygenMapper {
 
     /**
      * 获取当月血氧统计概览
-     * 修复：将 DECLARE @s / @e 内联，消除多语句
-     * detectionRate 子查询中的范围计算同步内联
+     * 优化：用 CTE 单次扫描 v_health_record，消除 detectionRate 的相关子查询（原来扫描2次）
+     * Base 含全部记录（用于 totalCount 分母），再用 CASE WHEN 区分有无血氧数据
      */
-    @Select("SELECT " +
-            "CAST(AVG(CAST(blood_oxygen AS FLOAT)) AS DECIMAL(5,2)) AS avgBloodOxygen, " +
-            "COALESCE(MAX(blood_oxygen), 0) AS maxBloodOxygen, " +
-            "COALESCE(MIN(blood_oxygen), 0) AS minBloodOxygen, " +
+    @Select("WITH Base AS ( " +
+            "  SELECT user_code, blood_oxygen " +
+            "  FROM v_health_record " +
+            "  WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "  AND   record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            ") " +
+            "SELECT " +
+            "CAST(AVG(CAST(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END AS FLOAT)) AS DECIMAL(5,2)) AS avgBloodOxygen, " +
+            "COALESCE(MAX(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END), 0) AS maxBloodOxygen, " +
+            "COALESCE(MIN(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END), 0) AS minBloodOxygen, " +
             "COUNT(DISTINCT CASE WHEN blood_oxygen >= 95 THEN user_code END) AS normalCount, " +
-            "COUNT(DISTINCT CASE WHEN blood_oxygen < 95 THEN user_code END) AS abnormalCount, " +
-            "COUNT(DISTINCT user_code) AS totalCount, " +
+            "COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL AND blood_oxygen < 95 THEN user_code END) AS abnormalCount, " +
+            "COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL THEN user_code END) AS totalCount, " +
             "ISNULL(COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL THEN user_code END) * 100 / " +
-            "  NULLIF((SELECT COUNT(DISTINCT user_code) FROM v_health_record " +
-            "          WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
-            "          AND   record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))), 0), 0) AS detectionRate " +
-            "FROM v_health_record " +
-            "WHERE blood_oxygen IS NOT NULL " +
-            "AND record_time >= CONVERT(DATETIME, #{startDate}) " +
-            "AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
+            "  NULLIF(COUNT(DISTINCT user_code), 0), 0) AS detectionRate " +
+            "FROM Base")
     Map<String, Object> getBloodOxygenStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**

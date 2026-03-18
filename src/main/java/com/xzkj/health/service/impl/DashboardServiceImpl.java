@@ -55,13 +55,37 @@ public class DashboardServiceImpl implements DashboardService {
                "temperature,sleep_minutes,steps,calories,pressure FROM health_record_" + m2 + ") AS hr_combined";
     }
 
+    /**
+     * 用于 JOIN 语法的健康记录分区表源（不含内嵌别名，mapper 中会用 hr 做别名）
+     * 单月直接返回表名，跨月返回仅含 user_code+record_time 的 UNION ALL 子查询（无 AS xxx）
+     */
+    private String healthSourceForJoin(String start, String end) {
+        String m1 = LocalDate.parse(start).format(MONTH_FMT);
+        String m2 = LocalDate.parse(end).format(MONTH_FMT);
+        if (m1.equals(m2)) return "health_record_" + m1;
+        return "(SELECT user_code,record_time FROM health_record_" + m1 +
+               " UNION ALL SELECT user_code,record_time FROM health_record_" + m2 + ")";
+    }
+
+    /**
+     * 用于 JOIN 语法的预警记录分区表源（不含内嵌别名，mapper 中会用 wr 做别名）
+     * 单月直接返回表名，跨月返回仅含所需列的 UNION ALL 子查询（无 AS xxx）
+     */
+    private String warningSourceForJoin(String start, String end) {
+        String m1 = LocalDate.parse(start).format(MONTH_FMT);
+        String m2 = LocalDate.parse(end).format(MONTH_FMT);
+        if (m1.equals(m2)) return "warning_record_" + m1;
+        return "(SELECT user_code,create_time,is_handled FROM warning_record_" + m1 +
+               " UNION ALL SELECT user_code,create_time,is_handled FROM warning_record_" + m2 + ")";
+    }
+
     /** 根据日期范围构建预警记录分区表源（单月直接用表名，跨月用 UNION ALL 子查询） */
     private String warningSource(String start, String end) {
         String m1 = LocalDate.parse(start).format(MONTH_FMT);
         String m2 = LocalDate.parse(end).format(MONTH_FMT);
         if (m1.equals(m2)) return "warning_record_" + m1;
-        return "(SELECT id,user_code,create_time,warning_type,indicator_name,warning_level FROM warning_record_" + m1 +
-               " UNION ALL SELECT id,user_code,create_time,warning_type,indicator_name,warning_level FROM warning_record_" + m2 + ") AS wr_combined";
+        return "(SELECT id,user_code,create_time,warning_type,indicator_name,warning_level,is_handled FROM warning_record_" + m1 +
+               " UNION ALL SELECT id,user_code,create_time,warning_type,indicator_name,warning_level,is_handled FROM warning_record_" + m2 + ") AS wr_combined";
     }
 
     @Override
@@ -113,7 +137,11 @@ public class DashboardServiceImpl implements DashboardService {
     public Map<String, Object> getDeviceStats(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
-        Map<String, Object> data = dashboardMapper.getDeviceStatsByRange(s, e);
+        // 优化：路由到分区表，避免 v_health_record / v_warning_record UNION ALL 全扫描
+        // 使用 ForJoin 版本（无内嵌别名），mapper 中以 hr/wr 做别名
+        String hSrc = healthSourceForJoin(s, e);
+        String wSrc = warningSourceForJoin(s, e);
+        Map<String, Object> data = dashboardMapper.getDeviceStatsByRangeDirect(hSrc, wSrc, s, e);
 
         Map<String, Object> result = new HashMap<>();
         MapValueUtil.copyIntFields(data, result,
@@ -125,7 +153,8 @@ public class DashboardServiceImpl implements DashboardService {
     public Map<String, Object> getWarningRates(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
-        List<Map<String, Object>> rates = dashboardMapper.getWarningRatesByRange(s, e);
+        // 优化：路由到分区表，避免 v_warning_record UNION ALL 全扫描
+        List<Map<String, Object>> rates = dashboardMapper.getWarningRatesByRangeDirect(warningSource(s, e), s, e);
 
         List<Map<String, Object>> warningList = new ArrayList<>();
         for (Map<String, Object> rate : rates) {

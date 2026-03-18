@@ -199,6 +199,46 @@ public interface DashboardMapper {
                                                      @Param("endTime")   String endTime);
 
     /**
+     * 预警率 — 直接查分区表，避免 v_warning_record UNION ALL 全扫描
+     */
+    @Select("WITH WarnData AS ( " +
+            "  SELECT user_code, warning_type " +
+            "  FROM ${warningSource} " +
+            "  WHERE create_time >= CONVERT(date, #{startTime}) " +
+            "  AND   create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "), " +
+            "TotalEmp AS ( " +
+            "  SELECT COUNT(*) AS cnt FROM employee WHERE status IS NULL OR status = 0 " +
+            ") " +
+            "SELECT name, " +
+            "ISNULL(cnt * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS rate, " +
+            "icon " +
+            "FROM ( " +
+            "  SELECT '心率预警率' AS name, " +
+            "  COUNT(DISTINCT CASE WHEN warning_type LIKE '%心率%' THEN user_code END) AS cnt, " +
+            "  'el-icon-heart' AS icon " +
+            "  FROM WarnData " +
+            "  UNION ALL " +
+            "  SELECT '血氧预警率', " +
+            "  COUNT(DISTINCT CASE WHEN warning_type LIKE '%血氧%' THEN user_code END), " +
+            "  'el-icon-data-analysis' " +
+            "  FROM WarnData " +
+            "  UNION ALL " +
+            "  SELECT '体温预警率', " +
+            "  COUNT(DISTINCT CASE WHEN warning_type LIKE '%体温%' THEN user_code END), " +
+            "  'el-icon-thermometer' " +
+            "  FROM WarnData " +
+            "  UNION ALL " +
+            "  SELECT '压力预警率', " +
+            "  COUNT(DISTINCT CASE WHEN warning_type LIKE '%压力%' THEN user_code END), " +
+            "  'el-icon-warning' " +
+            "  FROM WarnData " +
+            ") t")
+    List<Map<String, Object>> getWarningRatesByRangeDirect(@Param("warningSource") String warningSource,
+                                                            @Param("startTime")     String startTime,
+                                                            @Param("endTime")       String endTime);
+
+    /**
      * 按部门统计指定日期范围内的健康数据量
      */
     @Select("SELECT d.dept_name AS name, COUNT(*) AS count " +
@@ -293,6 +333,43 @@ public interface DashboardMapper {
             "WHERE record_time >= CONVERT(date, GETDATE()) " +
             "GROUP BY CONVERT(VARCHAR(10), record_time, 120)")
     List<Map<String, Object>> getTodayAnomalyRates(@Param("tableName") String tableName);
+
+    /**
+     * 设备统计 — 直接查分区表，避免 v_health_record / v_warning_record UNION ALL 全扫描
+     * healthSource  = "health_record_YYYYMM" 或两月 UNION ALL 子查询
+     * warningSource = "warning_record_YYYYMM" 或两月 UNION ALL 子查询
+     */
+    @Select("WITH TotalEmp AS ( " +
+            "  SELECT COUNT(*) AS cnt FROM employee WHERE status IS NULL OR status = 0 " +
+            "), " +
+            "ActiveEmp AS ( " +
+            "  SELECT COUNT(DISTINCT e.emp_code) AS cnt " +
+            "  FROM employee e " +
+            "  INNER JOIN ${healthSource} hr ON e.emp_code = hr.user_code " +
+            "  WHERE (e.status IS NULL OR e.status = 0) " +
+            "  AND hr.record_time >= CONVERT(date, #{startTime}) " +
+            "  AND hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "), " +
+            "WarnEmp AS ( " +
+            "  SELECT COUNT(DISTINCT e.emp_code) AS cnt " +
+            "  FROM employee e " +
+            "  INNER JOIN ${warningSource} wr ON e.emp_code = wr.user_code " +
+            "  WHERE (e.status IS NULL OR e.status = 0) " +
+            "  AND wr.create_time >= CONVERT(date, #{startTime}) " +
+            "  AND wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "  AND wr.is_handled = 0 " +
+            ") " +
+            "SELECT " +
+            "(SELECT cnt FROM TotalEmp) AS total, " +
+            "(SELECT COUNT(*) FROM device_user WHERE is_current = 1) AS boundDevices, " +
+            "ISNULL((SELECT cnt FROM ActiveEmp) * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS activeRate, " +
+            "ISNULL((SELECT cnt FROM ActiveEmp) * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS usageRate, " +
+            "ISNULL((SELECT cnt FROM WarnEmp)   * 100 / NULLIF((SELECT cnt FROM TotalEmp), 0), 0) AS warningRate, " +
+            "(SELECT COUNT(*) FROM device WHERE battery_level IS NOT NULL AND battery_level > 0 AND battery_level < 20) AS lowBattery")
+    Map<String, Object> getDeviceStatsByRangeDirect(@Param("healthSource")  String healthSource,
+                                                     @Param("warningSource") String warningSource,
+                                                     @Param("startTime")     String startTime,
+                                                     @Param("endTime")       String endTime);
 
     /**
      * 按日期统计预警数量（用于柱状图，不受 TOP 限制）
