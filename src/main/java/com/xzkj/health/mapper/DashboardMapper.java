@@ -516,64 +516,13 @@ public interface DashboardMapper {
      * 班前健康达标率：今日有记录的员工中，最新一条记录符合准入标准的比例
      * 准入标准：心率60-100，血氧≥95，血压高<140，血压低<90
      */
-    @Select(";WITH latest_records AS ( " +
-            "  SELECT hr.user_code, hr.heart_rate, hr.blood_oxygen, " +
-            "    hr.blood_pressure_high, hr.blood_pressure_low, " +
-            "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
-            "  FROM v_health_record hr " +
-            "  WHERE hr.record_time >= CONVERT(date, GETDATE()) " +
-            ") " +
-            "SELECT " +
-            "  COUNT(*) AS totalToday, " +
-            "  SUM(CASE WHEN " +
-            "    (heart_rate IS NULL OR (heart_rate >= 60 AND heart_rate <= 100)) " +
-            "    AND (blood_oxygen IS NULL OR blood_oxygen >= 95) " +
-            "    AND (blood_pressure_high IS NULL OR blood_pressure_high < 140) " +
-            "    AND (blood_pressure_low IS NULL OR blood_pressure_low < 90) " +
-            "    THEN 1 ELSE 0 END) AS qualifiedCount, " +
-            "  SUM(CASE WHEN " +
-            "    (heart_rate IS NOT NULL AND (heart_rate < 60 OR heart_rate > 100)) " +
-            "    OR (blood_oxygen IS NOT NULL AND blood_oxygen < 95) " +
-            "    OR (blood_pressure_high IS NOT NULL AND blood_pressure_high >= 140) " +
-            "    OR (blood_pressure_low IS NOT NULL AND blood_pressure_low >= 90) " +
-            "    THEN 1 ELSE 0 END) AS failedCount " +
-            "FROM latest_records WHERE rn = 1")
+    @SelectProvider(type = MetricDailySqlProvider.class, method = "getTodayPreShiftCompliance")
     Map<String, Object> getTodayPreShiftCompliance();
 
     /**
      * 入井准入名单：今日有健康记录的所有员工及其最新体征和准入状态
      */
-    @Select(";WITH latest_records AS ( " +
-            "  SELECT hr.user_code, hr.heart_rate, hr.blood_oxygen, " +
-            "    hr.blood_pressure_high, hr.blood_pressure_low, hr.temperature, " +
-            "    hr.record_time, " +
-            "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
-            "  FROM v_health_record hr " +
-            "  WHERE hr.record_time >= CONVERT(date, GETDATE()) " +
-            ") " +
-            "SELECT TOP ${size} " +
-            "  ISNULL(e.emp_name, lr.user_code) AS empName, " +
-            "  ISNULL(e.emp_code, lr.user_code) AS empCode, " +
-            "  ISNULL(d.dept_name, '') AS deptName, " +
-            "  ISNULL(jt.type_name, '') AS jobTypeName," +
-            "  lr.heart_rate AS heartRate, " +
-            "  lr.blood_oxygen AS bloodOxygen, " +
-            "  lr.blood_pressure_high AS systolic, " +
-            "  lr.blood_pressure_low AS diastolic, " +
-            "  lr.temperature AS temperature, " +
-            "  lr.record_time AS recordTime, " +
-            "  CASE WHEN " +
-            "    (lr.heart_rate IS NULL OR (lr.heart_rate >= 60 AND lr.heart_rate <= 100)) " +
-            "    AND (lr.blood_oxygen IS NULL OR lr.blood_oxygen >= 95) " +
-            "    AND (lr.blood_pressure_high IS NULL OR lr.blood_pressure_high < 140) " +
-            "    AND (lr.blood_pressure_low IS NULL OR lr.blood_pressure_low < 90) " +
-            "    THEN 1 ELSE 0 END AS qualified " +
-            "FROM latest_records lr " +
-            "LEFT JOIN employee e ON lr.user_code = e.emp_code " +
-            "LEFT JOIN department d ON e.dept_id = d.id " +
-            "LEFT JOIN job_type jt ON e.job_type_id = jt.id " +
-            "WHERE lr.rn = 1 " +
-            "ORDER BY qualified ASC, lr.record_time DESC")
+    @SelectProvider(type = MetricDailySqlProvider.class, method = "getTodayMineEntryList")
     List<Map<String, Object>> getTodayMineEntryList(@Param("size") int size);
 
     /**
