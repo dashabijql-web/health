@@ -418,7 +418,7 @@ function renderDeptRadar() {
       shape: 'circle',
       radius: '62%',
       center: ['50%', '46%'],
-      splitNumber: 3,
+      splitNumber: 5,
       axisName: { color: '#9ca3af', fontSize: 11 },
       axisLabel: { show: false },
       splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
