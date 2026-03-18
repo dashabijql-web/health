@@ -80,29 +80,30 @@ public interface HeartRateMapper {
     /**
      * 获取年龄段心率统计（关联 employee.birth_date 计算真实年龄）
      * 返回: ageRange, avgHeartRate
+     * 优化：去掉 CAST(record_time AS DATE) 函数包装，改用直接范围比较（允许索引扫描）；
+     *       用 CTE 预先关联 employee，避免 GROUP BY 重复计算 DATEDIFF
      */
-    @Select("SELECT " +
-            "CASE " +
-            "  WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 30 THEN '20-30' " +
-            "  WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 40 THEN '30-40' " +
-            "  WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 50 THEN '40-50' " +
-            "  ELSE '50+' " +
-            "END AS ageRange, " +
-            "CAST(AVG(CAST(hr.heart_rate AS FLOAT)) AS INT) AS avgHeartRate " +
-            "FROM v_health_record hr " +
-            "INNER JOIN employee e ON hr.user_code = e.emp_code " +
-            "WHERE hr.heart_rate IS NOT NULL AND hr.heart_rate > 0 " +
-            "AND e.birth_date IS NOT NULL " +
-            "AND CAST(hr.record_time AS DATE) >= CONVERT(DATE, #{startDate}) " +
-            "AND CAST(hr.record_time AS DATE) <= CONVERT(DATE, #{endDate}) " +
-            "GROUP BY " +
-            "CASE " +
-            "  WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 30 THEN '20-30' " +
-            "  WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 40 THEN '30-40' " +
-            "  WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 50 THEN '40-50' " +
-            "  ELSE '50+' " +
-            "END " +
-            "ORDER BY MIN(DATEDIFF(YEAR, e.birth_date, GETDATE()))")
+    @Select("WITH AgedData AS ( " +
+            "  SELECT " +
+            "    CASE " +
+            "      WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 30 THEN '20-30' " +
+            "      WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 40 THEN '30-40' " +
+            "      WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 50 THEN '40-50' " +
+            "      ELSE '50+' " +
+            "    END AS ageRange, " +
+            "    DATEDIFF(YEAR, e.birth_date, GETDATE()) AS age, " +
+            "    hr.heart_rate " +
+            "  FROM v_health_record hr " +
+            "  INNER JOIN employee e ON hr.user_code = e.emp_code " +
+            "  WHERE hr.heart_rate IS NOT NULL AND hr.heart_rate > 0 " +
+            "  AND e.birth_date IS NOT NULL " +
+            "  AND hr.record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "  AND hr.record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            ") " +
+            "SELECT ageRange, CAST(AVG(CAST(heart_rate AS FLOAT)) AS INT) AS avgHeartRate " +
+            "FROM AgedData " +
+            "GROUP BY ageRange " +
+            "ORDER BY MIN(age)")
     List<Map<String, Object>> getAgeDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
