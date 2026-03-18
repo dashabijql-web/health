@@ -540,9 +540,10 @@ export default {
     },
 
     autoRefresh() {
+      clearInterval(this.refreshTimer)
       this.refreshTimer = setInterval(() => {
         this.fetchOnlineUsers()
-      }, 5000)
+      }, 15000)
     },
 
     onVisibilityChange() {
