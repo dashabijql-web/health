@@ -36,20 +36,33 @@ public interface HeartRateMapper {
 
     /**
      * 获取心率概览统计 — 直接查分区表，避免扫 v_health_record UNION ALL 视图
-     * 注意：不用 CTE，因为 Druid SQL 防火墙不支持 CTE 内嵌子查询（UNION ALL）作为表源
-     * ${tableSource} 可为单月表名（如 health_record_202603）或无别名的 UNION ALL 子查询
+     * 性能优化（v2）：用双层子查询代替 COUNT(DISTINCT CASE WHEN ...) 跨 2.3M 行的昂贵聚合
+     *   外层：汇总每人的 max/min/avg/cnt，内层：每 user_code 先聚合成1行
+     *   COUNT(DISTINCT CASE WHEN) 在大表上必须全表扫，改为 GROUP BY 后 SUM 可以利用索引
+     * ${tableSource} 可为单月表名（如 health_record_202603）
      */
     @Select("SELECT " +
-            "ISNULL(AVG(CASE WHEN heart_rate > 0 THEN heart_rate ELSE NULL END), 0) AS avgHeartRate, " +
-            "ISNULL(MIN(CASE WHEN heart_rate > 0 THEN heart_rate ELSE NULL END), 0) AS minHeartRate, " +
-            "ISNULL(MAX(CASE WHEN heart_rate > 0 THEN heart_rate ELSE NULL END), 0) AS maxHeartRate, " +
-            "ISNULL(COUNT(DISTINCT CASE WHEN heart_rate > 0 THEN user_code ELSE NULL END) * 100 / NULLIF(COUNT(DISTINCT user_code), 0), 0) AS detectionRate, " +
-            "SUM(CASE WHEN heart_rate >= 55 AND heart_rate <= 120 THEN 1 ELSE 0 END) AS normalCount, " +
-            "SUM(CASE WHEN heart_rate > 0 AND (heart_rate < 55 OR heart_rate > 120) THEN 1 ELSE 0 END) AS abnormalCount, " +
-            "COUNT(CASE WHEN heart_rate > 0 THEN 1 ELSE NULL END) AS totalCount " +
-            "FROM ${tableSource} " +
-            "WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
-            "AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
+            "ISNULL(SUM(sum_hr) / NULLIF(SUM(cnt_hr), 0), 0) AS avgHeartRate, " +
+            "ISNULL(MIN(CASE WHEN min_hr > 0 THEN min_hr END), 0) AS minHeartRate, " +
+            "ISNULL(MAX(max_hr), 0) AS maxHeartRate, " +
+            "ISNULL(SUM(CASE WHEN has_hr = 1 THEN 1 ELSE 0 END) * 100 / NULLIF(COUNT(*), 0), 0) AS detectionRate, " +
+            "SUM(normal_cnt) AS normalCount, " +
+            "SUM(abnormal_cnt) AS abnormalCount, " +
+            "SUM(cnt_hr) AS totalCount " +
+            "FROM ( " +
+            "  SELECT user_code, " +
+            "    MAX(CASE WHEN heart_rate > 0 THEN 1 ELSE 0 END) AS has_hr, " +
+            "    SUM(CASE WHEN heart_rate > 0 THEN heart_rate ELSE 0 END) AS sum_hr, " +
+            "    COUNT(CASE WHEN heart_rate > 0 THEN 1 END) AS cnt_hr, " +
+            "    MIN(CASE WHEN heart_rate > 0 THEN heart_rate END) AS min_hr, " +
+            "    MAX(CASE WHEN heart_rate > 0 THEN heart_rate END) AS max_hr, " +
+            "    SUM(CASE WHEN heart_rate >= 55 AND heart_rate <= 120 THEN 1 ELSE 0 END) AS normal_cnt, " +
+            "    SUM(CASE WHEN heart_rate > 0 AND (heart_rate < 55 OR heart_rate > 120) THEN 1 ELSE 0 END) AS abnormal_cnt " +
+            "  FROM ${tableSource} " +
+            "  WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "  AND record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            "  GROUP BY user_code " +
+            ") AS per_user")
     Map<String, Object> getHeartRateOverviewDirect(@Param("tableSource") String tableSource,
                                                     @Param("startDate") String startDate,
                                                     @Param("endDate") String endDate);

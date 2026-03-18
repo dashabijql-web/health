@@ -22,15 +22,10 @@ public class HeartRateServiceImpl implements HeartRateService {
 
     @Override
     public Map<String, Object> getHeartRateOverview(String startDate, String endDate) {
-        // 当日期范围在同一月份时，直接查分区表（单表名，Druid wall 可接受）
-        // 跨月时 Druid SQL Server wall 拒绝 UNION ALL 子查询作为直接表源，回退到视图查询
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyMM");
-        String m1 = LocalDate.parse(startDate).format(fmt);
-        String m2 = LocalDate.parse(endDate).format(fmt);
-        if (m1.equals(m2)) {
-            return heartRateMapper.getHeartRateOverviewDirect("health_record_" + m1, startDate, endDate);
-        }
-        return heartRateMapper.getHeartRateOverview(startDate, endDate);
+        // 同月或跨月均路由到 Direct 版本，避免 v_health_record UNION ALL 13 表全扫
+        // 跨月时用 UNION ALL 子查询（仅 2 张分区表），Druid wall 可接受
+        String tableSource = heartRateTableSourceByRange(startDate, endDate);
+        return heartRateMapper.getHeartRateOverviewDirect(tableSource, startDate, endDate);
     }
 
     @Override
