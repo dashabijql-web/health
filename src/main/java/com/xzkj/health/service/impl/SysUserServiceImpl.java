@@ -99,9 +99,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     public SysUser getByUsername(String username) {
-        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysUser::getUsername, username);  // WHERE username = ?
-        return getOne(wrapper);  // 父类方法，查询单条记录
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<SysUser> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        wrapper.eq("username", username);
+        return getOne(wrapper);
     }
 
     /**
@@ -116,9 +117,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     public boolean existsByUsername(String username) {
-        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysUser::getUsername, username);
-        return count(wrapper) > 0;  // count() > 0 表示存在记录
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<SysUser> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        wrapper.eq("username", username);
+        return count(wrapper) > 0;
     }
 
     /**

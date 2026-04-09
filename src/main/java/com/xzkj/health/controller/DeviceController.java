@@ -1,6 +1,7 @@
 package com.xzkj.health.controller;
 
 import com.xzkj.health.common.Result;
+import com.xzkj.health.mapper.RiskWarningMapper;
 import com.xzkj.health.model.Device;
 import com.xzkj.health.model.DeviceUser;
 import com.xzkj.health.service.DeviceDataBufferService;
@@ -13,8 +14,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 /**
  * 设备管理HTTP接口
  * 提供Web管理界面和API
@@ -36,6 +39,9 @@ public class DeviceController {
     @Autowired
     private DeviceDataBufferService deviceDataBufferService;
 
+    @Autowired
+    private RiskWarningMapper riskWarningMapper;
+
     /**
      * 获取设备列表（所有设备，包含在线/离线状态）
      * GET http://localhost:8080/health/api/device/online
@@ -50,6 +56,15 @@ public class DeviceController {
             // 批量查询绑定和缓冲计数（2次SQL替代N*2次）
             Map<Long, DeviceUser> bindingMap = deviceUserService.getAllCurrentBindings();
             Map<Long, Integer> bufferCountMap = deviceDataBufferService.getAllPendingCounts();
+
+            // 查询近24小时有未处理预警的员工ID集合
+            Set<Long> warningEmpIds;
+            try {
+                warningEmpIds = new HashSet<>(riskWarningMapper.getEmpIdsWithUnhandledWarnings());
+            } catch (Exception e) {
+                log.warn("查询预警员工ID失败，hasWarning 将全部置 false: {}", e.getMessage());
+                warningEmpIds = new HashSet<>();
+            }
 
             // 构建详细设备信息
             for (Device device : allDevices) {
@@ -67,6 +82,13 @@ public class DeviceController {
                 deviceInfo.put("bindStatus", binding != null);
                 deviceInfo.put("userName", binding != null ? binding.getRealName() : null);
                 deviceInfo.put("deptName", binding != null ? binding.getDeptName() : null);
+
+                // 标记是否有未处理预警
+                boolean hasWarning = binding != null && warningEmpIds.contains(binding.getEmpId());
+                deviceInfo.put("hasWarning", hasWarning);
+
+                // 电量（0-100，null=未知）
+                deviceInfo.put("batteryLevel", device.getBatteryLevel());
 
                 // 从批量查询结果取缓冲计数
                 deviceInfo.put("bufferCount", bufferCountMap.getOrDefault(device.getId(), 0));

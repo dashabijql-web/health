@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 压力指数分析控制器
@@ -18,19 +19,43 @@ public class PressureController {
     @Autowired
     private PressureService pressureService;
 
+    // ── 模块级缓存（overview/department-stats/trend 查询较慢）──
+    private final ConcurrentHashMap<String, Object[]> overviewCache  = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> deptStatsCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> trendCache     = new ConcurrentHashMap<>();
+    private static final long CACHE_TTL = 10 * 60 * 1000L; // 10 分钟
+
     @GetMapping("/overview")
     public Result<Map<String, Object>> getOverview(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         String[] d = DateParamUtil.range30(startDate, endDate);
-        return Result.ok("获取成功", pressureService.getOverview(d[0], d[1]));
+        String key = d[0] + "|" + d[1];
+        Object[] cached = overviewCache.get(key);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> hit = (Map<String, Object>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
+        Map<String, Object> data = pressureService.getOverview(d[0], d[1]);
+        overviewCache.put(key, new Object[]{ data, System.currentTimeMillis() + CACHE_TTL });
+        return Result.ok("获取成功", data);
     }
 
     @GetMapping("/trend")
     public Result<Map<String, Object>> getTrend(
             @RequestParam(defaultValue = "30") Integer days) {
         days = DateParamUtil.clampDays(days);
-        return Result.ok("获取成功", pressureService.getTrend(days));
+        String key = "days:" + days;
+        Object[] cached = trendCache.get(key);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> hit = (Map<String, Object>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
+        Map<String, Object> data = pressureService.getTrend(days);
+        trendCache.put(key, new Object[]{ data, System.currentTimeMillis() + CACHE_TTL });
+        return Result.ok("获取成功", data);
     }
 
     @GetMapping("/distribution")
@@ -55,7 +80,16 @@ public class PressureController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         String[] d = DateParamUtil.range30(startDate, endDate);
-        return Result.ok("获取成功", pressureService.getDepartmentStats(d[0], d[1]));
+        String key = d[0] + "|" + d[1];
+        Object[] cached = deptStatsCache.get(key);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> hit = (List<Map<String, Object>>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
+        List<Map<String, Object>> data = pressureService.getDepartmentStats(d[0], d[1]);
+        deptStatsCache.put(key, new Object[]{ data, System.currentTimeMillis() + CACHE_TTL });
+        return Result.ok("获取成功", data);
     }
 
     @GetMapping("/realtime")

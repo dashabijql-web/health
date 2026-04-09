@@ -73,6 +73,19 @@ public class MonthlyTableScheduler {
         }
     }
 
+    /**
+     * 每5分钟刷新今日的 health_daily_stats（今天数据仍在持续写入，需要定期更新汇总）
+     */
+    @Scheduled(fixedDelay = 300_000)
+    public void refreshTodayDailyStats() {
+        try {
+            jdbcTemplate.execute("EXEC sp_refresh_today_daily_stats");
+            log.debug("[daily-stats] 今日汇总已刷新");
+        } catch (Exception e) {
+            log.warn("[daily-stats] 今日汇总刷新失败: {}", e.getMessage());
+        }
+    }
+
     /** 调用存储过程创建指定月份的分表（health_record_YYYYMM + warning_record_YYYYMM） */
     private void createTablesForMonth(int year, int month) {
         jdbcTemplate.execute(

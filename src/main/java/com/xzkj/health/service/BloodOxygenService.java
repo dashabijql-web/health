@@ -38,7 +38,7 @@ public interface BloodOxygenService {
     /**
      * 获取年龄段血氧分布
      */
-    List<Map<String, Object>> getAgeDistribution();
+    List<Map<String, Object>> getAgeDistribution(String startDate, String endDate);
 
     /**
      * 获取指定日期每小时平均血氧

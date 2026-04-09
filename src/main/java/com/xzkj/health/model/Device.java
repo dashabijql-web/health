@@ -27,6 +27,11 @@ public class Device {
     private Integer status;
 
     /**
+     * 电量百分比（0-100），由手表上报，null 表示未知
+     */
+    private Integer batteryLevel;
+
+    /**
      * 最后在线时间
      */
     private LocalDateTime lastOnlineTime;

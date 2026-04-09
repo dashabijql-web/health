@@ -41,10 +41,10 @@ public class RiskWarningService {
         return stats;
     }
 
-    public Map<String, Object> getWarningList(String level, Boolean handled, String userCode, int page, int size) {
+    public Map<String, Object> getWarningList(String level, Boolean handled, String userCode, String warningType, String startDate, String endDate, int page, int size) {
         int offset = (page - 1) * size;
-        List<Map<String, Object>> list = riskWarningMapper.getWarningList(level, handled, userCode, offset, size);
-        int total = riskWarningMapper.countWarnings(level, handled, userCode);
+        List<Map<String, Object>> list = riskWarningMapper.getWarningList(level, handled, userCode, warningType, startDate, endDate, offset, size);
+        int total = riskWarningMapper.countWarnings(level, handled, userCode, warningType, startDate, endDate);
 
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);
@@ -134,21 +134,49 @@ public class RiskWarningService {
      * 处理单条预警。
      *
      * 路由逻辑：
-     *   1. 先从 v_warning_record 视图查出该记录的 create_time
-     *   2. 用 TableNameUtil 计算对应月份表名
-     *   3. 更新该月份表
+     *   1. 若前端传入 createTime，直接计算对应月份表（避免视图ID重复导致路由错误）
+     *   2. 否则从 v_warning_record 视图查出该记录的 create_time 再计算
+     *   3. 若目标月份表更新0行，逐一尝试其他月份表（应对ID跨表重复情况）
+     *   4. 最后回退更新原始表
      */
-    public boolean handleWarning(Long id, String handleBy, String handleRemark) {
-        String tableName = resolveWarningTable(id);
-        if (tableName == null) {
-            log.warn("[分表] handleWarning: 未找到 id={} 的预警记录", id);
-            return false;
+    public boolean handleWarning(Long id, String handleBy, String handleRemark, String createTimeStr) {
+        // 优先用前端传入的 createTime 直接路由，避免视图中 ID 重复导致路由到错误表
+        String primaryTable = null;
+        if (createTimeStr != null && !createTimeStr.isEmpty()) {
+            LocalDateTime ct = parseDateTime(createTimeStr);
+            if (ct != null) primaryTable = TableNameUtil.warningRecordTable(ct);
         }
-        // 先尝试更新月份表
-        int result = riskWarningMapper.handleWarningInTable(tableName, id, handleBy, handleRemark);
-        // 月份表没有该行（分表前的历史数据在原始表里），回退更新原始表
+        if (primaryTable == null) {
+            primaryTable = resolveWarningTable(id);
+        }
+
+        // 尝试主路由表
+        int result = 0;
+        if (primaryTable != null) {
+            result = riskWarningMapper.handleWarningInTable(primaryTable, id, handleBy, handleRemark);
+        }
+
+        // 若未命中，遍历近13个月表（应对 ID 在多表重复的边界情况）
+        if (result == 0) {
+            LocalDateTime now = LocalDateTime.now();
+            java.util.List<String> allTables = TableNameUtil.warningRecordTables(now.minusMonths(12), now);
+            for (String t : allTables) {
+                if (t.equals(primaryTable)) continue;
+                try {
+                    result = riskWarningMapper.handleWarningInTable(t, id, handleBy, handleRemark);
+                    if (result > 0) break;
+                } catch (Exception e) {
+                    log.debug("[分表] handleWarning 尝试表 {} 失败(可能不存在): {}", t, e.getMessage());
+                }
+            }
+        }
+
+        // 最终回退：原始表（历史数据）
         if (result == 0) {
             result = riskWarningMapper.handleWarningOriginal(id, handleBy, handleRemark);
+        }
+        if (result == 0) {
+            log.warn("[分表] handleWarning: id={} 在所有表中均未找到可更新记录", id);
         }
         return result > 0;
     }

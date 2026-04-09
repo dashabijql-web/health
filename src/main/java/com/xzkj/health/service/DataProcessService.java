@@ -57,6 +57,9 @@ public class DataProcessService {
     @Autowired
     private AlertConfigService alertConfigService;
 
+    @Autowired
+    private com.xzkj.health.mapper.EmployeeMapper employeeMapper;
+
     // ─── 辅助方法 ─────────────────────────────────────────────────
 
     /**
@@ -235,20 +238,26 @@ public class DataProcessService {
         try {
             Map<Integer, AlertConfig> cfgMap = alertConfigService.getConfigMap(riskLevel);
 
-            // 告警冷却时间（分钟）：同用户同指标 30 分钟内只产生一条未处理告警
-            final int DEDUP_MINUTES = 30;
+            // 告警冷却时间（分钟）：同用户同指标在冷却期内只产生一条未处理告警
+            // 血氧使用 24h 冷却（每日一次已足够，避免高频采样导致预警率虚高）
+            final int DEDUP_MINUTES    = 240; // 同一人同一指标 4 小时内不重复预警
+            final int DEDUP_OXYGEN_MIN = 1440; // 血氧：24 小时冷却
 
             // 心率预警 (configType=1)
             if (record.getHeartRate() != null) {
                 AlertConfig cfg = cfgMap.get(1);
                 if (cfg != null && cfg.getEnabled() == 1) {
                     int hr = record.getHeartRate();
-                    double critLow = cfg.getCriticalLow().doubleValue();
+                    double critLow  = cfg.getCriticalLow().doubleValue();
                     double critHigh = cfg.getCriticalHigh().doubleValue();
-                    double warnLow = cfg.getWarnLow().doubleValue();
+                    double midLow   = cfg.getWarnMidLow()  != null ? cfg.getWarnMidLow().doubleValue()  : critLow;
+                    double midHigh  = cfg.getWarnMidHigh() != null ? cfg.getWarnMidHigh().doubleValue() : critHigh;
+                    double warnLow  = cfg.getWarnLow().doubleValue();
                     double warnHigh = cfg.getWarnHigh().doubleValue();
                     if ((hr < critLow || hr > critHigh) && !riskWarningService.hasRecentWarning(userCode, "心率", DEDUP_MINUTES)) {
                         riskWarningService.insertWarning(userCode, "心率异常", "心率", hr + " bpm", "高危");
+                    } else if ((hr < midLow || hr > midHigh) && !riskWarningService.hasRecentWarning(userCode, "心率", DEDUP_MINUTES)) {
+                        riskWarningService.insertWarning(userCode, "心率异常", "心率", hr + " bpm", "中危");
                     } else if ((hr < warnLow || hr > warnHigh) && !riskWarningService.hasRecentWarning(userCode, "心率", DEDUP_MINUTES)) {
                         riskWarningService.insertWarning(userCode, "心率异常", "心率", hr + " bpm", "低危");
                     }
@@ -261,10 +270,13 @@ public class DataProcessService {
                 if (cfg != null && cfg.getEnabled() == 1) {
                     int oxygen = record.getBloodOxygen();
                     double critLow = cfg.getCriticalLow().doubleValue();
+                    double midLow  = cfg.getWarnMidLow() != null ? cfg.getWarnMidLow().doubleValue() : critLow;
                     double warnLow = cfg.getWarnLow().doubleValue();
-                    if (oxygen < critLow && !riskWarningService.hasRecentWarning(userCode, "血氧", DEDUP_MINUTES)) {
+                    if (oxygen < critLow && !riskWarningService.hasRecentWarning(userCode, "血氧", DEDUP_OXYGEN_MIN)) {
                         riskWarningService.insertWarning(userCode, "血氧过低", "血氧", oxygen + "%", "高危");
-                    } else if (oxygen < warnLow && !riskWarningService.hasRecentWarning(userCode, "血氧", DEDUP_MINUTES)) {
+                    } else if (oxygen < midLow && !riskWarningService.hasRecentWarning(userCode, "血氧", DEDUP_OXYGEN_MIN)) {
+                        riskWarningService.insertWarning(userCode, "血氧偏低", "血氧", oxygen + "%", "中危");
+                    } else if (oxygen < warnLow && !riskWarningService.hasRecentWarning(userCode, "血氧", DEDUP_OXYGEN_MIN)) {
                         riskWarningService.insertWarning(userCode, "血氧偏低", "血氧", oxygen + "%", "低危");
                     }
                 }
@@ -276,12 +288,16 @@ public class DataProcessService {
                 if (cfg != null && cfg.getEnabled() == 1) {
                     double realTemp = record.getTemperature() / 10.0;
                     String tempStr = String.format("%.1f°C", realTemp);
-                    double critLow = cfg.getCriticalLow().doubleValue();
+                    double critLow  = cfg.getCriticalLow().doubleValue();
                     double critHigh = cfg.getCriticalHigh().doubleValue();
-                    double warnLow = cfg.getWarnLow().doubleValue();
+                    double midLow   = cfg.getWarnMidLow()  != null ? cfg.getWarnMidLow().doubleValue()  : critLow;
+                    double midHigh  = cfg.getWarnMidHigh() != null ? cfg.getWarnMidHigh().doubleValue() : critHigh;
+                    double warnLow  = cfg.getWarnLow().doubleValue();
                     double warnHigh = cfg.getWarnHigh().doubleValue();
                     if ((realTemp < critLow || realTemp > critHigh) && !riskWarningService.hasRecentWarning(userCode, "体温", DEDUP_MINUTES)) {
                         riskWarningService.insertWarning(userCode, "体温异常", "体温", tempStr, "高危");
+                    } else if ((realTemp < midLow || realTemp > midHigh) && !riskWarningService.hasRecentWarning(userCode, "体温", DEDUP_MINUTES)) {
+                        riskWarningService.insertWarning(userCode, "体温异常", "体温", tempStr, "中危");
                     } else if ((realTemp < warnLow || realTemp > warnHigh) && !riskWarningService.hasRecentWarning(userCode, "体温", DEDUP_MINUTES)) {
                         riskWarningService.insertWarning(userCode, "体温异常", "体温", tempStr, "低危");
                     }
@@ -294,9 +310,12 @@ public class DataProcessService {
                 if (cfg != null && cfg.getEnabled() == 1) {
                     int high = record.getBloodPressureHigh();
                     double critHigh = cfg.getCriticalHigh().doubleValue();
+                    double midHigh  = cfg.getWarnMidHigh() != null ? cfg.getWarnMidHigh().doubleValue() : critHigh;
                     double warnHigh = cfg.getWarnHigh().doubleValue();
                     if (high > critHigh && !riskWarningService.hasRecentWarning(userCode, "收缩压", DEDUP_MINUTES)) {
                         riskWarningService.insertWarning(userCode, "血压过高", "收缩压", high + " mmHg", "高危");
+                    } else if (high > midHigh && !riskWarningService.hasRecentWarning(userCode, "收缩压", DEDUP_MINUTES)) {
+                        riskWarningService.insertWarning(userCode, "血压偏高", "收缩压", high + " mmHg", "中危");
                     } else if (high > warnHigh && !riskWarningService.hasRecentWarning(userCode, "收缩压", DEDUP_MINUTES)) {
                         riskWarningService.insertWarning(userCode, "血压偏高", "收缩压", high + " mmHg", "低危");
                     }
@@ -309,9 +328,12 @@ public class DataProcessService {
                 if (cfg != null && cfg.getEnabled() == 1) {
                     int pressure = record.getPressure();
                     double critHigh = cfg.getCriticalHigh().doubleValue();
+                    double midHigh  = cfg.getWarnMidHigh() != null ? cfg.getWarnMidHigh().doubleValue() : critHigh;
                     double warnHigh = cfg.getWarnHigh().doubleValue();
                     if (pressure > critHigh && !riskWarningService.hasRecentWarning(userCode, "压力指数", DEDUP_MINUTES)) {
                         riskWarningService.insertWarning(userCode, "压力过大", "压力指数", String.valueOf(pressure), "高危");
+                    } else if (pressure > midHigh && !riskWarningService.hasRecentWarning(userCode, "压力指数", DEDUP_MINUTES)) {
+                        riskWarningService.insertWarning(userCode, "压力偏高", "压力指数", String.valueOf(pressure), "中危");
                     } else if (pressure > warnHigh && !riskWarningService.hasRecentWarning(userCode, "压力指数", DEDUP_MINUTES)) {
                         riskWarningService.insertWarning(userCode, "压力偏高", "压力指数", String.valueOf(pressure), "低危");
                     }
@@ -393,6 +415,23 @@ public class DataProcessService {
     @Async
     public void saveAlert(String imei, String alertType, String alertData) {
         log.warn("设备报警: IMEI={}, 类型={}, 数据={}", imei, alertType, alertData);
+        try {
+            // 跌倒/SOS/房颤等行为类报警写入预警记录
+            if (alertType == null || alertType.contains("未知") || alertType.contains("低电")
+                    || alertType.contains("脱落") || alertType.contains("佩戴")) {
+                return; // 这些类型不作为健康预警
+            }
+            Device device = deviceService.getOrCreateByImei(imei);
+            DeviceUser binding = deviceUserService.getCurrentBinding(device.getId());
+            if (binding == null) return;
+            String userCode = binding.getEmpId() != null
+                    ? employeeMapper.selectById(binding.getEmpId()).getEmpCode()
+                    : imei;
+            String level = alertType.contains("SOS") ? "高危" : alertType.contains("跌倒") || alertType.contains("房颤") ? "高危" : "中危";
+            riskWarningService.insertWarning(userCode, alertType, "行为报警", alertType, level);
+        } catch (Exception e) {
+            log.error("保存报警记录失败: IMEI={}, 类型={}", imei, alertType, e);
+        }
     }
 
     /**

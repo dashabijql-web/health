@@ -30,12 +30,16 @@ public class HeartRateServiceImpl implements HeartRateService {
 
     @Override
     public List<Map<String, Object>> getTopUsers(int limit, String startDate, String endDate) {
-        return heartRateMapper.getTopUsers(limit, startDate, endDate);
+        // 路由到分区表，避免 v_health_record UNION ALL 全扫描
+        String tblSrc = heartRateTableSourceForJoin(startDate, endDate);
+        return heartRateMapper.getTopUsersDirect(tblSrc, limit, startDate, endDate);
     }
 
     @Override
     public List<Map<String, Object>> getAgeDistribution(String startDate, String endDate) {
-        return heartRateMapper.getAgeDistribution(startDate, endDate);
+        // 路由到分区表，避免 v_health_record UNION ALL 全扫描
+        String tblSrc = heartRateTableSourceForJoin(startDate, endDate);
+        return heartRateMapper.getAgeDistributionDirect(tblSrc, startDate, endDate);
     }
 
     @Override
@@ -114,6 +118,9 @@ public class HeartRateServiceImpl implements HeartRateService {
 
     @Override
     public List<Map<String, Object>> getDailyAnomalyCount(String startDate, String endDate) {
-        return MapValueUtil.orEmpty(heartRateMapper.getDailyAnomalyCount(startDate, endDate));
+        // 路由到分区表，避免 v_health_record UNION ALL 全扫描
+        // 使用 heartRateTableSourceByRange（带 AS _hr 别名），因为 mapper SQL 中 FROM ${tableSource} 无独立别名
+        String tblSrc = heartRateTableSourceByRange(startDate, endDate);
+        return MapValueUtil.orEmpty(heartRateMapper.getDailyAnomalyCountDirect(tblSrc, startDate, endDate));
     }
 }

@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @RestController
@@ -27,6 +28,33 @@ public class DashboardController {
     @Autowired
     private com.xzkj.health.mapper.DashboardMapper dashboardMapper;
 
+    // ── 模块级缓存（body-indicators / overview 查询较慢，约 800ms-1s）──
+    // key = "startTime|endTime"，value = [data, expireMs]
+    private final ConcurrentHashMap<String, Object[]> bodyIndicatorsCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> overviewCache        = new ConcurrentHashMap<>();
+    private static final long BODY_INDICATORS_TTL = 10 * 60 * 1000L; // 10 分钟
+    private static final long OVERVIEW_TTL        = 10 * 60 * 1000L; // 10 分钟
+
+    // ── 慢查询缓存（daily-trend / warning-counts / dept-stats 约 400-1200ms）──
+    private final ConcurrentHashMap<String, Object[]> dailyTrendCache          = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> warningCountsCache       = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> deptStatsCache           = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> deptPersonStatsCache     = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> calendarCache            = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> deptHealthCompCache      = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> warningEventsCache       = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> top5Cache               = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object[]> deviceActivationCache   = new ConcurrentHashMap<>();
+    private static final long DAILY_TREND_TTL           = 5 * 60 * 1000L; // 5 分钟（日趋势变化极缓慢）
+    private static final long WARNING_COUNTS_TTL        = 5 * 60 * 1000L; // 5 分钟
+    private static final long WARNING_EVENTS_TTL        = 30 * 1000L;     // 30 秒（预警列表需较实时）
+    private static final long DEPT_STATS_TTL            = 10 * 60 * 1000L; // 10 分钟
+    private static final long DEPT_PERSON_STATS_TTL     = 10 * 60 * 1000L; // 10 分钟
+    private static final long CALENDAR_TTL              = 5 * 60 * 1000L; // 5 分钟（日历数据天级变化）
+    private static final long DEPT_HEALTH_COMP_TTL      = 5 * 60 * 1000L; // 5 分钟
+    private static final long TOP5_TTL                  = 2 * 60 * 1000L; // 2 分钟
+    private static final long DEVICE_ACTIVATION_TTL    = 2 * 60 * 1000L; // 2 分钟
+
     // ═══════════════════════════════════════════════════════════════
     // 支持时间范围筛选的接口（startTime/endTime 不传则默认当月）
     // ═══════════════════════════════════════════════════════════════
@@ -35,33 +63,68 @@ public class DashboardController {
     public Result<Map<String, Object>> getOverview(
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
-        return Result.ok("获取成功", dashboardService.getCurrentMonthCounts(startTime, endTime));
+        String cacheKey = startTime + "|" + endTime;
+        Object[] cached = overviewCache.get(cacheKey);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> hit = (Map<String, Object>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
+        Map<String, Object> data = dashboardService.getCurrentMonthCounts(startTime, endTime);
+        overviewCache.put(cacheKey, new Object[]{ data, System.currentTimeMillis() + OVERVIEW_TTL });
+        return Result.ok("获取成功", data);
     }
 
     @GetMapping("/body-indicators")
     public Result<Map<String, Object>> getBodyIndicators(
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
-        return Result.ok("获取成功", dashboardService.getCurrentMonthAverage(startTime, endTime));
+        String cacheKey = startTime + "|" + endTime;
+        Object[] cached = bodyIndicatorsCache.get(cacheKey);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> hit = (Map<String, Object>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
+        Map<String, Object> data = dashboardService.getCurrentMonthAverage(startTime, endTime);
+        bodyIndicatorsCache.put(cacheKey, new Object[]{ data, System.currentTimeMillis() + BODY_INDICATORS_TTL });
+        return Result.ok("获取成功", data);
     }
 
     @GetMapping("/top5")
     public Result<List<Map<String, Object>>> getTop5(
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
-        return Result.ok("获取成功", dashboardService.getDeptTop5(startTime, endTime));
+        String cacheKey = startTime + "|" + endTime;
+        Object[] cached = top5Cache.get(cacheKey);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> hit = (List<Map<String, Object>>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
+        List<Map<String, Object>> data = dashboardService.getDeptTop5(startTime, endTime);
+        top5Cache.put(cacheKey, new Object[]{ data, System.currentTimeMillis() + TOP5_TTL });
+        return Result.ok("获取成功", data);
     }
 
     @GetMapping("/device-activation")
     public Result<Map<String, Object>> getDeviceActivation(
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
+        String cacheKey = startTime + "|" + endTime;
+        Object[] cached = deviceActivationCache.get(cacheKey);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> hit = (Map<String, Object>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
         Map<String, Object> result = new HashMap<>();
         result.put("stats",        dashboardService.getDeviceStats(startTime, endTime));
         Map<String, Object> ratesResult = dashboardService.getWarningRates(startTime, endTime);
         result.put("warningRates", ratesResult != null
                 ? ratesResult.getOrDefault("warningRates", Collections.emptyList())
                 : Collections.emptyList());
+        deviceActivationCache.put(cacheKey, new Object[]{ result, System.currentTimeMillis() + DEVICE_ACTIVATION_TTL });
         return Result.ok("获取成功", result);
     }
 
@@ -69,8 +132,17 @@ public class DashboardController {
     public Result<List<Map<String, Object>>> getWarningEvents(
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
+        String cacheKey = startTime + "|" + endTime;
+        Object[] cached = warningEventsCache.get(cacheKey);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> hit = (List<Map<String, Object>>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
         // 限制返回最近 200 条预警记录（按时间倒序），避免数据量过大
-        return Result.ok("获取成功", dashboardService.getRecentWarnings(200, startTime, endTime));
+        List<Map<String, Object>> data = dashboardService.getRecentWarnings(200, startTime, endTime);
+        warningEventsCache.put(cacheKey, new Object[]{ data, System.currentTimeMillis() + WARNING_EVENTS_TTL });
+        return Result.ok("获取成功", data);
     }
 
     /** 各指标检测人数（DISTINCT 人数，非条数） */
@@ -95,6 +167,13 @@ public class DashboardController {
     public Result<List<Map<String, Object>>> getDeptPersonStats(
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
+        String cacheKey = startTime + "|" + endTime;
+        Object[] cached = deptPersonStatsCache.get(cacheKey);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> hit = (List<Map<String, Object>>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
         String[] range = DateParamUtil.range30(startTime, endTime);
         DateTimeFormatter mFmt = DateTimeFormatter.ofPattern("yyyyMM");
         String m1 = LocalDate.parse(range[0]).format(mFmt);
@@ -103,7 +182,9 @@ public class DashboardController {
             : "(SELECT user_code,record_time FROM health_record_" + m1 + " UNION ALL SELECT user_code,record_time FROM health_record_" + m2 + ")";
         String wSrc = m1.equals(m2) ? "warning_record_" + m1
             : "(SELECT user_code,create_time FROM warning_record_" + m1 + " UNION ALL SELECT user_code,create_time FROM warning_record_" + m2 + ")";
-        return Result.ok("获取成功", dashboardMapper.getDeptPersonStatsDirect(hSrc, wSrc, range[0], range[1]));
+        List<Map<String, Object>> data = dashboardMapper.getDeptPersonStatsDirect(hSrc, wSrc, range[0], range[1]);
+        deptPersonStatsCache.put(cacheKey, new Object[]{ data, System.currentTimeMillis() + DEPT_PERSON_STATS_TTL });
+        return Result.ok("获取成功", data);
     }
 
     /** 指标每日检测人数+异常人数（点击指标卡片弹窗用） */
@@ -113,7 +194,14 @@ public class DashboardController {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
         String[] range = DateParamUtil.range30(startTime, endTime);
-        return Result.ok("获取成功", dashboardMapper.getMetricDailyDetail(metricType, range[0], range[1]));
+        DateTimeFormatter mFmt = DateTimeFormatter.ofPattern("yyyyMM");
+        String m1 = LocalDate.parse(range[0]).format(mFmt);
+        String m2 = LocalDate.parse(range[1]).format(mFmt);
+        // 路由到分区表，避免 v_health_record UNION ALL 全扫描
+        String hSrc = m1.equals(m2) ? "health_record_" + m1
+            : "(SELECT user_code,record_time,heart_rate,blood_oxygen,steps,temperature,pressure FROM health_record_" + m1 +
+              " UNION ALL SELECT user_code,record_time,heart_rate,blood_oxygen,steps,temperature,pressure FROM health_record_" + m2 + ") AS hr_metric";
+        return Result.ok("获取成功", dashboardMapper.getMetricDailyDetail(hSrc, metricType, range[0], range[1]));
     }
 
     /** 单部门每日检测人数+异常人数（点击看板弹窗用） */
@@ -123,7 +211,14 @@ public class DashboardController {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
         String[] range = DateParamUtil.range30(startTime, endTime);
-        return Result.ok("获取成功", dashboardMapper.getDeptDailyDetail(deptName, range[0], range[1]));
+        DateTimeFormatter mFmt = DateTimeFormatter.ofPattern("yyyyMM");
+        String m1 = LocalDate.parse(range[0]).format(mFmt);
+        String m2 = LocalDate.parse(range[1]).format(mFmt);
+        String hSrc = m1.equals(m2) ? "health_record_" + m1
+            : "(SELECT user_code,record_time FROM health_record_" + m1 + " UNION ALL SELECT user_code,record_time FROM health_record_" + m2 + ")";
+        String wSrc = m1.equals(m2) ? "warning_record_" + m1
+            : "(SELECT user_code,create_time FROM warning_record_" + m1 + " UNION ALL SELECT user_code,create_time FROM warning_record_" + m2 + ")";
+        return Result.ok("获取成功", dashboardMapper.getDeptDailyDetail(hSrc, wSrc, deptName, range[0], range[1]));
     }
 
     /** 各部门每日检测人数（弹窗折线图用） */
@@ -139,7 +234,16 @@ public class DashboardController {
     public Result<List<Map<String, Object>>> getDeptStats(
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
-        return Result.ok("获取成功", dashboardService.getDeptHealthCounts(startTime, endTime));
+        String cacheKey = startTime + "|" + endTime;
+        Object[] cached = deptStatsCache.get(cacheKey);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> hit = (List<Map<String, Object>>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
+        List<Map<String, Object>> data = dashboardService.getDeptHealthCounts(startTime, endTime);
+        deptStatsCache.put(cacheKey, new Object[]{ data, System.currentTimeMillis() + DEPT_STATS_TTL });
+        return Result.ok("获取成功", data);
     }
 
     @GetMapping("/warning-counts")
@@ -147,14 +251,32 @@ public class DashboardController {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime,
             @RequestParam(defaultValue = "day") String groupBy) {
-        return Result.ok("获取成功", dashboardService.getWarningDistribution(startTime, endTime, groupBy));
+        String cacheKey = startTime + "|" + endTime + "|" + groupBy;
+        Object[] cached = warningCountsCache.get(cacheKey);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> hit = (Map<String, Object>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
+        Map<String, Object> data = dashboardService.getWarningDistribution(startTime, endTime, groupBy);
+        warningCountsCache.put(cacheKey, new Object[]{ data, System.currentTimeMillis() + WARNING_COUNTS_TTL });
+        return Result.ok("获取成功", data);
     }
 
     @GetMapping("/daily-trend")
     public Result<List<Map<String, Object>>> getDailyTrend(
             @RequestParam(defaultValue = "30") int days) {
         days = DateParamUtil.clampDays(days);
-        return Result.ok("获取成功", dashboardService.getDailyAnomalyRates(days));
+        String cacheKey = String.valueOf(days);
+        Object[] cached = dailyTrendCache.get(cacheKey);
+        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> hit = (List<Map<String, Object>>) cached[0];
+            return Result.ok("获取成功", hit);
+        }
+        List<Map<String, Object>> data = dashboardService.getDailyAnomalyRates(days);
+        dailyTrendCache.put(cacheKey, new Object[]{ data, System.currentTimeMillis() + DAILY_TREND_TTL });
+        return Result.ok("获取成功", data);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -202,6 +324,14 @@ public class DashboardController {
             int y = year  != null ? year  : today.getYear();
             int m = month != null ? month : today.getMonthValue();
 
+            String cacheKey = y + "|" + m;
+            Object[] cached = calendarCache.get(cacheKey);
+            if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> hit = (List<Map<String, Object>>) cached[0];
+                return Result.ok("获取成功", hit);
+            }
+
             YearMonth ym = YearMonth.of(y, m);
             String startDate = ym.atDay(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
             String endDate   = ym.atEndOfMonth().format(DateTimeFormatter.ISO_LOCAL_DATE);
@@ -228,6 +358,7 @@ public class DashboardController {
 
             List<Map<String, Object>> result = new ArrayList<>(merged.values());
             result.sort(Comparator.comparing(d -> String.valueOf(d.get("date"))));
+            calendarCache.put(cacheKey, new Object[]{ result, System.currentTimeMillis() + CALENDAR_TTL });
             return Result.ok("获取成功", result);
         } catch (Exception e) {
             log.error("获取日历数据失败", e);
@@ -293,6 +424,13 @@ public class DashboardController {
     public Result<List<Map<String, Object>>> getDeptHealthComparison(
             @RequestParam(defaultValue = "7") int days) {
         try {
+            String cacheKey = String.valueOf(days);
+            Object[] cached = deptHealthCompCache.get(cacheKey);
+            if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> hit = (List<Map<String, Object>>) cached[0];
+                return Result.ok("获取成功", hit);
+            }
             DateTimeFormatter mFmt = DateTimeFormatter.ofPattern("yyyyMM");
             String curMonth  = LocalDate.now().format(mFmt);
             String prevMonth = LocalDate.now().minusDays(days).format(mFmt);
@@ -306,7 +444,9 @@ public class DashboardController {
                 tblSrc = "(SELECT " + cols + " FROM health_record_" + prevMonth +
                          " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ")";
             }
-            return Result.ok("获取成功", dashboardMapper.getDeptHealthComparisonDirect(tblSrc, days));
+            List<Map<String, Object>> data = dashboardMapper.getDeptHealthComparisonDirect(tblSrc, days);
+            deptHealthCompCache.put(cacheKey, new Object[]{ data, System.currentTimeMillis() + DEPT_HEALTH_COMP_TTL });
+            return Result.ok("获取成功", data);
         } catch (Exception e) {
             log.error("获取部门健康对比数据失败", e);
             return Result.error("获取失败");

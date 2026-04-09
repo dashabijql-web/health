@@ -132,8 +132,8 @@ public interface RiskWarningMapper {
             "COUNT(*) AS totalWarnings, " +
             "SUM(CASE WHEN is_handled = 1 THEN 1 ELSE 0 END) AS handledWarnings, " +
             "SUM(CASE WHEN is_handled = 0 THEN 1 ELSE 0 END) AS pendingWarnings, " +
-            "SUM(CASE WHEN warning_level IN ('高','危险') THEN 1 ELSE 0 END) AS dangerCount, " +
-            "SUM(CASE WHEN warning_level IN ('中','警告') THEN 1 ELSE 0 END) AS warningCount, " +
+            "SUM(CASE WHEN warning_level IN ('高危') THEN 1 ELSE 0 END) AS dangerCount, " +
+            "SUM(CASE WHEN warning_level IN ('中危') THEN 1 ELSE 0 END) AS warningCount, " +
             "CAST(CASE WHEN COUNT(*) > 0 " +
             "     THEN SUM(CASE WHEN is_handled = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) " +
             "     ELSE 0 END AS INT) AS handledRate " +
@@ -151,6 +151,8 @@ public interface RiskWarningMapper {
             "ISNULL(e.emp_name, wr.user_code) AS userName, " +
             "wr.user_code AS userCode, " +
             "ISNULL(d.dept_name, '未知部门') AS deptName, " +
+            "e.gender AS gender, " +
+            "CASE WHEN e.birth_date IS NOT NULL THEN DATEDIFF(YEAR, e.birth_date, GETDATE()) ELSE NULL END AS age, " +
             "wr.warning_type  AS warningType, " +
             "wr.warning_level AS warningLevel, " +
             "wr.indicator_value AS warningValue, " +
@@ -160,12 +162,24 @@ public interface RiskWarningMapper {
             "FROM v_warning_record wr " +
             "LEFT JOIN employee e ON wr.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
-            "WHERE wr.create_time >= DATEADD(DAY, -30, GETDATE()) " +
+            "WHERE 1=1 " +
+            "<if test='startDate != null and startDate != \"\"'> " +
+            "AND wr.create_time >= CONVERT(DATETIME, #{startDate}) " +
+            "</if> " +
+            "<if test='startDate == null or startDate == \"\"'> " +
+            "AND wr.create_time >= DATEADD(DAY, -30, GETDATE()) " +
+            "</if> " +
+            "<if test='endDate != null and endDate != \"\"'> " +
+            "AND wr.create_time &lt; DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            "</if> " +
             "<if test='userCode != null and userCode != \"\"'> " +
             "AND wr.user_code = #{userCode} " +
             "</if> " +
             "<if test='level != null and level != \"\"'> " +
             "AND wr.warning_level = #{level} " +
+            "</if> " +
+            "<if test='warningType != null and warningType != \"\"'> " +
+            "AND wr.warning_type LIKE '%' + #{warningType} + '%' " +
             "</if> " +
             "<if test='handled != null'> " +
             "AND wr.is_handled = #{handled} " +
@@ -177,6 +191,9 @@ public interface RiskWarningMapper {
             @Param("level") String level,
             @Param("handled") Boolean handled,
             @Param("userCode") String userCode,
+            @Param("warningType") String warningType,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
             @Param("offset") int offset,
             @Param("size") int size);
 
@@ -185,18 +202,32 @@ public interface RiskWarningMapper {
      */
     @Select("<script>" +
             "SELECT COUNT(*) FROM v_warning_record " +
-            "WHERE create_time >= DATEADD(DAY, -30, GETDATE()) " +
+            "WHERE 1=1 " +
+            "<if test='startDate != null and startDate != \"\"'> " +
+            "AND create_time >= CONVERT(DATETIME, #{startDate}) " +
+            "</if> " +
+            "<if test='startDate == null or startDate == \"\"'> " +
+            "AND create_time >= DATEADD(DAY, -30, GETDATE()) " +
+            "</if> " +
+            "<if test='endDate != null and endDate != \"\"'> " +
+            "AND create_time &lt; DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            "</if> " +
             "<if test='userCode != null and userCode != \"\"'> " +
             "AND user_code = #{userCode} " +
             "</if> " +
             "<if test='level != null and level != \"\"'> " +
             "AND warning_level = #{level} " +
             "</if> " +
+            "<if test='warningType != null and warningType != \"\"'> " +
+            "AND warning_type LIKE '%' + #{warningType} + '%' " +
+            "</if> " +
             "<if test='handled != null'> " +
             "AND is_handled = #{handled} " +
             "</if>" +
             "</script>")
-    int countWarnings(@Param("level") String level, @Param("handled") Boolean handled, @Param("userCode") String userCode);
+    int countWarnings(@Param("level") String level, @Param("handled") Boolean handled,
+                      @Param("userCode") String userCode, @Param("warningType") String warningType,
+                      @Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取预警趋势数据（按类型分组），查 v_warning_record 视图
@@ -257,4 +288,15 @@ public interface RiskWarningMapper {
     int countRecentWarning(@Param("userCode") String userCode,
                            @Param("indicatorName") String indicatorName,
                            @Param("minutes") int minutes);
+
+    /**
+     * 查询近24小时内有未处理预警的员工 emp_id 列表（用于设备列表 hasWarning 标记）
+     */
+    @Select("SELECT DISTINCT du.emp_id " +
+            "FROM v_warning_record wr " +
+            "JOIN employee e ON wr.user_code = e.emp_code " +
+            "JOIN device_user du ON du.emp_id = e.id AND du.unbind_time IS NULL " +
+            "WHERE wr.is_handled = 0 " +
+            "AND wr.create_time >= DATEADD(DAY, -1, GETDATE())")
+    List<Long> getEmpIdsWithUnhandledWarnings();
 }

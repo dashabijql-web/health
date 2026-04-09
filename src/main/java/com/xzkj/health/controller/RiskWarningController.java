@@ -34,10 +34,13 @@ public class RiskWarningController {
             @RequestParam(required = false) String level,
             @RequestParam(required = false) Boolean handled,
             @RequestParam(required = false) String userCode,
+            @RequestParam(required = false) String warningType,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
         size = DateParamUtil.clampSize(size);
-        return Result.ok("获取成功", riskWarningService.getWarningList(level, handled, userCode, page, size));
+        return Result.ok("获取成功", riskWarningService.getWarningList(level, handled, userCode, warningType, startDate, endDate, page, size));
     }
 
     /** 获取预警趋势（按类型分组） */
@@ -72,7 +75,9 @@ public class RiskWarningController {
                 ? (String) params.get("handleBy") : "system";
         String handleRemark = params != null && params.get("handleRemark") instanceof String
                 ? (String) params.get("handleRemark") : "";
-        boolean success = riskWarningService.handleWarning(id, handleBy, handleRemark);
+        String createTime = params != null && params.get("createTime") instanceof String
+                ? (String) params.get("createTime") : null;
+        boolean success = riskWarningService.handleWarning(id, handleBy, handleRemark, createTime);
         if (!success) {
             throw new BusinessException("处理失败，请确认预警ID是否存在");
         }

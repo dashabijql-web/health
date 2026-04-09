@@ -60,7 +60,11 @@ public class DeviceServiceImpl extends ServiceImpl<DeviceMapper, Device> impleme
             device.setStatus(1); // 在线
             device.setLastOnlineTime(LocalDateTime.now());
             device.setUpdateTime(LocalDateTime.now());
-            // 注意: battery 字段在数据库中不存在，忽略电量更新
+            if (battery != null && !battery.isBlank()) {
+                try {
+                    device.setBatteryLevel(Integer.parseInt(battery.trim()));
+                } catch (NumberFormatException ignored) {}
+            }
             baseMapper.updateById(device);
         }
     }

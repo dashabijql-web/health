@@ -12,7 +12,7 @@ public interface HeartRateService {
 
     List<Map<String, Object>> getTopUsers(int limit, String startDate, String endDate);
 
-    List<Map<String, Object>> getAgeDistribution();
+    List<Map<String, Object>> getAgeDistribution(String startDate, String endDate);
 
     List<Map<String, Object>> getHeartRateDistribution(String startDate, String endDate);
 
@@ -23,4 +23,6 @@ public interface HeartRateService {
     List<Map<String, Object>> getHourlyStats(String startDate, String endDate);
 
     List<Map<String, Object>> getRealtime(int limit);
+
+    List<Map<String, Object>> getDailyAnomalyCount(String startDate, String endDate);
 }

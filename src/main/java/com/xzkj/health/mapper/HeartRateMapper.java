@@ -87,6 +87,26 @@ public interface HeartRateMapper {
             "ORDER BY count DESC")
     List<Map<String, Object>> getTopUsers(@Param("limit") int limit, @Param("startDate") String startDate, @Param("endDate") String endDate);
 
+    /** TOP N心率异常人员统计 — 直接查分区表，避免扫 v_health_record UNION ALL */
+    @Select("SELECT TOP (#{limit}) " +
+            "hr.user_code AS userCode, " +
+            "ISNULL(e.emp_name, hr.user_code) AS userName, " +
+            "COUNT(*) AS count, " +
+            "COUNT(DISTINCT CAST(hr.record_time AS DATE)) AS anomalyDays " +
+            "FROM ${tableSource} hr " +
+            "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
+            "WHERE hr.heart_rate IS NOT NULL " +
+            "AND hr.heart_rate > 0 " +
+            "AND (hr.heart_rate < 55 OR hr.heart_rate > 120) " +
+            "AND hr.record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND hr.record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            "GROUP BY hr.user_code, e.emp_name " +
+            "ORDER BY count DESC")
+    List<Map<String, Object>> getTopUsersDirect(@Param("tableSource") String tableSource,
+                                                 @Param("limit") int limit,
+                                                 @Param("startDate") String startDate,
+                                                 @Param("endDate") String endDate);
+
     /**
      * 按日统计心率异常人次
      * 返回: date (YYYY-MM-DD), anomalyCount
@@ -103,6 +123,21 @@ public interface HeartRateMapper {
             "GROUP BY CONVERT(VARCHAR(10), record_time, 23) " +
             "ORDER BY date")
     List<Map<String, Object>> getDailyAnomalyCount(@Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    /** 按日统计心率异常人次 — 直接查分区表，避免扫 v_health_record UNION ALL */
+    @Select("SELECT " +
+            "CONVERT(VARCHAR(10), record_time, 23) AS date, " +
+            "COUNT(DISTINCT user_code) AS anomalyCount " +
+            "FROM ${tableSource} " +
+            "WHERE heart_rate IS NOT NULL AND heart_rate > 0 " +
+            "AND (heart_rate < 55 OR heart_rate > 120) " +
+            "AND record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            "GROUP BY CONVERT(VARCHAR(10), record_time, 23) " +
+            "ORDER BY date")
+    List<Map<String, Object>> getDailyAnomalyCountDirect(@Param("tableSource") String tableSource,
+                                                          @Param("startDate") String startDate,
+                                                          @Param("endDate") String endDate);
 
     /**
      * 获取年龄段心率统计（关联 employee.birth_date 计算真实年龄）
@@ -131,6 +166,31 @@ public interface HeartRateMapper {
             "GROUP BY ageRange " +
             "ORDER BY MIN(age)")
     List<Map<String, Object>> getAgeDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    /** 年龄段心率统计 — 直接查分区表，避免扫 v_health_record UNION ALL */
+    @Select("SELECT ageRange, CAST(AVG(CAST(heart_rate AS FLOAT)) AS INT) AS avgHeartRate " +
+            "FROM ( " +
+            "  SELECT " +
+            "    CASE " +
+            "      WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 30 THEN '20-30' " +
+            "      WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 40 THEN '30-40' " +
+            "      WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 50 THEN '40-50' " +
+            "      ELSE '50+' " +
+            "    END AS ageRange, " +
+            "    DATEDIFF(YEAR, e.birth_date, GETDATE()) AS age, " +
+            "    hr.heart_rate " +
+            "  FROM ${tableSource} hr " +
+            "  INNER JOIN employee e ON hr.user_code = e.emp_code " +
+            "  WHERE hr.heart_rate IS NOT NULL AND hr.heart_rate > 0 " +
+            "  AND e.birth_date IS NOT NULL " +
+            "  AND hr.record_time >= CONVERT(DATETIME, #{startDate}) " +
+            "  AND hr.record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            ") AS aged_data " +
+            "GROUP BY ageRange " +
+            "ORDER BY MIN(age)")
+    List<Map<String, Object>> getAgeDistributionDirect(@Param("tableSource") String tableSource,
+                                                        @Param("startDate") String startDate,
+                                                        @Param("endDate") String endDate);
 
     /**
      * 获取心率分布统计(新版 - 北路风格)

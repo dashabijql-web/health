@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @RestController
@@ -24,12 +25,24 @@ public class HealthPortraitController {
                 return Result.error("员工不存在");
             }
 
-            Map<String, Object> vitals = healthPortraitMapper.getLatestVitals(empCode);
-            Map<String, Object> exercise = healthPortraitMapper.getTodayExercise(empCode);
-            List<Map<String, Object>> trendRows = healthPortraitMapper.get7DayTrend(empCode);
-            List<Map<String, Object>> warnings = healthPortraitMapper.get30DayWarnings(empCode);
             String today = java.time.LocalDate.now().toString();
-            List<Map<String, Object>> hourlyHrRows = healthPortraitMapper.getHourlyHeartRate(empCode, today);
+            // 5 个查询并行执行，总耗时取决于最慢那个（而非累加）
+            CompletableFuture<Map<String, Object>> vitalsF =
+                CompletableFuture.supplyAsync(() -> healthPortraitMapper.getLatestVitals(empCode));
+            CompletableFuture<Map<String, Object>> exerciseF =
+                CompletableFuture.supplyAsync(() -> healthPortraitMapper.getTodayExercise(empCode));
+            CompletableFuture<List<Map<String, Object>>> trendF =
+                CompletableFuture.supplyAsync(() -> healthPortraitMapper.get7DayTrend(empCode));
+            CompletableFuture<List<Map<String, Object>>> warningsF =
+                CompletableFuture.supplyAsync(() -> healthPortraitMapper.get30DayWarnings(empCode));
+            CompletableFuture<List<Map<String, Object>>> hourlyHrF =
+                CompletableFuture.supplyAsync(() -> healthPortraitMapper.getHourlyHeartRate(empCode, today));
+            CompletableFuture.allOf(vitalsF, exerciseF, trendF, warningsF, hourlyHrF).join();
+            Map<String, Object> vitals = vitalsF.join();
+            Map<String, Object> exercise = exerciseF.join();
+            List<Map<String, Object>> trendRows = trendF.join();
+            List<Map<String, Object>> warnings = warningsF.join();
+            List<Map<String, Object>> hourlyHrRows = hourlyHrF.join();
 
             // 整理 7 天趋势为前端期望的格式
             if (trendRows == null) trendRows = Collections.emptyList();

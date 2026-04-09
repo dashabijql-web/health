@@ -47,4 +47,45 @@ public class AiHealthReportController {
             return Result.error("AI分析服务暂时不可用，请稍后重试");
         }
     }
+
+    /** 全矿 AI 分析报告 */
+    @PostMapping("/mine/generate")
+    public Result<Map<String, Object>> generateMineReport(
+            @RequestParam(defaultValue = "false") boolean force) {
+        try {
+            return Result.ok(aiHealthReportService.generateMineReport(force));
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        } catch (Exception e) {
+            log.error("全矿AI报告生成失败", e);
+            return Result.error("AI分析服务暂时不可用，请稍后重试");
+        }
+    }
+
+    @GetMapping("/mine")
+    public Result<Map<String, Object>> getMineReport() {
+        Map<String, Object> r = aiHealthReportService.getCachedReportByKey("MINE");
+        return r != null ? Result.ok(r) : Result.error("暂无全矿报告");
+    }
+
+    /** 部门 AI 分析报告 */
+    @PostMapping("/dept/generate")
+    public Result<Map<String, Object>> generateDeptReport(
+            @RequestParam String deptName,
+            @RequestParam(defaultValue = "false") boolean force) {
+        try {
+            return Result.ok(aiHealthReportService.generateDeptReport(deptName, force));
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        } catch (Exception e) {
+            log.error("部门AI报告生成失败: deptName={}", deptName, e);
+            return Result.error("AI分析服务暂时不可用，请稍后重试");
+        }
+    }
+
+    @GetMapping("/dept")
+    public Result<Map<String, Object>> getDeptReport(@RequestParam String deptName) {
+        Map<String, Object> r = aiHealthReportService.getCachedReportByKey("DEPT_" + deptName);
+        return r != null ? Result.ok(r) : Result.error("暂无该部门报告");
+    }
 }

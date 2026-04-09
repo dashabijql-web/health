@@ -32,6 +32,10 @@ public class AlertConfig implements Serializable {
 
     private BigDecimal warnHigh;
 
+    private BigDecimal warnMidLow;
+
+    private BigDecimal warnMidHigh;
+
     private BigDecimal criticalLow;
 
     private BigDecimal criticalHigh;

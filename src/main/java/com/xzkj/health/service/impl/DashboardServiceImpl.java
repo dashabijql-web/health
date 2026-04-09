@@ -77,8 +77,8 @@ public class DashboardServiceImpl implements DashboardService {
         String m1 = LocalDate.parse(start).format(MONTH_FMT);
         String m2 = LocalDate.parse(end).format(MONTH_FMT);
         if (m1.equals(m2)) return "warning_record_" + m1;
-        return "(SELECT id,user_code,create_time,warning_type,indicator_name,warning_level,is_handled FROM warning_record_" + m1 +
-               " UNION ALL SELECT id,user_code,create_time,warning_type,indicator_name,warning_level,is_handled FROM warning_record_" + m2 + ")";
+        return "(SELECT id,user_code,create_time,warning_type,indicator_name,indicator_value,warning_level,is_handled FROM warning_record_" + m1 +
+               " UNION ALL SELECT id,user_code,create_time,warning_type,indicator_name,indicator_value,warning_level,is_handled FROM warning_record_" + m2 + ")";
     }
 
     /** 根据日期范围构建预警记录分区表源（单月直接用表名，跨月用 UNION ALL 子查询） */
@@ -180,7 +180,8 @@ public class DashboardServiceImpl implements DashboardService {
     public List<Map<String, Object>> getRecentWarnings(int limit, String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
-        List<Map<String, Object>> list = dashboardMapper.getWarningsByRange(limit, s, e);
+        // 优化：路由到分区表，避免 v_warning_record UNION ALL 全扫描
+        List<Map<String, Object>> list = dashboardMapper.getWarningsByRangeDirect(warningSourceForJoin(s, e), limit, s, e);
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> item : list) {
@@ -268,7 +269,8 @@ public class DashboardServiceImpl implements DashboardService {
     public Map<String, Object> getDailyHealthTrend(int days) {
         String startDate = LocalDate.now().minusDays(days - 1).format(DATE_FMT);
         String endDate   = LocalDate.now().format(DATE_FMT);
-        List<Map<String, Object>> rows = dashboardMapper.getDailyHealthTrend(startDate, endDate);
+        // 优化：路由到分区表，避免 v_health_record UNION ALL 全扫描
+        List<Map<String, Object>> rows = dashboardMapper.getDailyHealthTrendDirect(healthSource(startDate, endDate), startDate, endDate);
 
         // 按日期建索引
         Map<String, Map<String, Object>> byDate = new LinkedHashMap<>();

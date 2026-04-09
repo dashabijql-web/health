@@ -96,7 +96,15 @@ public class RealtimeService {
             }
         }
 
-        int total = realtimeMapper.countOnlineUsersDirect(tblSrc);
+        // 短路计数优化：若本页返回的行数 < 请求的 size，说明已到最后一页，
+        // total = offset + 实际返回数，无需再发一条 COUNT 查询（节省一次 DB 往返）。
+        // 只有当本页恰好满页（可能还有下一页）时才查 COUNT。
+        int total;
+        if (list.size() < size) {
+            total = offset + list.size();
+        } else {
+            total = realtimeMapper.countOnlineUsersDirect(tblSrc);
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);

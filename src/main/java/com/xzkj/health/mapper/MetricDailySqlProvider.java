@@ -27,27 +27,29 @@ public class MetricDailySqlProvider {
      */
     public String getTodayPreShiftCompliance(Map<String, Object> params) {
         String table = currentMonthTable();
+        // Optimized: use MAX(record_time) GROUP BY user_code to find latest record per user,
+        // then join back to get metrics — avoids ROW_NUMBER() window function over 500K+ rows.
         return "SELECT " +
                "  COUNT(*) AS totalToday, " +
                "  SUM(CASE WHEN " +
-               "    (heart_rate IS NULL OR (heart_rate >= 60 AND heart_rate <= 100)) " +
-               "    AND (blood_oxygen IS NULL OR blood_oxygen >= 95) " +
-               "    AND (blood_pressure_high IS NULL OR blood_pressure_high < 140) " +
-               "    AND (blood_pressure_low IS NULL OR blood_pressure_low < 90) " +
+               "    (lr.heart_rate IS NULL OR (lr.heart_rate >= 60 AND lr.heart_rate <= 100)) " +
+               "    AND (lr.blood_oxygen IS NULL OR lr.blood_oxygen >= 95) " +
+               "    AND (lr.blood_pressure_high IS NULL OR lr.blood_pressure_high < 140) " +
+               "    AND (lr.blood_pressure_low IS NULL OR lr.blood_pressure_low < 90) " +
                "    THEN 1 ELSE 0 END) AS qualifiedCount, " +
                "  SUM(CASE WHEN " +
-               "    (heart_rate IS NOT NULL AND (heart_rate < 60 OR heart_rate > 100)) " +
-               "    OR (blood_oxygen IS NOT NULL AND blood_oxygen < 95) " +
-               "    OR (blood_pressure_high IS NOT NULL AND blood_pressure_high >= 140) " +
-               "    OR (blood_pressure_low IS NOT NULL AND blood_pressure_low >= 90) " +
+               "    (lr.heart_rate IS NOT NULL AND (lr.heart_rate < 60 OR lr.heart_rate > 100)) " +
+               "    OR (lr.blood_oxygen IS NOT NULL AND lr.blood_oxygen < 95) " +
+               "    OR (lr.blood_pressure_high IS NOT NULL AND lr.blood_pressure_high >= 140) " +
+               "    OR (lr.blood_pressure_low IS NOT NULL AND lr.blood_pressure_low >= 90) " +
                "    THEN 1 ELSE 0 END) AS failedCount " +
-               "FROM ( " +
-               "  SELECT hr.user_code, hr.heart_rate, hr.blood_oxygen, " +
-               "    hr.blood_pressure_high, hr.blood_pressure_low, " +
-               "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
-               "  FROM " + table + " hr " +
-               "  WHERE hr.record_time >= CONVERT(date, GETDATE()) " +
-               ") AS latest_records WHERE rn = 1";
+               "FROM " + table + " lr " +
+               "INNER JOIN ( " +
+               "  SELECT user_code, MAX(record_time) AS max_time " +
+               "  FROM " + table + " " +
+               "  WHERE record_time >= CONVERT(date, GETDATE()) " +
+               "  GROUP BY user_code " +
+               ") AS latest ON lr.user_code = latest.user_code AND lr.record_time = latest.max_time";
     }
 
     /**
@@ -73,18 +75,16 @@ public class MetricDailySqlProvider {
                "    AND (lr.blood_pressure_high IS NULL OR lr.blood_pressure_high < 140) " +
                "    AND (lr.blood_pressure_low IS NULL OR lr.blood_pressure_low < 90) " +
                "    THEN 1 ELSE 0 END AS qualified " +
-               "FROM ( " +
-               "  SELECT hr.user_code, hr.heart_rate, hr.blood_oxygen, " +
-               "    hr.blood_pressure_high, hr.blood_pressure_low, hr.temperature, " +
-               "    hr.record_time, " +
-               "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
-               "  FROM " + table + " hr " +
-               "  WHERE hr.record_time >= CONVERT(date, GETDATE()) " +
-               ") AS lr " +
+               "FROM " + table + " lr " +
+               "INNER JOIN ( " +
+               "  SELECT user_code, MAX(record_time) AS max_time " +
+               "  FROM " + table + " " +
+               "  WHERE record_time >= CONVERT(date, GETDATE()) " +
+               "  GROUP BY user_code " +
+               ") AS latest ON lr.user_code = latest.user_code AND lr.record_time = latest.max_time " +
                "LEFT JOIN employee e ON lr.user_code = e.emp_code " +
                "LEFT JOIN department d ON e.dept_id = d.id " +
                "LEFT JOIN job_type jt ON e.job_type_id = jt.id " +
-               "WHERE lr.rn = 1 " +
                "ORDER BY qualified ASC, lr.record_time DESC";
     }
 
@@ -94,12 +94,16 @@ public class MetricDailySqlProvider {
         if (meta == null) throw new IllegalArgumentException("Unknown metricType: " + metricType);
         String col = meta[0];
         String anomaly = meta[1];
+        // 优先使用 tableSource（分区表），兜底使用 v_health_record
+        String tableSource = params.containsKey("tableSource") && params.get("tableSource") != null
+                ? (String) params.get("tableSource")
+                : "v_health_record";
         return "SELECT day, personCount, abnormalPersonCount " +
                "FROM ( " +
                "  SELECT CONVERT(VARCHAR(10), record_time, 120) AS day, " +
                "  COUNT(DISTINCT user_code) AS personCount, " +
                "  COUNT(DISTINCT CASE WHEN " + anomaly + " THEN user_code END) AS abnormalPersonCount " +
-               "  FROM v_health_record " +
+               "  FROM " + tableSource + " " +
                "  WHERE " + col + " IS NOT NULL " +
                "  AND record_time >= CONVERT(date, '" + params.get("startTime") + "') " +
                "  AND record_time <  DATEADD(DAY, 1, CONVERT(date, '" + params.get("endTime") + "')) " +

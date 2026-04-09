@@ -45,6 +45,11 @@ public class AiHealthReportService {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    public Map<String, Object> getCachedReportByKey(String key) {
+        AiHealthReport cached = aiReportMapper.findValidCachedReportByKey(key);
+        return cached != null ? toResponse(cached) : null;
+    }
+
     /**
      * 获取缓存的报告（不生成，仅查询）
      */
@@ -103,6 +108,54 @@ public class AiHealthReportService {
         return toResponse(report);
     }
 
+    // ─── 全矿报告 ────────────────────────────────────────────────────────
+
+    public Map<String, Object> generateMineReport(boolean force) {
+        final String KEY = "MINE";
+        if (!force) {
+            AiHealthReport cached = aiReportMapper.findValidCachedReportByKey(KEY);
+            if (cached != null) { log.info("全矿AI报告命中缓存"); return toResponse(cached); }
+        }
+        Map<String, Object> hs = aiReportMapper.getMineHealthStats();
+        Map<String, Object> ws = aiReportMapper.getMineWarningStats();
+        if (hs == null) hs = new LinkedHashMap<>();
+        if (ws == null) ws = new LinkedHashMap<>();
+        if (getInt(hs, "recordCount") == 0) throw new IllegalArgumentException("暂无全矿健康数据");
+        String prompt = buildMinePrompt(hs, ws);
+        String content = callDeepSeek(prompt);
+        aiReportMapper.deleteByEmpCode(KEY);
+        AiHealthReport r = new AiHealthReport();
+        r.setEmpCode(KEY); r.setEmpName("全矿"); r.setReportContent(content);
+        r.setGenerateTime(LocalDateTime.now()); r.setExpiresAt(LocalDateTime.now().plusHours(6));
+        aiReportMapper.insert(r);
+        log.info("全矿AI报告生成成功, length={}", content.length());
+        return toResponse(r);
+    }
+
+    // ─── 部门报告 ────────────────────────────────────────────────────────
+
+    public Map<String, Object> generateDeptReport(String deptName, boolean force) {
+        final String KEY = "DEPT_" + deptName;
+        if (!force) {
+            AiHealthReport cached = aiReportMapper.findValidCachedReportByKey(KEY);
+            if (cached != null) { log.info("部门AI报告命中缓存: {}", deptName); return toResponse(cached); }
+        }
+        Map<String, Object> hs = aiReportMapper.getDeptHealthStats(deptName);
+        Map<String, Object> ws = aiReportMapper.getDeptWarningStats(deptName);
+        if (hs == null) hs = new LinkedHashMap<>();
+        if (ws == null) ws = new LinkedHashMap<>();
+        if (getInt(hs, "recordCount") == 0) throw new IllegalArgumentException("该部门暂无健康数据");
+        String prompt = buildDeptPrompt(deptName, hs, ws);
+        String content = callDeepSeek(prompt);
+        aiReportMapper.deleteByEmpCode(KEY);
+        AiHealthReport r = new AiHealthReport();
+        r.setEmpCode(KEY); r.setEmpName(deptName); r.setReportContent(content);
+        r.setGenerateTime(LocalDateTime.now()); r.setExpiresAt(LocalDateTime.now().plusHours(6));
+        aiReportMapper.insert(r);
+        log.info("部门AI报告生成成功: {}, length={}", deptName, content.length());
+        return toResponse(r);
+    }
+
     // ─── 构建 Prompt ────────────────────────────────────────────────────
 
     private String buildPrompt(Map<String, Object> emp, Map<String, Object> hs, Map<String, Object> ws) {
@@ -151,6 +204,50 @@ public class AiHealthReportService {
             recordCount, avgHr, maxHr, minHr,
             avgSpo2, minSpo2, avgTemp, avgSleep,
             totalWarnings, highRisk
+        );
+    }
+
+    private String buildMinePrompt(Map<String, Object> hs, Map<String, Object> ws) {
+        return String.format(
+            "你是一名职业健康管理专家，专注于矿山企业群体健康管理。\n" +
+            "请根据以下全矿近30天的整体健康监测数据，生成一份企业级健康分析报告。\n\n" +
+            "【全矿健康数据（近30天）】\n" +
+            "- 监测人员：%d 人，有效记录：%d 条\n" +
+            "- 平均心率：%.1f bpm（正常范围：60-100）\n" +
+            "- 心率极值：最高 %d bpm / 最低 %d bpm\n" +
+            "- 平均血氧：%.1f%%（正常范围：≥95%%）\n" +
+            "- 最低血氧：%d%%\n" +
+            "- 平均体温：%.1f°C\n" +
+            "- 平均睡眠：%.1f 小时/天\n" +
+            "- 预警总次数：%d（高危/危急：%d，中危：%d），涉及人员：%d 人\n\n" +
+            "请按以下结构生成报告（中文，总字数400-600字）：\n" +
+            "## 整体健康状况评估\n## 重点风险分析\n## 群体健康趋势\n## 管理建议",
+            getInt(hs,"empCount"), getInt(hs,"recordCount"),
+            getDbl(hs,"avgHeartRate"), getInt(hs,"maxHeartRate"), getInt(hs,"minHeartRate"),
+            getDbl(hs,"avgBloodOxygen"), getInt(hs,"minBloodOxygen"),
+            getDbl(hs,"avgTemperature"), getDbl(hs,"avgSleepHours"),
+            getInt(ws,"totalWarnings"), getInt(ws,"highRiskCount"), getInt(ws,"midRiskCount"), getInt(ws,"affectedEmp")
+        );
+    }
+
+    private String buildDeptPrompt(String deptName, Map<String, Object> hs, Map<String, Object> ws) {
+        return String.format(
+            "你是一名职业健康管理专家，专注于矿山企业群体健康管理。\n" +
+            "请根据以下【%s】部门近30天的健康监测数据，生成一份部门健康分析报告。\n\n" +
+            "【部门健康数据（近30天）】\n" +
+            "- 监测人员：%d 人，有效记录：%d 条\n" +
+            "- 平均心率：%.1f bpm，极值：%d / %d bpm\n" +
+            "- 平均血氧：%.1f%%，最低：%d%%\n" +
+            "- 平均体温：%.1f°C，平均睡眠：%.1f 小时/天\n" +
+            "- 预警次数：%d（高危/危急：%d，中危：%d）\n\n" +
+            "请按以下结构生成报告（中文，350-500字）：\n" +
+            "## 部门健康评估\n## 主要风险指标\n## 重点关注人员特征\n## 改善建议",
+            deptName,
+            getInt(hs,"empCount"), getInt(hs,"recordCount"),
+            getDbl(hs,"avgHeartRate"), getInt(hs,"maxHeartRate"), getInt(hs,"minHeartRate"),
+            getDbl(hs,"avgBloodOxygen"), getInt(hs,"minBloodOxygen"),
+            getDbl(hs,"avgTemperature"), getDbl(hs,"avgSleepHours"),
+            getInt(ws,"totalWarnings"), getInt(ws,"highRiskCount"), getInt(ws,"midRiskCount")
         );
     }
 

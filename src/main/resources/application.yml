@@ -39,10 +39,10 @@ spring:
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:123abcd.}
     druid:
-      initial-size: 5
-      min-idle: 5
-      max-active: 20
-      max-wait: 60000
+      initial-size: 10
+      min-idle: 10
+      max-active: 50
+      max-wait: 8000
       time-between-eviction-runs-millis: 60000
       min-evictable-idle-time-millis: 300000
       validation-query: SELECT 1
@@ -128,7 +128,7 @@ management:
 # DeepSeek AI API
 # ================================
 deepseek:
-  api-key: ${DEEPSEEK_API_KEY:sk-ca09d06abf104401bae61f6fbe411f86}
+  api-key: ${DEEPSEEK_API_KEY:}
   api-url: https://api.deepseek.com/chat/completions
   model: deepseek-chat
   timeout-seconds: 60

@@ -53,7 +53,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
  */
 @Configuration
 @EnableTransactionManagement
-@MapperScan("com.xzkj.health.mapper")
+@MapperScan({"com.xzkj.health.mapper", "com.xzkj.health.ai"})
 public class MybatisPlusConfig {
 
     /**

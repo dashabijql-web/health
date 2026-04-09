@@ -494,6 +494,27 @@ public interface DashboardMapper {
                                                  @Param("startTime") String startTime,
                                                  @Param("endTime")   String endTime);
 
+    /** 获取指定日期范围内的预警记录 — 直接查分区表，避免 v_warning_record UNION ALL 全扫描 */
+    @Select("SELECT TOP (#{limit}) " +
+            "w.id, " +
+            "w.warning_type, " +
+            "ISNULL(e.emp_name, w.user_code) AS real_name, " +
+            "ISNULL(e.emp_code, w.user_code) AS emp_code, " +
+            "w.indicator_name, " +
+            "w.indicator_value, " +
+            "w.warning_level, " +
+            "w.is_handled, " +
+            "w.create_time " +
+            "FROM ${warningSource} AS w " +
+            "LEFT JOIN employee e ON w.user_code = e.emp_code " +
+            "WHERE w.create_time >= CONVERT(date, #{startTime}) " +
+            "AND   w.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
+            "ORDER BY w.create_time DESC")
+    List<Map<String, Object>> getWarningsByRangeDirect(@Param("warningSource") String warningSource,
+                                                        @Param("limit")         int    limit,
+                                                        @Param("startTime")     String startTime,
+                                                        @Param("endTime")       String endTime);
+
     /** 指定日期心率排行（偏离正常范围最大的排前面） */
     @Select("SELECT TOP 20 " +
             "ISNULL(e.emp_name, hr.user_code) AS empName, " +
@@ -677,42 +698,46 @@ public interface DashboardMapper {
 
     /**
      * 单部门每日检测人数 + 异常人数（点击看板弹窗折线图用）
+     * 注意：直接查分区表，避免 v_health_record / v_warning_record UNION ALL 全扫描；
+     *       改用子查询写法，避免 Druid wall filter 拦截 CTE (WITH...AS)。
      */
-    @Select(";WITH dept_persons AS ( " +
+    @Select("SELECT dp.day, dp.personCount, ISNULL(da.abnormalPersonCount, 0) AS abnormalPersonCount " +
+            "FROM ( " +
             "  SELECT CONVERT(VARCHAR(10), hr.record_time, 120) AS day, " +
             "  COUNT(DISTINCT e.emp_code) AS personCount " +
-            "  FROM v_health_record hr " +
+            "  FROM ${healthSource} AS hr " +
             "  INNER JOIN employee e   ON hr.user_code = e.emp_code " +
             "  INNER JOIN department d ON e.dept_id    = d.id " +
             "  WHERE d.dept_name = #{deptName} " +
             "  AND hr.record_time >= CONVERT(date, #{startTime}) " +
             "  AND hr.record_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  GROUP BY CONVERT(VARCHAR(10), hr.record_time, 120) " +
-            "), " +
-            "dept_abnormal AS ( " +
+            ") AS dp " +
+            "LEFT JOIN ( " +
             "  SELECT CONVERT(VARCHAR(10), wr.create_time, 120) AS day, " +
             "  COUNT(DISTINCT wr.user_code) AS abnormalPersonCount " +
-            "  FROM v_warning_record wr " +
+            "  FROM ${warningSource} AS wr " +
             "  INNER JOIN employee e   ON wr.user_code = e.emp_code " +
             "  INNER JOIN department d ON e.dept_id    = d.id " +
             "  WHERE d.dept_name = #{deptName} " +
             "  AND wr.create_time >= CONVERT(date, #{startTime}) " +
             "  AND wr.create_time <  DATEADD(DAY, 1, CONVERT(date, #{endTime})) " +
             "  GROUP BY CONVERT(VARCHAR(10), wr.create_time, 120) " +
-            ") " +
-            "SELECT dp.day, dp.personCount, ISNULL(da.abnormalPersonCount, 0) AS abnormalPersonCount " +
-            "FROM dept_persons dp " +
-            "LEFT JOIN dept_abnormal da ON dp.day = da.day " +
+            ") AS da ON dp.day = da.day " +
             "ORDER BY dp.day")
-    List<Map<String, Object>> getDeptDailyDetail(@Param("deptName") String deptName,
-                                                  @Param("startTime") String startTime,
-                                                  @Param("endTime")   String endTime);
+    List<Map<String, Object>> getDeptDailyDetail(@Param("healthSource")  String healthSource,
+                                                  @Param("warningSource") String warningSource,
+                                                  @Param("deptName")      String deptName,
+                                                  @Param("startTime")     String startTime,
+                                                  @Param("endTime")       String endTime);
 
     /**
      * 指标每日检测人数 + 异常人数（点击指标卡片弹窗折线图用）
+     * tableSource: 分区表名或 UNION ALL 子查询，避免扫 v_health_record UNION ALL 视图
      */
     @SelectProvider(type = MetricDailySqlProvider.class, method = "getMetricDailyDetail")
-    List<Map<String, Object>> getMetricDailyDetail(@Param("metricType") String metricType,
+    List<Map<String, Object>> getMetricDailyDetail(@Param("tableSource") String tableSource,
+                                                    @Param("metricType") String metricType,
                                                     @Param("startTime")  String startTime,
                                                     @Param("endTime")    String endTime);
 
