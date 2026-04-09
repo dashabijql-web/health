@@ -24,7 +24,8 @@ export default {
       scrollTimer: null,
       resizeTimer: null,
       refreshTimer: null,
-      filterDept: ''
+      filterDept: '',
+      pageLoading: false
     }
   },
   computed: {
@@ -105,9 +106,14 @@ export default {
       this.__refreshFn = refreshFn || (() => this.fetchData())
       this.__refreshInterval = interval
       this.initClock()
-      this.fetchData()
+      this._doFetchWithLoading()
       this.$nextTick(() => this.startAutoScroll())
       this.refreshTimer = setInterval(this.__refreshFn, interval)
+    },
+    /** 首次加载时显示 loading 遮罩，刷新时静默更新 */
+    async _doFetchWithLoading() {
+      this.pageLoading = true
+      try { await this.fetchData() } finally { this.pageLoading = false }
     },
     /** 标签页隐藏时暂停轮询，显示时立即刷新并重启定时器 */
     _handlePageVisibility() {

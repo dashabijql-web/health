@@ -29,3 +29,20 @@ export function getDeptAiReport(deptName) {
 export function generateDeptAiReport(deptName, force = false) {
   return request({ url: '/ai/health-report/dept/generate', method: 'post', params: { deptName, force }, timeout: 150000 })
 }
+
+/**
+ * AI 健康助手对话（Text2SQL RAG，支持多轮对话）
+ * @param {string} question   用户的自然语言问题
+ * @param {string} sessionId  会话ID，同一会话保持不变
+ */
+export function aiChat(question, sessionId) {
+  return request({ url: '/ai/chat', method: 'post', data: { question, sessionId }, timeout: 60000 })
+}
+
+/**
+ * 清除 AI 会话历史（开始新对话）
+ * @param {string} sessionId
+ */
+export function clearAiSession(sessionId) {
+  return request({ url: `/ai/chat/${sessionId}`, method: 'delete' })
+}

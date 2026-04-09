@@ -24,7 +24,7 @@
     </header>
 
     <!-- ══ 主体 ══ -->
-    <section class="bo-bd">
+    <section class="bo-bd" v-loading="pageLoading" element-loading-text="数据加载中..." element-loading-background="rgba(10,20,40,0.7)">
 
       <!-- ─ 左侧：TOP5 紧凑列表 + 部门统计 ─ -->
       <aside class="bo-aside">
@@ -303,6 +303,7 @@ export default {
   mixins: [chartPageMixin],
   data() {
     return {
+      pageLoading: false,
       currentTime: '',
       overview: {
         avgBloodOxygen: 0, minBloodOxygen: 0, maxBloodOxygen: 0,
@@ -419,9 +420,10 @@ export default {
     },
 
     async fetchData() {
+      // loadTrendAndHourly 合并两个原本各自调用 trend 接口的方法，消除重复请求
       await Promise.allSettled([
         this.loadOverview(), this.loadTopUsers(), this.loadDept(),
-        this.loadAge(), this.loadDist(), this.loadTrend(), this.loadHourly(), this.loadRealtime()
+        this.loadAge(), this.loadDist(), this.loadTrendAndHourly(), this.loadRealtime()
       ])
     },
 
@@ -458,9 +460,34 @@ export default {
       } catch {}
       this.$nextTick(() => this.initDist(d))
     },
+    /** 合并 loadTrend + loadHourly，避免在 week/month 模式下发出两次相同的 trend 请求 */
+    async loadTrendAndHourly() {
+      if (this.activePeriod === 'day') {
+        const _n = new Date(); const today = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`
+        const vals = new Array(24).fill(null)
+        try {
+          const r = await getHourlyBloodOxygen(today, today)
+          if (r.code === 200 && Array.isArray(r.data)) {
+            r.data.forEach(({ hour, avgBloodOxygen }) => {
+              if (hour >= 0 && hour < 24) vals[hour] = avgBloodOxygen
+            })
+          }
+        } catch {}
+        this.$nextTick(() => { this.initTrendDay(vals); this.renderHourly(vals) })
+      } else {
+        const days = this.activePeriod === 'week' ? 7 : 30
+        let d = {}
+        try { const r = await getBloodOxygenTrend(days); if (r.code === 200) d = r.data || {} } catch {}
+        this.$nextTick(() => {
+          this.initTrend(d)
+          this.renderHourlyDaily(d.dates || [], d.values || [])
+        })
+      }
+    },
+    // 保留单独方法供 switchPeriod 等按需调用
     async loadHourly() {
       if (this.activePeriod === 'day') {
-        const today = new Date().toISOString().slice(0, 10)
+        const _n = new Date(); const today = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`
         const vals = new Array(24).fill(null)
         try {
           const r = await getHourlyBloodOxygen(today, today)
@@ -486,7 +513,7 @@ export default {
     },
     async loadTrend() {
       if (this.activePeriod === 'day') {
-        const today = new Date().toISOString().slice(0, 10)
+        const _n = new Date(); const today = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`
         const vals = new Array(24).fill(null)
         try {
           const r = await getHourlyBloodOxygen(today, today)

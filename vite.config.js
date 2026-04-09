@@ -140,6 +140,21 @@ export default defineConfig(({ mode }) => {
       port: 9528,       // 前端开发服务器端口
       open: true,       // 启动后自动打开浏览器
       proxy: {
+        // SSE 流式接口单独配置，禁止响应缓冲（必须在通用规则之前）
+        '/dev-api/ai/chat/stream': {
+          target: env.VITE_TARGET || 'http://localhost:8080',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/dev-api/, '/health'),
+          agent: new http.Agent(),
+          // SSE 关键配置：禁用响应缓冲，确保每个 token 实时透传
+          selfHandleResponse: false,
+          configure: (proxy) => {
+            proxy.on('proxyRes', (proxyRes) => {
+              proxyRes.headers['cache-control'] = 'no-cache'
+              proxyRes.headers['x-accel-buffering'] = 'no'
+            })
+          },
+        },
         // 将所有 /dev-api 开头的请求代理到后端
         '/dev-api': {
           target: env.VITE_TARGET || 'http://localhost:8080', // 后端地址

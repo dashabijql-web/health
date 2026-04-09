@@ -32,7 +32,7 @@
           >{{ p.label }}</span>
         </div>
         <span class="dm-hd-time">{{ currentTime }}</span>
-        <div class="dm-refresh-info" @click="fetchData" title="点击立即刷新">
+        <div class="dm-refresh-info" @click="fetchData(true)" title="点击立即刷新">
           <span class="dm-refresh-icon" :class="{ 'is-spinning': isRefreshing }">↻</span>
           <span class="dm-refresh-time">{{ lastRefreshText }}</span>
         </div>
@@ -661,6 +661,23 @@ import { getRealtimeStatistics } from '@/api/realtime'
 import HealthTips from '@/components/HealthTips.vue'
 import { getMineAiReport, generateMineAiReport } from '@/api/ai'
 
+// ── 模块级缓存时间戳（跨组件生命周期持久，解决无 keep-alive 时每次切换页面重置缓存的问题）
+const _cache = {
+  preShiftFetchedAt: 0,
+  deptDataFetchedAt: 0,
+  deptDataPeriodKey: '',
+  warningDistFetchedAt: 0,
+  warningDistPeriodKey: '',
+  trendDailyFetchedAt: 0,
+  trendDailyDays: 0,
+  kpiFetchedAt: 0,
+  kpiTodayWarnings: 0,
+  kpiYesterdayWarnings: 0,
+  kpiOnline: 0,
+  kpiTotal: 0,
+  kpiCacheDate: ''
+}
+
 export default {
   name: 'HealthDashboard',
   components: { HealthTips },
@@ -670,6 +687,7 @@ export default {
       timeInterval: null,
       refreshTimer: null,
       resizeTimer: null,
+      // 缓存时间戳已移至模块级 _cache 对象（跨生命周期持久）
       pageScrollInterval: null,
       warningPageTimer: null,
       top5ScrollInterval: null,
@@ -1254,7 +1272,7 @@ export default {
       n.onclick = () => { window.focus(); n.close() }
     },
 
-    async fetchData() {
+    async fetchData(force = false) {
       if (this.isRefreshing) return
       this.isRefreshing = true
       await Promise.allSettled([
@@ -1264,11 +1282,11 @@ export default {
         this.fetchDeviceData(),
         this.fetchWarningEvents(),
         this.fetchTop5Data(),
-        this.loadDeptData(),
-        this.fetchTrendDaily(),
-        this.fetchWarningDist(),
+        this.loadDeptData(force),
+        this.fetchTrendDaily(force),
+        this.fetchWarningDist(force),
         this.fetchWarningTypes(),
-        this.fetchPreShiftRate()
+        this.fetchPreShiftRate(force)
       ])
       this.isRefreshing    = false
       this.lastRefreshTime = Date.now()
@@ -1308,10 +1326,16 @@ export default {
         if (res.code === 200) this.checkData = res.data
       } catch(e) { this.checkData = {} }
     },
-    async fetchPreShiftRate() {
+    async fetchPreShiftRate(force = false) {
+      // 班前达标率每5分钟刷新一次即可（今日数据变化缓慢，避免每30秒重复扫描分区表）
+      const now = Date.now()
+      if (!force && _cache.preShiftFetchedAt && (now - _cache.preShiftFetchedAt) < 5 * 60 * 1000) return
       try {
         const res = await getPreShiftCompliance()
-        if (res.code === 200 && res.data) this.preShiftData = res.data
+        if (res.code === 200 && res.data) {
+          this.preShiftData = res.data
+          _cache.preShiftFetchedAt = Date.now()
+        }
       } catch(e) {}
     },
     async fetchPersonCounts() {
@@ -1481,7 +1505,11 @@ export default {
         }
       } catch(e) { this.warningEvents = [] }
     },
-    async loadDeptData() {
+    async loadDeptData(force = false) {
+      // 2分钟前端缓存：相同时间段内避免重复请求 dept-person-stats (~1100ms)
+      const now = Date.now()
+      const periodKey = JSON.stringify(this.periodRange)
+      if (!force && _cache.deptDataFetchedAt && (now - _cache.deptDataFetchedAt) < 2 * 60 * 1000 && _cache.deptDataPeriodKey === periodKey) return
       const t0 = performance.now()
       const [r, statsR] = await Promise.allSettled([
         getDeptHealthCounts(this.periodRange),
@@ -1498,6 +1526,8 @@ export default {
       }
       const stats = statsR.status === 'fulfilled' ? statsR.value : null
       this.deptPersonStatsList = (stats?.code === 200 && Array.isArray(stats.data)) ? stats.data : []
+      _cache.deptDataFetchedAt = Date.now()
+      _cache.deptDataPeriodKey = periodKey
       this.$nextTick(() => { this.initDeptChart(); this.startListScroll('riskList','riskScrollInterval',35) })
     },
     async fetchDeptPersonStats() {
@@ -1512,27 +1542,38 @@ export default {
     // ─── 改动1：决策型 KPI 数据加载 ───
     async fetchKpiData() {
       try {
-        // KPI-1：在线/在岗总数（来自 /realtime/statistics）
-        const statsRes = await getRealtimeStatistics()
-        if (statsRes.code === 200 && statsRes.data) {
-          const d = statsRes.data
-          this.kpiRealtimeOnline = d.onlineCount ?? d.onlineUsers ?? d.onlineDevices ?? 0
-          this.kpiRealtimeTotal  = d.totalCount  ?? d.totalUsers ?? d.totalEmployees ?? d.totalDevices ?? 0
+        const now = Date.now()
+        const today = dayjs().format('YYYY-MM-DD')
+        // 25秒缓存：避免 30s 定时器与手动刷新重复打 /realtime/statistics + warning-events
+        const kpiStale = (now - _cache.kpiFetchedAt) > 25000 || _cache.kpiCacheDate !== today
+        if (kpiStale) {
+          // KPI-1：在线/在岗总数（来自 /realtime/statistics）
+          const statsRes = await getRealtimeStatistics()
+          if (statsRes.code === 200 && statsRes.data) {
+            const d = statsRes.data
+            _cache.kpiOnline = d.onlineCount ?? d.onlineUsers ?? d.onlineDevices ?? 0
+            _cache.kpiTotal  = d.totalCount  ?? d.totalUsers ?? d.totalEmployees ?? d.totalDevices ?? 0
+          }
+          // KPI-2：今日/昨日预警（各请求一次 warning-events）
+          const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
+          const [todayRes, yesRes] = await Promise.all([
+            getWarningEvents({ startTime: today,     endTime: today     }),
+            getWarningEvents({ startTime: yesterday, endTime: yesterday })
+          ])
+          const countData = r => {
+            if (!r || r.code !== 200 || !r.data) return 0
+            if (Array.isArray(r.data)) return r.data.length
+            return r.data.total ?? r.data.totalElements ?? 0
+          }
+          _cache.kpiTodayWarnings     = countData(todayRes)
+          _cache.kpiYesterdayWarnings = countData(yesRes)
+          _cache.kpiFetchedAt  = now
+          _cache.kpiCacheDate  = today
         }
-        // KPI-2：今日/昨日预警（各请求一次 warning-events）
-        const today     = dayjs().format('YYYY-MM-DD')
-        const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
-        const [todayRes, yesRes] = await Promise.all([
-          getWarningEvents({ startTime: today,     endTime: today     }),
-          getWarningEvents({ startTime: yesterday, endTime: yesterday })
-        ])
-        const countData = r => {
-          if (!r || r.code !== 200 || !r.data) return 0
-          if (Array.isArray(r.data)) return r.data.length
-          return r.data.total ?? r.data.totalElements ?? 0
-        }
-        this.kpiTodayWarnings     = countData(todayRes)
-        this.kpiYesterdayWarnings = countData(yesRes)
+        this.kpiRealtimeOnline    = _cache.kpiOnline
+        this.kpiRealtimeTotal     = _cache.kpiTotal
+        this.kpiTodayWarnings     = _cache.kpiTodayWarnings
+        this.kpiYesterdayWarnings = _cache.kpiYesterdayWarnings
         // KPI-3：未处理预警（复用已加载的 warningEvents，按 level 区分高危/中危）
         const unhandled = this.warningEvents.filter(e => !e.handled)
         this.kpiUnhandledHigh = unhandled.filter(e => e.level === 'danger').length
@@ -2012,19 +2053,29 @@ export default {
         ],
       }, true)
     },
-    async fetchTrendDaily() {
+    async fetchTrendDaily(force = false) {
       const days = { day: 7, week: 7, month: 30 }[this.activePeriod] || 30
+      const now = Date.now()
+      // 5分钟前端缓存：日趋势数据变化极缓慢，无需每30秒重拉（每次~400-900ms）
+      if (!force && _cache.trendDailyFetchedAt && _cache.trendDailyDays === days
+          && (now - _cache.trendDailyFetchedAt) < 5 * 60 * 1000) return
       const t0 = performance.now()
       try {
         const res = await getDailyTrend(days)
         fetch('/perf-log', { method:'POST', body:`[dashboard] getDailyTrend(${days}days): ${(performance.now()-t0).toFixed(0)}ms` }).catch(()=>{})
         this.trendDailyData = (res.code === 200 && Array.isArray(res.data)) ? res.data : []
+        _cache.trendDailyFetchedAt = Date.now()
+        _cache.trendDailyDays = days
       } catch {
         this.trendDailyData = []
       }
     },
-    async fetchWarningDist() {
+    async fetchWarningDist(force = false) {
+      // 2分钟前端缓存：相同时间段内避免重复请求 warning-counts (~960ms)
+      const now = Date.now()
       const groupBy = this.activePeriod === 'day' ? 'hour' : 'day'
+      const wDistKey = JSON.stringify(this.periodRange) + groupBy
+      if (!force && _cache.warningDistFetchedAt && (now - _cache.warningDistFetchedAt) < 2 * 60 * 1000 && _cache.warningDistPeriodKey === wDistKey) return
       const t0 = performance.now()
       try {
         const res = await getWarningCounts({ ...this.periodRange, groupBy })
@@ -2032,6 +2083,8 @@ export default {
         this.warningDistData = (res.code === 200 && res.data)
           ? res.data
           : { labels: [], counts: [] }
+        _cache.warningDistFetchedAt = Date.now()
+        _cache.warningDistPeriodKey = wDistKey
       } catch {
         this.warningDistData = { labels: [], counts: [] }
       }
@@ -2633,7 +2686,7 @@ export default {
         clearInterval(this.kpiRefreshTimer)
         clearInterval(this.refreshTextTimer)
       } else {
-        this.fetchData()
+        this.fetchData(true)
         this.fetchKpiData()
         this.startAutoRefresh()
         this.kpiRefreshTimer = setInterval(() => this.fetchKpiData(), 30000)
@@ -3521,6 +3574,17 @@ $white:  #e8f4ff;
 @keyframes criticalBlink {
   0%, 100% { border-left-color: rgba(255,59,59,0.5); }
   50%       { border-left-color: #ff3b3b; box-shadow: inset 0 0 8px rgba(255,59,59,0.15); }
+}
+
+// ═══════════════════════════════════════════════════
+// 中等屏幕响应式（≤1100px 内容区）：dm-model-video-col 宽度收窄，防止挤压图表列
+// ═══════════════════════════════════════════════════
+@media (max-width: 1100px) {
+  // 压缩左右固定列宽，给中间列腾出更多空间
+  .dm-left  { width: 240px; }
+  .dm-right { width: 240px; }
+  // 健康监测中心：视频/预警列宽度收窄，防止完全挤压图表列
+  .dm-model-video-col { flex: 0 0 180px; }
 }
 
 // ═══════════════════════════════════════════════════

@@ -26,7 +26,7 @@
     </header>
 
     <!-- ══ 主体 ══ -->
-    <section class="bp-bd">
+    <section class="bp-bd" v-loading="pageLoading" element-loading-text="数据加载中..." element-loading-background="rgba(10,20,40,0.7)">
 
       <!-- ─ 左侧：TOP5 + 部门统计 ─ -->
       <aside class="bp-aside">
@@ -290,6 +290,7 @@ export default {
   mixins: [chartPageMixin],
   data() {
     return {
+      pageLoading: false,
       currentTime: '',
       overview: {
         avgSystolic: 0, avgDiastolic: 0,

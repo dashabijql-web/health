@@ -248,7 +248,7 @@ const calCells = computed(() => {
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${curYear.value}-${String(curMonth.value).padStart(2,'0')}-${String(d).padStart(2,'0')}`
     const data = dayData.value[dateStr] || null
-    const isToday = dateStr === today.toISOString().slice(0, 10)
+    const isToday = dateStr === `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
     cells.push({ day: d, dateStr, data, isToday })
   }
   // 补充后空白到 7 的倍数

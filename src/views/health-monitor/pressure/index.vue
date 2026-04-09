@@ -26,7 +26,7 @@
     </header>
 
     <!-- ══ 主体 ══ -->
-    <section class="ps-bd">
+    <section class="ps-bd" v-loading="pageLoading" element-loading-text="数据加载中..." element-loading-background="rgba(10,20,40,0.7)">
 
       <!-- ─ 左侧：TOP5 紧凑列表 + 部门柱状图 ─ -->
       <aside class="ps-aside">
@@ -268,6 +268,7 @@ export default {
   mixins: [chartPageMixin],
   data() {
     return {
+      pageLoading: false,
       currentTime: '',
       overview: {},
       distLegend: [],

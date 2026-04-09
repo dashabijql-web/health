@@ -162,6 +162,21 @@ export const constantRoutes = [
     ]
   },
 
+  // AI 健康助手
+  {
+    path: '/ai-chat',
+    component: () => import('@/layout/index.vue'),
+    meta: { title: 'AI健康助手' },
+    children: [
+      {
+        path: 'index',
+        name: 'AiChat',
+        component: () => import('@/views/ai-chat/index.vue'),
+        meta: { title: 'AI健康助手', icon: 'ChatDotRound' }
+      }
+    ]
+  },
+
   // 旧预警路由兼容重定向
   {
     path: '/health-monitor/warnings',

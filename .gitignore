@@ -9,9 +9,19 @@ tests/**/coverage/
 
 # Screenshots and temp files
 *.png
+/*.jpeg
 *.sql
 real-time-snapshot.md
 .playwright-mcp/
+.claude/
+/dashboard_snapshot.md
+/console_warnings.txt
+/netreqs_dashboard.txt
+/network_after_65s.txt
+/*_network.txt
+/*_network.json
+/perf.log
+/perf*.json
 
 # Editor directories and files
 .idea

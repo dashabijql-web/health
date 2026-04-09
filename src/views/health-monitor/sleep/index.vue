@@ -365,16 +365,18 @@ export default {
     },
 
     async fetchData() {
+      // loadPageData先执行，获取deptUpload供loadDept复用，避免重复请求sleep/page-data
+      const pageDataResult = await this.loadPageData()
       await Promise.allSettled([
-        this.loadPageData(),
         this.loadTrend(),
         this.loadQualityDist(),
-        this.loadDept()
+        this.loadDept(pageDataResult)
       ])
     },
 
     // 从 /department/list 拿全量部门，再和 page-data 的 deptUpload 合并显示上传率
-    async loadDept() {
+    // deptUploadFromPageData: 由fetchData传入，避免重复调用sleep/page-data接口
+    async loadDept(deptUploadFromPageData) {
       let depts = []
       let uploadMap = {}
       try {
@@ -384,13 +386,11 @@ export default {
           depts = r.data.list || r.data.rows || r.data.records || r.data || []
         }
       } catch {}
-      // 同时尝试从 page-data 的 deptUpload 取上传率
-      try {
-        const r2 = await getSleepPageData()
-        if (r2.code === 200 && r2.data?.deptUpload?.length) {
-          r2.data.deptUpload.forEach(d => { uploadMap[d.deptName] = d.count })
-        }
-      } catch {}
+      // 使用loadPageData已获取的deptUpload，无需再次调用sleep/page-data
+      const uploadList = Array.isArray(deptUploadFromPageData) && deptUploadFromPageData.length
+        ? deptUploadFromPageData
+        : []
+      uploadList.forEach(d => { uploadMap[d.deptName] = d.count })
       // 组合：用部门列表作为基础，有上传率就用真实值，没有就用随机模拟值
       const list = depts.length > 0
         ? depts.map(d => {
@@ -415,17 +415,17 @@ export default {
           this.$nextTick(() => {
             this.initStage()
             this.initDuration()
-            this.initDept(d.deptUpload || [])
+            // initDept由loadDept统一处理（包含部门列表合并），此处不再重复渲染
           })
-          return
+          return d.deptUpload || []  // 返回deptUpload供fetchData转交给loadDept
         }
       } catch {}
       // fallback: render with default data
       this.$nextTick(() => {
         this.initStage()
         this.initDuration()
-        this.initDept([])
       })
+      return []
     },
 
     async loadTrend() {

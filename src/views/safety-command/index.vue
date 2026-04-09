@@ -765,7 +765,9 @@ const fetchCritical = async () => {
 }
 
 const fetchHourlyVitals = async () => {
-  const today = new Date().toISOString().slice(0, 10)
+  // 使用本地日期（toISOString 返回 UTC，在 UTC+8 凌晨0-7点会给出昨天日期）
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
   const [hrRes, boRes] = await Promise.allSettled([getHourlyHeartRate(today, today), getHourlyBloodOxygen(today, today)])
   if (hrRes.status === 'fulfilled' && Array.isArray(hrRes.value?.data) && hrRes.value.data.length >= 2) {
     vitalsHistory.hr = hrRes.value.data

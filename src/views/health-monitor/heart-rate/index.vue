@@ -26,7 +26,7 @@
     </header>
 
     <!-- ══ 主体 ══ -->
-    <section class="hr-bd">
+    <section class="hr-bd" v-loading="pageLoading" element-loading-text="数据加载中..." element-loading-background="rgba(10,20,40,0.7)">
 
       <!-- ─ 左侧：TOP5(小) + 部门统计(大) ─ -->
       <aside class="hr-aside">
@@ -290,6 +290,7 @@ export default {
   mixins: [chartPageMixin],
   data() {
     return {
+      pageLoading: false,
       currentTime: '',
       overview: {
         avgHeartRate: 0, minHeartRate: 0, maxHeartRate: 0,
@@ -461,7 +462,7 @@ export default {
     },
     async loadHourly() {
       if (this.activePeriod === 'day') {
-        const today = new Date().toISOString().slice(0, 10)
+        const _n = new Date(); const today = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`
         const vals = new Array(24).fill(null)
         try {
           const r = await getHourlyHeartRate(today, today)
@@ -487,7 +488,7 @@ export default {
     },
     async loadTrend() {
       if (this.activePeriod === 'day') {
-        const today = new Date().toISOString().slice(0, 10)
+        const _n = new Date(); const today = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`
         const vals = new Array(24).fill(null)
         try {
           const r = await getHourlyHeartRate(today, today)
