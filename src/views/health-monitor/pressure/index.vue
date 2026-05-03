@@ -247,7 +247,6 @@
 
 <script>
 import dayjs from 'dayjs'
-import * as XLSX from 'xlsx'
 import { ElMessage } from 'element-plus'
 import {
   getPressureOverview,
@@ -262,6 +261,7 @@ import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid
 import { initChart, distOption, gaugeOption, gradH, gradV } from '@/utils/chart-helpers'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
+import { exportToExcel } from '@/utils/export-excel'
 
 export default {
   name: 'PressureAnalysis',
@@ -370,19 +370,26 @@ export default {
   },
   methods: {
 
-    exportExcel() {
+    async exportExcel() {
       const list = this.realtimeList
       if (!list.length) { ElMessage.warning('暂无数据可导出'); return }
       const data = list.map(r => ({
-        '姓名': r.userName || '--', '部门': r.deptName || '--', '工号': r.empCode || '--',
-        '压力指数': r.pressure ?? '--',
-        '状态': (r.pressure >= 85) ? '高危' : (r.pressure >= 70) ? '偏高' : (r.pressure >= 50) ? '正常' : '放松',
-        '记录时间': r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
+        userName: r.userName || '--',
+        deptName: r.deptName || '--',
+        empCode: r.empCode || '--',
+        pressure: r.pressure ?? '--',
+        status: (r.pressure >= 85) ? '高危' : (r.pressure >= 70) ? '偏高' : (r.pressure >= 50) ? '正常' : '放松',
+        recordTime: r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
       }))
-      const ws = XLSX.utils.json_to_sheet(data)
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, '压力数据')
-      XLSX.writeFile(wb, `压力分析_${dayjs().format('YYYYMMDD')}.xlsx`)
+      const cols = [
+        { label: '姓名', key: 'userName' },
+        { label: '部门', key: 'deptName' },
+        { label: '工号', key: 'empCode' },
+        { label: '压力指数', key: 'pressure' },
+        { label: '状态', key: 'status' },
+        { label: '记录时间', key: 'recordTime' }
+      ]
+      await exportToExcel(data, cols, `压力分析_${dayjs().format('YYYYMMDD')}`)
       ElMessage.success(`已导出 ${list.length} 条记录`)
     },
 

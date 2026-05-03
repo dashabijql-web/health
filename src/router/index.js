@@ -103,7 +103,12 @@ export const constantRoutes = [
         path: 'index',
         name: 'SafetyCommandIndex',
         component: () => import('@/views/safety-command/index.vue'),
-        meta: { title: '安全指挥中心', icon: 'Aim' }
+        meta: {
+          title: '安全指挥中心',
+          icon: 'Aim',
+          navGroup: 'command',
+          navOrder: 11
+        }
       }
     ]
   },
@@ -133,31 +138,61 @@ export const constantRoutes = [
         path: 'device-list',
         name: 'DeviceList',
         component: () => import('@/views/device-management/index.vue'),
-        meta: { title: '设备列表', icon: 'Monitor', permCode: 'device:list' }
+        meta: {
+          title: '设备列表',
+          icon: 'Monitor',
+          permCode: 'device:list',
+          navGroup: 'admin',
+          navOrder: 51
+        }
       },
       {
         path: 'user-list',
         name: 'UserList',
         component: () => import('@/views/user-list/index.vue'),
-        meta: { title: '用户列表', icon: 'UserFilled', permCode: 'user:list' }
+        meta: {
+          title: '用户列表',
+          icon: 'UserFilled',
+          permCode: 'user:list',
+          navGroup: 'admin',
+          navOrder: 52
+        }
       },
       {
         path: 'role',
         name: 'RoleManagement',
         component: () => import('@/views/role-management/index.vue'),
-        meta: { title: '角色管理', icon: 'Key', permCode: 'role:list' }
+        meta: {
+          title: '角色管理',
+          icon: 'Key',
+          permCode: 'role:list',
+          navGroup: 'admin',
+          navOrder: 53
+        }
       },
       {
         path: 'department',
         name: 'Department',
         component: () => import('@/views/org-management/department/index.vue'),
-        meta: { title: '部门管理', icon: 'Grid', permCode: 'org:department' }
+        meta: {
+          title: '部门管理',
+          icon: 'Grid',
+          permCode: 'org:department',
+          navGroup: 'admin',
+          navOrder: 54
+        }
       },
       {
         path: 'job-type',
         name: 'JobType',
         component: () => import('@/views/org-management/job-type/index.vue'),
-        meta: { title: '工种管理', icon: 'SetUp', permCode: 'org:job-type' }
+        meta: {
+          title: '工种管理',
+          icon: 'SetUp',
+          permCode: 'org:job-type',
+          navGroup: 'admin',
+          navOrder: 55
+        }
       }
     ]
   },
@@ -165,16 +200,48 @@ export const constantRoutes = [
   // AI 健康助手
   {
     path: '/ai-chat',
-    component: () => import('@/layout/index.vue'),
+    component: Layout,
     meta: { title: 'AI健康助手' },
     children: [
       {
         path: 'index',
         name: 'AiChat',
         component: () => import('@/views/ai-chat/index.vue'),
-        meta: { title: 'AI健康助手', icon: 'ChatDotRound' }
+        meta: {
+          title: 'AI健康助手',
+          icon: 'ChatDotRound',
+          navGroup: 'report',
+          navOrder: 42
+        }
       }
     ]
+  },
+
+  // 一级导航语义入口（保留旧页面路径，同时补任务型入口）
+  {
+    path: '/command-center',
+    redirect: '/health-monitor/dashboard',
+    hidden: true
+  },
+  {
+    path: '/monitoring-center',
+    redirect: '/health-monitor/real-time',
+    hidden: true
+  },
+  {
+    path: '/warning-center',
+    redirect: '/alert-management/notifications',
+    hidden: true
+  },
+  {
+    path: '/people-center',
+    redirect: '/health-monitor/employee-archive',
+    hidden: true
+  },
+  {
+    path: '/report-ai',
+    redirect: '/health-monitor/report-center',
+    hidden: true
   },
 
   // 旧预警路由兼容重定向

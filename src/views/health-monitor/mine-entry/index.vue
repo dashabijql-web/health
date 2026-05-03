@@ -6,6 +6,9 @@
         <span class="me-live-dot"></span>
         <h1 class="me-hd-title">入井健康准入系统</h1>
         <span class="me-hd-sub">今日 {{ currentDate }} 班前健康筛查</span>
+        <button v-if="route.query.empCode" class="me-profile-btn" @click="backToProfile">
+          返回画像
+        </button>
       </div>
       <div class="me-hd-stats">
         <div class="me-stat-card me-stat-total">
@@ -58,7 +61,10 @@
       <span class="me-criteria-item ok">血压高压 &lt; 140 mmHg</span>
       <span class="me-criteria-sep">|</span>
       <span class="me-criteria-item ok">血压低压 &lt; 90 mmHg</span>
+      <span class="me-criteria-sep">|</span>
+      <span class="me-criteria-item ok">体温 36.0~37.5 ℃</span>
       <span class="me-criteria-note">（任一超标即禁止入井）</span>
+      <button class="me-export-btn" @click="exportList" style="margin-left:auto">⬇ 导出名单</button>
     </div>
 
     <!-- Table -->
@@ -181,14 +187,36 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Refresh, CircleCheck, CircleClose, UserFilled } from '@element-plus/icons-vue'
 import { getMineEntryList, getPreShiftCompliance } from '@/api/health'
 import dayjs from 'dayjs'
+import { exportToExcel } from '@/utils/export-excel'
 
 const router = useRouter()
+const route = useRoute()
 function goPortrait(item) {
-  if (item?.empCode) router.push({ path: '/health-monitor/health-portrait', query: { empCode: item.empCode } })
+  if (!item?.empCode) return
+  router.push({
+    path: '/health-monitor/employee-profile',
+    query: {
+      empCode: item.empCode || '',
+      empName: item.empName || '',
+      deptName: item.deptName || '',
+      jobTypeName: item.jobTypeName || ''
+    }
+  })
+}
+
+function backToProfile() {
+  if (!route.query.empCode) return
+  router.push({
+    path: '/health-monitor/employee-profile',
+    query: {
+      empCode: route.query.empCode,
+      empName: route.query.empName || ''
+    }
+  })
 }
 
 const loading = ref(false)
@@ -281,6 +309,29 @@ async function load() {
   }
 }
 
+function exportList() {
+  const cols = [
+    { label: '序号', key: '_idx' },
+    { label: '姓名', key: 'empName' },
+    { label: '工号', key: 'empCode' },
+    { label: '部门', key: 'deptName' },
+    { label: '工种', key: 'jobTypeName' },
+    { label: '心率(bpm)', key: 'heartRate' },
+    { label: '血氧(%)', key: 'bloodOxygen' },
+    { label: '收缩压(mmHg)', key: 'systolic' },
+    { label: '舒张压(mmHg)', key: 'diastolic' },
+    { label: '状态', key: '_status' },
+    { label: '检测时间', key: '_time' },
+  ]
+  const data = filteredList.value.map((row, i) => ({
+    ...row,
+    _idx: i + 1,
+    _status: row.qualified ? '准入' : '禁止入井',
+    _time: row.recordTime ? dayjs(row.recordTime).format('HH:mm:ss') : '--'
+  }))
+  exportToExcel(data, cols, `班前健康检查_${dayjs().format('YYYYMMDD')}`)
+}
+
 let timer = null
 onMounted(() => {
   load()
@@ -323,6 +374,17 @@ onBeforeUnmount(() => clearInterval(timer))
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 .me-hd-title { margin: 0; font-size: 18px; font-weight: 700; color: #e8f4ff; }
 .me-hd-sub { font-size: 12px; color: #5ea4c8; white-space: nowrap; }
+.me-profile-btn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,180,255,0.28);
+  background: rgba(0,180,255,0.08);
+  color: #b7e9ff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.me-profile-btn:hover { background: rgba(0,180,255,0.16); }
 
 .me-hd-stats {
   display: flex;
@@ -371,6 +433,11 @@ onBeforeUnmount(() => clearInterval(timer))
 .me-criteria-item { color: #38ef7d; }
 .me-criteria-sep { color: #2d4060; }
 .me-criteria-note { color: #5ea4c8; }
+.me-export-btn {
+  padding: 4px 12px; background: rgba(0,212,255,.08); border: 1px solid rgba(0,212,255,.25);
+  border-radius: 4px; color: #00d4ff; font-size: 11px; cursor: pointer; white-space: nowrap; transition: background .2s;
+  &:hover { background: rgba(0,212,255,.18); }
+}
 
 /* ── Table wrap ── */
 .me-table-wrap { min-height: 300px; }

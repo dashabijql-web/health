@@ -74,7 +74,7 @@ import router from '@/router'
  * 创建 Axios 实例
  *
  * baseURL：所有请求的 URL 前缀
- *   开发环境：读取 VITE_BASE_API 环境变量（vite.config.js 配置代理）
+ *   开发环境：读取 VITE_BASE_API 环境变量（vite.config.mjs 配置代理）
  *   如果没有环境变量：默认用 '/dev-api'（代理到后端）
  *   例如：request({ url: '/auth/info' }) 实际请求 http://localhost:8080/health/auth/info
  *

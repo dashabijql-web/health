@@ -127,6 +127,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
 .animated-number {
   display: inline-block;
   font-variant-numeric: tabular-nums;
@@ -147,6 +149,4 @@ onMounted(() => {
   animation: pulse 0.5s ease-in-out;
 }
 
-/* 加载Google Font - Orbitron（科技感数字字体） */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 </style>

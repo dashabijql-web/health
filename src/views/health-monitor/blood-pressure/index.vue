@@ -269,7 +269,6 @@
 
 <script>
 import dayjs from 'dayjs'
-import * as XLSX from 'xlsx'
 import { ElMessage } from 'element-plus'
 import {
   getBPOverview,
@@ -284,6 +283,7 @@ import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid
 import { initChart, distOption, gradH, gradV } from '@/utils/chart-helpers'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
+import { exportToExcel } from '@/utils/export-excel'
 
 export default {
   name: 'BloodPressureAnalysis',
@@ -395,19 +395,28 @@ export default {
   },
   methods: {
 
-    exportExcel() {
+    async exportExcel() {
       const list = this.realtimeList
       if (!list.length) { ElMessage.warning('暂无数据可导出'); return }
       const data = list.map(r => ({
-        '姓名': r.userName || '--', '部门': r.deptName || '--', '工号': r.empCode || '--',
-        '收缩压(mmHg)': r.systolic ?? '--', '舒张压(mmHg)': r.diastolic ?? '--',
-        '状态': (r.systolic >= 140 || r.diastolic >= 90) ? '偏高' : r.systolic < 90 ? '偏低' : '正常',
-        '记录时间': r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
+        userName: r.userName || '--',
+        deptName: r.deptName || '--',
+        empCode: r.empCode || '--',
+        systolic: r.systolic ?? '--',
+        diastolic: r.diastolic ?? '--',
+        status: (r.systolic >= 140 || r.diastolic >= 90) ? '偏高' : r.systolic < 90 ? '偏低' : '正常',
+        recordTime: r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
       }))
-      const ws = XLSX.utils.json_to_sheet(data)
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, '血压数据')
-      XLSX.writeFile(wb, `血压分析_${dayjs().format('YYYYMMDD')}.xlsx`)
+      const cols = [
+        { label: '姓名', key: 'userName' },
+        { label: '部门', key: 'deptName' },
+        { label: '工号', key: 'empCode' },
+        { label: '收缩压(mmHg)', key: 'systolic' },
+        { label: '舒张压(mmHg)', key: 'diastolic' },
+        { label: '状态', key: 'status' },
+        { label: '记录时间', key: 'recordTime' }
+      ]
+      await exportToExcel(data, cols, `血压分析_${dayjs().format('YYYYMMDD')}`)
       ElMessage.success(`已导出 ${list.length} 条记录`)
     },
 

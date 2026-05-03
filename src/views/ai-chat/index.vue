@@ -44,6 +44,26 @@
             </div>
             <pre v-if="msg.sqlOpen" class="sql-block">{{ msg.sql }}</pre>
           </div>
+          <!-- P1/P2: 数据可视化块 -->
+          <template v-if="msg.queryData && msg.queryData.length >= 2">
+            <div v-if="getVizType(msg.queryData) === 'table'" class="viz-table-wrap">
+              <table class="viz-table">
+                <thead>
+                  <tr><th v-for="col in Object.keys(msg.queryData[0])" :key="col">{{ col }}</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, ri) in msg.queryData" :key="ri">
+                    <td v-for="col in Object.keys(msg.queryData[0])" :key="col">{{ formatCell(row[col]) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else-if="getVizType(msg.queryData) !== 'none'"
+                 :id="'viz-chart-' + index"
+                 :style="{ height: getVizType(msg.queryData) === 'bar' ? Math.min(msg.queryData.length * 28 + 20, 420) + 'px' : '220px' }"
+                 class="viz-chart">
+            </div>
+          </template>
         </div>
       </div>
 
@@ -92,19 +112,18 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { clearAiSession } from '@/api/ai'
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
-import { marked } from 'marked'
-
-// 配置 marked：开启换行支持，关闭 pedantic 模式
-marked.setOptions({ breaks: true, gfm: true })
+import { getMarked } from '@/utils/lazy-vendors'
+import * as echarts from '@/utils/echarts-setup'
 
 const inputText = ref('')
 const messages = ref([])
 const loading = ref(false)
 const messageListRef = ref(null)
+const markdownParser = ref(null)
 
 // 会话ID：每次打开页面生成一个，同一会话内保持不变
 const sessionId = ref(generateSessionId())
@@ -163,7 +182,15 @@ async function loadDynamicQuickQuestions() {
 
 onMounted(() => {
   loadDynamicQuickQuestions()
+  ensureMarkdownParser()
 })
+
+async function ensureMarkdownParser() {
+  if (!markdownParser.value) {
+    markdownParser.value = await getMarked()
+  }
+  return markdownParser.value
+}
 
 /**
  * 流式发送消息
@@ -183,9 +210,9 @@ async function sendMessage() {
   inputText.value = ''
   loading.value = true
 
-  // 添加 AI 占位消息（content 逐字填入，sql 在流结束时填入）
+  // 添加 AI 占位消息（content 逐字填入，sql/queryData 在流结束时填入）
   const aiMsgIndex = messages.value.length
-  messages.value.push({ role: 'assistant', content: '', sql: null, sqlOpen: false })
+  messages.value.push({ role: 'assistant', content: '', sql: null, sqlOpen: false, queryData: null })
   scrollToBottom()
 
   try {
@@ -233,10 +260,22 @@ async function sendMessage() {
           sessionId.value = data.slice(10)
           continue
         }
+        if (data.startsWith('[DATA]:')) {
+          // P1/P2: 解析原始查询结果，用于渲染表格或图表
+          try {
+            const queryData = JSON.parse(decodeBase64Utf8(data.slice(7)))
+            messages.value[aiMsgIndex].queryData = queryData
+            const vtype = getVizType(queryData)
+            if (vtype === 'bar' || vtype === 'line') {
+              nextTick(() => initChart(aiMsgIndex, queryData, vtype))
+            }
+          } catch (e) { /* 忽略解析错误 */ }
+          continue
+        }
         if (data.startsWith('[SQL]:')) {
           // Base64 解码 SQL
           const sqlB64 = data.slice(6)
-          messages.value[aiMsgIndex].sql = atob(sqlB64)
+          messages.value[aiMsgIndex].sql = decodeBase64Utf8(sqlB64)
           continue
         }
         if (data.startsWith('[ERROR]')) {
@@ -257,6 +296,12 @@ async function sendMessage() {
   }
 }
 
+function decodeBase64Utf8(base64Text) {
+  const binary = atob(base64Text)
+  const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0))
+  return new TextDecoder('utf-8').decode(bytes)
+}
+
 /**
  * B6: 导出对话 —— 生成 HTML 打印页，让用户另存为 PDF 或直接打印
  *
@@ -266,16 +311,17 @@ async function sendMessage() {
  *   3. 写入 HTML，延迟调用 window.print()（弹出系统打印对话框）
  *   4. 用户可选择"另存为 PDF"或打印纸质版
  */
-function exportChat() {
+async function exportChat() {
   if (messages.value.length === 0) return
 
+  const parser = await ensureMarkdownParser()
   const now = new Date().toLocaleString('zh-CN')
   const rows = messages.value.map(msg => {
     const role = msg.role === 'user' ? '用户' : 'AI助手'
     const cls = msg.role === 'user' ? 'user' : 'ai'
     // 使用 marked 渲染 AI 的 Markdown 内容
     const content = msg.role === 'assistant'
-      ? marked.parse(msg.content || '')
+      ? parser.parse(msg.content || '')
       : `<p>${(msg.content || '').replace(/</g, '&lt;')}</p>`
     const sqlPart = msg.sql ? `<details><summary>生成的 SQL</summary><pre>${msg.sql.replace(/</g, '&lt;')}</pre></details>` : ''
     return `<div class="msg ${cls}"><div class="role">${role}</div><div class="content">${content}${sqlPart}</div></div>`
@@ -315,12 +361,155 @@ ${rows}
   setTimeout(() => win.print(), 600)
 }
 
+// ─── P1/P2: 数据可视化 ─────────────────────────────────────────────────────
+
+// ECharts 实例 Map，key 为消息 index，用于 dispose 防止内存泄漏
+const chartInstances = new Map()
+
+/**
+ * 判断数据适合哪种可视化方式
+ * - 'line'  : 含时间列 + 数值列，>= 2 行 → 折线图
+ * - 'bar'   : 含文本列 + 数值列，>= 2 行 → 水平柱状图
+ * - 'table' : 多行多列，无明显分类 → 表格
+ * - 'none'  : 0行 / 1行单列 → 不显示
+ */
+function getVizType(data) {
+  if (!data || data.length === 0) return 'none'
+  const keys = Object.keys(data[0])
+  if (keys.length === 0) return 'none'
+
+  const timeKeys = ['record_time', 'create_time', 'update_time', 'warning_time', 'date', 'month', 'week', 'day']
+  const hasTime = keys.some(k => timeKeys.some(t => k.toLowerCase().includes(t)))
+  const numCols = keys.filter(k => typeof data[0][k] === 'number' && isFinite(data[0][k]))
+  const textCols = keys.filter(k => typeof data[0][k] === 'string')
+
+  if (data.length < 2) return 'none'
+  if (hasTime && numCols.length >= 1) return 'line'
+  // 多指标（≥2个数值列）→ 表格展示，避免 bar 只显示第一列
+  if (textCols.length >= 1 && numCols.length >= 2) return 'table'
+  if (textCols.length >= 1 && numCols.length === 1) return 'bar'
+  if (data.length >= 2 && keys.length >= 2) return 'table'
+  return 'none'
+}
+
+/** 格式化单元格数值：数字保留2位小数，其他原样返回 */
+function formatCell(val) {
+  if (typeof val === 'number' && !isFinite(val)) return '-'
+  if (typeof val === 'number') return Number.isInteger(val) ? val : val.toFixed(2)
+  if (val === null || val === undefined) return '-'
+  return val
+}
+
+/**
+ * 初始化 ECharts（bar 或 line）
+ * 在 nextTick 后调用，确保 DOM 已渲染
+ */
+function initChart(msgIndex, data, type) {
+  const el = document.getElementById('viz-chart-' + msgIndex)
+  if (!el) return
+  // 如果已有实例先销毁
+  if (chartInstances.has(msgIndex)) {
+    chartInstances.get(msgIndex).dispose()
+  }
+  const chart = echarts.init(el)
+  chartInstances.set(msgIndex, chart)
+
+  const keys = Object.keys(data[0])
+  const timeKeys = ['record_time', 'create_time', 'update_time', 'warning_time', 'date', 'month', 'week', 'day']
+  const numCols = keys.filter(k => typeof data[0][k] === 'number' && isFinite(data[0][k]))
+
+  if (type === 'bar') {
+    const textCol = keys.find(k => typeof data[0][k] === 'string')
+    const categories = data.map(r => r[textCol])
+    // 主数值列（取第一个数值列作为主轴）
+    const mainCol = numCols[0]
+    const values = data.map(r => Number(r[mainCol]).toFixed(2))
+
+    chart.setOption({
+      backgroundColor: 'transparent',
+      grid: { left: '30%', right: '8%', top: '5%', bottom: '5%', containLabel: false },
+      tooltip: {
+        trigger: 'axis', axisPointer: { type: 'shadow' },
+        backgroundColor: 'rgba(0,20,50,0.9)',
+        borderColor: 'rgba(0,212,255,0.3)',
+        textStyle: { color: '#c8d8e8' }
+      },
+      xAxis: { type: 'value', axisLabel: { color: '#4a7098', fontSize: 10 }, splitLine: { lineStyle: { color: 'rgba(0,212,255,0.08)' } } },
+      yAxis: {
+        type: 'category', data: categories,
+        axisLabel: { color: '#c8d8e8', fontSize: 11 },
+        inverse: false
+      },
+      series: [{
+        type: 'bar', data: values, barMaxWidth: 18,
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+            { offset: 0, color: 'rgba(0,100,200,0.7)' },
+            { offset: 1, color: '#00d4ff' }
+          ]),
+          borderRadius: [0, 4, 4, 0]
+        },
+        label: { show: true, position: 'right', color: '#c8d8e8', fontSize: 10, formatter: '{c}' }
+      }]
+    })
+  } else if (type === 'line') {
+    const timeCol = keys.find(k => timeKeys.some(t => k.toLowerCase().includes(t)))
+    const categories = data.map(r => {
+      const v = r[timeCol]
+      return typeof v === 'string' ? v.slice(0, 16) : v  // 截掉秒数，保持简洁
+    })
+    const series = numCols.map((col, i) => ({
+      name: col,
+      type: 'line', smooth: true,
+      data: data.map(r => Number(r[col]).toFixed(2)),
+      lineStyle: { color: i === 0 ? '#00d4ff' : '#00ff88', width: 2 },
+      itemStyle: { color: i === 0 ? '#00d4ff' : '#00ff88' },
+      areaStyle: i === 0 ? { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgba(0,212,255,0.2)' },
+        { offset: 1, color: 'rgba(0,212,255,0)' }
+      ])} : undefined
+    }))
+    chart.setOption({
+      backgroundColor: 'transparent',
+      grid: { left: '8%', right: '5%', top: '8%', bottom: '18%' },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(0,20,50,0.9)',
+        borderColor: 'rgba(0,212,255,0.3)',
+        textStyle: { color: '#c8d8e8' }
+      },
+      legend: numCols.length > 1 ? { textStyle: { color: '#c8d8e8' }, top: 0 } : { show: false },
+      xAxis: {
+        type: 'category', data: categories,
+        axisLabel: { color: '#4a7098', fontSize: 10, rotate: 30 },
+        axisLine: { lineStyle: { color: 'rgba(0,212,255,0.2)' } }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: { color: '#4a7098', fontSize: 10 },
+        splitLine: { lineStyle: { color: 'rgba(0,212,255,0.08)' } }
+      },
+      series
+    })
+  }
+}
+
+onUnmounted(() => {
+  chartInstances.forEach(c => c.dispose())
+  chartInstances.clear()
+})
+
+// ─── 对话操作 ─────────────────────────────────────────────────────────────
+
 // 开始新对话：清除后端历史 + 重置前端消息 + 生成新 sessionId
 async function newChat() {
   if (loading.value) return
   try {
     await clearAiSession(sessionId.value)
   } catch (e) { /* 忽略清除失败 */ }
+  // 销毁所有图表实例
+  chartInstances.forEach(c => c.dispose())
+  chartInstances.clear()
   sessionId.value = generateSessionId()
   messages.value = []
 }
@@ -331,8 +520,24 @@ function askQuick(question) {
   sendMessage()
 }
 
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 function formatMessage(text) {
-  return marked.parse(text)
+  if (!text) return ''
+  // Fix inline numbered lists: LLM sometimes outputs "1.**A** 2.**B**" without newlines.
+  // Insert \n before each "N." that is NOT already at line start (N = 1-2 digits).
+  const processed = text.replace(/([^\n])(\s{0,2})(\d{1,2}\.\s*\*\*)/g, (_, before, _sp, item) => {
+    return before + '\n' + item
+  })
+  if (markdownParser.value) {
+    return markdownParser.value.parse(processed)
+  }
+  return escapeHtml(processed).replace(/\n/g, '<br>')
 }
 
 async function scrollToBottom() {
@@ -624,5 +829,47 @@ async function scrollToBottom() {
 .quick-tag.disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+/* ─── P1/P2: 数据可视化 ──────────────────────────────── */
+.viz-table-wrap {
+  max-height: 280px;
+  overflow-y: auto;
+  margin-top: 8px;
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 6px;
+}
+.viz-table-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
+.viz-table-wrap::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
+.viz-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: #c8d8e8;
+}
+.viz-table thead tr { background: rgba(0, 212, 255, 0.08); position: sticky; top: 0; }
+.viz-table th {
+  padding: 6px 10px;
+  text-align: left;
+  color: #00d4ff;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+  white-space: nowrap;
+}
+.viz-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.06);
+  white-space: nowrap;
+}
+.viz-table tbody tr:hover { background: rgba(0, 212, 255, 0.05); }
+.viz-table tbody tr:last-child td { border-bottom: none; }
+
+.viz-chart {
+  margin-top: 8px;
+  width: 100%;
+  min-height: 160px;
+  border: 1px solid rgba(0, 212, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(0, 10, 30, 0.4);
 }
 </style>

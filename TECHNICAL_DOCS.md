@@ -172,7 +172,7 @@ D:\HealthShow\                      # 前端项目根目录
 ├── .env.development                # 开发环境变量
 ├── .env.staging                    # 测试环境变量
 ├── .env.production                 # 生产环境变量
-├── vite.config.js                  # Vite 构建配置（代理、插件、别名）
+├── vite.config.mjs                 # Vite 构建配置（代理、插件、别名）
 ├── package.json                    # 依赖声明与 npm scripts
 └── TECHNICAL_DOCS.md               # 本文档
 ```

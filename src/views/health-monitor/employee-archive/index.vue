@@ -20,6 +20,9 @@
         <el-option v-for="d in deptList" :key="d" :label="d" :value="d" />
       </el-select>
       <button class="ea-reset-btn" @click="keyword = ''; selectedDept = ''">重置</button>
+      <button class="ea-dept-report-btn" v-if="selectedDept" @click="openDeptReport" title="生成该部门AI健康报告">
+        🏥 AI部门报告
+      </button>
       <button class="ea-add-btn" @click="handleAdd"><el-icon><Plus /></el-icon> 新增职工</button>
     </div>
 
@@ -52,6 +55,7 @@
         <!-- 操作按钮区 -->
         <div class="ea-card-actions" @click.stop>
           <button class="ea-act-btn realtime" @click="openRealtime(emp)"><el-icon><Monitor /></el-icon> 实时</button>
+          <button class="ea-act-btn report" @click="openAiReport(emp)"><el-icon><Document /></el-icon> AI报告</button>
           <button class="ea-act-btn edit" @click="handleEdit(emp)"><el-icon><Edit /></el-icon> 编辑</button>
           <button class="ea-act-btn delete" @click="handleDelete(emp)"><el-icon><Delete /></el-icon> 删除</button>
         </div>
@@ -68,6 +72,40 @@
       <el-pagination v-model:current-page="currentPage" :page-size="pageSize" :total="filtered.length"
         layout="prev, pager, next, total" background class="ea-pager" />
     </div>
+
+    <!-- AI 健康诊断报告 Dialog -->
+    <el-dialog v-model="reportVisible" title="AI 健康诊断报告" width="820px"
+      :close-on-click-modal="false" class="ea-dialog report-dialog">
+      <div v-if="reportLoading" class="report-loading">
+        <div class="report-dots"><span></span><span></span><span></span></div>
+        <p>正在生成健康诊断报告，请稍候（约15~30秒）...</p>
+      </div>
+      <div v-else-if="reportContent" class="report-content" v-html="reportHtml"></div>
+      <div v-else class="report-empty">生成失败，请重试</div>
+      <template #footer>
+        <el-button @click="reportVisible = false">关闭</el-button>
+        <el-button type="primary" :disabled="!reportContent || reportLoading" @click="printReport">
+          打印 / 导出 PDF
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- AI 部门报告 Dialog -->
+    <el-dialog v-model="deptReportVisible" :title="'AI 部门健康报告 — ' + selectedDept" width="820px"
+      :close-on-click-modal="false" class="ea-dialog report-dialog">
+      <div v-if="deptReportLoading" class="report-loading">
+        <div class="report-dots"><span></span><span></span><span></span></div>
+        <p>正在生成部门健康报告，请稍候（约20~40秒）...</p>
+      </div>
+      <div v-else-if="deptReportContent" class="report-content" v-html="deptReportHtml"></div>
+      <div v-else class="report-empty">生成失败，请重试</div>
+      <template #footer>
+        <el-button @click="deptReportVisible = false">关闭</el-button>
+        <el-button type="primary" :disabled="!deptReportContent || deptReportLoading" @click="printDeptReport">
+          打印 / 导出 PDF
+        </el-button>
+      </template>
+    </el-dialog>
 
     <!-- CRUD Dialog -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="720px"
@@ -186,11 +224,13 @@
 <script setup>
 import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { UserFilled, Search, Plus, Edit, Delete, Monitor } from '@element-plus/icons-vue'
+import { UserFilled, Search, Plus, Edit, Delete, Monitor, Document } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getEmployeeListDetail, createEmployee, updateEmployee, deleteEmployee } from '@/api/employee'
 import { getDepartmentList } from '@/api/department'
 import { getJobTypeList } from '@/api/job-type'
+import { generateEmployeeReport, generateDepartmentReport } from '@/api/ai'
+import { renderMarkdown } from '@/utils/lazy-vendors'
 
 const router = useRouter()
 const loading = ref(false)
@@ -258,7 +298,18 @@ async function loadOptions() {
 
 // ── 导航 ──
 function openPortrait(emp) {
-  router.push({ path: '/health-monitor/health-portrait', query: { empCode: emp.empCode } })
+  router.push({
+    path: '/health-monitor/employee-profile',
+    query: {
+      empCode: emp.empCode || '',
+      empName: emp.empName || '',
+      gender: emp.gender ?? 1,
+      birthDate: emp.birthDate || '',
+      deptName: emp.deptName || '',
+      jobTypeName: emp.jobTypeName || '',
+      phone: emp.phone || ''
+    }
+  })
 }
 
 function openRealtime(emp) {
@@ -361,6 +412,119 @@ async function handleDelete(emp) {
 
 function resetForm() { formRef.value?.resetFields() }
 
+// ─── AI 健康报告 ─────────────────────────────────────────────────────────────
+const reportVisible = ref(false)
+const reportLoading = ref(false)
+const reportContent = ref('')
+const reportCurrentEmp = ref(null)
+const reportHtml = ref('')
+
+async function openAiReport(emp) {
+  reportCurrentEmp.value = emp
+  reportContent.value = ''
+  reportHtml.value = ''
+  reportLoading.value = true
+  reportVisible.value = true
+  try {
+    const res = await generateEmployeeReport(emp.empCode)
+    if (res.code === 200) {
+      reportContent.value = res.data.report || ''
+      reportHtml.value = await renderMarkdown(reportContent.value)
+    } else {
+      ElMessage.error(res.message || '报告生成失败')
+      reportContent.value = ''
+      reportHtml.value = ''
+    }
+  } catch (e) {
+    ElMessage.error('报告生成失败，请稍后重试')
+    reportContent.value = ''
+    reportHtml.value = ''
+  } finally {
+    reportLoading.value = false
+  }
+}
+
+function printReport() {
+  if (!reportContent.value) return
+  const emp = reportCurrentEmp.value
+  const now = new Date().toLocaleString('zh-CN')
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<title>健康诊断报告 - ${emp?.empName || ''}</title>
+<style>
+  body { font-family: 'Microsoft YaHei', sans-serif; max-width: 800px; margin: 0 auto; padding: 24px; color: #1a1a2e; }
+  h1,h2,h3 { color: #0066cc; }
+  h2 { border-bottom: 1px solid #dde; padding-bottom: 6px; margin-top: 24px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th { background: #e8f0ff; color: #003399; padding: 8px 12px; text-align: left; }
+  td { padding: 7px 12px; border-bottom: 1px solid #eee; }
+  blockquote { border-left: 4px solid #0066cc; margin: 12px 0; padding: 8px 16px; background: #f5f8ff; color: #444; }
+  .meta { font-size: 12px; color: #888; margin-bottom: 20px; }
+  @media print { body { padding: 0; } }
+</style>
+</head><body>
+<div class="meta">生成时间：${now}</div>
+${reportHtml.value}
+</body></html>`
+  const win = window.open('', '_blank')
+  if (!win) { ElMessage.warning('请允许弹出窗口以打印报告'); return }
+  win.document.write(html)
+  win.document.close()
+  setTimeout(() => win.print(), 600)
+}
+
+// AI 部门报告
+const deptReportVisible = ref(false)
+const deptReportLoading = ref(false)
+const deptReportContent = ref('')
+const deptReportHtml = ref('')
+
+async function openDeptReport() {
+  if (!selectedDept.value) return
+  deptReportContent.value = ''
+  deptReportHtml.value = ''
+  deptReportLoading.value = true
+  deptReportVisible.value = true
+  try {
+    const res = await generateDepartmentReport(selectedDept.value)
+    if (res.code === 200) {
+      deptReportContent.value = res.data.report || ''
+      deptReportHtml.value = await renderMarkdown(deptReportContent.value)
+    } else {
+      ElMessage.error(res.message || '部门报告生成失败')
+      deptReportContent.value = ''
+      deptReportHtml.value = ''
+    }
+  } catch (e) {
+    ElMessage.error('部门报告生成失败，请稍后重试')
+    deptReportContent.value = ''
+    deptReportHtml.value = ''
+  } finally {
+    deptReportLoading.value = false
+  }
+}
+
+function printDeptReport() {
+  if (!deptReportContent.value) return
+  const now = new Date().toLocaleString('zh-CN')
+  const html = `<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8"><title>部门健康报告 - ${selectedDept.value}</title>
+<style>body{font-family:'Microsoft YaHei',sans-serif;max-width:800px;margin:0 auto;padding:24px;color:#1a1a2e}
+h2{color:#0066cc;border-bottom:1px solid #dde;padding-bottom:6px;margin-top:24px}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+th{background:#e8f0ff;color:#003399;padding:8px 12px;text-align:left}
+td{padding:7px 12px;border-bottom:1px solid #eee}
+blockquote{border-left:4px solid #0066cc;margin:12px 0;padding:8px 16px;background:#f5f8ff;color:#444}
+.meta{font-size:12px;color:#888;margin-bottom:20px}</style>
+</head><body><div class="meta">生成时间：${now}</div>${deptReportHtml.value}</body></html>`
+  const win = window.open('', '_blank')
+  if (!win) { ElMessage.warning('请允许弹出窗口'); return }
+  win.document.write(html)
+  win.document.close()
+  setTimeout(() => win.print(), 600)
+}
+
 onMounted(() => { loadData(); loadOptions() })
 </script>
 
@@ -435,6 +599,20 @@ onMounted(() => { loadData(); loadOptions() })
   transition: all 0.2s;
 }
 .ea-reset-btn:hover { background: rgba(255, 255, 255, 0.1); color: #c8d8f0; }
+
+.ea-dept-report-btn {
+  padding: 8px 16px;
+  background: rgba(0, 212, 100, 0.12);
+  border: 1px solid rgba(0, 212, 100, 0.35);
+  color: #00e676;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.ea-dept-report-btn:hover { background: rgba(0, 212, 100, 0.22); box-shadow: 0 0 10px rgba(0, 212, 100, 0.25); }
 
 .ea-add-btn {
   display: flex;
@@ -527,6 +705,42 @@ onMounted(() => { loadData(); loadOptions() })
 .ea-act-btn.edit:hover { background: rgba(255, 210, 0, 0.1); }
 .ea-act-btn.delete { color: #ff5252; }
 .ea-act-btn.delete:hover { background: rgba(255, 82, 82, 0.1); }
+.ea-act-btn.report { color: #38ef7d; }
+.ea-act-btn.report:hover { background: rgba(56, 239, 125, 0.1); }
+
+/* AI 报告弹窗 */
+.report-loading {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 48px 0; gap: 16px; color: #6a88b0;
+}
+.report-dots { display: flex; gap: 8px; }
+.report-dots span {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #00d4ff; animation: dot-bounce 1.4s infinite ease-in-out both;
+}
+.report-dots span:nth-child(2) { animation-delay: 0.2s; }
+.report-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 1; }
+}
+.report-content {
+  max-height: 65vh; overflow-y: auto; padding: 4px 8px;
+  font-size: 14px; line-height: 1.8; color: #c8d8e8;
+}
+.report-content :deep(h2) { color: #00d4ff; font-size: 16px; border-bottom: 1px solid rgba(0,212,255,0.2); padding-bottom: 6px; margin: 20px 0 10px; }
+.report-content :deep(h3) { color: #7dd3fc; font-size: 14px; margin: 14px 0 6px; }
+.report-content :deep(strong) { color: #e8f4ff; font-weight: 700; }
+.report-content :deep(table) { border-collapse: collapse; width: 100%; margin: 10px 0; }
+.report-content :deep(th) { background: rgba(0,100,200,0.3); color: #7dd3fc; padding: 7px 12px; text-align: left; border: 1px solid rgba(0,212,255,0.2); }
+.report-content :deep(td) { padding: 6px 12px; border: 1px solid rgba(0,212,255,0.1); color: #b0c8e0; }
+.report-content :deep(tr:hover td) { background: rgba(0,212,255,0.04); }
+.report-content :deep(blockquote) { border-left: 3px solid rgba(0,212,255,0.4); margin: 10px 0; padding: 6px 14px; background: rgba(0,212,255,0.05); color: #6a88b0; font-size: 12px; }
+.report-content :deep(p) { margin: 5px 0; }
+.report-content :deep(ul), .report-content :deep(ol) { padding-left: 20px; margin: 4px 0; }
+.report-content :deep(li) { margin: 3px 0; color: #b0c8e0; }
+.report-content :deep(hr) { border: none; border-top: 1px solid rgba(0,212,255,0.15); margin: 14px 0; }
+.report-empty { text-align: center; padding: 40px; color: #6a88b0; }
 
 /* 空状态 */
 .ea-empty {

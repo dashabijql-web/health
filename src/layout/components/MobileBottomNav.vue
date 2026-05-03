@@ -22,17 +22,55 @@ export default {
     isMobile() { return this.device === 'mobile' },
     navItems() {
       return [
-        { path: '/health-monitor/dashboard', icon: '📊', label: '概览' },
-        { path: '/health-monitor/real-time', icon: '❤️', label: '实时' },
-        { path: '/health-monitor/mine-entry', icon: '🪪', label: '准入' },
-        { path: '/alert-management/records', icon: '🔔', label: '预警' },
-        { path: '/health-monitor/employee-archive', icon: '👤', label: '人员' },
+        {
+          path: '/health-monitor/dashboard',
+          icon: '📊',
+          label: '指挥',
+          matches: ['/health-monitor/dashboard', '/safety-command']
+        },
+        {
+          path: '/health-monitor/real-time',
+          icon: '❤️',
+          label: '监测',
+          matches: [
+            '/health-monitor/real-time',
+            '/health-monitor/heart-rate',
+            '/health-monitor/pressure',
+            '/health-monitor/blood-pressure',
+            '/health-monitor/blood-oxygen',
+            '/health-monitor/trend-warning'
+          ]
+        },
+        {
+          path: '/health-monitor/mine-entry',
+          icon: '🪪',
+          label: '准入',
+          matches: ['/health-monitor/mine-entry']
+        },
+        {
+          path: '/alert-management/notifications',
+          icon: '🔔',
+          label: '预警',
+          matches: ['/alert-management', '/health-monitor/risk-warning']
+        },
+        {
+          path: '/health-monitor/employee-archive',
+          icon: '👤',
+          label: '人员',
+          matches: [
+            '/health-monitor/employee-archive',
+            '/health-monitor/employee-profile',
+            '/health-monitor/health-portrait',
+            '/health-monitor/workbench'
+          ]
+        },
       ]
     },
   },
   methods: {
     isActive(item) {
-      return this.$route.path.startsWith(item.path)
+      const matchers = item.matches || [item.path]
+      return matchers.some(prefix => this.$route.path.startsWith(prefix))
     }
   }
 }

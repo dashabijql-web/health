@@ -25,7 +25,12 @@ export function gradH(c1, c2) {
 export function initChart(charts, key, refEl) {
   if (!refEl) return null
   if (charts[key]) charts[key].dispose()
-  const c = echarts.init(refEl)
+  const rect = refEl.getBoundingClientRect()
+  const style = window.getComputedStyle(refEl)
+  const width = rect.width || parseFloat(style.width)
+  const height = rect.height || parseFloat(style.height)
+  if (!width || !height) return null
+  const c = echarts.init(refEl, null, { width, height })
   charts[key] = c
   return c
 }

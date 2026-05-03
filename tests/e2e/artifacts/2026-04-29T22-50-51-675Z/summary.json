@@ -1,0 +1,541 @@
+{
+  "runId": "2026-04-29T22-50-51-675Z",
+  "baseUrl": "http://localhost:9528",
+  "startedAt": "2026-04-29T22:50:51.676Z",
+  "routeResults": [
+    {
+      "device": "desktop",
+      "slug": "safety-command",
+      "path": "/safety-command/index",
+      "url": "http://localhost:9528/#/safety-command/index",
+      "status": "passed",
+      "durationMs": 1881,
+      "finalHash": "#/safety-command/index",
+      "domStats": {
+        "bodyTextLength": 2490,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 39
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-safety-command.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "dashboard",
+      "path": "/health-monitor/dashboard",
+      "url": "http://localhost:9528/#/health-monitor/dashboard",
+      "status": "passed",
+      "durationMs": 1999,
+      "finalHash": "#/health-monitor/dashboard",
+      "domStats": {
+        "bodyTextLength": 8527,
+        "tableRows": 0,
+        "canvasCount": 8,
+        "svgCount": 47
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-dashboard.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "workbench",
+      "path": "/health-monitor/workbench",
+      "url": "http://localhost:9528/#/health-monitor/workbench",
+      "status": "passed",
+      "durationMs": 1883,
+      "finalHash": "#/health-monitor/workbench",
+      "domStats": {
+        "bodyTextLength": 1236,
+        "tableRows": 0,
+        "canvasCount": 1,
+        "svgCount": 34
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-workbench.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "real-time",
+      "path": "/health-monitor/real-time",
+      "url": "http://localhost:9528/#/health-monitor/real-time",
+      "status": "passed",
+      "durationMs": 1928,
+      "finalHash": "#/health-monitor/real-time",
+      "domStats": {
+        "bodyTextLength": 5881,
+        "tableRows": 50,
+        "canvasCount": 0,
+        "svgCount": 136
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-real-time.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "heart-rate",
+      "path": "/health-monitor/heart-rate",
+      "url": "http://localhost:9528/#/health-monitor/heart-rate",
+      "status": "passed",
+      "durationMs": 1895,
+      "finalHash": "#/health-monitor/heart-rate",
+      "domStats": {
+        "bodyTextLength": 24137,
+        "tableRows": 0,
+        "canvasCount": 5,
+        "svgCount": 31
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-heart-rate.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "pressure",
+      "path": "/health-monitor/pressure",
+      "url": "http://localhost:9528/#/health-monitor/pressure",
+      "status": "passed",
+      "durationMs": 1882,
+      "finalHash": "#/health-monitor/pressure",
+      "domStats": {
+        "bodyTextLength": 23245,
+        "tableRows": 0,
+        "canvasCount": 4,
+        "svgCount": 31
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-pressure.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "blood-pressure",
+      "path": "/health-monitor/blood-pressure",
+      "url": "http://localhost:9528/#/health-monitor/blood-pressure",
+      "status": "passed",
+      "durationMs": 1885,
+      "finalHash": "#/health-monitor/blood-pressure",
+      "domStats": {
+        "bodyTextLength": 18510,
+        "tableRows": 0,
+        "canvasCount": 4,
+        "svgCount": 31
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-blood-pressure.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "blood-oxygen",
+      "path": "/health-monitor/blood-oxygen",
+      "url": "http://localhost:9528/#/health-monitor/blood-oxygen",
+      "status": "passed",
+      "durationMs": 1895,
+      "finalHash": "#/health-monitor/blood-oxygen",
+      "domStats": {
+        "bodyTextLength": 5791,
+        "tableRows": 0,
+        "canvasCount": 5,
+        "svgCount": 31
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-blood-oxygen.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "sleep",
+      "path": "/health-monitor/sleep",
+      "url": "http://localhost:9528/#/health-monitor/sleep",
+      "status": "passed",
+      "durationMs": 1916,
+      "finalHash": "#/health-monitor/sleep",
+      "domStats": {
+        "bodyTextLength": 573,
+        "tableRows": 0,
+        "canvasCount": 1,
+        "svgCount": 31
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-sleep.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "risk-warning",
+      "path": "/health-monitor/risk-warning",
+      "url": "http://localhost:9528/#/health-monitor/risk-warning",
+      "status": "passed",
+      "durationMs": 1894,
+      "finalHash": "#/health-monitor/risk-warning",
+      "domStats": {
+        "bodyTextLength": 10880,
+        "tableRows": 0,
+        "canvasCount": 2,
+        "svgCount": 32
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-risk-warning.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "employee-archive",
+      "path": "/health-monitor/employee-archive",
+      "url": "http://localhost:9528/#/health-monitor/employee-archive",
+      "status": "passed",
+      "durationMs": 1872,
+      "finalHash": "#/health-monitor/employee-archive",
+      "domStats": {
+        "bodyTextLength": 1728,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 118
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-employee-archive.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "mine-entry",
+      "path": "/health-monitor/mine-entry",
+      "url": "http://localhost:9528/#/health-monitor/mine-entry",
+      "status": "passed",
+      "durationMs": 1897,
+      "finalHash": "#/health-monitor/mine-entry",
+      "domStats": {
+        "bodyTextLength": 5899,
+        "tableRows": 50,
+        "canvasCount": 0,
+        "svgCount": 119
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-mine-entry.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "report-center",
+      "path": "/health-monitor/report-center",
+      "url": "http://localhost:9528/#/health-monitor/report-center",
+      "status": "passed",
+      "durationMs": 4123,
+      "finalHash": "#/health-monitor/report-center",
+      "domStats": {
+        "bodyTextLength": 45662,
+        "tableRows": 1000,
+        "canvasCount": 2,
+        "svgCount": 36
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-report-center.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "trend-warning",
+      "path": "/health-monitor/trend-warning",
+      "url": "http://localhost:9528/#/health-monitor/trend-warning",
+      "status": "passed",
+      "durationMs": 1938,
+      "finalHash": "#/health-monitor/trend-warning",
+      "domStats": {
+        "bodyTextLength": 4993,
+        "tableRows": 0,
+        "canvasCount": 78,
+        "svgCount": 38
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-trend-warning.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "alert-notifications",
+      "path": "/alert-management/notifications",
+      "url": "http://localhost:9528/#/alert-management/notifications",
+      "status": "passed",
+      "durationMs": 1907,
+      "finalHash": "#/alert-management/notifications",
+      "domStats": {
+        "bodyTextLength": 963,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 37
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-alert-notifications.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "alert-sos",
+      "path": "/alert-management/sos",
+      "url": "http://localhost:9528/#/alert-management/sos",
+      "status": "passed",
+      "durationMs": 1869,
+      "finalHash": "#/alert-management/sos",
+      "domStats": {
+        "bodyTextLength": 273,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 31
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-alert-sos.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "alert-config",
+      "path": "/alert-management/config",
+      "url": "http://localhost:9528/#/alert-management/config",
+      "status": "passed",
+      "durationMs": 1868,
+      "finalHash": "#/alert-management/config",
+      "domStats": {
+        "bodyTextLength": 536,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 38
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-alert-config.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "alert-records",
+      "path": "/alert-management/records",
+      "url": "http://localhost:9528/#/alert-management/records",
+      "status": "passed",
+      "durationMs": 1851,
+      "finalHash": "#/alert-management/records",
+      "domStats": {
+        "bodyTextLength": 1930,
+        "tableRows": 20,
+        "canvasCount": 0,
+        "svgCount": 75
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-alert-records.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "device-list",
+      "path": "/admin/device-list",
+      "url": "http://localhost:9528/#/admin/device-list",
+      "status": "passed",
+      "durationMs": 1863,
+      "finalHash": "#/admin/device-list",
+      "domStats": {
+        "bodyTextLength": 2198,
+        "tableRows": 20,
+        "canvasCount": 0,
+        "svgCount": 68
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-device-list.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "user-list",
+      "path": "/admin/user-list",
+      "url": "http://localhost:9528/#/admin/user-list",
+      "status": "passed",
+      "durationMs": 1851,
+      "finalHash": "#/admin/user-list",
+      "domStats": {
+        "bodyTextLength": 428,
+        "tableRows": 1,
+        "canvasCount": 0,
+        "svgCount": 49
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-user-list.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "role-management",
+      "path": "/admin/role",
+      "url": "http://localhost:9528/#/admin/role",
+      "status": "passed",
+      "durationMs": 1905,
+      "finalHash": "#/admin/role",
+      "domStats": {
+        "bodyTextLength": 401,
+        "tableRows": 1,
+        "canvasCount": 0,
+        "svgCount": 49
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-role-management.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "department-management",
+      "path": "/admin/department",
+      "url": "http://localhost:9528/#/admin/department",
+      "status": "passed",
+      "durationMs": 1876,
+      "finalHash": "#/admin/department",
+      "domStats": {
+        "bodyTextLength": 1328,
+        "tableRows": 20,
+        "canvasCount": 0,
+        "svgCount": 102
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-department-management.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "job-type-management",
+      "path": "/admin/job-type",
+      "url": "http://localhost:9528/#/admin/job-type",
+      "status": "passed",
+      "durationMs": 1907,
+      "finalHash": "#/admin/job-type",
+      "domStats": {
+        "bodyTextLength": 990,
+        "tableRows": 12,
+        "canvasCount": 0,
+        "svgCount": 80
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-job-type-management.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "ai-chat",
+      "path": "/ai-chat/index",
+      "url": "http://localhost:9528/#/ai-chat/index",
+      "status": "passed",
+      "durationMs": 1859,
+      "finalHash": "#/ai-chat/index",
+      "domStats": {
+        "bodyTextLength": 371,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 31
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\desktop-ai-chat.jpeg"
+    },
+    {
+      "device": "mobile",
+      "slug": "mobile-safety-command",
+      "path": "/safety-command/index",
+      "url": "http://localhost:9528/#/safety-command/index",
+      "status": "passed",
+      "durationMs": 2674,
+      "finalHash": "#/safety-command/index",
+      "domStats": {
+        "bodyTextLength": 2406,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 38
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\mobile-mobile-safety-command.jpeg"
+    },
+    {
+      "device": "mobile",
+      "slug": "mobile-dashboard",
+      "path": "/health-monitor/dashboard",
+      "url": "http://localhost:9528/#/health-monitor/dashboard",
+      "status": "passed",
+      "durationMs": 1912,
+      "finalHash": "#/health-monitor/dashboard",
+      "domStats": {
+        "bodyTextLength": 8396,
+        "tableRows": 0,
+        "canvasCount": 8,
+        "svgCount": 48
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\mobile-mobile-dashboard.jpeg"
+    },
+    {
+      "device": "mobile",
+      "slug": "mobile-workbench",
+      "path": "/health-monitor/workbench",
+      "url": "http://localhost:9528/#/health-monitor/workbench",
+      "status": "passed",
+      "durationMs": 1911,
+      "finalHash": "#/health-monitor/workbench",
+      "domStats": {
+        "bodyTextLength": 1162,
+        "tableRows": 0,
+        "canvasCount": 1,
+        "svgCount": 34
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\mobile-mobile-workbench.jpeg"
+    },
+    {
+      "device": "mobile",
+      "slug": "mobile-real-time",
+      "path": "/health-monitor/real-time",
+      "url": "http://localhost:9528/#/health-monitor/real-time",
+      "status": "passed",
+      "durationMs": 3242,
+      "finalHash": "#/health-monitor/real-time",
+      "domStats": {
+        "bodyTextLength": 19619,
+        "tableRows": 200,
+        "canvasCount": 0,
+        "svgCount": 435
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-04-29T22-50-51-675Z\\mobile-mobile-real-time.jpeg"
+    }
+  ],
+  "issues": [],
+  "finishedAt": "2026-04-29T22:52:04.975Z"
+}

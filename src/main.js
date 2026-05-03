@@ -36,20 +36,11 @@
 // ─── Vue 3 核心 ───────────────────────────────────────────────────
 import { createApp } from 'vue'
 
-// ─── Element Plus UI 框架 ──────────────────────────────────────────
-// Element Plus 是饿了么团队开发的 Vue 3 UI 组件库
-// 提供按钮、表格、表单、弹窗、分页等大量现成组件
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'           // Element Plus 的样式文件（必须引入）
-
-// zhCn = 中文语言包，让 Element Plus 组件中的文字显示为中文
-// 例如：日期选择器的"年月日"、分页的"上一页/下一页"等
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
-
-// ─── Element Plus 图标库 ─────────────────────────────────────────
-// * as Icons 将所有导出内容合并为一个对象
-// 图标有 200+ 个，如：User, Setting, Lock, Search, Edit, Delete...
-import * as Icons from '@element-plus/icons-vue'
+// ─── Element Plus 服务 ────────────────────────────────────────────
+// UI 组件和 v-loading 等指令通过 unplugin-vue-components 按需引入。
+// 这里只保留全局消息服务，兼容历史代码中的 this.$message。
+import { ElMessage } from 'element-plus/es/components/message/index'
+import 'element-plus/es/components/message/style/css'
 
 // ─── 样式文件 ─────────────────────────────────────────────────────
 // normalize.css：各浏览器默认样式不一致，normalize.css 将它们统一
@@ -91,23 +82,17 @@ import './heartbeat'
 // 1. 创建 Vue 3 应用实例，以 App.vue 根组件为起点
 const app = createApp(App)
 
-// 2. 批量注册 Element Plus 图标
-// Object.entries(Icons) 返回 [[名称, 组件], [名称, 组件], ...] 数组
-// forEach 遍历：app.component('ArrowLeft', ArrowLeftIcon) ...
-// 注册后可以在模板中直接使用：<el-icon><User /></el-icon>
-Object.entries(Icons).forEach(([k, v]) => app.component(k, v))
+// 2. 挂载 Element Plus 全局消息服务
+app.config.globalProperties.$message = ElMessage
 
-// 3. 安装 Element Plus UI 框架（locale 指定中文）
-app.use(ElementPlus, { locale: zhCn })
-
-// 4. 安装 Vuex 状态管理
+// 3. 安装 Vuex 状态管理
 //    store 中包含：用户信息（user module）、侧边栏状态（app module）等
 app.use(store)
 
-// 5. 安装 Vue Router
+// 4. 安装 Vue Router
 //    安装后组件内可以用 this.$router（路由跳转）、this.$route（当前路由信息）
 app.use(router)
 
-// 6. 将 Vue 应用挂载到 public/index.html 中 id="app" 的 div 元素
+// 5. 将 Vue 应用挂载到 public/index.html 中 id="app" 的 div 元素
 //    挂载后，Vue 接管该 div 内的所有 DOM，开始渲染
 app.mount('#app')

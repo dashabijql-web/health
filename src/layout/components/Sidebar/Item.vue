@@ -13,11 +13,11 @@
 <script>
 // Element Plus 图标名列表（用于判断是否是EP图标还是SVG）
 const EP_ICONS = [
-  'Odometer','DataAnalysis','Share','MagicStick','Moon','View','Warning',
+  'Odometer','DataAnalysis','Share','MagicStick','Moon','View','Warning','Aim',
   'User','UserFilled','Lock','Avatar','Monitor','Bell','Setting','HomeFilled',
   'Grid','Menu','Document','Folder','Edit','Delete','Search','Plus','Minus',
   'Check','Close','ArrowLeft','ArrowRight','ArrowUp','ArrowDown',
-  'ChatDotSquare','Notification','InfoFilled','SuccessFilled','WarningFilled',
+  'ChatDotSquare','ChatDotRound','Notification','InfoFilled','SuccessFilled','WarningFilled',
   'CircleCheck','CircleClose','QuestionFilled','StarFilled','Location','Phone',
   'Message','Timer','Calendar','Histogram','PieChart','TrendCharts','DataLine',
   'Key','Cpu','Pointer',

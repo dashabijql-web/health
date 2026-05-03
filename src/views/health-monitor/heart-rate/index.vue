@@ -209,6 +209,7 @@
             <span class="hr-ph-bar"></span>
             <span class="hr-ph-title">实时心率数据</span>
             <span class="hr-rt-total">{{ realtimeList.length }} 条</span>
+            <button class="hr-export-btn" @click="exportExcel" title="导出Excel">⬇ 导出</button>
           </div>
 
           <div class="hr-rt-hd">
@@ -267,7 +268,6 @@
 
 <script>
 import dayjs from 'dayjs'
-import * as XLSX from 'xlsx'
 import { ElMessage } from 'element-plus'
 import {
   getHeartRateOverview,
@@ -284,6 +284,7 @@ import { initChart, gaugeOption, gradH, gradV } from '@/utils/chart-helpers'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, ageGrid, barLabel } from '@/utils/echarts-config'
+import { exportToExcel } from '@/utils/export-excel'
 
 export default {
   name: 'HeartRateAnalysis',
@@ -412,19 +413,26 @@ export default {
   },
   methods: {
 
-    exportExcel() {
+    async exportExcel() {
       const list = this.realtimeList
       if (!list.length) { ElMessage.warning('暂无数据可导出'); return }
       const data = list.map(r => ({
-        '姓名': r.userName || '--', '部门': r.deptName || '--', '工号': r.empCode || '--',
-        '心率(bpm)': r.heartRate ?? '--',
-        '状态': (r.heartRate && (r.heartRate < 55 || r.heartRate > 120)) ? '异常' : '正常',
-        '记录时间': r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
+        userName: r.userName || '--',
+        deptName: r.deptName || '--',
+        empCode: r.empCode || '--',
+        heartRate: r.heartRate ?? '--',
+        status: (r.heartRate && (r.heartRate < 55 || r.heartRate > 120)) ? '异常' : '正常',
+        recordTime: r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
       }))
-      const ws = XLSX.utils.json_to_sheet(data)
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, '心率数据')
-      XLSX.writeFile(wb, `心率分析_${dayjs().format('YYYYMMDD')}.xlsx`)
+      const cols = [
+        { label: '姓名', key: 'userName' },
+        { label: '部门', key: 'deptName' },
+        { label: '工号', key: 'empCode' },
+        { label: '心率(bpm)', key: 'heartRate' },
+        { label: '状态', key: 'status' },
+        { label: '记录时间', key: 'recordTime' }
+      ]
+      await exportToExcel(data, cols, `心率分析_${dayjs().format('YYYYMMDD')}`)
       ElMessage.success(`已导出 ${list.length} 条记录`)
     },
 
@@ -706,6 +714,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+@use 'sass:color';
 @import '@/styles/hm-vars';
 @import '@/styles/hm-layout';
 
@@ -826,7 +835,7 @@ export default {
   text-align: center; padding: 8px 0 4px;
   font-size: 12px; color: $accent; cursor: pointer;
   border-top: 1px solid rgba(0,212,255,0.1); margin-top: 4px;
-  &:hover { color: lighten(#00d4ff, 10%); }
+  &:hover { color: color.adjust(#00d4ff, $lightness: 10%); }
 }
 
 // panel header legend → hm-panel mixin
@@ -883,6 +892,14 @@ export default {
 }
 // overview/kpi-cards/range-info → hm-overview + hm-kpi-cards + hm-range-info mixins
 .hr-range-name { width: 78px; } // override mixin default 38px
+
+.hr-rt-total { font-size: 12px; color: $dim; margin-left: 4px; }
+.hr-export-btn {
+  margin-left: auto; height: 24px; padding: 0 10px;
+  background: rgba(0,212,255,.07); border: 1px solid rgba(0,212,255,.2);
+  border-radius: 4px; color: $accent; font-size: 11px; cursor: pointer; white-space: nowrap; transition: background .2s;
+  &:hover { background: rgba(0,212,255,.16); }
+}
 
 // ── 实时列表 ──
 .hr-rt-hd {

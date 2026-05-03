@@ -31,6 +31,22 @@ export function generateDeptAiReport(deptName, force = false) {
 }
 
 /**
+ * 生成员工 AI 健康诊断报告（调用新版 /ai/report/employee 接口）
+ * @param {string} empCode 员工工号
+ */
+export function generateEmployeeReport(empCode) {
+  return request({ url: '/ai/report/employee', method: 'post', data: { empCode }, timeout: 120000 })
+}
+
+/**
+ * 生成部门 AI 健康诊断报告
+ * @param {string} deptName 部门名称
+ */
+export function generateDepartmentReport(deptName) {
+  return request({ url: '/ai/report/department', method: 'post', data: { deptName }, timeout: 120000 })
+}
+
+/**
  * AI 健康助手对话（Text2SQL RAG，支持多轮对话）
  * @param {string} question   用户的自然语言问题
  * @param {string} sessionId  会话ID，同一会话保持不变

@@ -1,5 +1,7 @@
 <template>
   <div class="page-container">
+    <WarningCenterNav />
+
     <div class="page-header">
       <div class="page-header-left">
         <el-icon class="header-icon"><Bell /></el-icon>
@@ -247,14 +249,15 @@
 </template>
 
 <script setup>
+import WarningCenterNav from '@/components/WarningCenterNav.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { Timer, Search, Refresh, Edit, Bell, WarningFilled, WarnTriangleFilled, CircleCheck, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import * as XLSX from 'xlsx'
 import { formatDate } from '@/utils'
 import { useClock } from '@/composables/useClock'
 import { getRiskWarningList, getRiskWarningOverview, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
+import { exportToExcel } from '@/utils/export-excel'
 
 const route = useRoute()
 
@@ -400,10 +403,19 @@ const exportExcel = async () => {
       '处理人': r.handleBy || '-',
       '处理备注': r.handleNote || '-'
     }))
-    const ws = XLSX.utils.json_to_sheet(data)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, '预警记录')
-    XLSX.writeFile(wb, `预警记录_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`)
+    const cols = [
+      { label: '预警时间', key: '预警时间' },
+      { label: '姓名', key: '姓名' },
+      { label: '性别', key: '性别' },
+      { label: '年龄', key: '年龄' },
+      { label: '预警类型', key: '预警类型' },
+      { label: '预警值', key: '预警值' },
+      { label: '预警级别', key: '预警级别' },
+      { label: '处理状态', key: '处理状态' },
+      { label: '处理人', key: '处理人' },
+      { label: '处理备注', key: '处理备注' }
+    ]
+    await exportToExcel(data, cols, `预警记录_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`)
     ElMessage.success(`已导出 ${rows.length} 条记录`)
   } catch (e) { ElMessage.error('导出失败') }
 }

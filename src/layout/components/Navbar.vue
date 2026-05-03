@@ -5,6 +5,14 @@
     <breadcrumb class="breadcrumb-container" />
 
     <div class="right-menu">
+      <!-- 未处理预警角标 -->
+      <div class="warning-badge-btn" @click="$router.push('/alert-management/notifications')" title="点击查看消息通知中心">
+        <el-badge :value="pendingWarnings" :hidden="pendingWarnings === 0" :max="99" type="danger">
+          <span class="warn-icon">🔔</span>
+        </el-badge>
+        <span v-if="pendingWarnings > 0" class="warn-label">{{ pendingWarnings }} 条待处理</span>
+      </div>
+
       <el-dropdown class="avatar-container" trigger="click">
         <div class="avatar-wrapper">
           <span class="user-name">{{ name }}</span>
@@ -34,6 +42,7 @@
 import { mapGetters } from 'vuex'
 import Breadcrumb from '@/components/Breadcrumb/index.vue'
 import Hamburger from '@/components/Hamburger/index.vue'
+import request from '@/utils/request'
 
 export default {
   components: {
@@ -42,10 +51,18 @@ export default {
   },
   data() {
     return {
-      // 默认头像（SVG格式）
+      pendingWarnings: 0,
+      warningPollTimer: null,
       defaultAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDgwIDgwIj48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iODAiIGZpbGw9IiMxYTRkOGYiLz48Y2lyY2xlIGN4PSI0MCIgY3k9IjI4IiByPSIxMiIgZmlsbD0iIzAwZDRmZiIvPjxwYXRoIGQ9Ik0yMCA1NnEwLTE2IDE2LTE2aDE2cTE2IDAgMTYgMTZ6IiBmaWxsPSIjMDBkNGZmIi8+PC9zdmc+',
       avatarError: false
     }
+  },
+  mounted() {
+    this.fetchPendingWarnings()
+    this.warningPollTimer = setInterval(this.fetchPendingWarnings, 30000)
+  },
+  beforeUnmount() {
+    if (this.warningPollTimer) clearInterval(this.warningPollTimer)
   },
   computed: {
     ...mapGetters([
@@ -72,6 +89,14 @@ export default {
     }
   },
   methods: {
+    async fetchPendingWarnings() {
+      try {
+        const res = await request({ url: '/risk-warning/list', method: 'get', params: { page: 1, size: 1, handled: false } })
+        if (res.code === 200) {
+          this.pendingWarnings = res.data?.total || 0
+        }
+      } catch (e) { /* silent */ }
+    },
     toggleSideBar() {
       this.$store.dispatch('app/toggleSideBar')
     },
@@ -120,6 +145,26 @@ export default {
 
     &:focus {
       outline: none;
+    }
+
+    .warning-badge-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: 16px;
+      cursor: pointer;
+      padding: 0 10px;
+      height: 100%;
+      transition: background .3s;
+
+      &:hover { background: rgba(255, 80, 80, 0.12); }
+
+      .warn-icon { font-size: 20px; line-height: 50px; }
+
+      .warn-label {
+        color: #ff6b6b; font-size: 12px; font-weight: 600;
+        white-space: nowrap; animation: warn-pulse 1.5s infinite;
+      }
     }
 
     .right-menu-item {
@@ -195,5 +240,10 @@ export default {
     .right-menu .avatar-container { margin-right: 12px; }
     .user-name { display: none; }
   }
+}
+
+@keyframes warn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 </style>

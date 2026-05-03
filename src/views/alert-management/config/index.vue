@@ -1,5 +1,7 @@
 <template>
   <div class="page-container">
+    <WarningCenterNav />
+
     <div class="page-header">
       <div class="page-header-left">
         <el-icon class="header-icon"><Setting /></el-icon>
@@ -114,6 +116,7 @@
 </template>
 
 <script setup>
+import WarningCenterNav from '@/components/WarningCenterNav.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { Timer, Edit, Setting } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'

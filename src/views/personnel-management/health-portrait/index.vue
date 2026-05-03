@@ -348,9 +348,8 @@ import { ElMessage } from 'element-plus'
 import { getHealthPortrait } from '@/api/health-portrait'
 import { getCachedAiReport, generateAiReport } from '@/api/ai'
 import { getBodyIndicators } from '@/api/health'
-import * as echarts from '@/utils/echarts-setup'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+import * as echarts from '@/utils/echarts-setup-radar'
+import { getHtml2Canvas, getJsPDF } from '@/utils/lazy-vendors'
 
 const route = useRoute()
 const router = useRouter()
@@ -671,11 +670,13 @@ async function exportPdf() {
   pdfExporting.value = true
   ElMessage.info('正在生成 PDF，请稍候…')
   try {
+    const html2canvas = await getHtml2Canvas()
+    const JsPDF = await getJsPDF()
     const el = document.querySelector('.ai-content')
     if (!el) return
     const canvas = await html2canvas(el, { backgroundColor: '#141830', scale: 2 })
     const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' })
+    const pdf = new JsPDF({ orientation: 'p', unit: 'mm', format: 'a4' })
     const pageW = pdf.internal.pageSize.getWidth()
     const pageH = pdf.internal.pageSize.getHeight()
     const imgW = pageW - 20
@@ -702,7 +703,8 @@ async function exportComplianceReport() {
   if (complianceExporting.value) return
   complianceExporting.value = true
   try {
-    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' })
+    const JsPDF = await getJsPDF()
+    const pdf = new JsPDF({ orientation: 'p', unit: 'mm', format: 'a4' })
     const W = pdf.internal.pageSize.getWidth()
     const today = new Date().toLocaleDateString('zh-CN')
 

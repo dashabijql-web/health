@@ -81,14 +81,25 @@ const healthMonitorRouter = {
       name: 'EmployeeProfile',
       hidden: true,
       component: () => import('@/views/health-monitor/employee-profile/index.vue'),
-      meta: { title: '职工健康画像', icon: 'User' }
+      meta: {
+        title: '职工健康画像',
+        icon: 'User',
+        activeMenu: '/health-monitor/employee-archive',
+        navGroup: 'people',
+        navOrder: 22
+      }
     },
     {
       path: 'health-portrait',
       name: 'HealthPortrait',
       hidden: true,
       component: () => import('@/views/personnel-management/health-portrait/index.vue'),
-      meta: { title: '健康画像' }
+      meta: {
+        title: '健康画像',
+        activeMenu: '/health-monitor/employee-archive',
+        navGroup: 'people',
+        navOrder: 23
+      }
     },
     {
       // 工作台日历（每日健康均值 + 预警日历视图）
@@ -98,7 +109,9 @@ const healthMonitorRouter = {
       meta: {
         title: '工作台日历',
         icon: 'Calendar',
-        permCode: 'health:workbench'
+        permCode: 'health:workbench',
+        navGroup: 'people',
+        navOrder: 23
       }
     },
     {
@@ -110,7 +123,9 @@ const healthMonitorRouter = {
         title: '统一管控',
         icon: 'Odometer',
         affix: true,                 // 固定在标签页栏（不可关闭）
-        permCode: 'health:dashboard' // 权限码：需要拥有此权限才显示此菜单
+        permCode: 'health:dashboard', // 权限码：需要拥有此权限才显示此菜单
+        navGroup: 'command',
+        navOrder: 12
       }
     },
     {
@@ -121,7 +136,9 @@ const healthMonitorRouter = {
       meta: {
         title: '实时监控',
         icon: 'View',
-        permCode: 'health:realtime'
+        permCode: 'health:realtime',
+        navGroup: 'monitor',
+        navOrder: 21
       }
     },
     {
@@ -132,7 +149,9 @@ const healthMonitorRouter = {
       meta: {
         title: '心率分析',
         icon: 'Share',
-        permCode: 'health:heart'
+        permCode: 'health:heart',
+        navGroup: 'monitor',
+        navOrder: 22
       }
     },
     {
@@ -143,7 +162,9 @@ const healthMonitorRouter = {
       meta: {
         title: '压力分析',
         icon: 'Cpu',
-        permCode: 'health:pressure'
+        permCode: 'health:pressure',
+        navGroup: 'monitor',
+        navOrder: 23
       }
     },
     {
@@ -154,7 +175,9 @@ const healthMonitorRouter = {
       meta: {
         title: '血压分析',
         icon: 'Pointer',
-        permCode: 'health:bloodpressure'
+        permCode: 'health:bloodpressure',
+        navGroup: 'monitor',
+        navOrder: 24
       }
     },
     {
@@ -165,7 +188,9 @@ const healthMonitorRouter = {
       meta: {
         title: '血氧分析',
         icon: 'MagicStick',
-        permCode: 'health:oxygen'
+        permCode: 'health:oxygen',
+        navGroup: 'monitor',
+        navOrder: 25
       }
     },
     {
@@ -177,7 +202,9 @@ const healthMonitorRouter = {
       meta: {
         title: '睡眠分析',
         icon: 'Moon',
-        permCode: 'health:sleep'
+        permCode: 'health:sleep',
+        navGroup: 'monitor',
+        navOrder: 26
       }
     },
     {
@@ -188,20 +215,58 @@ const healthMonitorRouter = {
       meta: {
         title: '风险预警',
         icon: 'Warning',
-        permCode: 'health:risk'
+        permCode: 'health:risk',
+        navGroup: 'warning',
+        navOrder: 11
       }
     },
     {
       path: 'employee-archive',
       name: 'EmployeeArchive',
       component: () => import('@/views/health-monitor/employee-archive/index.vue'),
-      meta: { title: '职工健康档案库', icon: 'UserFilled', permCode: 'health:employee' }
+      meta: {
+        title: '职工健康档案库',
+        icon: 'UserFilled',
+        permCode: 'health:employee',
+        navGroup: 'people',
+        navOrder: 21
+      }
     },
     {
       path: 'mine-entry',
       name: 'MineEntry',
       component: () => import('@/views/health-monitor/mine-entry/index.vue'),
-      meta: { title: '入井准入管理', icon: 'CircleCheck', permCode: 'health:mine-entry' }
+      meta: {
+        title: '入井准入管理',
+        icon: 'CircleCheck',
+        permCode: 'health:mine-entry',
+        navGroup: 'people',
+        navOrder: 22
+      }
+    },
+    {
+      path: 'report-center',
+      name: 'ReportCenter',
+      component: () => import('@/views/health-monitor/report-center/index.vue'),
+      meta: {
+        title: '报表中心',
+        icon: 'DataAnalysis',
+        permCode: 'health:report',
+        navGroup: 'report',
+        navOrder: 41
+      }
+    },
+    {
+      path: 'trend-warning',
+      name: 'TrendWarning',
+      component: () => import('@/views/health-monitor/trend-warning/index.vue'),
+      meta: {
+        title: '趋势预警',
+        icon: 'TrendCharts',
+        permCode: 'health:trend',
+        navGroup: 'monitor',
+        navOrder: 26
+      }
     }
   ]
 }

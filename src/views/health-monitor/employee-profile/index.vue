@@ -12,8 +12,44 @@
           <i class="ep-dot"></i>{{ isOnline ? '在线' : '离线' }}
         </span>
         <span class="ep-update">更新于：{{ lastUpdate }}</span>
+        <button class="ep-ai-btn" @click="openAiReport" :disabled="aiReportLoading">
+          🏥 {{ aiReportLoading ? '生成中...' : 'AI诊断报告' }}
+        </button>
       </div>
     </div>
+
+    <div class="ep-quickbar">
+      <button class="ep-qbtn" @click="goArchive">档案库</button>
+      <button class="ep-qbtn" @click="goMineEntry">准入页</button>
+      <button class="ep-qbtn" @click="goWorkbench">月度日历</button>
+      <button class="ep-qbtn" @click="goReportCenter">报表中心</button>
+    </div>
+
+    <div class="ep-summary-strip">
+      <div
+        v-for="card in profileSummaryCards"
+        :key="card.label"
+        :class="['ep-summary-card', `tone-${card.tone}`]"
+      >
+        <div class="ep-summary-label">{{ card.label }}</div>
+        <div class="ep-summary-value">{{ card.value }}</div>
+        <div class="ep-summary-sub">{{ card.sub }}</div>
+      </div>
+    </div>
+
+    <!-- AI 报告 Dialog -->
+    <el-dialog v-model="aiReportVisible" :title="'AI 健康诊断报告 — ' + empInfo.empName" width="820px" :close-on-click-modal="false">
+      <div v-if="aiReportLoading" style="text-align:center;padding:40px 0">
+        <div class="ep-report-dots"><span></span><span></span><span></span></div>
+        <p style="color:#8ba6c8;margin-top:16px">正在生成健康诊断报告，请稍候（约15~30秒）...</p>
+      </div>
+      <div v-else-if="aiReportContent" v-html="aiReportHtml" class="ep-report-content"></div>
+      <div v-else style="text-align:center;color:#666;padding:40px 0">生成失败，请重试</div>
+      <template #footer>
+        <el-button @click="aiReportVisible = false">关闭</el-button>
+        <el-button type="primary" :disabled="!aiReportContent || aiReportLoading" @click="printAiReport">打印 / 导出 PDF</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 主体三列 -->
     <div class="ep-body" v-loading="loading">
@@ -33,6 +69,19 @@
               <div class="ep-bi"><span>岗位</span><b>{{ empInfo.jobTypeName || '--' }}</b></div>
               <div class="ep-bi full"><span>手机</span><b>{{ empInfo.phone || '--' }}</b></div>
               <div class="ep-bi full"><span>工号</span><b class="code">{{ empInfo.empCode || '--' }}</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ep-panel ep-ai-summary">
+          <div class="ep-ph">
+            <span class="ep-ph-bar"></span>AI 风险摘要
+            <span class="ep-ph-link" @click="openAiReport">生成完整报告</span>
+          </div>
+          <div class="ep-ai-list">
+            <div v-for="(item, idx) in profileInsightLines" :key="idx" class="ep-ai-item">
+              <span class="ep-ai-dot"></span>
+              <span>{{ item }}</span>
             </div>
           </div>
         </div>
@@ -266,6 +315,8 @@ import HeartRateWave from '@/components/HeartRateWave.vue'
 import { getUserRealtimeData } from '@/api/realtime'
 import { getRiskWarningList } from '@/api/risk-warning'
 import { getHealthPortrait } from '@/api/health-portrait'
+import { generateEmployeeReport } from '@/api/ai'
+import { renderMarkdown } from '@/utils/lazy-vendors'
 
 const route = useRoute()
 const router = useRouter()
@@ -327,6 +378,43 @@ const hrPct    = (v) => !v ? 0 : Math.min(100, Math.max(0, (v - 40) / 80 * 100))
 const spo2Pct  = (v) => !v ? 0 : Math.min(100, Math.max(0, (v - 85) / 15 * 100))
 const tempPct  = (v) => { if (!v) return 0; const t = v > 100 ? v/10 : v; return Math.min(100, Math.max(0, (t - 35) / 5 * 100)) }
 const calcAge  = (b) => { if (!b) return '--'; const age = new Date().getFullYear() - new Date(b).getFullYear(); return age > 0 && age < 100 ? age + '岁' : '--' }
+
+const profileInsightLines = computed(() => {
+  const lines = []
+  const hr = vitals.value.heartRate
+  const spo2 = vitals.value.bloodOxygen
+  const pressure = vitals.value.pressure
+  const systolic = vitals.value.systolic
+  const diastolic = vitals.value.diastolic
+
+  if (pendCount.value > 0) {
+    lines.push(`近期仍有 ${pendCount.value} 条未处理预警，建议先核查最新异常记录与现场处置状态。`)
+  } else if (warnCount.value > 0) {
+    lines.push(`近30日共记录 ${warnCount.value} 次预警，但当前均已处理，可重点回看高频异常类型。`)
+  } else {
+    lines.push('当前未发现近30日预警记录，人员近期健康状态整体稳定。')
+  }
+
+  if (hr && (hr < 60 || hr > 100)) {
+    lines.push(`当前心率为 ${hr} bpm，已偏离正常范围，建议优先结合活动状态和既往预警复核。`)
+  } else if (spo2 && spo2 < 95) {
+    lines.push(`当前血氧为 ${spo2}%，存在偏低趋势，建议复测并重点关注作业环境与呼吸状态。`)
+  } else if ((systolic && systolic >= 140) || (diastolic && diastolic >= 90)) {
+    lines.push(`当前血压为 ${systolic || '--'}/${diastolic || '--'} mmHg，建议纳入班前准入重点复核对象。`)
+  } else if (pressure && pressure >= 70) {
+    lines.push(`当前压力指数为 ${pressure}，已接近高风险区间，建议结合睡眠、步数和岗位强度持续观察。`)
+  } else {
+    lines.push('实时体征未见明显高风险项，可继续关注近7日趋势和阶段性波动。')
+  }
+
+  if (warn7Count.value >= 3) {
+    lines.push(`近7日预警达到 ${warn7Count.value} 次，建议从趋势页和月度日历页复盘连续异常时段。`)
+  } else {
+    lines.push('建议结合月度日历和准入记录，持续观察是否存在连续性异常。')
+  }
+
+  return lines
+})
 
 // ─── 四个滚动面板数据 ──────────────────────────────────────
 const hrItems = computed(() => {
@@ -411,6 +499,93 @@ const riskItems = computed(() => {
   ]
 })
 
+const profileRiskSummary = computed(() => {
+  if (pendCount.value > 0) {
+    return {
+      value: '重点复核',
+      tone: 'danger',
+      sub: `待处理 ${pendCount.value} 条，需先完成预警闭环`
+    }
+  }
+
+  if (warn7Count.value >= 3) {
+    return {
+      value: '持续观察',
+      tone: 'warn',
+      sub: `近7日预警 ${warn7Count.value} 次，建议回看趋势与月历`
+    }
+  }
+
+  if (isHrAbnormal.value || isSpo2Abnormal.value || isTempAbnormal.value || isBpAbnormal.value || isPressureHigh.value) {
+    return {
+      value: '指标波动',
+      tone: 'warn',
+      sub: '当前体征存在异常项，建议结合准入记录复核'
+    }
+  }
+
+  return {
+    value: '状态稳定',
+    tone: 'safe',
+    sub: '当前没有明显高风险信号，可持续趋势观察'
+  }
+})
+
+const nextActionSummary = computed(() => {
+  if (pendCount.value > 0) {
+    return {
+      value: '预警处置',
+      sub: '先处理未闭环预警，再回看画像趋势'
+    }
+  }
+
+  if (!isOnline.value) {
+    return {
+      value: '设备核查',
+      sub: '当前离线，先确认设备在线和数据回传状态'
+    }
+  }
+
+  if (isBpAbnormal.value || isTempAbnormal.value || isSpo2Abnormal.value || isHrAbnormal.value) {
+    return {
+      value: '准入复核',
+      sub: '建议进入准入页复核当前体征与班前状态'
+    }
+  }
+
+  return {
+    value: '趋势观察',
+    sub: '保持观察近7日变化和预警频次'
+  }
+})
+
+const profileSummaryCards = computed(() => [
+  {
+    label: '当前风险',
+    value: profileRiskSummary.value.value,
+    sub: profileRiskSummary.value.sub,
+    tone: profileRiskSummary.value.tone
+  },
+  {
+    label: '预警闭环',
+    value: `${pendCount.value} / ${warnCount.value}`,
+    sub: warnCount.value ? '待处理 / 近30日总预警' : '近30日暂无预警记录',
+    tone: pendCount.value > 0 ? 'danger' : warnCount.value > 0 ? 'info' : 'safe'
+  },
+  {
+    label: '实时在线',
+    value: isOnline.value ? '在线监测' : '离线待核查',
+    sub: lastUpdate.value && lastUpdate.value !== '--' ? `最近更新 ${lastUpdate.value}` : '等待最新体征数据',
+    tone: isOnline.value ? 'accent' : 'muted'
+  },
+  {
+    label: '建议动作',
+    value: nextActionSummary.value.value,
+    sub: nextActionSummary.value.sub,
+    tone: 'accent'
+  }
+])
+
 // ─── 数据加载 ─────────────────────────────────────────────
 const refresh = async () => {
   const code = empInfo.value.empCode
@@ -489,6 +664,87 @@ onUnmounted(() => {
   clearInterval(timer)
   if (trendChart) { trendChart.dispose(); trendChart = null }
 })
+
+// AI 健康诊断报告
+const aiReportVisible = ref(false)
+const aiReportLoading = ref(false)
+const aiReportContent = ref('')
+const aiReportHtml = ref('')
+
+async function openAiReport() {
+  if (!empInfo.value.empCode) return
+  aiReportContent.value = ''
+  aiReportHtml.value = ''
+  aiReportLoading.value = true
+  aiReportVisible.value = true
+  try {
+    const res = await generateEmployeeReport(empInfo.value.empCode)
+    if (res.code === 200) {
+      aiReportContent.value = res.data.report || ''
+      aiReportHtml.value = await renderMarkdown(aiReportContent.value)
+    } else {
+      aiReportContent.value = ''
+      aiReportHtml.value = ''
+    }
+  } catch (e) {
+    aiReportContent.value = ''
+    aiReportHtml.value = ''
+  } finally {
+    aiReportLoading.value = false
+  }
+}
+
+function goArchive() {
+  router.push('/health-monitor/employee-archive')
+}
+
+function goMineEntry() {
+  router.push({
+    path: '/health-monitor/mine-entry',
+    query: {
+      empCode: empInfo.value.empCode || '',
+      empName: empInfo.value.empName || ''
+    }
+  })
+}
+
+function goWorkbench() {
+  router.push({
+    path: '/health-monitor/workbench',
+    query: {
+      empCode: empInfo.value.empCode || '',
+      empName: empInfo.value.empName || ''
+    }
+  })
+}
+
+function goReportCenter() {
+  router.push({
+    path: '/health-monitor/report-center',
+    query: {
+      empCode: empInfo.value.empCode || '',
+      empName: empInfo.value.empName || '',
+      deptName: empInfo.value.deptName || ''
+    }
+  })
+}
+
+function printAiReport() {
+  if (!aiReportContent.value) return
+  const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<title>AI健康报告 - ${empInfo.value.empName}</title>
+<style>body{font-family:'Microsoft YaHei',sans-serif;max-width:800px;margin:0 auto;padding:24px;color:#1a1a2e}
+h2{color:#0066cc;border-bottom:1px solid #dde;padding-bottom:6px;margin-top:24px}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+th{background:#e8f0ff;padding:8px 12px;text-align:left}td{padding:7px 12px;border-bottom:1px solid #eee}
+blockquote{border-left:4px solid #0066cc;margin:12px 0;padding:8px 16px;background:#f5f8ff}</style>
+</head><body>${aiReportHtml.value}</body></html>`
+  const win = window.open('', '_blank')
+  if (!win) return
+  win.document.write(html)
+  win.document.close()
+  setTimeout(() => win.print(), 600)
+}
 </script>
 
 <style scoped>
@@ -532,6 +788,114 @@ onUnmounted(() => {
 .ep-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
 .ep-online.on .ep-dot { box-shadow: 0 0 6px #00e676; }
 .ep-update { font-size: 11px; color: #4a7090; }
+.ep-ai-btn {
+  padding: 5px 14px; background: rgba(0, 212, 100, 0.12); border: 1px solid rgba(0, 212, 100, 0.35);
+  color: #00e676; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;
+  transition: all .2s; white-space: nowrap;
+  &:hover:not(:disabled) { background: rgba(0, 212, 100, 0.22); }
+  &:disabled { opacity: .5; cursor: not-allowed; }
+}
+.ep-report-content {
+  max-height: 60vh; overflow-y: auto; padding: 8px 4px;
+  h2 { color: #0066cc; border-bottom: 1px solid #dde; padding-bottom: 6px; margin-top: 20px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+  th { background: #e8f0ff; padding: 7px 10px; text-align: left; font-size: 13px; }
+  td { padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+  blockquote { border-left: 4px solid #0066cc; margin: 10px 0; padding: 8px 14px; background: #f5f8ff; color: #555; }
+}
+.ep-report-dots {
+  display: flex; justify-content: center; gap: 8px;
+  span { width: 10px; height: 10px; border-radius: 50%; background: #00d4ff; display: inline-block; animation: dotBounce .8s infinite alternate; }
+  span:nth-child(2) { animation-delay: .2s; }
+  span:nth-child(3) { animation-delay: .4s; }
+}
+
+.ep-quickbar {
+  display: flex;
+  gap: 10px;
+  padding: 0 24px 10px;
+  background: linear-gradient(180deg, #0c1228 0%, #080d1a 100%);
+  border-bottom: 1px solid rgba(26, 37, 69, 0.55);
+}
+
+.ep-qbtn {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 180, 255, 0.24);
+  background: rgba(0, 180, 255, 0.08);
+  color: #9edbff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ep-qbtn:hover {
+  color: #ecf7ff;
+  background: rgba(0, 180, 255, 0.16);
+  border-color: rgba(0, 180, 255, 0.45);
+}
+
+.ep-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px 24px 0;
+  background: linear-gradient(180deg, #0c1228 0%, #080d1a 100%);
+}
+
+.ep-summary-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(10, 24, 46, 0.96), rgba(7, 16, 31, 0.96));
+  border: 1px solid rgba(0, 180, 255, 0.14);
+}
+
+.ep-summary-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -18%;
+  width: 42%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 68%);
+  opacity: 0.55;
+}
+
+.ep-summary-card.tone-danger { border-color: rgba(255, 82, 82, 0.28); }
+.ep-summary-card.tone-warn   { border-color: rgba(255, 170, 0, 0.24); }
+.ep-summary-card.tone-safe   { border-color: rgba(0, 230, 118, 0.22); }
+.ep-summary-card.tone-info   { border-color: rgba(64, 196, 255, 0.22); }
+.ep-summary-card.tone-accent { border-color: rgba(0, 180, 255, 0.26); }
+.ep-summary-card.tone-muted  { border-color: rgba(122, 150, 182, 0.18); }
+
+.ep-summary-label {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  color: #78a0bf;
+}
+
+.ep-summary-value {
+  position: relative;
+  z-index: 1;
+  margin-top: 10px;
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 800;
+  color: #ebf7ff;
+}
+
+.ep-summary-sub {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #9dbcd8;
+}
+@keyframes dotBounce { from { opacity: .3; transform: scale(.8); } to { opacity: 1; transform: scale(1.2); } }
 
 /* ═══ 主体 ═══ */
 .ep-body {
@@ -579,6 +943,38 @@ onUnmounted(() => {
 .ep-bi span { color: #4a7090; min-width: 28px; }
 .ep-bi b { color: #a0c0e8; font-weight: 500; }
 .ep-bi b.code { color: #00c8ff; font-family: monospace; font-size: 11px; }
+
+.ep-ai-summary {
+  margin-bottom: 10px;
+}
+
+.ep-ai-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ep-ai-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 180, 255, 0.06);
+  color: #b9d6f4;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ep-ai-dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #00d4ff;
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.55);
+}
 
 /* 趋势图 */
 .ep-trend-chart { width: 100%; height: 140px; }
@@ -834,6 +1230,10 @@ onUnmounted(() => {
   .ep-title { display: none; }
   .ep-header-emp { flex-wrap: wrap; gap: 4px 8px; }
   .ep-update { width: 100%; font-size: 10px; }
+  .ep-summary-strip {
+    grid-template-columns: 1fr 1fr;
+    padding: 10px 12px 0;
+  }
   /* 主体改为单列滚动 */
   .ep-body {
     grid-template-columns: 1fr;

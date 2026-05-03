@@ -1,0 +1,25 @@
+{
+  "cookies": [
+    {
+      "name": "satoken",
+      "value": "23308dd9-3d83-449c-a7e8-56d4812ef3ad",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": 1780378039.91947,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "User-Token",
+      "value": "23308dd9-3d83-449c-a7e8-56d4812ef3ad",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}

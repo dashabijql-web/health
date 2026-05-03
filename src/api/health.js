@@ -46,13 +46,13 @@
  *
  * 【完整 URL 说明】
  *
- * baseURL = /dev-api（vite.config.js 代理配置）
+ * baseURL = /dev-api（vite.config.mjs 代理配置）
  * 代理规则：/dev-api 开头的请求转发到 http://localhost:8080/health
  *
  * 所以：
  *   url = '/dashboard/overview'
  *   实际请求 = baseURL + url = /dev-api/dashboard/overview
- *   代理后实际到达 = http://localhost:8080/dashboard/overview
+ *   代理后实际到达 = http://localhost:8080/health/dashboard/overview
  *
  * 注意：URL 里不要包含 context-path（/health），vite 代理已经加上了
  */

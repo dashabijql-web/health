@@ -24,6 +24,10 @@
       <div class="rw-hd-time">{{ currentTime }}</div>
     </header>
 
+    <div class="rw-center-nav">
+      <WarningCenterNav />
+    </div>
+
     <!-- ══ Body ══ -->
     <section class="rw-bd">
 
@@ -98,10 +102,15 @@
                 <button class="rw-scroll-btn" @click="toggleAutoScroll">
                   {{ autoScrollPaused ? '▶ 继续' : '⏸ 暂停' }}
                 </button>
+                <button class="rw-export-btn" @click="exportWarnings" title="导出Excel">⬇ 导出</button>
+                <button class="rw-batch-btn" v-if="selectedIds.length > 0" @click="batchHandle" :disabled="batchHandling">
+                  {{ batchHandling ? '处理中...' : `✓ 批量处理 (${selectedIds.length})` }}
+                </button>
               </div>
             </div>
 
             <div class="rw-list-hd">
+              <span class="rw-list-chk-cell"><input type="checkbox" :checked="allPendingSelected" :indeterminate.prop="somePendingSelected && !allPendingSelected" @change="toggleSelectAll" /></span>
               <span>序号</span><span>姓名</span><span>工号</span><span>部门</span><span>预警类型</span><span>级别</span><span>预警值</span><span>状态</span><span>备注</span><span>时间</span>
             </div>
 
@@ -109,7 +118,11 @@
               @mouseenter="pauseAutoScroll"
               @mouseleave="resumeAutoScroll">
               <div class="rw-list-row" v-for="(item, i) in filteredList" :key="i"
-                :class="warnClass(item.warningLevel)" @click="openDetail(item)">
+                :class="[warnClass(item.warningLevel), selectedIds.includes(item.id) ? 'is-selected' : '']"
+                @click="openDetail(item)">
+                <span class="rw-list-chk-cell" @click.stop>
+                  <input type="checkbox" v-if="!item.handled" :checked="selectedIds.includes(item.id)" @change="toggleSelect(item.id)" />
+                </span>
                 <span class="rw-list-idx">{{ i + 1 }}</span>
                 <span class="rw-list-name">{{ item.userName || '--' }}</span>
                 <span class="rw-list-code">{{ item.empCode || item.userCode || '--' }}</span>
@@ -161,6 +174,18 @@
           <div class="rw-dw-kv" v-if="detailRow.handleNote"><span class="rw-dw-k">备注</span><span class="rw-dw-v">{{ detailRow.handleNote }}</span></div>
         </div>
 
+        <!-- 一键处理区 -->
+        <div class="rw-dw-handle-section" v-if="!detailRow.handled">
+          <div class="rw-dw-handle-title">处置记录</div>
+          <textarea v-model="handleNote" class="rw-dw-handle-input" placeholder="输入处置备注（可选）..." rows="2"></textarea>
+          <button class="rw-dw-handle-btn" :disabled="handling" @click="doHandle">
+            {{ handling ? '处理中...' : '✓ 标记为已处理' }}
+          </button>
+        </div>
+        <div class="rw-dw-handled-tip" v-else>
+          ✅ 已处理{{ detailRow.handleNote ? '：' + detailRow.handleNote : '' }}
+        </div>
+
         <!-- 体征曲线 -->
         <div class="rw-dw-chart-section">
           <div class="rw-dw-chart-hd">
@@ -195,9 +220,11 @@
 </template>
 
 <script>
+import WarningCenterNav from '@/components/WarningCenterNav.vue'
 import * as echarts from '@/utils/echarts-setup'
 import dayjs from 'dayjs'
-import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getDeptWarningStats } from '@/api/risk-warning'
+import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getDeptWarningStats, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
+import { exportToExcel } from '@/utils/export-excel'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, barLabel } from '@/utils/echarts-config'
 import { initChart, gradV } from '@/utils/chart-helpers'
 import { getHealthRecords } from '@/api/health'
@@ -206,6 +233,7 @@ import { PERIOD_OPTIONS } from '@/constants/periods'
 
 export default {
   name: 'RiskWarning',
+  components: { WarningCenterNav },
   mixins: [chartPageMixin],
   data() {
     return {
@@ -228,6 +256,8 @@ export default {
       periodOptions: PERIOD_OPTIONS,
       charts: {},
       detailVisible: false, detailRow: null,
+      handleNote: '', handling: false,
+      selectedIds: [], batchHandling: false,
       autoScrollPaused: false,
       scrollTop: 0,
       // 体征曲线
@@ -265,6 +295,9 @@ export default {
     pagedList()   { const s=(this.currentPage-1)*this.pageSize; return this.filteredList.slice(s,s+this.pageSize) },
     totalPages()  { return Math.max(1, Math.ceil(this.filteredList.length/this.pageSize)) },
     warningTypes(){ return [...new Set(this.warningList.map(x=>x.warningType).filter(Boolean))] },
+    pendingInFiltered() { return this.filteredList.filter(x => !x.handled) },
+    allPendingSelected() { return this.pendingInFiltered.length > 0 && this.pendingInFiltered.every(x => this.selectedIds.includes(x.id)) },
+    somePendingSelected() { return this.pendingInFiltered.some(x => this.selectedIds.includes(x.id)) },
 
     // 右侧面板：体征均值卡
     vitalAvg() {
@@ -631,6 +664,29 @@ export default {
 
     onDrawerClose() {
       if (this.vitalChartInst) { this.vitalChartInst.dispose(); this.vitalChartInst = null }
+      this.handleNote = ''
+      this.handling = false
+    },
+
+    async doHandle() {
+      if (!this.detailRow || this.handling) return
+      this.handling = true
+      try {
+        const res = await handleRiskWarning(this.detailRow.id, { handleRemark: this.handleNote || '已确认处理', handleBy: 'admin' })
+        if (res.code === 200) {
+          // 更新本地列表状态
+          const row = this.warningList.find(r => r.id === this.detailRow.id)
+          if (row) { row.handled = true; row.handleNote = this.handleNote || '已确认处理' }
+          this.detailRow = { ...this.detailRow, handled: true, handleNote: this.handleNote || '已确认处理' }
+          this.$message?.success('处理成功') || alert('处理成功')
+        } else {
+          this.$message?.error(res.message || '处理失败') || alert(res.message || '处理失败')
+        }
+      } catch (e) {
+        this.$message?.error('操作失败，请重试') || alert('操作失败')
+      } finally {
+        this.handling = false
+      }
     },
 
     // FIX ①③: 翻页同步重置滚动，不打架
@@ -679,6 +735,66 @@ export default {
     fmtTime(ts)     { return ts?dayjs(ts).format('MM-DD HH:mm'):'--' },
     fmtTimeFull(ts) { return ts?dayjs(ts).format('YYYY-MM-DD HH:mm:ss'):'--' },
 
+    exportWarnings() {
+      const cols = [
+        { label: '序号', key: '_idx' },
+        { label: '姓名', key: 'userName' },
+        { label: '工号', key: 'empCode' },
+        { label: '部门', key: 'deptName' },
+        { label: '预警类型', key: 'warningType' },
+        { label: '预警级别', key: 'warningLevel' },
+        { label: '预警值', key: 'warningValue' },
+        { label: '状态', key: '_status' },
+        { label: '处理备注', key: 'handleNote' },
+        { label: '时间', key: '_time' },
+      ]
+      const data = this.filteredList.map((row, i) => ({
+        ...row,
+        _idx: i + 1,
+        _status: row.handled ? '已处理' : '待处理',
+        _time: row.createTime ? new Date(row.createTime).toLocaleString('zh-CN') : '--',
+        empCode: row.empCode || row.userCode || '--'
+      }))
+      exportToExcel(data, cols, '风险预警记录')
+    },
+
+    toggleSelectAll(e) {
+      if (e.target.checked) {
+        this.selectedIds = [...new Set([...this.selectedIds, ...this.pendingInFiltered.map(x => x.id)])]
+      } else {
+        const pendingIds = new Set(this.pendingInFiltered.map(x => x.id))
+        this.selectedIds = this.selectedIds.filter(id => !pendingIds.has(id))
+      }
+    },
+    toggleSelect(id) {
+      if (this.selectedIds.includes(id)) {
+        this.selectedIds = this.selectedIds.filter(x => x !== id)
+      } else {
+        this.selectedIds = [...this.selectedIds, id]
+      }
+    },
+    async batchHandle() {
+      if (!this.selectedIds.length || this.batchHandling) return
+      this.batchHandling = true
+      try {
+        const res = await handleBatchRiskWarning(this.selectedIds)
+        if (res.code === 200) {
+          this.selectedIds.forEach(id => {
+            const row = this.warningList.find(r => r.id === id)
+            if (row) { row.handled = true; row.handleNote = '批量处理' }
+          })
+          this.$message?.success(`已处理 ${this.selectedIds.length} 条预警`) || alert(`已处理 ${this.selectedIds.length} 条预警`)
+          this.selectedIds = []
+        } else {
+          this.$message?.error(res.message || '批量处理失败') || alert('批量处理失败')
+        }
+      } catch (e) {
+        this.$message?.error('批量处理失败，请重试') || alert('批量处理失败')
+      } finally {
+        this.batchHandling = false
+      }
+    },
+
     handleResize() {
       clearTimeout(this.resizeTimer)
       this.resizeTimer=setTimeout(()=>{ this.$nextTick(()=>{ Object.values(this.charts).forEach(c=>c&&c.resize&&c.resize()) }) },200)
@@ -707,6 +823,7 @@ export default {
 
 /* Header */
 .rw-hd { height:52px; flex-shrink:0; display:flex; align-items:center; padding:0 20px; gap:16px; background:rgba(0,6,24,.65); border-bottom:1px solid $border; }
+.rw-center-nav { padding: 12px 16px 0; }
 .rw-hd-left { display:flex; align-items:center; gap:10px; flex-shrink:0; }
 .rw-live-dot { width:9px; height:9px; border-radius:50%; background:#ef4444; box-shadow:0 0 8px #ef4444; animation:hmPulse 2s ease-in-out infinite; }
 .rw-hd-title { font-size:20px; font-weight:700; color:$white; margin:0; letter-spacing:2px; text-shadow:0 0 14px rgba(239,68,68,.45); }
@@ -765,10 +882,31 @@ export default {
   &:hover { background:rgba(0,212,255,.16); }
 }
 
+.rw-export-btn {
+  height:26px; padding:0 10px;
+  background:rgba(0,212,255,.07); border:1px solid rgba(0,212,255,.2);
+  border-radius:4px; color:$accent; font-size:11px; cursor:pointer; white-space:nowrap; transition:background .2s;
+  &:hover { background:rgba(0,212,255,.16); }
+}
+.rw-batch-btn {
+  height:26px; padding:0 12px;
+  background:rgba(56,239,125,.1); border:1px solid rgba(56,239,125,.3);
+  border-radius:4px; color:#38ef7d; font-size:11px; cursor:pointer; white-space:nowrap; transition:all .2s;
+  &:hover:not(:disabled) { background:rgba(56,239,125,.2); }
+  &:disabled { opacity:.5; cursor:not-allowed; }
+}
+
+.rw-list-chk-cell {
+  display:flex; align-items:center; justify-content:center;
+  input[type=checkbox] {
+    width:14px; height:14px; cursor:pointer; accent-color:#00d4ff;
+  }
+}
+
 /* FIX ①: 7列 含部门 */
 .rw-list-hd {
   display:grid;
-  grid-template-columns: 44px 68px 80px 1fr 1.2fr 70px 86px 84px 1fr 108px;
+  grid-template-columns: 30px 44px 68px 80px 1fr 1.2fr 70px 86px 84px 1fr 108px;
   gap:0; padding:4px 14px; flex-shrink:0; background:rgba(0,212,255,.055);
   border-bottom:1px solid rgba(0,212,255,.1);
   span { font-size:11px; color:$dim; font-weight:600; padding:0 4px; }
@@ -780,7 +918,7 @@ export default {
 }
 .rw-list-row {
   display:grid;
-  grid-template-columns: 44px 68px 80px 1fr 1.2fr 70px 86px 84px 1fr 108px;
+  grid-template-columns: 30px 44px 68px 80px 1fr 1.2fr 70px 86px 84px 1fr 108px;
   justify-items: start;
   gap:0; padding:4px 6px; margin-bottom:1px;
   border-radius:6px; align-items:center; border-left:3px solid transparent;
@@ -792,6 +930,7 @@ export default {
   &.warn   { border-left-color:rgba(249,115,22,.75); background:rgba(249,115,22,.03) !important; }
   &.info   { border-left-color:rgba(59,130,246,.6); }
   &.normal { border-left-color:rgba(82,196,26,.5);  }
+  &.is-selected { background:rgba(0,212,255,.08) !important; }
 }
 .rw-list-idx  { font-size:11px; color:$dim; text-align:center; }
 .rw-list-name { font-size:13px; color:$white; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
@@ -835,6 +974,42 @@ export default {
 .badge-normal   { color:var(--severity-low); background:var(--severity-low-bg); border:1px solid var(--severity-low); padding:2px 8px; border-radius:4px; font-size:12px; }
 .badge-handled  { color:#38ef7d; background:rgba(56,239,125,.12); border:1px solid rgba(56,239,125,.3); padding:2px 8px; border-radius:4px; font-size:12px; }
 .badge-pending { color:#ffd200; background:rgba(255,210,0,.12);  border:1px solid rgba(255,210,0,.28); padding:2px 8px; border-radius:4px; font-size:12px; }
+
+/* 一键处理区 */
+.rw-dw-handle-section {
+  margin: 12px 0;
+  padding: 14px 16px;
+  background: rgba(0, 212, 255, 0.04);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 8px;
+}
+.rw-dw-handle-title {
+  font-size: 12px; color: #6a88b0; margin-bottom: 8px; font-weight: 600;
+}
+.rw-dw-handle-input {
+  width: 100%; box-sizing: border-box;
+  background: rgba(0, 10, 30, 0.6);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 6px; color: #c8d8e8; font-size: 13px;
+  padding: 8px 10px; resize: none; outline: none;
+  margin-bottom: 10px; font-family: inherit;
+}
+.rw-dw-handle-input:focus { border-color: rgba(0, 212, 255, 0.5); }
+.rw-dw-handle-btn {
+  width: 100%; padding: 9px;
+  background: linear-gradient(135deg, #0066cc, #00aaff);
+  border: none; border-radius: 6px; color: #fff;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: opacity 0.2s;
+}
+.rw-dw-handle-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.rw-dw-handle-btn:not(:disabled):hover { opacity: 0.85; }
+.rw-dw-handled-tip {
+  margin: 12px 0; padding: 10px 14px;
+  background: rgba(56, 239, 125, 0.06);
+  border: 1px solid rgba(56, 239, 125, 0.2);
+  border-radius: 8px; color: #38ef7d; font-size: 13px;
+}
 
 /* Drawer body */
 .rw-dw-wrap { padding:16px 20px; display:flex; flex-direction:column; gap:14px; height:100%; overflow-y:auto;

@@ -1,0 +1,818 @@
+{
+  "runId": "2026-05-03T03-17-41-472Z",
+  "baseUrl": "http://127.0.0.1:9528",
+  "startedAt": "2026-05-03T03:17:41.472Z",
+  "routeResults": [
+    {
+      "device": "desktop",
+      "slug": "safety-command",
+      "path": "/safety-command/index",
+      "url": "http://127.0.0.1:9528/#/safety-command/index",
+      "status": "passed",
+      "durationMs": 1918,
+      "finalHash": "#/safety-command/index",
+      "domStats": {
+        "bodyTextLength": 2447,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 45
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-safety-command.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "dashboard",
+      "path": "/health-monitor/dashboard",
+      "url": "http://127.0.0.1:9528/#/health-monitor/dashboard",
+      "status": "passed_with_warnings",
+      "durationMs": 1999,
+      "finalHash": "#/health-monitor/dashboard",
+      "domStats": {
+        "bodyTextLength": 8633,
+        "tableRows": 0,
+        "canvasCount": 8,
+        "svgCount": 54
+      },
+      "issueCount": 6,
+      "issueSeverity": "warn",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-dashboard.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "workbench",
+      "path": "/health-monitor/workbench",
+      "url": "http://127.0.0.1:9528/#/health-monitor/workbench",
+      "status": "passed",
+      "durationMs": 1871,
+      "finalHash": "#/health-monitor/workbench",
+      "domStats": {
+        "bodyTextLength": 1070,
+        "tableRows": 0,
+        "canvasCount": 1,
+        "svgCount": 39
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-workbench.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "real-time",
+      "path": "/health-monitor/real-time",
+      "url": "http://127.0.0.1:9528/#/health-monitor/real-time",
+      "status": "passed",
+      "durationMs": 2992,
+      "finalHash": "#/health-monitor/real-time",
+      "domStats": {
+        "bodyTextLength": 5631,
+        "tableRows": 50,
+        "canvasCount": 0,
+        "svgCount": 142
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-real-time.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "heart-rate",
+      "path": "/health-monitor/heart-rate",
+      "url": "http://127.0.0.1:9528/#/health-monitor/heart-rate",
+      "status": "passed",
+      "durationMs": 1931,
+      "finalHash": "#/health-monitor/heart-rate",
+      "domStats": {
+        "bodyTextLength": 23814,
+        "tableRows": 0,
+        "canvasCount": 3,
+        "svgCount": 38
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-heart-rate.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "pressure",
+      "path": "/health-monitor/pressure",
+      "url": "http://127.0.0.1:9528/#/health-monitor/pressure",
+      "status": "passed",
+      "durationMs": 4409,
+      "finalHash": "#/health-monitor/pressure",
+      "domStats": {
+        "bodyTextLength": 23241,
+        "tableRows": 0,
+        "canvasCount": 4,
+        "svgCount": 37
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-pressure.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "blood-pressure",
+      "path": "/health-monitor/blood-pressure",
+      "url": "http://127.0.0.1:9528/#/health-monitor/blood-pressure",
+      "status": "passed",
+      "durationMs": 1924,
+      "finalHash": "#/health-monitor/blood-pressure",
+      "domStats": {
+        "bodyTextLength": 18503,
+        "tableRows": 0,
+        "canvasCount": 3,
+        "svgCount": 38
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-blood-pressure.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "blood-oxygen",
+      "path": "/health-monitor/blood-oxygen",
+      "url": "http://127.0.0.1:9528/#/health-monitor/blood-oxygen",
+      "status": "passed",
+      "durationMs": 3906,
+      "finalHash": "#/health-monitor/blood-oxygen",
+      "domStats": {
+        "bodyTextLength": 5783,
+        "tableRows": 0,
+        "canvasCount": 5,
+        "svgCount": 37
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-blood-oxygen.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "sleep",
+      "path": "/health-monitor/sleep",
+      "url": "http://127.0.0.1:9528/#/health-monitor/sleep",
+      "status": "passed",
+      "durationMs": 1868,
+      "finalHash": "#/health-monitor/sleep",
+      "domStats": {
+        "bodyTextLength": 572,
+        "tableRows": 0,
+        "canvasCount": 1,
+        "svgCount": 37
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-sleep.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "risk-warning",
+      "path": "/health-monitor/risk-warning",
+      "url": "http://127.0.0.1:9528/#/health-monitor/risk-warning",
+      "status": "passed",
+      "durationMs": 1873,
+      "finalHash": "#/health-monitor/risk-warning",
+      "domStats": {
+        "bodyTextLength": 10894,
+        "tableRows": 0,
+        "canvasCount": 2,
+        "svgCount": 38
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-risk-warning.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "employee-archive",
+      "path": "/health-monitor/employee-archive",
+      "url": "http://127.0.0.1:9528/#/health-monitor/employee-archive",
+      "status": "passed",
+      "durationMs": 1876,
+      "finalHash": "#/health-monitor/employee-archive",
+      "domStats": {
+        "bodyTextLength": 1758,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 124
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-employee-archive.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "mine-entry",
+      "path": "/health-monitor/mine-entry",
+      "url": "http://127.0.0.1:9528/#/health-monitor/mine-entry",
+      "status": "passed",
+      "durationMs": 1863,
+      "finalHash": "#/health-monitor/mine-entry",
+      "domStats": {
+        "bodyTextLength": 5438,
+        "tableRows": 50,
+        "canvasCount": 0,
+        "svgCount": 118
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-mine-entry.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "report-center",
+      "path": "/health-monitor/report-center",
+      "url": "http://127.0.0.1:9528/#/health-monitor/report-center",
+      "status": "passed",
+      "durationMs": 1901,
+      "finalHash": "#/health-monitor/report-center",
+      "domStats": {
+        "bodyTextLength": 45805,
+        "tableRows": 1000,
+        "canvasCount": 2,
+        "svgCount": 42
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-report-center.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "trend-warning",
+      "path": "/health-monitor/trend-warning",
+      "url": "http://127.0.0.1:9528/#/health-monitor/trend-warning",
+      "status": "passed",
+      "durationMs": 2084,
+      "finalHash": "#/health-monitor/trend-warning",
+      "domStats": {
+        "bodyTextLength": 4793,
+        "tableRows": 0,
+        "canvasCount": 74,
+        "svgCount": 46
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-trend-warning.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "alert-notifications",
+      "path": "/alert-management/notifications",
+      "url": "http://127.0.0.1:9528/#/alert-management/notifications",
+      "status": "passed",
+      "durationMs": 1986,
+      "finalHash": "#/alert-management/notifications",
+      "domStats": {
+        "bodyTextLength": 1046,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 43
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-alert-notifications.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "alert-sos",
+      "path": "/alert-management/sos",
+      "url": "http://127.0.0.1:9528/#/alert-management/sos",
+      "status": "passed",
+      "durationMs": 1860,
+      "finalHash": "#/alert-management/sos",
+      "domStats": {
+        "bodyTextLength": 353,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 37
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-alert-sos.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "alert-config",
+      "path": "/alert-management/config",
+      "url": "http://127.0.0.1:9528/#/alert-management/config",
+      "status": "passed",
+      "durationMs": 1853,
+      "finalHash": "#/alert-management/config",
+      "domStats": {
+        "bodyTextLength": 616,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 44
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-alert-config.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "alert-records",
+      "path": "/alert-management/records",
+      "url": "http://127.0.0.1:9528/#/alert-management/records",
+      "status": "passed",
+      "durationMs": 1852,
+      "finalHash": "#/alert-management/records",
+      "domStats": {
+        "bodyTextLength": 1983,
+        "tableRows": 20,
+        "canvasCount": 0,
+        "svgCount": 81
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-alert-records.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "device-list",
+      "path": "/admin/device-list",
+      "url": "http://127.0.0.1:9528/#/admin/device-list",
+      "status": "passed",
+      "durationMs": 1875,
+      "finalHash": "#/admin/device-list",
+      "domStats": {
+        "bodyTextLength": 2197,
+        "tableRows": 20,
+        "canvasCount": 0,
+        "svgCount": 75
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-device-list.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "user-list",
+      "path": "/admin/user-list",
+      "url": "http://127.0.0.1:9528/#/admin/user-list",
+      "status": "passed",
+      "durationMs": 1851,
+      "finalHash": "#/admin/user-list",
+      "domStats": {
+        "bodyTextLength": 444,
+        "tableRows": 1,
+        "canvasCount": 0,
+        "svgCount": 55
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-user-list.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "role-management",
+      "path": "/admin/role",
+      "url": "http://127.0.0.1:9528/#/admin/role",
+      "status": "passed",
+      "durationMs": 2242,
+      "finalHash": "#/admin/role",
+      "domStats": {
+        "bodyTextLength": 417,
+        "tableRows": 1,
+        "canvasCount": 0,
+        "svgCount": 55
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-role-management.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "department-management",
+      "path": "/admin/department",
+      "url": "http://127.0.0.1:9528/#/admin/department",
+      "status": "passed",
+      "durationMs": 2770,
+      "finalHash": "#/admin/department",
+      "domStats": {
+        "bodyTextLength": 1344,
+        "tableRows": 20,
+        "canvasCount": 0,
+        "svgCount": 108
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-department-management.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "job-type-management",
+      "path": "/admin/job-type",
+      "url": "http://127.0.0.1:9528/#/admin/job-type",
+      "status": "passed",
+      "durationMs": 2263,
+      "finalHash": "#/admin/job-type",
+      "domStats": {
+        "bodyTextLength": 1006,
+        "tableRows": 12,
+        "canvasCount": 0,
+        "svgCount": 86
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-job-type-management.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "ai-chat",
+      "path": "/ai-chat/index",
+      "url": "http://127.0.0.1:9528/#/ai-chat/index",
+      "status": "passed",
+      "durationMs": 1852,
+      "finalHash": "#/ai-chat/index",
+      "domStats": {
+        "bodyTextLength": 388,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 37
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-ai-chat.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "command-center-entry",
+      "path": "/command-center",
+      "url": "http://127.0.0.1:9528/#/command-center",
+      "status": "passed_with_warnings",
+      "durationMs": 1972,
+      "finalHash": "#/health-monitor/dashboard",
+      "domStats": {
+        "bodyTextLength": 8744,
+        "tableRows": 0,
+        "canvasCount": 8,
+        "svgCount": 54
+      },
+      "issueCount": 6,
+      "issueSeverity": "warn",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-command-center-entry.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "monitoring-center-entry",
+      "path": "/monitoring-center",
+      "url": "http://127.0.0.1:9528/#/monitoring-center",
+      "status": "passed",
+      "durationMs": 3015,
+      "finalHash": "#/health-monitor/real-time",
+      "domStats": {
+        "bodyTextLength": 5711,
+        "tableRows": 50,
+        "canvasCount": 0,
+        "svgCount": 143
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-monitoring-center-entry.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "warning-center-entry",
+      "path": "/warning-center",
+      "url": "http://127.0.0.1:9528/#/warning-center",
+      "status": "passed",
+      "durationMs": 1929,
+      "finalHash": "#/alert-management/notifications",
+      "domStats": {
+        "bodyTextLength": 1075,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 43
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-warning-center-entry.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "people-center-entry",
+      "path": "/people-center",
+      "url": "http://127.0.0.1:9528/#/people-center",
+      "status": "passed",
+      "durationMs": 2085,
+      "finalHash": "#/health-monitor/employee-archive",
+      "domStats": {
+        "bodyTextLength": 1795,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 124
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-people-center-entry.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "report-ai-entry",
+      "path": "/report-ai",
+      "url": "http://127.0.0.1:9528/#/report-ai",
+      "status": "passed",
+      "durationMs": 3078,
+      "finalHash": "#/health-monitor/report-center",
+      "domStats": {
+        "bodyTextLength": 45830,
+        "tableRows": 1000,
+        "canvasCount": 2,
+        "svgCount": 42
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-report-ai-entry.jpeg"
+    },
+    {
+      "device": "desktop",
+      "slug": "employee-profile-flow",
+      "path": "/health-monitor/employee-archive -> /health-monitor/employee-profile -> /health-monitor/workbench",
+      "url": "http://127.0.0.1:9528/#/health-monitor/employee-archive",
+      "status": "passed",
+      "durationMs": 2802,
+      "finalHash": "#/health-monitor/employee-profile?empCode=EMP1000&empName=%E7%BD%97%E4%BF%8A",
+      "domStats": {
+        "bodyTextLength": 2186,
+        "tableRows": 0,
+        "canvasCount": 1,
+        "svgCount": 42
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\desktop-employee-profile-flow.jpeg"
+    },
+    {
+      "device": "mobile",
+      "slug": "mobile-safety-command",
+      "path": "/safety-command/index",
+      "url": "http://127.0.0.1:9528/#/safety-command/index",
+      "status": "passed",
+      "durationMs": 2353,
+      "finalHash": "#/safety-command/index",
+      "domStats": {
+        "bodyTextLength": 2402,
+        "tableRows": 0,
+        "canvasCount": 0,
+        "svgCount": 44
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\mobile-mobile-safety-command.jpeg"
+    },
+    {
+      "device": "mobile",
+      "slug": "mobile-dashboard",
+      "path": "/health-monitor/dashboard",
+      "url": "http://127.0.0.1:9528/#/health-monitor/dashboard",
+      "status": "passed",
+      "durationMs": 1921,
+      "finalHash": "#/health-monitor/dashboard",
+      "domStats": {
+        "bodyTextLength": 8542,
+        "tableRows": 0,
+        "canvasCount": 8,
+        "svgCount": 54
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\mobile-mobile-dashboard.jpeg"
+    },
+    {
+      "device": "mobile",
+      "slug": "mobile-workbench",
+      "path": "/health-monitor/workbench",
+      "url": "http://127.0.0.1:9528/#/health-monitor/workbench",
+      "status": "passed",
+      "durationMs": 1894,
+      "finalHash": "#/health-monitor/workbench",
+      "domStats": {
+        "bodyTextLength": 1027,
+        "tableRows": 0,
+        "canvasCount": 1,
+        "svgCount": 40
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\mobile-mobile-workbench.jpeg"
+    },
+    {
+      "device": "mobile",
+      "slug": "mobile-real-time",
+      "path": "/health-monitor/real-time",
+      "url": "http://127.0.0.1:9528/#/health-monitor/real-time",
+      "status": "passed",
+      "durationMs": 3369,
+      "finalHash": "#/health-monitor/real-time",
+      "domStats": {
+        "bodyTextLength": 19619,
+        "tableRows": 200,
+        "canvasCount": 0,
+        "svgCount": 441
+      },
+      "issueCount": 0,
+      "issueSeverity": "none",
+      "notes": [],
+      "screenshot": "tests\\e2e\\artifacts\\2026-05-03T03-17-41-472Z\\mobile-mobile-real-time.jpeg"
+    }
+  ],
+  "issues": [
+    {
+      "ts": "2026-05-03T03:17:43.414Z",
+      "device": "desktop",
+      "route": "login",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:17:44.043Z",
+      "device": "desktop",
+      "route": "login",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:17:46.635Z",
+      "device": "desktop",
+      "route": "dashboard",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:17:46.641Z",
+      "device": "desktop",
+      "route": "dashboard",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:17:47.399Z",
+      "device": "desktop",
+      "route": "dashboard",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:17:47.404Z",
+      "device": "desktop",
+      "route": "dashboard",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:17:47.416Z",
+      "device": "desktop",
+      "route": "dashboard",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:17:47.420Z",
+      "device": "desktop",
+      "route": "dashboard",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:18:37.521Z",
+      "device": "desktop",
+      "route": "command-center-entry",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:18:37.527Z",
+      "device": "desktop",
+      "route": "command-center-entry",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:18:38.264Z",
+      "device": "desktop",
+      "route": "command-center-entry",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:18:38.267Z",
+      "device": "desktop",
+      "route": "command-center-entry",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:18:38.278Z",
+      "device": "desktop",
+      "route": "command-center-entry",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    },
+    {
+      "ts": "2026-05-03T03:18:38.282Z",
+      "device": "desktop",
+      "route": "command-center-entry",
+      "severity": "warn",
+      "type": "console.warning",
+      "message": "[ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload."
+    }
+  ],
+  "navigationAudits": [
+    {
+      "device": "desktop",
+      "type": "sidebar-groups",
+      "labels": [
+        "指挥中心",
+        "安全指挥中心",
+        "统一管控",
+        "监测中心",
+        "实时监控",
+        "心率分析",
+        "压力分析",
+        "血压分析",
+        "血氧分析",
+        "趋势预警",
+        "预警中心",
+        "风险预警",
+        "消息通知中心",
+        "预警记录",
+        "阈值配置",
+        "SOS 紧急救援",
+        "人员中心",
+        "职工健康档案库",
+        "入井准入管理",
+        "工作台日历",
+        "报告与AI",
+        "报表中心",
+        "AI健康助手",
+        "系统管理",
+        "设备列表",
+        "用户列表",
+        "角色管理",
+        "部门管理",
+        "工种管理"
+      ],
+      "missing": []
+    },
+    {
+      "device": "mobile",
+      "type": "bottom-nav",
+      "labels": [
+        "指挥",
+        "监测",
+        "准入",
+        "预警",
+        "人员"
+      ],
+      "missing": []
+    }
+  ],
+  "finishedAt": "2026-05-03T03:19:02.234Z"
+}

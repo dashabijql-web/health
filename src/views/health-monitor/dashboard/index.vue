@@ -116,6 +116,80 @@
           </div>
         </div>
 
+        <div class="dm-panel dm-main-dispatch">
+          <div class="dm-ph">
+            <span class="dm-ph-bar" style="background:#ffd200"></span>
+            <span class="dm-ph-title">值班决策面板</span>
+            <span class="dm-ph-sub">先处理异常，再看趋势</span>
+          </div>
+          <div class="dm-dispatch-rail">
+            <div :class="['dm-dispatch-hero', `tone-${dispatchPriority.tone}`]">
+              <div class="dm-dispatch-hero-label">当前值班优先级</div>
+              <div class="dm-dispatch-hero-title">{{ dispatchPriority.title }}</div>
+              <div class="dm-dispatch-hero-sub">{{ dispatchPriority.sub }}</div>
+            </div>
+            <div class="dm-dispatch-actions">
+              <button
+                v-for="action in dispatchActionItems"
+                :key="action.label"
+                :class="['dm-dispatch-action', `tone-${action.tone}`]"
+                @click="$router.push(action.path)"
+              >
+                <span class="dm-dispatch-action-label">{{ action.label }}</span>
+                <span class="dm-dispatch-action-value">{{ action.value }}</span>
+                <span class="dm-dispatch-action-sub">{{ action.sub }}</span>
+              </button>
+            </div>
+          </div>
+          <div class="dm-dispatch-grid">
+            <div class="dm-dispatch-card">
+              <div class="dm-dispatch-label">高危待处理</div>
+              <div class="dm-dispatch-value danger">{{ kpiUnhandledHigh }}</div>
+              <div class="dm-dispatch-desc">优先进入待处理列表，完成高危预警闭环。</div>
+              <button class="dm-dispatch-btn" @click="$router.push('/alert-management/notifications')">进入待处理</button>
+            </div>
+            <div class="dm-dispatch-card">
+              <div class="dm-dispatch-label">禁止入井</div>
+              <div class="dm-dispatch-value warn">{{ preShiftData.failedCount || 0 }}</div>
+              <div class="dm-dispatch-desc">班前健康筛查未通过人员，需优先复核准入原因。</div>
+              <button class="dm-dispatch-btn" @click="$router.push('/health-monitor/mine-entry')">查看准入</button>
+            </div>
+            <div class="dm-dispatch-card dm-dispatch-card--list">
+              <div class="dm-dispatch-head">
+                <span class="dm-dispatch-label">重点人员</span>
+                <span class="dm-dispatch-mini">{{ focusWarningEvents.length }} 人</span>
+              </div>
+              <div v-if="focusWarningEvents.length" class="dm-dispatch-list">
+                <button
+                  v-for="(item, idx) in focusWarningEvents"
+                  :key="item.id || idx"
+                  class="dm-dispatch-person"
+                  @click="goToEmployeeProfile(item)"
+                >
+                  <span class="dm-dispatch-person-name">{{ item.userName || '--' }}</span>
+                  <span class="dm-dispatch-person-type">{{ item.type || item.warningType || '预警' }}</span>
+                  <span class="dm-dispatch-person-val">{{ item.value || item.warningValue || '--' }}</span>
+                </button>
+              </div>
+              <div v-else class="dm-dispatch-empty">当前没有待处理重点人员。</div>
+            </div>
+            <div class="dm-dispatch-card dm-dispatch-card--wide">
+              <div class="dm-dispatch-head">
+                <span class="dm-dispatch-label">AI 值班摘要</span>
+                <button class="dm-dispatch-link" @click="mineAiReport ? (mineAiDialogVisible = true) : handleMineAi(false)">
+                  {{ mineAiReport ? '查看全文' : '生成分析' }}
+                </button>
+              </div>
+              <p class="dm-dispatch-ai-text">{{ dashboardAiSummary }}</p>
+              <div class="dm-dispatch-tags">
+                <span v-if="riskDeptList[0]" class="dm-dispatch-tag">重点部门：{{ riskDeptList[0].name }}</span>
+                <span v-if="latestDangerEvent?.userName" class="dm-dispatch-tag">重点人员：{{ latestDangerEvent.userName }}</span>
+                <span class="dm-dispatch-tag">班前未通过：{{ preShiftData.failedCount || 0 }} 人</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="dm-panel dm-main-model">
           <div class="dm-ph">
             <span class="dm-ph-bar"></span>
@@ -634,7 +708,7 @@
 </template>
 
 <script>
-import * as echarts from '@/utils/echarts-setup'
+import * as echarts from '@/utils/echarts-setup-radar'
 import { markRaw } from 'vue'
 import dayjs from 'dayjs'
 import {
@@ -664,12 +738,17 @@ import { getMineAiReport, generateMineAiReport } from '@/api/ai'
 // ── 模块级缓存时间戳（跨组件生命周期持久，解决无 keep-alive 时每次切换页面重置缓存的问题）
 const _cache = {
   preShiftFetchedAt: 0,
+  preShiftData: null,
   deptDataFetchedAt: 0,
   deptDataPeriodKey: '',
+  deptDataList: null,
+  deptPersonStatsList: null,
   warningDistFetchedAt: 0,
   warningDistPeriodKey: '',
+  warningDistData: null,
   trendDailyFetchedAt: 0,
   trendDailyDays: 0,
+  trendDailyData: null,
   kpiFetchedAt: 0,
   kpiTodayWarnings: 0,
   kpiYesterdayWarnings: 0,
@@ -809,6 +888,80 @@ export default {
         .replace(/^## (.+)$/gm, '<h4>$1</h4>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n/g, '<br>')
+    },
+    dashboardAiSummary() {
+      const normalized = (this.mineAiReport || '')
+        .replace(/^#+\s*/gm, '')
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\r?\n+/g, ' ')
+        .trim()
+
+      if (normalized) return normalized.slice(0, 160) + (normalized.length > 160 ? '…' : '')
+
+      const parts = []
+      if (this.kpiUnhandledHigh > 0) parts.push(`当前有 ${this.kpiUnhandledHigh} 条高危预警待处理`)
+      if ((this.preShiftData.failedCount || 0) > 0) parts.push(`${this.preShiftData.failedCount} 人未通过班前准入`)
+      if (this.riskDeptList[0]) parts.push(`${this.riskDeptList[0].name} 为当前重点关注部门`)
+      if (this.latestDangerEvent?.userName) parts.push(`${this.latestDangerEvent.userName} 是最新重点关注人员`)
+      return parts.length
+        ? parts.join('，') + '。'
+        : '当前暂无明显高风险信号，可持续关注趋势变化、准入状态和设备在线情况。'
+    },
+    dispatchPriority() {
+      if (this.kpiUnhandledHigh > 0) {
+        return {
+          tone: 'danger',
+          title: `先处理 ${this.kpiUnhandledHigh} 条高危预警`,
+          sub: '优先进入待处理列表，确认现场处置结果，再回看趋势和画像。'
+        }
+      }
+      if ((this.preShiftData.failedCount || 0) > 0) {
+        return {
+          tone: 'warn',
+          title: `优先复核 ${this.preShiftData.failedCount} 名禁止入井人员`,
+          sub: '班前未通过人员比趋势分析更优先，先核查异常原因和复检结果。'
+        }
+      }
+      if (this.focusWarningEvents.length > 0) {
+        return {
+          tone: 'accent',
+          title: `跟进 ${this.focusWarningEvents.length} 名重点人员`,
+          sub: '结合人员画像、月度日历和实时体征做连续观察，避免异常升级。'
+        }
+      }
+      return {
+        tone: 'calm',
+        title: '当前没有紧急闭环任务',
+        sub: '保持趋势巡检，关注重点部门变化、设备在线率和准入达标率。'
+      }
+    },
+    dispatchActionItems() {
+      return [
+        {
+          label: '待处理队列',
+          value: `${this.warningEvents.filter(e => !e.handled).length} 条`,
+          sub: '进入预警中心完成闭环',
+          path: '/alert-management/notifications',
+          tone: this.kpiUnhandledHigh > 0 ? 'danger' : 'accent'
+        },
+        {
+          label: '重点人员',
+          value: `${this.focusWarningEvents.length} 人`,
+          sub: '进入人员画像继续核查',
+          path: '/health-monitor/employee-archive',
+          tone: this.focusWarningEvents.length > 0 ? 'warn' : 'muted'
+        },
+        {
+          label: '趋势复盘',
+          value: this.periodLabel,
+          sub: '去报表中心看趋势与部门对比',
+          path: '/health-monitor/report-center',
+          tone: 'accent'
+        }
+      ]
+    },
+    focusWarningEvents() {
+      return (this.warningEvents || []).filter(e => !e.handled).slice(0, 4)
     },
     periodRange() {
       const today = dayjs()
@@ -1244,6 +1397,17 @@ export default {
         }
       } catch {}
     },
+    goToEmployeeProfile(item) {
+      const code = item?.userCode || item?.empCode
+      if (!code) return
+      this.$router.push({
+        path: '/health-monitor/employee-profile',
+        query: {
+          empCode: code,
+          empName: item.userName || item.empName || ''
+        }
+      })
+    },
     initTime() {
       this.updateTime()
       this.timeInterval = setInterval(this.updateTime, 1000)
@@ -1329,12 +1493,16 @@ export default {
     async fetchPreShiftRate(force = false) {
       // 班前达标率每5分钟刷新一次即可（今日数据变化缓慢，避免每30秒重复扫描分区表）
       const now = Date.now()
-      if (!force && _cache.preShiftFetchedAt && (now - _cache.preShiftFetchedAt) < 5 * 60 * 1000) return
+      if (!force && _cache.preShiftFetchedAt && (now - _cache.preShiftFetchedAt) < 5 * 60 * 1000) {
+        if (_cache.preShiftData) this.preShiftData = _cache.preShiftData
+        return
+      }
       try {
         const res = await getPreShiftCompliance()
         if (res.code === 200 && res.data) {
           this.preShiftData = res.data
           _cache.preShiftFetchedAt = Date.now()
+          _cache.preShiftData = res.data
         }
       } catch(e) {}
     },
@@ -1393,7 +1561,7 @@ export default {
         const el = this.$refs.deptPersonChartRef
         if (!el) return
         if (modal.chart) modal.chart.dispose()
-        const echarts = this.$echarts || window.echarts || (await import('@/utils/echarts-setup'))
+        const echarts = this.$echarts || window.echarts || (await import('@/utils/echarts-setup-radar'))
         modal.chart = markRaw(echarts.init(el, null, { renderer: 'canvas' }))
         modal.chart.setOption({
           backgroundColor: '#0a1628',
@@ -1506,10 +1674,15 @@ export default {
       } catch(e) { this.warningEvents = [] }
     },
     async loadDeptData(force = false) {
-      // 2分钟前端缓存：相同时间段内避免重复请求 dept-person-stats (~1100ms)
+      // 2分钟前端缓存：缓存命中时直接恢复数据，避免组件重建后显示"暂无数据"
       const now = Date.now()
       const periodKey = JSON.stringify(this.periodRange)
-      if (!force && _cache.deptDataFetchedAt && (now - _cache.deptDataFetchedAt) < 2 * 60 * 1000 && _cache.deptDataPeriodKey === periodKey) return
+      if (!force && _cache.deptDataFetchedAt && (now - _cache.deptDataFetchedAt) < 2 * 60 * 1000 && _cache.deptDataPeriodKey === periodKey) {
+        if (_cache.deptDataList)        this.deptDataList        = _cache.deptDataList
+        if (_cache.deptPersonStatsList) this.deptPersonStatsList = _cache.deptPersonStatsList
+        this.$nextTick(() => { this.initDeptChart(); this.startListScroll('riskList','riskScrollInterval',35) })
+        return
+      }
       const t0 = performance.now()
       const [r, statsR] = await Promise.allSettled([
         getDeptHealthCounts(this.periodRange),
@@ -1526,8 +1699,10 @@ export default {
       }
       const stats = statsR.status === 'fulfilled' ? statsR.value : null
       this.deptPersonStatsList = (stats?.code === 200 && Array.isArray(stats.data)) ? stats.data : []
-      _cache.deptDataFetchedAt = Date.now()
-      _cache.deptDataPeriodKey = periodKey
+      _cache.deptDataFetchedAt       = Date.now()
+      _cache.deptDataPeriodKey       = periodKey
+      _cache.deptDataList            = this.deptDataList
+      _cache.deptPersonStatsList     = this.deptPersonStatsList
       this.$nextTick(() => { this.initDeptChart(); this.startListScroll('riskList','riskScrollInterval',35) })
     },
     async fetchDeptPersonStats() {
@@ -1780,9 +1955,19 @@ export default {
       }
     },
 
+    getReadyChartDom(target, retryFn) {
+      const dom = typeof target === 'string' ? document.getElementById(target) : target
+      if (!dom) return null
+      if (dom.clientWidth === 0 || dom.clientHeight === 0) {
+        if (retryFn) setTimeout(() => retryFn.call(this), 160)
+        return null
+      }
+      return dom
+    },
+
     // ─── ECharts ───
     initDeptChart() {
-      const dom = document.getElementById('deptDataChart')
+      const dom = this.getReadyChartDom('deptDataChart', this.initDeptChart)
       if (!dom) return
       if (this.charts.dept) this.charts.dept.dispose()
       const chart = echarts.init(dom)
@@ -1908,7 +2093,7 @@ export default {
         const el = this.$refs.deptDetailChartRef
         if (!el) return
         if (modal.chart) modal.chart.dispose()
-        const echartsLib = this.$echarts || window.echarts || (await import('@/utils/echarts-setup'))
+        const echartsLib = this.$echarts || window.echarts || (await import('@/utils/echarts-setup-radar'))
         modal.chart = markRaw(echartsLib.init(el, null, { renderer: 'canvas' }))
         modal.chart.setOption({
           backgroundColor: '#0a1628',
@@ -1975,7 +2160,7 @@ export default {
     },
 
     initEnvHealthChart() {
-      const el = this.$refs.envChartRef
+      const el = this.getReadyChartDom(this.$refs.envChartRef, this.initEnvHealthChart)
       if (!el) return
       if (this._envChart) this._envChart.dispose()
       this._envChart = echarts.init(el, 'dark')
@@ -2056,9 +2241,13 @@ export default {
     async fetchTrendDaily(force = false) {
       const days = { day: 7, week: 7, month: 30 }[this.activePeriod] || 30
       const now = Date.now()
-      // 5分钟前端缓存：日趋势数据变化极缓慢，无需每30秒重拉（每次~400-900ms）
+      // 5分钟前端缓存：缓存命中时直接恢复数据，避免组件重建后显示"暂无数据"
       if (!force && _cache.trendDailyFetchedAt && _cache.trendDailyDays === days
-          && (now - _cache.trendDailyFetchedAt) < 5 * 60 * 1000) return
+          && (now - _cache.trendDailyFetchedAt) < 5 * 60 * 1000) {
+        if (_cache.trendDailyData) this.trendDailyData = _cache.trendDailyData
+        this.$nextTick(() => this.initUnifiedTrendChart())
+        return
+      }
       const t0 = performance.now()
       try {
         const res = await getDailyTrend(days)
@@ -2066,16 +2255,22 @@ export default {
         this.trendDailyData = (res.code === 200 && Array.isArray(res.data)) ? res.data : []
         _cache.trendDailyFetchedAt = Date.now()
         _cache.trendDailyDays = days
+        _cache.trendDailyData = this.trendDailyData
+        this.$nextTick(() => this.initUnifiedTrendChart())
       } catch {
         this.trendDailyData = []
       }
     },
     async fetchWarningDist(force = false) {
-      // 2分钟前端缓存：相同时间段内避免重复请求 warning-counts (~960ms)
+      // 2分钟前端缓存：缓存命中时直接恢复数据，避免组件重建后显示"暂无数据"
       const now = Date.now()
       const groupBy = this.activePeriod === 'day' ? 'hour' : 'day'
       const wDistKey = JSON.stringify(this.periodRange) + groupBy
-      if (!force && _cache.warningDistFetchedAt && (now - _cache.warningDistFetchedAt) < 2 * 60 * 1000 && _cache.warningDistPeriodKey === wDistKey) return
+      if (!force && _cache.warningDistFetchedAt && (now - _cache.warningDistFetchedAt) < 2 * 60 * 1000 && _cache.warningDistPeriodKey === wDistKey) {
+        if (_cache.warningDistData) this.warningDistData = _cache.warningDistData
+        this.$nextTick(() => this.initHourDistChart())
+        return
+      }
       const t0 = performance.now()
       try {
         const res = await getWarningCounts({ ...this.periodRange, groupBy })
@@ -2085,6 +2280,8 @@ export default {
           : { labels: [], counts: [] }
         _cache.warningDistFetchedAt = Date.now()
         _cache.warningDistPeriodKey = wDistKey
+        _cache.warningDistData = this.warningDistData
+        this.$nextTick(() => this.initHourDistChart())
       } catch {
         this.warningDistData = { labels: [], counts: [] }
       }
@@ -2095,11 +2292,12 @@ export default {
         const res = await getWarningTypes({ month })
         if (res.code === 200 && Array.isArray(res.data)) {
           this.warningTypesData = res.data
+          this.$nextTick(() => this.initWarnTypeChart())
         }
       } catch(_) {}
     },
     initUnifiedTrendChart() {
-      const dom = this.$refs.unifiedTrendChart
+      const dom = this.getReadyChartDom(this.$refs.unifiedTrendChart, this.initUnifiedTrendChart)
       if (!dom) return
       if (this.charts.unifiedTrend) this.charts.unifiedTrend.dispose()
       const chart = echarts.init(dom)
@@ -2223,7 +2421,7 @@ export default {
     },
 
     initWarnTypeChart() {
-      const dom = document.getElementById('warnTypeChart')
+      const dom = this.getReadyChartDom('warnTypeChart', this.initWarnTypeChart)
       if (!dom) return
       if (this.charts.warnType) this.charts.warnType.dispose()
       const chart = echarts.init(dom)
@@ -2260,7 +2458,7 @@ export default {
     },
 
     initHourDistChart() {
-      const dom = document.getElementById('hourDistChart')
+      const dom = this.getReadyChartDom('hourDistChart', this.initHourDistChart)
       if (!dom) return
       if (this.charts.hourDist) this.charts.hourDist.dispose()
       const chart = echarts.init(dom)
@@ -2365,7 +2563,7 @@ export default {
       })
     },
     initGauge(id, value, highColor, lowColor) {
-      const dom = document.getElementById(id)
+      const dom = this.getReadyChartDom(id, () => this.initGauge(id, value, highColor, lowColor))
       if (!dom) return
       if (this.charts[id]) this.charts[id].dispose()
       const chart = echarts.init(dom)
@@ -2426,7 +2624,7 @@ export default {
         const el = this.$refs.metricDetailChartRef
         if (!el) return
         if (modal.chart) modal.chart.dispose()
-        const echartsLib = this.$echarts || window.echarts || (await import('@/utils/echarts-setup'))
+        const echartsLib = this.$echarts || window.echarts || (await import('@/utils/echarts-setup-radar'))
         modal.chart = markRaw(echartsLib.init(el, null, { renderer: 'canvas' }))
         modal.chart.setOption({
           backgroundColor: '#0a1628',
@@ -2838,6 +3036,7 @@ $white:  #e8f4ff;
 }
 // metrics 36+50=86, device 36+64=100, env 36+100=136, gaps 30 → model shrinks
 .dm-main-metrics { flex:0 0 116px; overflow:hidden; }
+.dm-main-dispatch { flex:0 0 auto; overflow:hidden; }
 .dm-main-model   { flex:1; min-height:0; overflow:hidden; }
 .dm-main-device  { flex:0 0 100px; overflow:hidden; }
 .dm-main-env     { flex:0 0 145px; overflow:hidden; }
@@ -2860,6 +3059,137 @@ $white:  #e8f4ff;
 .dm-metric-records { font-size:10px; color:rgba(139,166,200,0.7); margin-top:3px; font-family:'Consolas',monospace; }
 .dm-metric-rec-bar-wrap { width:100%; height:2px; background:rgba(255,255,255,0.05); border-radius:1px; overflow:hidden; margin-top:2px; }
 .dm-metric-rec-bar { height:100%; border-radius:1px; transition:width 1s ease; min-width:1px; }
+
+.dm-dispatch-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 0.9fr 1.2fr 1.5fr;
+  gap: 10px;
+  padding: 2px 14px 14px;
+}
+.dm-dispatch-rail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.8fr);
+  gap: 10px;
+  padding: 2px 14px 10px;
+}
+.dm-dispatch-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 108px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,212,255,0.16);
+  background: linear-gradient(135deg, rgba(11, 33, 58, 0.98), rgba(8, 20, 38, 0.96));
+}
+.dm-dispatch-hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -18%;
+  width: 44%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 68%);
+  opacity: 0.55;
+}
+.dm-dispatch-hero.tone-danger { border-color: rgba(255, 95, 95, 0.28); }
+.dm-dispatch-hero.tone-warn   { border-color: rgba(255, 210, 0, 0.24); }
+.dm-dispatch-hero.tone-accent { border-color: rgba(0, 212, 255, 0.22); }
+.dm-dispatch-hero.tone-calm   { border-color: rgba(56, 239, 125, 0.2); }
+.dm-dispatch-hero-label { position: relative; z-index: 1; font-size: 12px; color: rgba(139,166,200,0.82); }
+.dm-dispatch-hero-title {
+  position: relative; z-index: 1;
+  margin-top: 10px;
+  font-size: 26px; line-height: 1.15; font-weight: 800;
+  color: #edf7ff;
+}
+.dm-dispatch-hero-sub {
+  position: relative; z-index: 1;
+  margin-top: 10px;
+  font-size: 12px; line-height: 1.7; color: rgba(213, 235, 255, 0.78);
+}
+.dm-dispatch-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.dm-dispatch-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 108px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,212,255,0.12);
+  background: rgba(0,212,255,0.04);
+  color: #d8ecff;
+  text-align: left;
+  cursor: pointer;
+}
+.dm-dispatch-action:hover { background: rgba(0,212,255,0.08); border-color: rgba(0,212,255,0.3); }
+.dm-dispatch-action.tone-danger { border-color: rgba(255,95,95,0.22); }
+.dm-dispatch-action.tone-warn { border-color: rgba(255,210,0,0.2); }
+.dm-dispatch-action.tone-muted { border-color: rgba(139,166,200,0.16); }
+.dm-dispatch-action-label { font-size: 12px; color: rgba(139,166,200,0.82); }
+.dm-dispatch-action-value { font-size: 22px; font-weight: 800; color: #eef7ff; line-height: 1.1; }
+.dm-dispatch-action-sub { font-size: 11px; line-height: 1.6; color: rgba(143,181,211,0.88); }
+.dm-dispatch-card {
+  min-height: 138px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,212,255,0.12);
+  background: rgba(0,212,255,0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dm-dispatch-label { font-size: 12px; color: $dim; }
+.dm-dispatch-value { font-size: 30px; line-height: 1; font-weight: 700; font-family:'Consolas',monospace; }
+.dm-dispatch-value.danger { color: #ff5f5f; }
+.dm-dispatch-value.warn { color: #ffd200; }
+.dm-dispatch-desc { flex: 1; color: rgba(139,166,200,0.78); font-size: 12px; line-height: 1.7; }
+.dm-dispatch-btn,
+.dm-dispatch-link {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,212,255,0.22);
+  background: rgba(0,212,255,0.08);
+  color: #9fe2ff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.dm-dispatch-btn:hover,
+.dm-dispatch-link:hover { background: rgba(0,212,255,0.16); }
+.dm-dispatch-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.dm-dispatch-mini { color: rgba(139,166,200,0.7); font-size: 11px; }
+.dm-dispatch-list { display:flex; flex-direction:column; gap:8px; }
+.dm-dispatch-person {
+  display:grid;
+  grid-template-columns: 1fr auto auto;
+  align-items:center;
+  gap:8px;
+  width:100%;
+  padding:8px 10px;
+  border-radius:8px;
+  background: rgba(255,82,82,0.06);
+  border:1px solid rgba(255,82,82,0.15);
+  color:#d8ecff;
+  text-align:left;
+  cursor:pointer;
+}
+.dm-dispatch-person:hover { background: rgba(255,82,82,0.12); }
+.dm-dispatch-person-name { font-size:12px; font-weight:700; }
+.dm-dispatch-person-type,
+.dm-dispatch-person-val { font-size:11px; color:#8fb5d3; }
+.dm-dispatch-empty { color: rgba(139,166,200,0.74); font-size:12px; line-height:1.7; }
+.dm-dispatch-ai-text { margin:0; color:#d5ebff; font-size:12px; line-height:1.8; }
+.dm-dispatch-tags { display:flex; flex-wrap:wrap; gap:8px; }
+.dm-dispatch-tag {
+  display:inline-flex; align-items:center; padding:4px 10px;
+  border-radius:999px; background:rgba(255,255,255,0.05);
+  color:#8fb5d3; font-size:11px;
+}
 
 // ── 健康监测中心 ──
 .dm-model-body { flex:1; min-height:0; display:flex; overflow:hidden; }
@@ -3646,6 +3976,17 @@ $white:  #e8f4ff;
     padding: 6px 10px 8px;
   }
   .dm-metric-card { flex: none !important; }
+  .dm-dispatch-rail {
+    grid-template-columns: 1fr;
+    padding: 6px 10px 8px;
+  }
+  .dm-dispatch-actions {
+    grid-template-columns: 1fr;
+  }
+  .dm-dispatch-grid {
+    grid-template-columns: 1fr;
+    padding: 0 10px 10px;
+  }
 
   // ── 健康监测中心：预警列表 + 图表 竖向排列 ──
   .dm-model-body {

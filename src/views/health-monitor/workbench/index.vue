@@ -8,11 +8,15 @@
         <span class="wb-month-label">{{ yearLabel }}年 {{ monthLabel }}月</span>
         <el-button :icon="ArrowRight" circle size="small" @click="nextMonth" :disabled="isCurrentMonth" />
       </div>
+      <button v-if="route.query.empCode" class="wb-profile-btn" @click="backToProfile">返回画像</button>
       <div class="wb-legend">
         <span class="leg-dot leg-good"></span><span>健康</span>
         <span class="leg-dot leg-warn"></span><span>有预警</span>
         <span class="leg-dot leg-empty"></span><span>无数据</span>
       </div>
+      <el-button class="wb-pdf-btn" :loading="pdfExporting" @click="exportPDF" size="small">
+        📄 {{ pdfExporting ? '生成中...' : '导出月度PDF' }}
+      </el-button>
     </div>
 
     <!-- 统计卡片 -->
@@ -183,12 +187,16 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Close } from '@element-plus/icons-vue'
 import { getCalendarData, getDayHeartRateRank, getDayBloodOxygenRank, getDayStepsRank, getDayWarnings } from '@/api/workbench'
 import { getDeptHealthComparison } from '@/api/health'
-import * as echarts from '@/utils/echarts-setup'
+import * as echarts from '@/utils/echarts-setup-radar'
+import { getHtml2Canvas, getJsPDF } from '@/utils/lazy-vendors'
 
+const route = useRoute()
+const router = useRouter()
 const weekDays = ['日', '一', '二', '三', '四', '五', '六']
 
 // ── 当前月份 ────────────────────────────────────────────────────────
@@ -210,6 +218,17 @@ function nextMonth() {
   if (isCurrentMonth.value) return
   if (curMonth.value === 12) { curYear.value++; curMonth.value = 1 }
   else curMonth.value++
+}
+
+function backToProfile() {
+  if (!route.query.empCode) return
+  router.push({
+    path: '/health-monitor/employee-profile',
+    query: {
+      empCode: route.query.empCode,
+      empName: route.query.empName || ''
+    }
+  })
 }
 
 // ── 数据加载 ────────────────────────────────────────────────────────
@@ -436,6 +455,34 @@ function sbpClass(v)  { return !v ? '' : v >= 140 ? 'wt-red' : v >= 130 ? 'wt-or
 function pressClass(v){ return !v ? '' : v > 70 ? 'wt-red' : v > 50 ? 'wt-orange' : '' }
 
 onMounted(() => { loadData(); loadDeptComparison() })
+
+const pdfExporting = ref(false)
+
+async function exportPDF() {
+  pdfExporting.value = true
+  try {
+    const html2canvas = await getHtml2Canvas()
+    const JsPDF = await getJsPDF()
+    const el = document.querySelector('.wb-page')
+    if (!el) { ElMessage.error('页面元素未找到'); return }
+    const canvas = await html2canvas(el, {
+      backgroundColor: '#080d23',
+      scale: 1.5,
+      useCORS: true,
+      logging: false
+    })
+    const imgW = 210  // A4 width mm
+    const imgH = canvas.height * imgW / canvas.width
+    const pdf = new JsPDF({ orientation: imgH > imgW ? 'p' : 'l', unit: 'mm', format: [imgW, imgH] })
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, imgW, imgH)
+    pdf.save(`健康工作台_${yearLabel.value}年${monthLabel.value}月.pdf`)
+    ElMessage.success('PDF 已生成')
+  } catch (e) {
+    ElMessage.error('PDF 生成失败：' + e.message)
+  } finally {
+    pdfExporting.value = false
+  }
+}
 </script>
 
 <style scoped lang="scss">
@@ -462,6 +509,16 @@ onMounted(() => { loadData(); loadDeptComparison() })
   align-items: center;
   gap: 8px;
 }
+.wb-profile-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,212,255,0.28);
+  background: rgba(0,212,255,0.08);
+  color: #b7e9ff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.wb-profile-btn:hover { background: rgba(0,212,255,0.16); }
 .wb-month-label {
   font-size: 16px;
   font-weight: 600;
@@ -475,6 +532,14 @@ onMounted(() => { loadData(); loadDeptComparison() })
   gap: 6px;
   font-size: 12px;
   margin-left: auto;
+}
+.wb-pdf-btn {
+  margin-left: 12px;
+  background: rgba(0,212,255,.1) !important;
+  border-color: rgba(0,212,255,.3) !important;
+  color: #00d4ff !important;
+  font-size: 12px !important;
+  &:hover { background: rgba(0,212,255,.2) !important; }
 }
 .leg-dot {
   width: 10px; height: 10px; border-radius: 50%; display: inline-block;

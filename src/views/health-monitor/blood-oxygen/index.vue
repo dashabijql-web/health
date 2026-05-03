@@ -280,7 +280,6 @@
 
 <script>
 import dayjs from 'dayjs'
-import * as XLSX from 'xlsx'
 import { ElMessage } from 'element-plus'
 import {
   getBloodOxygenOverview,
@@ -297,6 +296,7 @@ import { initChart, distOption, gaugeOption, gradH, gradV } from '@/utils/chart-
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, ageGrid, barLabel } from '@/utils/echarts-config'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
+import { exportToExcel } from '@/utils/export-excel'
 
 export default {
   name: 'BloodOxygenAnalysis',
@@ -403,19 +403,26 @@ export default {
   },
   methods: {
 
-    exportExcel() {
+    async exportExcel() {
       const list = this.realtimeList
       if (!list.length) { ElMessage.warning('暂无数据可导出'); return }
       const data = list.map(r => ({
-        '姓名': r.userName || '--', '部门': r.deptName || '--', '工号': r.empCode || '--',
-        '血氧饱和度(%)': r.bloodOxygen ?? '--',
-        '状态': (r.bloodOxygen && r.bloodOxygen < 95) ? '异常' : '正常',
-        '记录时间': r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
+        userName: r.userName || '--',
+        deptName: r.deptName || '--',
+        empCode: r.empCode || '--',
+        bloodOxygen: r.bloodOxygen ?? '--',
+        status: (r.bloodOxygen && r.bloodOxygen < 95) ? '异常' : '正常',
+        recordTime: r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
       }))
-      const ws = XLSX.utils.json_to_sheet(data)
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, '血氧数据')
-      XLSX.writeFile(wb, `血氧分析_${dayjs().format('YYYYMMDD')}.xlsx`)
+      const cols = [
+        { label: '姓名', key: 'userName' },
+        { label: '部门', key: 'deptName' },
+        { label: '工号', key: 'empCode' },
+        { label: '血氧饱和度(%)', key: 'bloodOxygen' },
+        { label: '状态', key: 'status' },
+        { label: '记录时间', key: 'recordTime' }
+      ]
+      await exportToExcel(data, cols, `血氧分析_${dayjs().format('YYYYMMDD')}`)
       ElMessage.success(`已导出 ${list.length} 条记录`)
     },
 
