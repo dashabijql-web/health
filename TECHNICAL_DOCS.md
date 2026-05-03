@@ -859,6 +859,7 @@ beforeUnmount() {
 
 **推荐命令：**
 ```bash
+npm run audit:ci
 npm run audit:api
 npm run audit:write
 npm run audit:pipeline
@@ -889,6 +890,7 @@ npm run audit:e2e
 6. 自动删除探针产生的健康记录、预警记录和残留 Redis payload
 
 注意：`audit:pipeline` 会短暂写入和回收真实本地数据，因此默认不并入 `audit:all`。
+`audit:ci` 只跑云端安全的构建检查，供 GitHub Actions 使用；其余 `audit:*` 依赖本地后端、SQL Server、Redis、TCP 9000 或浏览器环境，仍属于本地回归。
 
 ---
 
