@@ -9,6 +9,8 @@ const ARTIFACT_DIR = path.resolve(process.cwd(), 'tests', 'api', 'artifacts', RU
 const REPORT_JSON = path.join(ARTIFACT_DIR, 'summary.json');
 const REPORT_MD = path.join(ARTIFACT_DIR, 'summary.md');
 const MONTH_KEY = new Date().toISOString().slice(0, 7);
+const TODAY_KEY = new Date().toISOString().slice(0, 10);
+const [CURRENT_YEAR, CURRENT_MONTH] = MONTH_KEY.split('-').map(Number);
 
 const TARGETS = [
   { label: 'vite-127', origin: 'http://127.0.0.1:9528', apiPrefix: '/dev-api' },
@@ -207,6 +209,7 @@ function buildMarkdownReport() {
 
 const session = await resolveSession();
 summary.target = session.target;
+let sampleCalendarDate = TODAY_KEY;
 
 await runCheck('auth.info', async () => {
   const result = await requestJson(session, 'GET', '/auth/info');
@@ -242,6 +245,52 @@ await runCheck('dashboard.pre-shift-compliance', async () => {
   assert(isObject(result.payload.data), 'pre-shift compliance data is not object');
 });
 
+await runCheck('dashboard.calendar', async () => {
+  const result = await requestJson(session, 'GET', '/dashboard/calendar', {
+    query: { year: CURRENT_YEAR, month: CURRENT_MONTH }
+  });
+  assertResultOk(result);
+  assert(Array.isArray(result.payload.data), 'calendar data is not array');
+  sampleCalendarDate = result.payload.data.find((item) => item?.date)?.date || TODAY_KEY;
+  return `${result.payload.data.length} days @ ${sampleCalendarDate}`;
+});
+
+await runCheck('dashboard.calendar.day-heart-rate', async () => {
+  const result = await requestJson(session, 'GET', '/dashboard/calendar/day-heart-rate', {
+    query: { date: sampleCalendarDate }
+  });
+  assertResultOk(result);
+  assert(Array.isArray(result.payload.data), 'day heart rate rank data is not array');
+  return `${result.payload.data.length} rows`;
+});
+
+await runCheck('dashboard.calendar.day-blood-oxygen', async () => {
+  const result = await requestJson(session, 'GET', '/dashboard/calendar/day-blood-oxygen', {
+    query: { date: sampleCalendarDate }
+  });
+  assertResultOk(result);
+  assert(Array.isArray(result.payload.data), 'day blood oxygen rank data is not array');
+  return `${result.payload.data.length} rows`;
+});
+
+await runCheck('dashboard.calendar.day-steps', async () => {
+  const result = await requestJson(session, 'GET', '/dashboard/calendar/day-steps', {
+    query: { date: sampleCalendarDate }
+  });
+  assertResultOk(result);
+  assert(Array.isArray(result.payload.data), 'day steps rank data is not array');
+  return `${result.payload.data.length} rows`;
+});
+
+await runCheck('dashboard.calendar.day-warnings', async () => {
+  const result = await requestJson(session, 'GET', '/dashboard/calendar/day-warnings', {
+    query: { date: sampleCalendarDate }
+  });
+  assertResultOk(result);
+  assert(Array.isArray(result.payload.data), 'day warnings data is not array');
+  return `${result.payload.data.length} rows`;
+});
+
 await runCheck('dashboard.mine-entry-list', async () => {
   const result = await requestJson(session, 'GET', '/dashboard/mine-entry-list', { query: { size: 20 } });
   assertResultOk(result);
@@ -263,6 +312,19 @@ await runCheck('realtime.online-users', async () => {
   return `${list.length} rows`;
 });
 
+await runCheck('realtime.statistics', async () => {
+  const result = await requestJson(session, 'GET', '/realtime/statistics');
+  assertResultOk(result);
+  assert(isObject(result.payload.data), 'realtime statistics data is not object');
+});
+
+await runCheck('realtime.alerts', async () => {
+  const result = await requestJson(session, 'GET', '/realtime/alerts', { query: { limit: 20 } });
+  assertResultOk(result);
+  assert(Array.isArray(result.payload.data), 'realtime alerts data is not array');
+  return `${result.payload.data.length} rows`;
+});
+
 await runCheck('risk-warning.overview', async () => {
   const result = await requestJson(session, 'GET', '/risk-warning/overview');
   assertResultOk(result);
@@ -275,6 +337,26 @@ await runCheck('risk-warning.list', async () => {
   assert(isObject(result.payload.data), 'risk list data is not object');
   const list = pickArray(result.payload.data);
   return `${list.length} rows`;
+});
+
+await runCheck('risk-warning.trend', async () => {
+  const result = await requestJson(session, 'GET', '/risk-warning/trend', { query: { days: 30 } });
+  assertResultOk(result);
+  assert(isObject(result.payload.data), 'risk trend data is not object');
+});
+
+await runCheck('risk-warning.dept-stats', async () => {
+  const result = await requestJson(session, 'GET', '/risk-warning/dept-stats');
+  assertResultOk(result);
+  assert(Array.isArray(result.payload.data), 'risk dept stats data is not array');
+  return `${result.payload.data.length} rows`;
+});
+
+await runCheck('risk-warning.type-distribution', async () => {
+  const result = await requestJson(session, 'GET', '/risk-warning/type-distribution');
+  assertResultOk(result);
+  assert(Array.isArray(result.payload.data), 'risk type distribution data is not array');
+  return `${result.payload.data.length} rows`;
 });
 
 await runCheck('statistics.dept-summary', async () => {
@@ -326,6 +408,12 @@ await runCheck('employee.list-detail', async () => {
   return sampleEmpCode;
 });
 
+await runCheck('employee.stats', async () => {
+  const result = await requestJson(session, 'GET', '/employee/stats');
+  assertResultOk(result);
+  assert(isObject(result.payload.data), 'employee stats data is not object');
+});
+
 await runCheck('health-portrait.sample', async () => {
   if (!sampleEmpCode) return 'skipped';
   const result = await requestJson(session, 'GET', `/health-portrait/${encodeURIComponent(sampleEmpCode)}`);
@@ -336,6 +424,31 @@ await runCheck('health-portrait.sample', async () => {
   assert(isObject(data.trend), 'health portrait missing trend');
   assert(Array.isArray(data.warnings), 'health portrait warnings is not array');
   return sampleEmpCode;
+});
+
+await runCheck('health-record.page', async () => {
+  const result = await requestJson(session, 'GET', '/api/health/record/page', {
+    query: { current: 1, size: 10, userCode: sampleEmpCode || undefined }
+  });
+  assertResultOk(result);
+  assert(isObject(result.payload.data), 'health record page data is not object');
+  assert(Array.isArray(result.payload.data.records), 'health record page records is not array');
+  return `${result.payload.data.records.length} rows`;
+});
+
+await runCheck('device.online', async () => {
+  const result = await requestJson(session, 'GET', '/api/device/online');
+  assertResultOk(result);
+  assert(isObject(result.payload.data), 'device online data is not object');
+  assert(Array.isArray(result.payload.data.devices), 'device online devices is not array');
+  return `${result.payload.data.count || result.payload.data.devices.length} devices`;
+});
+
+await runCheck('alert-config.list', async () => {
+  const result = await requestJson(session, 'GET', '/alert-config/list');
+  assertResultOk(result);
+  assert(Array.isArray(result.payload.data), 'alert config list data is not array');
+  return `${result.payload.data.length} rows`;
 });
 
 summary.finishedAt = new Date().toISOString();

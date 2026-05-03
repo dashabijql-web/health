@@ -309,23 +309,27 @@ export default {
            * .catch()：登录失败（用户名/密码错误等），关闭 loading
            */
           this.$store.dispatch('user/login', this.loginForm).then(() => {
-            /**
-             * 登录成功，执行跳转
-             *
-             * 安全过滤 redirect 参数：
-             *   - redirect 存在且不是 /404 也不是 /login → 跳转到 redirect 指定的页面
-             *   - 否则 → 跳转到首页 /
-             *
-             * 为什么过滤 /404 和 /login？
-             *   - 跳到 /404 对用户没意义
-             *   - 跳到 /login 会造成循环（刚登录又跳登录页）
-             */
-            const safePath = (this.redirect && this.redirect !== '/404' && this.redirect !== '/login')
-              ? this.redirect
-              : '/health-monitor/dashboard'
+            // 登录完成后，先拉取用户信息并注入业务路由，再跳目标页。
+            // 否则首次 push 到业务页时，Vue Router 会先对“未注册路由”报警告。
+            return this.$store.dispatch('user/getInfo').then(() => {
+              /**
+               * 登录成功，执行跳转
+               *
+               * 安全过滤 redirect 参数：
+               *   - redirect 存在且不是 /404 也不是 /login → 跳转到 redirect 指定的页面
+               *   - 否则 → 跳转到首页 /
+               *
+               * 为什么过滤 /404 和 /login？
+               *   - 跳到 /404 对用户没意义
+               *   - 跳到 /login 会造成循环（刚登录又跳登录页）
+               */
+              const safePath = (this.redirect && this.redirect !== '/404' && this.redirect !== '/login')
+                ? this.redirect
+                : '/health-monitor/dashboard'
 
-            this.$router.push({ path: safePath })  // 跳转到目标页
-            this.loading = false                    // 关闭 loading
+              this.$router.push({ path: safePath })  // 跳转到目标页
+              this.loading = false                    // 关闭 loading
+            })
           }).catch(() => {
             // 登录失败（request.js 的响应拦截器会显示错误提示）
             this.loading = false
