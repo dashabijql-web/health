@@ -56,6 +56,12 @@ python scripts/run_backend_regression.py
 2. `python scripts/check_health_field_sync.py`
 3. `python scripts/probe_redis_buffer_flush.py`
 
+在 GitHub Actions 的 `CI=true` 模式下，同一个入口会自动：
+
+1. 保留 `compile`
+2. 通过 `HEALTH_SKIP_DB_CHECK=true` 将字段同步检查降级为源码守卫
+3. 跳过 Redis live probe（`HEALTH_SKIP_REDIS_PROBE=true`）
+
 ## 手工检查
 
 下面这些仍然必须人工确认：
@@ -83,9 +89,15 @@ python scripts/run_backend_regression.py
 
 ```powershell
 cd ..\HealthShow
+npm run audit:ci
 npm run audit:api
 npm run audit:pipeline
 npm run audit:pipeline-warning
 npm run audit:e2e
 npm run build
 ```
+
+说明：
+
+- GitHub Actions 只跑云端安全的 `npm run audit:ci`
+- `audit:api / audit:write / audit:pipeline / audit:pipeline-warning / audit:e2e` 仍然依赖本地后端、SQL Server、Redis、TCP 9000 或浏览器环境

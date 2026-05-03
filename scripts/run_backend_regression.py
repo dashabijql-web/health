@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Run the backend regression guardrails that are safe on a live local environment."""
+"""Run backend regression guardrails.
+
+By default this entrypoint runs the full local guardrail set:
+- Maven compile
+- health field wiring checks (including live DB checks when available)
+- Redis buffer flush probe
+
+In CI (`CI=true` / `GITHUB_ACTIONS=true`) or when `HEALTH_SKIP_REDIS_PROBE=true`,
+the Redis live probe is skipped automatically. If `HEALTH_SKIP_DB_CHECK=true` is
+set, the field-sync check downgrades to code-only validation.
+"""
 
 from __future__ import annotations
 
@@ -12,23 +22,37 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 MAVEN_BIN = os.getenv("MAVEN_BIN") or shutil.which("mvn.cmd") or shutil.which("mvn")
-SCRIPTS = [
-    ("compile", [MAVEN_BIN, "-q", "-DskipTests", "compile"] if MAVEN_BIN else None),
-    ("field_sync", ROOT / "scripts" / "check_health_field_sync.py"),
-    ("redis_buffer_probe", ROOT / "scripts" / "probe_redis_buffer_flush.py"),
-]
+CI_MODE = os.getenv("CI", "").lower() in {"1", "true", "yes"} or os.getenv("GITHUB_ACTIONS", "").lower() in {"1", "true", "yes"}
+SKIP_REDIS_PROBE = os.getenv("HEALTH_SKIP_REDIS_PROBE", "").lower() in {"1", "true", "yes"} or CI_MODE
 
 
-def run_step(label: str, command: list[str]) -> int:
-    print(f"== {label} ==")
-    completed = subprocess.run(command, cwd=ROOT)
-    print()
+def run_step(label: str, command: list[str], extra_env: dict[str, str] | None = None) -> int:
+    print(f"== {label} ==", flush=True)
+    env = os.environ.copy()
+    if extra_env:
+        env.update(extra_env)
+    completed = subprocess.run(command, cwd=ROOT, env=env)
+    print(flush=True)
     return completed.returncode
 
 
 def main() -> int:
     failures: list[str] = []
-    for label, target in SCRIPTS:
+    steps: list[tuple[str, list[str] | Path | None, dict[str, str] | None]] = [
+        ("compile", [MAVEN_BIN, "-q", "-DskipTests", "compile"] if MAVEN_BIN else None, None),
+        (
+            "field_sync",
+            ROOT / "scripts" / "check_health_field_sync.py",
+            {"HEALTH_SKIP_DB_CHECK": os.environ.get("HEALTH_SKIP_DB_CHECK", "true" if CI_MODE else "false")},
+        ),
+    ]
+    if not SKIP_REDIS_PROBE:
+        steps.append(("redis_buffer_probe", ROOT / "scripts" / "probe_redis_buffer_flush.py", None))
+    else:
+        print("== redis_buffer_probe ==", flush=True)
+        print("Skipped (CI mode or HEALTH_SKIP_REDIS_PROBE=true)\n", flush=True)
+
+    for label, target, extra_env in steps:
         if target is None:
             failures.append(f"{label} (maven executable not found)")
             continue
@@ -36,17 +60,17 @@ def main() -> int:
             command = [sys.executable, str(target)]
         else:
             command = target
-        code = run_step(label, command)
+        code = run_step(label, command, extra_env=extra_env)
         if code != 0:
             failures.append(f"{label} (exit {code})")
 
     if failures:
-        print("Backend regression summary: FAILED")
+        print("Backend regression summary: FAILED", flush=True)
         for failure in failures:
-            print(f"  - {failure}")
+            print(f"  - {failure}", flush=True)
         return 1
 
-    print("Backend regression summary: PASSED")
+    print("Backend regression summary: PASSED", flush=True)
     return 0
 
 

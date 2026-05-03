@@ -240,6 +240,7 @@ def build_report(
 
     lines.extend(["", "Auto-checked SQL runtime objects:"])
 
+    db_warning_text = "; ".join(db_warnings) if db_warnings else ""
     for label in (
         "sql.current_health_table",
         "sql.v_health_record",
@@ -250,9 +251,8 @@ def build_report(
     ):
         if label in db_issues:
             lines.append(f"  - {label}: missing {', '.join(db_issues[label])}")
-        elif db_warnings and label == "sql.current_health_table":
-            for warning in db_warnings:
-                lines.append(f"  - db-check: {warning}")
+        elif db_warning_text:
+            lines.append(f"  - {label}: skipped ({db_warning_text})")
         else:
             lines.append(f"  - {label}: OK")
 
