@@ -89,7 +89,7 @@
         </div>
         <div class="ni-mid">
           <span class="ni-type">{{ item.indicatorName || item.warningType || '--' }}</span>
-          <span class="ni-val">{{ item.indicatorValue || '--' }}</span>
+          <span class="ni-val">{{ item.warningValue || item.indicatorValue || '--' }}</span>
         </div>
         <div class="ni-time">{{ formatTime(item.createTime) }}</div>
         <div class="ni-actions" @click.stop>

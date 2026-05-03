@@ -862,6 +862,7 @@ beforeUnmount() {
 npm run audit:api
 npm run audit:write
 npm run audit:pipeline
+npm run audit:pipeline-warning
 npm run audit:e2e
 ```
 
@@ -878,6 +879,14 @@ npm run audit:e2e
 4. 验证 `/api/health/record/page`、`/health-portrait/{empCode}`、`/realtime/user/{userCode}`
 5. 用 Playwright 打开 `employee-profile` 页面确认体征卡片
 6. 自动删除探针 SQL 行并清理残留 Redis payload
+
+`audit:pipeline-warning` 则专门覆盖异常链路：
+1. 向 TCP `9000` 发送高温综合探针（`AP00 + APHP`，体温超出当前高危阈值）
+2. 等待 `warning_record_YYYYMM` 写入新的 `体温异常 / 高危` 预警
+3. 验证 `/risk-warning/list` 能返回该预警
+4. 用 Playwright 打开 `/alert-management/notifications`，筛到该员工并点一次“处理”
+5. 回查 SQL 确认该预警已标记处理
+6. 自动删除探针产生的健康记录、预警记录和残留 Redis payload
 
 注意：`audit:pipeline` 会短暂写入和回收真实本地数据，因此默认不并入 `audit:all`。
 
