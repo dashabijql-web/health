@@ -107,6 +107,7 @@ public class AiChatController {
                 log.error("流式对话失败", e);
                 try {
                     emitter.send(SseEmitter.event().data("[ERROR]" + e.getMessage()));
+                    emitter.send(SseEmitter.event().data("[DONE]"));
                     emitter.complete();
                 } catch (IOException ex) { emitter.completeWithError(ex); }
             }

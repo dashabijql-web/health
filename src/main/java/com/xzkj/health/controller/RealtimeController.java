@@ -3,6 +3,7 @@ package com.xzkj.health.controller;
 import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.service.RealtimeService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * 实时监控控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/realtime")
 public class RealtimeController {
@@ -44,7 +46,8 @@ public class RealtimeController {
     public Result<Map<String, Object>> getOnlineUsers(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10000") Integer size) {
-        size = DateParamUtil.clampSize(size, 10000);
+        page = Math.max(1, page == null ? 1 : page);
+        size = Math.max(1, DateParamUtil.clampSize(size == null ? 10000 : size, 10000));
         // 只对 page=1 的全量请求做缓存（size≥200 视为全量拉取）
         if (page == 1 && size >= 200) {
             long now = System.currentTimeMillis();
@@ -52,11 +55,21 @@ public class RealtimeController {
             if (cached != null && now < onlineUsersCacheExpire.get() && onlineUsersCachedSize == size) {
                 return Result.ok("获取成功", cached);
             }
-            Map<String, Object> data = realtimeService.getOnlineUsers(page, size);
-            onlineUsersCache.set(data);
-            onlineUsersCacheExpire.set(now + ONLINE_USERS_TTL);
-            onlineUsersCachedSize = size;
-            return Result.ok("获取成功", data);
+            try {
+                Map<String, Object> data = realtimeService.getOnlineUsers(page, size);
+                onlineUsersCache.set(data);
+                onlineUsersCacheExpire.set(System.currentTimeMillis() + ONLINE_USERS_TTL);
+                onlineUsersCachedSize = size;
+                return Result.ok("获取成功", data);
+            } catch (Exception e) {
+                log.warn("实时监控在线用户查询失败，尝试返回过期缓存: {}", e.getMessage());
+                if (cached != null) {
+                    Map<String, Object> stale = new HashMap<>(cached);
+                    stale.put("stale", true);
+                    return Result.ok("获取成功（缓存）", stale);
+                }
+                return Result.error("实时监控数据加载失败，请稍后重试");
+            }
         }
         return Result.ok("获取成功", realtimeService.getOnlineUsers(page, size));
     }

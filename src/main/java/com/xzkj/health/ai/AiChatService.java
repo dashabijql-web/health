@@ -57,6 +57,27 @@ public class AiChatService {
         "ALTER", "CREATE", "EXEC", "EXECUTE", "MERGE", "GRANT", "REVOKE"
     );
 
+    // 解释查询结果的系统 Prompt（P0：要求 Markdown 格式输出）
+    private static final String INTERPRETER_SYSTEM_PROMPT = """
+            你是一个煤矿工人健康管理系统的智能助手，拥有完整的对话记忆。
+            用户提问后，系统已经查询了数据库，请根据查询结果用自然、友好的中文回答用户问题。
+            如果用户引用了之前的问题（如"他"、"这个部门"、"刚才说的"），请结合对话历史理解。
+
+            【Markdown 格式要求 - 必须严格遵守，禁止把列表挤成一段话】
+            - 排名/列表：每条占一行，使用有序列表格式，例如：
+              1. **机电队**：80.39 次/分
+              2. **地测科**：80.32 次/分
+            - 多列数据对比（≥3列）：使用 Markdown 表格 | 列名 | 列名 |
+            - 关键数值加粗：**96.77%**、**50人**
+            - 健康建议放最后，用 > 引用块
+
+            【内容要求】
+            - 直接回答，不要说"根据查询结果"等废话
+            - 英文字段名翻译成中文（heart_rate→心率，blood_oxygen→血氧，dept_name→部门）
+            - 结果为空时告知用户
+            - 回答不超过400字
+            """;
+
     // 每个 session 最多保留最近 N 轮对话，防止 token 超限
     private static final int MAX_HISTORY_TURNS = 5;
     // Redis key 前缀，TTL 24小时
@@ -96,10 +117,10 @@ public class AiChatService {
         List<Map<String, Object>> history = loadHistory(sessionId);
 
         // ─── Step 2: 第一次调用 DeepSeek → 生成 SQL ──────────────────────
-        // SQL 生成不带历史（历史对话不影响SQL逻辑，且避免干扰LLM生成SQL）
+        // SQL 生成带历史上下文，让 LLM 理解"那个部门"/"他"等指代
         String schema = schemaProvider.getSchema();
-        log.info("Step 2: 调用 DeepSeek 生成 SQL...");
-        String llmResponse = deepSeekClient.chat(schema, userQuestion);
+        log.info("Step 2: 调用 DeepSeek 生成 SQL（history={}轮）...", history.size() / 2);
+        String llmResponse = deepSeekClient.chatWithHistory(schema, history, userQuestion);
         log.info("DeepSeek 返回: {}", llmResponse);
 
         // ─── Step 3: 提取 SQL → 安全校验 → 执行（含自动修复重试）──────────
@@ -119,26 +140,13 @@ public class AiChatService {
             // ─── Step 4: 第二次调用 DeepSeek → 解释查询结果（带历史）──────
             log.info("Step 4: 调用 DeepSeek 解释查询结果（history={} 轮）...", history.size() / 2);
 
-            String interpreterSystemPrompt = """
-                    你是一个煤矿工人健康管理系统的智能助手，拥有完整的对话记忆。
-                    用户提问后，系统已经查询了数据库，请根据查询结果用自然、友好的中文回答用户问题。
-                    如果用户引用了之前的问题（如"他"、"这个部门"、"刚才说的"），请结合对话历史理解。
-
-                    要求：
-                    1. 直接回答问题，不要说"根据查询结果"这类废话
-                    2. 数据中的英文字段名要翻译成中文
-                    3. 如果结果为空，告知用户没有找到相关数据
-                    4. 适当给出健康建议（如心率偏高提示注意休息）
-                    5. 回答简洁，不超过300字
-                    """;
-
             String interpreterUserMessage = String.format(
                 "用户问题：%s\n\n数据库查询结果（JSON格式）：\n%s",
                 userQuestion,
                 JSON.toJSONString(queryResult)
             );
 
-            finalAnswer = deepSeekClient.chatWithHistory(interpreterSystemPrompt, history, interpreterUserMessage);
+            finalAnswer = deepSeekClient.chatWithHistory(INTERPRETER_SYSTEM_PROMPT, history, interpreterUserMessage);
         }
 
         // ─── Step 5: 追加本轮对话并持久化到 Redis ──────────────────────────
@@ -171,9 +179,9 @@ public class AiChatService {
 
         List<Map<String, Object>> history = loadHistory(sessionId);
 
-        // Step 1: 生成 SQL（同步调用，因为要先拿到查询结果才能解释）
+        // Step 1: 生成 SQL（同步调用，带历史上下文让 LLM 理解追问指代）
         String schema = schemaProvider.getSchema();
-        String llmResponse = deepSeekClient.chat(schema, userQuestion);
+        String llmResponse = deepSeekClient.chatWithHistory(schema, history, userQuestion);
         String sql = extractSql(llmResponse);
 
         String interpreterUserMessage;
@@ -191,9 +199,10 @@ public class AiChatService {
         }
 
         // Step 2: 安全校验 + 执行 SQL（含自动修复）
-        validateSql(sql);
+        // validateSql 在 try-catch 内，确保校验失败时也能发 [DONE] 关闭前端 loading
         List<Map<String, Object>> queryResult;
         try {
+            validateSql(sql);
             queryResult = executeWithRetry(sql, schema, userQuestion);
         } catch (Exception e) {
             String errMsg = "抱歉，查询执行失败：" + e.getMessage();
@@ -204,19 +213,6 @@ public class AiChatService {
         }
 
         // Step 3: 流式调用 DeepSeek 解释结果
-        String interpreterSystemPrompt = """
-                你是一个煤矿工人健康管理系统的智能助手，拥有完整的对话记忆。
-                用户提问后，系统已经查询了数据库，请根据查询结果用自然、友好的中文回答用户问题。
-                如果用户引用了之前的问题（如"他"、"这个部门"、"刚才说的"），请结合对话历史理解。
-
-                要求：
-                1. 直接回答问题，不要说"根据查询结果"这类废话
-                2. 数据中的英文字段名要翻译成中文
-                3. 如果结果为空，告知用户没有找到相关数据
-                4. 适当给出健康建议（如心率偏高提示注意休息）
-                5. 回答简洁，不超过300字
-                """;
-
         interpreterUserMessage = String.format(
             "用户问题：%s\n\n数据库查询结果（JSON格式）：\n%s",
             userQuestion, JSON.toJSONString(queryResult)
@@ -225,9 +221,10 @@ public class AiChatService {
         final String finalSessionId = sessionId;
         final String finalQuestion = userQuestion;
         final String finalSql = sql;
+        final List<Map<String, Object>> finalQueryResult = queryResult;
 
         deepSeekClient.chatStream(
-            interpreterSystemPrompt, history, interpreterUserMessage,
+            INTERPRETER_SYSTEM_PROMPT, history, interpreterUserMessage,
             // onToken：每收到一个 token，立刻发给前端
             token -> {
                 try {
@@ -236,11 +233,16 @@ public class AiChatService {
                     throw new RuntimeException("SSE 发送失败", e);
                 }
             },
-            // onDone：流结束，发 SQL 调试信息、追加历史并发 DONE
+            // onDone：流结束，发数据/SQL/SESSION/DONE，追加历史
             fullContent -> {
                 appendToHistory(history, finalQuestion, fullContent, finalSessionId);
                 try {
-                    // 发送 SQL 调试信息（Base64 编码避免换行符破坏 SSE 格式）
+                    // 发送原始查询结果（P1：供前端渲染表格/图表）
+                    String dataB64 = java.util.Base64.getEncoder()
+                        .encodeToString(JSON.toJSONString(finalQueryResult)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    emitter.send(SseEmitter.event().data("[DATA]:" + dataB64));
+                    // 发送 SQL 调试信息
                     String sqlB64 = java.util.Base64.getEncoder()
                         .encodeToString(finalSql.getBytes(java.nio.charset.StandardCharsets.UTF_8));
                     emitter.send(SseEmitter.event().data("[SQL]:" + sqlB64));
@@ -392,8 +394,8 @@ public class AiChatService {
     private void validateSql(String sql) {
         String upperSql = sql.toUpperCase().trim();
 
-        // 必须以 SELECT 开头
-        if (!upperSql.startsWith("SELECT")) {
+        // 必须以 SELECT 或 WITH（CTE）开头
+        if (!upperSql.startsWith("SELECT") && !upperSql.startsWith("WITH")) {
             throw new IllegalArgumentException("安全校验失败：只允许 SELECT 查询，当前SQL不是SELECT语句");
         }
 

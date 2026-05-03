@@ -108,9 +108,9 @@ public class SchemaProvider {
                     user_code,             -- 员工工号
                     warning_type,          -- 预警类型（如：心率异常、血氧低、高血压、体温异常）
                     warning_level,         -- 预警级别（LOW/MEDIUM/HIGH）
-                    warning_time,          -- 预警时间
+                    create_time,           -- 预警时间
                     is_handled,            -- 是否已处理（0未处理/1已处理）
-                    handle_remark          -- 处理备注
+                    remark                 -- 处理备注
                 FROM warning_record_202601  -- 实际有多个月份分区表
 
                 【常用查询示例 - 必须按照这些示例的列名格式生成SQL】
@@ -165,6 +165,19 @@ public class SchemaProvider {
                 FROM v_health_record h
                 WHERE (h.heart_rate > 100 OR h.heart_rate < 60)
                   AND h.record_time >= DATEADD(DAY, -7, GETDATE())
+
+                -- 示例7：追问场景——用户说"心率最高的那个部门血氧如何"，对话历史已知是"机电队"
+                -- 【关键规则】有对话历史时，直接用 WHERE d.dept_name = '具体部门名' 查询，
+                -- 禁止用 HAVING AVG(...) = (SELECT MAX(...)) 这种 float 精度陷阱写法
+                SELECT d.dept_name AS 部门名称,
+                       AVG(CAST(h.blood_oxygen AS FLOAT)) AS 平均血氧,
+                       COUNT(DISTINCT h.user_code) AS 员工数
+                FROM v_health_record h
+                JOIN employee e ON h.user_code = e.emp_code
+                JOIN department d ON e.dept_id = d.id
+                WHERE d.dept_name = '机电队'
+                  AND h.blood_oxygen IS NOT NULL AND h.blood_oxygen > 0
+                GROUP BY d.dept_name
                 """;
     }
 }

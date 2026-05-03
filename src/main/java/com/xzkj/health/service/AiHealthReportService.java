@@ -14,6 +14,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -27,6 +29,9 @@ public class AiHealthReportService {
 
     @Value("${deepseek.api-key}")
     private String apiKey;
+
+    @Value("${deepseek.api-key-file:}")
+    private String apiKeyFile;
 
     @Value("${deepseek.api-url}")
     private String apiUrl;
@@ -44,6 +49,8 @@ public class AiHealthReportService {
     private HealthPortraitMapper healthPortraitMapper;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    private volatile String resolvedApiKey;
 
     public Map<String, Object> getCachedReportByKey(String key) {
         AiHealthReport cached = aiReportMapper.findValidCachedReportByKey(key);
@@ -255,6 +262,7 @@ public class AiHealthReportService {
 
     private String callDeepSeek(String prompt) {
         try {
+            String token = resolveApiKey();
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("model", model);
             body.put("messages", List.of(
@@ -268,7 +276,7 @@ public class AiHealthReportService {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + token)
                     .POST(HttpRequest.BodyPublishers.ofString(JSON.toJSONString(body)))
                     .timeout(Duration.ofSeconds(timeoutSeconds))
                     .build();
@@ -277,7 +285,7 @@ public class AiHealthReportService {
 
             if (response.statusCode() != 200) {
                 log.error("DeepSeek API 返回错误: status={}, body={}", response.statusCode(), response.body());
-                throw new RuntimeException("AI服务返回错误，状态码: " + response.statusCode());
+                throw new RuntimeException(toUserMessage(response.statusCode()));
             }
 
             JSONObject json = JSON.parseObject(response.body());
@@ -323,5 +331,44 @@ public class AiHealthReportService {
         Object v = m.get(key);
         if (v instanceof Number) return ((Number) v).doubleValue();
         return 0.0;
+    }
+
+    private String resolveApiKey() {
+        String envKey = trimToNull(apiKey);
+        if (envKey != null) return envKey;
+
+        String cached = trimToNull(resolvedApiKey);
+        if (cached != null) return cached;
+
+        String file = trimToNull(apiKeyFile);
+        if (file != null) {
+            try {
+                String fileKey = trimToNull(Files.readString(Path.of(file)));
+                if (fileKey != null) {
+                    resolvedApiKey = fileKey;
+                    return fileKey;
+                }
+            } catch (Exception e) {
+                log.warn("读取 DeepSeek API Key 文件失败: {}", e.getMessage());
+            }
+        }
+
+        throw new RuntimeException("AI服务密钥未配置：请设置 DEEPSEEK_API_KEY，或在 deepseek-key.txt 中填写有效密钥后重启后端");
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String text = value.trim();
+        return text.isEmpty() ? null : text;
+    }
+
+    private static String toUserMessage(int statusCode) {
+        if (statusCode == 401 || statusCode == 403) {
+            return "AI服务认证失败：DeepSeek API Key 无效或已过期，请检查密钥配置";
+        }
+        if (statusCode == 429) {
+            return "AI服务调用过于频繁或额度不足，请稍后重试";
+        }
+        return "AI服务暂时不可用，请稍后重试";
     }
 }

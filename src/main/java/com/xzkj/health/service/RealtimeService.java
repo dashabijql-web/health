@@ -64,7 +64,7 @@ public class RealtimeService {
         }
         // 168h跨月：只需当月+上月两张表
         // 不加 AS 别名 — Mapper 中每处 ${tableSource} 出现时自行指定别名（AS t / AS mx）
-        String cols = "user_code,heart_rate,blood_oxygen,temperature,steps,calories," +
+        String cols = "id,user_code,heart_rate,blood_oxygen,temperature,steps,calories," +
                       "sleep_minutes,blood_pressure_high,blood_pressure_low,pressure,record_time";
         return "(SELECT " + cols + " FROM health_record_" + prevMonth +
                " UNION ALL SELECT " + cols + " FROM health_record_" + curMonth + ")";

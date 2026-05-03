@@ -129,6 +129,7 @@ management:
 # ================================
 deepseek:
   api-key: ${DEEPSEEK_API_KEY:}
+  api-key-file: ${DEEPSEEK_API_KEY_FILE:${user.home}/Desktop/deepseek-key.txt}
   api-url: https://api.deepseek.com/chat/completions
   model: deepseek-chat
   timeout-seconds: 60

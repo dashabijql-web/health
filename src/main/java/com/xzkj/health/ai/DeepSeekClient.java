@@ -13,6 +13,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,6 +52,9 @@ public class DeepSeekClient {
     @Value("${deepseek.api-key}")
     private String apiKey;
 
+    @Value("${deepseek.api-key-file:}")
+    private String apiKeyFile;
+
     @Value("${deepseek.api-url}")
     private String apiUrl;
 
@@ -58,6 +63,8 @@ public class DeepSeekClient {
 
     @Value("${deepseek.timeout-seconds:60}")
     private int timeoutSeconds;
+
+    private volatile String resolvedApiKey;
 
     /**
      * 发送单轮对话请求
@@ -98,11 +105,12 @@ public class DeepSeekClient {
         body.put("stream", false);
 
         try {
+            String apiToken = resolveApiKey();
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + apiToken)
                     .POST(HttpRequest.BodyPublishers.ofString(JSON.toJSONString(body)))
                     .timeout(Duration.ofSeconds(timeoutSeconds))
                     .build();
@@ -111,7 +119,7 @@ public class DeepSeekClient {
 
             if (response.statusCode() != 200) {
                 log.error("DeepSeek API 返回错误: status={}, body={}", response.statusCode(), response.body());
-                throw new RuntimeException("AI服务返回错误，状态码: " + response.statusCode());
+                throw new RuntimeException(toUserMessage(response.statusCode()));
             }
 
             // 解析响应：choices[0].message.content
@@ -165,11 +173,12 @@ public class DeepSeekClient {
         body.put("stream", true);  // ← 关键：开启流式模式
 
         try {
+            String apiToken = resolveApiKey();
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + apiToken)
                     .POST(HttpRequest.BodyPublishers.ofString(JSON.toJSONString(body)))
                     .timeout(Duration.ofSeconds(timeoutSeconds))
                     .build();
@@ -180,7 +189,8 @@ public class DeepSeekClient {
             );
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException("AI服务返回错误，状态码: " + response.statusCode());
+                log.error("DeepSeek API 流式返回错误: status={}", response.statusCode());
+                throw new RuntimeException(toUserMessage(response.statusCode()));
             }
 
             StringBuilder fullContent = new StringBuilder();
@@ -220,5 +230,44 @@ public class DeepSeekClient {
             log.error("流式调用 DeepSeek 失败", e);
             throw new RuntimeException("AI服务调用失败: " + e.getMessage());
         }
+    }
+
+    private String resolveApiKey() {
+        String envKey = trimToNull(apiKey);
+        if (envKey != null) return envKey;
+
+        String cached = trimToNull(resolvedApiKey);
+        if (cached != null) return cached;
+
+        String file = trimToNull(apiKeyFile);
+        if (file != null) {
+            try {
+                String fileKey = trimToNull(Files.readString(Path.of(file)));
+                if (fileKey != null) {
+                    resolvedApiKey = fileKey;
+                    return fileKey;
+                }
+            } catch (Exception e) {
+                log.warn("读取 DeepSeek API Key 文件失败: {}", e.getMessage());
+            }
+        }
+
+        throw new RuntimeException("AI服务密钥未配置：请设置 DEEPSEEK_API_KEY，或在 deepseek-key.txt 中填写有效密钥后重启后端");
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String text = value.trim();
+        return text.isEmpty() ? null : text;
+    }
+
+    private static String toUserMessage(int statusCode) {
+        if (statusCode == 401 || statusCode == 403) {
+            return "AI服务认证失败：DeepSeek API Key 无效或已过期，请检查密钥配置";
+        }
+        if (statusCode == 429) {
+            return "AI服务调用过于频繁或额度不足，请稍后重试";
+        }
+        return "AI服务暂时不可用，请稍后重试";
     }
 }
