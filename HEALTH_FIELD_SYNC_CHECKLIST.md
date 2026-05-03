@@ -84,6 +84,7 @@ python scripts/run_backend_regression.py
 ```powershell
 cd ..\HealthShow
 npm run audit:api
+npm run audit:pipeline
 npm run audit:e2e
 npm run build
 ```
