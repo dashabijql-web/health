@@ -85,6 +85,7 @@ python scripts/run_backend_regression.py
 cd ..\HealthShow
 npm run audit:api
 npm run audit:pipeline
+npm run audit:pipeline-warning
 npm run audit:e2e
 npm run build
 ```
