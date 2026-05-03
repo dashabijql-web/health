@@ -9,6 +9,8 @@ const BASE_URL = process.env.BASE_URL || await resolveBaseUrl();
 const RUN_ID = new Date().toISOString().replace(/[:.]/g, '-');
 const ARTIFACT_DIR = path.resolve(process.cwd(), 'tests', 'e2e', 'artifacts', RUN_ID);
 const STORAGE_STATE_PATH = path.join(ARTIFACT_DIR, 'storage-state.json');
+const SCREENSHOT_MODE = process.env.E2E_SCREENSHOTS || 'failures';
+const ARTIFACT_RETENTION = Number.parseInt(process.env.E2E_ARTIFACT_RETENTION || '5', 10);
 
 const DESKTOP_ROUTES = [
   { slug: 'safety-command', path: '/safety-command/index' },
@@ -80,6 +82,22 @@ let currentRoute = 'bootstrap';
 let currentDevice = 'desktop';
 
 await fs.mkdir(ARTIFACT_DIR, { recursive: true });
+await pruneArtifacts(path.dirname(ARTIFACT_DIR), ARTIFACT_RETENTION);
+
+async function pruneArtifacts(rootDir, keep = 5) {
+  if (!Number.isFinite(keep) || keep <= 0) return;
+
+  const entries = await fs.readdir(rootDir, { withFileTypes: true }).catch(() => []);
+  const dirs = entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+
+  const obsolete = dirs.slice(0, Math.max(0, dirs.length - keep));
+  await Promise.allSettled(
+    obsolete.map((dirName) => fs.rm(path.join(rootDir, dirName), { recursive: true, force: true }))
+  );
+}
 
 async function resolveBaseUrl() {
   const candidates = [
@@ -207,6 +225,17 @@ async function saveScreenshot(page, device, slug) {
   return path.relative(process.cwd(), fullPath);
 }
 
+function shouldCaptureScreenshot(status = 'passed') {
+  if (SCREENSHOT_MODE === 'all') return true;
+  if (SCREENSHOT_MODE === 'none') return false;
+  return status === 'failed';
+}
+
+async function maybeSaveScreenshot(page, device, slug, status = 'passed') {
+  if (!shouldCaptureScreenshot(status)) return '';
+  return saveScreenshot(page, device, slug);
+}
+
 async function verifyExpectedSelectors(page, route, result) {
   const selectors = ROUTE_EXPECTATIONS[route.slug] || [];
   for (const selector of selectors) {
@@ -292,7 +321,7 @@ async function login(page) {
   }
 
   await waitForRouteShell(page);
-  await saveScreenshot(page, 'desktop', 'post-login');
+  await maybeSaveScreenshot(page, 'desktop', 'post-login');
   await page.context().storageState({ path: STORAGE_STATE_PATH });
 }
 
@@ -380,12 +409,12 @@ async function visitRoute(page, device, route) {
     }
 
     await verifyExpectedSelectors(page, route, result);
-    result.screenshot = await saveScreenshot(page, device, route.slug);
+    result.screenshot = await maybeSaveScreenshot(page, device, route.slug, result.status);
   } catch (error) {
     result.status = 'failed';
     result.notes.push(`exception:${truncate(String(error), 160)}`);
     try {
-      result.screenshot = await saveScreenshot(page, device, `${route.slug}-error`);
+      result.screenshot = await maybeSaveScreenshot(page, device, `${route.slug}-error`, result.status);
     } catch {
       // Ignore screenshot failures after a hard navigation error.
     }
@@ -443,12 +472,12 @@ async function auditEmployeeProfileFlow(page) {
 
     result.finalHash = await page.evaluate(() => window.location.hash);
     result.domStats = await collectDomStats(page);
-    result.screenshot = await saveScreenshot(page, 'desktop', result.slug);
+    result.screenshot = await maybeSaveScreenshot(page, 'desktop', result.slug, result.status);
   } catch (error) {
     result.status = 'failed';
     result.notes.push(`exception:${truncate(String(error), 160)}`);
     try {
-      result.screenshot = await saveScreenshot(page, 'desktop', `${result.slug}-error`);
+      result.screenshot = await maybeSaveScreenshot(page, 'desktop', `${result.slug}-error`, result.status);
     } catch {}
   }
 
