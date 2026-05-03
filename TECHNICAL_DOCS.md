@@ -861,6 +861,7 @@ beforeUnmount() {
 ```bash
 npm run audit:api
 npm run audit:write
+npm run audit:pipeline
 npm run audit:e2e
 ```
 
@@ -869,6 +870,16 @@ npm run audit:e2e
 2. 更新一条告警配置并恢复原值
 3. 观察现网实时写库链路，等待一条新健康记录从 SQL 被 API 读回
 4. 生成一份员工 AI 报告并清理缓存行
+
+`audit:pipeline` 会额外跑一条更重的端到端链路：
+1. 向 TCP `9000` 发送真实手表协议探针（`AP00 + AP03 + APHP`）
+2. 观察 Redis `health:buffer` 确实出现探针 payload
+3. 等待定时 flush 写入当月 `health_record_YYYYMM`
+4. 验证 `/api/health/record/page`、`/health-portrait/{empCode}`、`/realtime/user/{userCode}`
+5. 用 Playwright 打开 `employee-profile` 页面确认体征卡片
+6. 自动删除探针 SQL 行并清理残留 Redis payload
+
+注意：`audit:pipeline` 会短暂写入和回收真实本地数据，因此默认不并入 `audit:all`。
 
 ---
 
