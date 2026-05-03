@@ -59,9 +59,13 @@
  */
 
 import { createRouter, createWebHashHistory } from 'vue-router'
-import healthMonitorRouter from './health-monitor'
-import alertManagementRouter from './alert-management'
-import Layout from '@/layout/index.vue'
+import { getToken } from '@/utils/auth'
+
+async function resolveRootEntry() {
+  if (!getToken()) return '/login'
+  await ensureAppRoutes()
+  return '/health-monitor/dashboard'
+}
 
 
 /**
@@ -91,171 +95,11 @@ export const constantRoutes = [
     hidden: true
   },
 
-  // 安全指挥中心
-  {
-    path: '/safety-command',
-    component: Layout,
-    name: 'SafetyCommand',
-    redirect: '/safety-command/index',
-    meta: { title: '安全指挥中心', icon: 'Aim', breadcrumb: false },
-    children: [
-      {
-        path: 'index',
-        name: 'SafetyCommandIndex',
-        component: () => import('@/views/safety-command/index.vue'),
-        meta: {
-          title: '安全指挥中心',
-          icon: 'Aim',
-          navGroup: 'command',
-          navOrder: 11
-        }
-      }
-    ]
-  },
-
   // 根路径重定向
-  // 访问 http://localhost:3000/#/ 时自动跳转到 /health-monitor/dashboard
+  // 未登录直接进 /login，已登录会先注入业务路由，再去 dashboard
   {
     path: '/',
-    redirect: '/health-monitor/dashboard',
-    hidden: true
-  },
-
-  // 健康监测模块路由（从独立文件引入，保持路由文件整洁）
-  healthMonitorRouter,
-
-  // 预警管理
-  alertManagementRouter,
-
-  // 后台管理
-  {
-    path: '/admin',
-    component: Layout,
-    name: 'Admin',
-    meta: { title: '后台管理', icon: 'Setting' },
-    children: [
-      {
-        path: 'device-list',
-        name: 'DeviceList',
-        component: () => import('@/views/device-management/index.vue'),
-        meta: {
-          title: '设备列表',
-          icon: 'Monitor',
-          permCode: 'device:list',
-          navGroup: 'admin',
-          navOrder: 51
-        }
-      },
-      {
-        path: 'user-list',
-        name: 'UserList',
-        component: () => import('@/views/user-list/index.vue'),
-        meta: {
-          title: '用户列表',
-          icon: 'UserFilled',
-          permCode: 'user:list',
-          navGroup: 'admin',
-          navOrder: 52
-        }
-      },
-      {
-        path: 'role',
-        name: 'RoleManagement',
-        component: () => import('@/views/role-management/index.vue'),
-        meta: {
-          title: '角色管理',
-          icon: 'Key',
-          permCode: 'role:list',
-          navGroup: 'admin',
-          navOrder: 53
-        }
-      },
-      {
-        path: 'department',
-        name: 'Department',
-        component: () => import('@/views/org-management/department/index.vue'),
-        meta: {
-          title: '部门管理',
-          icon: 'Grid',
-          permCode: 'org:department',
-          navGroup: 'admin',
-          navOrder: 54
-        }
-      },
-      {
-        path: 'job-type',
-        name: 'JobType',
-        component: () => import('@/views/org-management/job-type/index.vue'),
-        meta: {
-          title: '工种管理',
-          icon: 'SetUp',
-          permCode: 'org:job-type',
-          navGroup: 'admin',
-          navOrder: 55
-        }
-      }
-    ]
-  },
-
-  // AI 健康助手
-  {
-    path: '/ai-chat',
-    component: Layout,
-    meta: { title: 'AI健康助手' },
-    children: [
-      {
-        path: 'index',
-        name: 'AiChat',
-        component: () => import('@/views/ai-chat/index.vue'),
-        meta: {
-          title: 'AI健康助手',
-          icon: 'ChatDotRound',
-          navGroup: 'report',
-          navOrder: 42
-        }
-      }
-    ]
-  },
-
-  // 一级导航语义入口（保留旧页面路径，同时补任务型入口）
-  {
-    path: '/command-center',
-    redirect: '/health-monitor/dashboard',
-    hidden: true
-  },
-  {
-    path: '/monitoring-center',
-    redirect: '/health-monitor/real-time',
-    hidden: true
-  },
-  {
-    path: '/warning-center',
-    redirect: '/alert-management/notifications',
-    hidden: true
-  },
-  {
-    path: '/people-center',
-    redirect: '/health-monitor/employee-archive',
-    hidden: true
-  },
-  {
-    path: '/report-ai',
-    redirect: '/health-monitor/report-center',
-    hidden: true
-  },
-
-  // 旧预警路由兼容重定向
-  {
-    path: '/health-monitor/warnings',
-    redirect: '/alert-management/records',
-    hidden: true
-  },
-
-  // 兜底路由：所有未匹配的路径都跳转到 404（必须放最后）
-  // /:pathMatch(.*)*  是 Vue Router 4 的通配符写法（Vue Router 3 用 * 号）
-  {
-    path: '/:pathMatch(.*)*',
-    redirect: '/404',
+    beforeEnter: resolveRootEntry,
     hidden: true
   }
 ]
@@ -271,6 +115,52 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),  // 切换路由时自动滚动到顶部
   routes: constantRoutes
 })
+
+let appRoutesCache = null
+let appRoutesPromise = null
+let appRoutesLoaded = false
+
+function cloneRouteRecord(route) {
+  return {
+    ...route,
+    meta: route.meta ? { ...route.meta } : route.meta,
+    children: route.children ? route.children.map(cloneRouteRecord) : route.children
+  }
+}
+
+async function loadAppRoutes() {
+  const mod = await import('./app-routes')
+  const routes = mod.default || mod.appRoutes || []
+  return routes.map(cloneRouteRecord)
+}
+
+export function hasLoadedAppRoutes() {
+  return appRoutesLoaded
+}
+
+export async function ensureAppRoutes() {
+  if (appRoutesLoaded && appRoutesCache) return appRoutesCache
+
+  if (!appRoutesPromise) {
+    appRoutesPromise = loadAppRoutes()
+      .then((routes) => {
+        routes.map(cloneRouteRecord).forEach(route => router.addRoute(route))
+        appRoutesCache = routes
+        appRoutesLoaded = true
+        return appRoutesCache
+      })
+      .catch((error) => {
+        appRoutesPromise = null
+        throw error
+      })
+  }
+
+  return appRoutesPromise
+}
+
+export async function getAppRoutes() {
+  return appRoutesCache || ensureAppRoutes()
+}
 
 /**
  * 动态路由（本项目暂未使用）

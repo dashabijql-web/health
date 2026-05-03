@@ -54,6 +54,8 @@ import '@/styles/index.scss'
 import App from './App.vue'         // 根组件（所有组件的父级容器）
 import store from './store'         // Vuex 状态管理（用户信息、Token 等全局状态）
 import router from './router'       // Vue Router（页面路由，URL 与组件的对应关系）
+import { ensureAppRoutes } from './router'
+import { getToken } from '@/utils/auth'
 
 // ─── SVG 图标注册 ────────────────────────────────────────────────
 // vite-plugin-svg-icons 插件：
@@ -82,17 +84,27 @@ import './heartbeat'
 // 1. 创建 Vue 3 应用实例，以 App.vue 根组件为起点
 const app = createApp(App)
 
-// 2. 挂载 Element Plus 全局消息服务
-app.config.globalProperties.$message = ElMessage
+async function bootstrap() {
+  // 只有已登录会话才提前注入业务路由，避免带 token 直达业务页时出现
+  // “No match found” 的首跳告警，同时不影响未登录首屏的瘦身收益。
+  if (getToken()) {
+    await ensureAppRoutes()
+  }
 
-// 3. 安装 Vuex 状态管理
-//    store 中包含：用户信息（user module）、侧边栏状态（app module）等
-app.use(store)
+  // 2. 挂载 Element Plus 全局消息服务
+  app.config.globalProperties.$message = ElMessage
 
-// 4. 安装 Vue Router
-//    安装后组件内可以用 this.$router（路由跳转）、this.$route（当前路由信息）
-app.use(router)
+  // 3. 安装 Vuex 状态管理
+  //    store 中包含：用户信息（user module）、侧边栏状态（app module）等
+  app.use(store)
 
-// 5. 将 Vue 应用挂载到 public/index.html 中 id="app" 的 div 元素
-//    挂载后，Vue 接管该 div 内的所有 DOM，开始渲染
-app.mount('#app')
+  // 4. 安装 Vue Router
+  //    安装后组件内可以用 this.$router（路由跳转）、this.$route（当前路由信息）
+  app.use(router)
+
+  // 5. 将 Vue 应用挂载到 public/index.html 中 id="app" 的 div 元素
+  //    挂载后，Vue 接管该 div 内的所有 DOM，开始渲染
+  app.mount('#app')
+}
+
+bootstrap()

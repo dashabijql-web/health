@@ -52,7 +52,7 @@
 
 import { login, logout, getInfo } from '@/api/user'         // 登录/退出/获取信息 API
 import { getToken, setToken, removeToken } from '@/utils/auth'  // Cookie 操作
-import { resetRouter, constantRoutes } from '@/router'          // 路由重置和全量路由
+import { resetRouter, ensureAppRoutes, getAppRoutes } from '@/router'
 
 // ─── 路由权限过滤函数 ──────────────────────────────────────────────
 
@@ -123,7 +123,7 @@ const getDefaultState = () => ({
   roles: [],             // 角色列表（roles.length > 0 是"已登录"的标志）
   buttons: [],           // 按钮权限码列表
   resultAsyncRoutes: [], // 动态路由（本项目暂未使用）
-  resultAllRoutes: constantRoutes  // 默认显示全部路由，登录后按权限过滤
+  resultAllRoutes: []    // 登录后加载业务路由，再按权限过滤
 })
 
 const state = getDefaultState()
@@ -162,11 +162,10 @@ const mutations = {
 
   /**
    * 设置过滤后的路由（侧边栏菜单用）
-   * @param {Array} permCodes - 后端返回的路由权限码数组（如 ['health:dashboard', 'user:list']）
+   * @param {Array} routes - 已按权限过滤后的可见路由数组
    */
-  SET_RESULTASYNCROUTES: (state, permCodes) => {
-    // 用 filterRoutes 过滤 constantRoutes，得到当前用户可见的路由
-    state.resultAllRoutes = filterRoutes(constantRoutes, permCodes)
+  SET_RESULTASYNCROUTES: (state, routes) => {
+    state.resultAllRoutes = routes
   }
 }
 
@@ -219,19 +218,22 @@ const actions = {
    */
   getInfo({ commit, state }) {
     return new Promise((resolve, reject) => {
-      getInfo(state.token).then(response => {
+      getInfo(state.token).then(async response => {
         const { data } = response
         if (!data) {
           reject('获取用户信息失败')
           return
         }
 
+        await ensureAppRoutes()
+        const allRoutes = await getAppRoutes()
+
         // 存储用户信息到 state
         commit('SET_USERINFO', data)
 
         // 根据路由权限码过滤路由（更新侧边栏菜单）
         // data.routes 是后端返回的权限码数组，如 ['health:dashboard', 'user:list']
-        commit('SET_RESULTASYNCROUTES', data.routes || [])
+        commit('SET_RESULTASYNCROUTES', filterRoutes(allRoutes, data.routes || []))
 
         resolve(data)
       }).catch(reject)

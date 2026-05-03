@@ -59,7 +59,7 @@
  *   - Vite 会自动将每个 import() 打包为独立的 chunk 文件
  */
 
-import Layout from '@/layout/index.vue'  // 主布局组件
+const Layout = () => import('@/layout/index.vue')  // 主布局组件按需加载
 
 /**
  * 健康监测模块路由配置对象

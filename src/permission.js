@@ -53,6 +53,7 @@ import store from './store'
 import NProgress from 'nprogress'     // 页面顶部进度条库
 import 'nprogress/nprogress.css'      // 进度条样式
 import { getToken } from '@/utils/auth'
+import { ensureAppRoutes, hasLoadedAppRoutes } from '@/router'
 
 // 不显示右侧转圈的 spinner（只显示顶部进度条）
 NProgress.configure({ showSpinner: false })
@@ -76,6 +77,11 @@ router.beforeEach(async (to, from, next) => {
       NProgress.done()
     } else {
       if (store.getters.roles && store.getters.roles.length > 0) {
+        if (!hasLoadedAppRoutes() || (to.path !== '/404' && to.matched.length === 0)) {
+          await ensureAppRoutes()
+          next({ ...to, replace: true })
+          return
+        }
         // store 中已有用户信息（正常已登录状态）→ 直接放行
         next()
       } else {

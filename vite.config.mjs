@@ -53,9 +53,11 @@ const elementPlusIconResolver = {
 }
 
 const pwaOptionalChunkPatterns = [
+  /^(?:\/)?assets\/app-routes-.*\.js$/,
   /^(?:\/)?assets\/xlsx-.*\.js$/,
   /^(?:\/)?assets\/jspdf.*\.js$/,
   /^(?:\/)?assets\/html2canvas.*\.js$/,
+  /^(?:\/)?assets\/index\.es-.*\.js$/,
   /^(?:\/)?assets\/marked\.esm-.*\.js$/,
   /^(?:\/)?assets\/purify\.es-.*\.js$/,
   /^(?:\/)?assets\/miner-worker\.png$/,
