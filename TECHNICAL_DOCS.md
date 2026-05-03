@@ -149,15 +149,24 @@ D:\HealthShow\                      # 前端项目根目录
 │   │   │   ├── dashboard/          # 统一管控（数据总览）
 │   │   │   ├── real-time/          # 实时监控（在线人员列表）
 │   │   │   ├── heart-rate/         # 心率分析
+│   │   │   ├── pressure/           # 压力分析
+│   │   │   ├── blood-pressure/     # 血压分析
 │   │   │   ├── blood-oxygen/       # 血氧分析
 │   │   │   ├── sleep/              # 睡眠分析（已隐藏，手表不离井下）
 │   │   │   └── risk-warning/       # 风险预警
+│   │   │   ├── employee-archive/    # 员工档案库
+│   │   │   ├── employee-profile/    # 员工健康画像
+│   │   │   ├── mine-entry/         # 班前准入
+│   │   │   ├── workbench/          # 月度工作台
+│   │   │   ├── report-center/      # 报告中心
+│   │   │   └── trend-warning/      # 趋势预警
 │   │   ├── device-management/      # 设备管理
 │   │   ├── user-list/              # 用户管理
 │   │   ├── role-management/        # 角色权限管理
 │   │   ├── org-management/         # 组织管理（部门/岗位）
 │   │   ├── personnel-management/   # 人员管理（员工/健康画像）
-│   │   ├── alert-management/       # 告警管理（记录/配置）
+│   │   ├── alert-management/       # 告警管理（记录/配置/SOS）
+│   │   ├── ai-chat/                # AI 问答
 │   │   └── statistics/             # 统计分析（月度/部门报表）
 │   │
 │   ├── heartbeat.js                # 心跳检测（每30s请求/auth/info 保持登录）
@@ -527,6 +536,7 @@ const res = await request({
 | `/realtime/online-users` | GET | 在线用户列表（分页） |
 | `/realtime/user/{userCode}` | GET | 单人实时体征 |
 | `/realtime/statistics` | GET | 设备统计（在线/离线/低电量） |
+| `/realtime/alerts` | GET | 最近未处理告警列表 |
 
 ### 10.3 风险预警（`/risk-warning/...`）
 
@@ -538,18 +548,31 @@ const res = await request({
 | `/risk-warning/dept-stats` | GET | 各部门预警统计 |
 | `/risk-warning/handle/{id}` | POST | 处理单条预警 |
 | `/risk-warning/handle-batch` | POST | 批量处理预警 |
+| `/risk-warning/type-distribution` | GET | 预警类型分布 |
 
-### 10.4 健康记录（`/health/...`）
+### 10.4 告警管理（`/alert-config/...`）
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
-| `/health/records` | GET | 健康记录列表（支持 userCode/时间范围过滤） |
-| `/health/dashboard/overview` | GET | 当月检测统计 |
-| `/health/dashboard/body-indicators` | GET | 体征均值（心率/血氧/体温/步数） |
-| `/health/dashboard/daily-trend` | GET | 每日异常率趋势 |
-| `/health/dashboard/warning-counts` | GET | 预警按时间统计 |
+| `/alert-config/list` | GET | 阈值配置列表 |
+| `/alert-config/update` | PUT | 更新配置 |
+| `/alert-config/toggle/{id}` | PUT | 启用/停用切换 |
 
-### 10.5 心率（`/heart-rate/...`）
+### 10.5 健康记录与工作台（`/api/health/...`、`/dashboard/...`）
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/health/record/page` | GET | 健康记录分页 |
+| `/dashboard/overview` | GET | 当月检测统计 |
+| `/dashboard/body-indicators` | GET | 体征均值（心率/血氧/体温/步数） |
+| `/dashboard/daily-trend` | GET | 每日异常率趋势 |
+| `/dashboard/warning-counts` | GET | 预警按时间统计 |
+| `/dashboard/calendar` | GET | 工作台月历 |
+| `/dashboard/pre-shift-compliance` | GET | 班前健康达标率 |
+| `/dashboard/mine-entry-list` | GET | 今日准入名单 |
+| `/dashboard/dept-health-comparison` | GET | 部门健康对比 |
+
+### 10.6 心率与指标分析（`/heart-rate/...`、`/pressure/...`、`/blood-pressure/...`、`/blood-oxygen/...`）
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
@@ -558,12 +581,25 @@ const res = await request({
 | `/heart-rate/hourly` | GET | 今日24小时均值（date=YYYY-MM-DD） |
 | `/heart-rate/distribution` | GET | 心率分布（正常/偏快/过快/偏慢） |
 | `/heart-rate/abnormal` | GET | 异常记录列表 |
+| `/pressure/overview` | GET | 压力统计概览 |
+| `/blood-pressure/overview` | GET | 血压统计概览 |
+| `/blood-oxygen/overview` | GET | 血氧统计概览 |
 
-### 10.6 血氧（`/blood-oxygen/...`）
+### 10.7 AI 能力（`/ai/...`）
 
-结构与心率模块相同，接口路径 `/blood-oxygen/...`。
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/ai/health-report` | GET | 查询已缓存 AI 报告 |
+| `/ai/health-report/generate` | POST | 生成个人 AI 报告 |
+| `/ai/health-report/mine` | GET | 查询全矿 AI 报告 |
+| `/ai/health-report/mine/generate` | POST | 生成全矿 AI 报告 |
+| `/ai/health-report/dept` | GET | 查询部门 AI 报告 |
+| `/ai/health-report/dept/generate` | POST | 生成部门 AI 报告 |
+| `/ai/report/employee` | POST | 生成员工健康诊断报告 |
+| `/ai/report/department` | POST | 生成部门健康诊断报告 |
+| `/ai/chat` | POST | AI 问答 |
 
-### 10.7 统计分析（`/statistics/...`）
+### 10.8 统计分析（`/statistics/...`）
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
@@ -818,6 +854,21 @@ beforeUnmount() {
 **解决方案：**
 1. SQL 文件保存为 **UTF-16** 编码（非 UTF-8）
 2. 命令加 `-I` 参数：`sqlcmd -S "..." -E -d health -I -i file.sql`
+
+### Q10：如何跑写回归和实时链路探针
+
+**推荐命令：**
+```bash
+npm run audit:api
+npm run audit:write
+npm run audit:e2e
+```
+
+`audit:write` 会自动：
+1. 回写一个预警处理并恢复原状态
+2. 更新一条告警配置并恢复原值
+3. 观察现网实时写库链路，等待一条新健康记录从 SQL 被 API 读回
+4. 生成一份员工 AI 报告并清理缓存行
 
 ---
 
