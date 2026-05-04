@@ -351,6 +351,21 @@ class RedisSocketClient {
   }
 }
 
+async function connectRedisWithRetry(host, port, timeoutMs, attempts = 5, delayMs = 1000) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await RedisSocketClient.connect(host, port, timeoutMs);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await sleep(delayMs);
+      }
+    }
+  }
+  throw lastError || new Error('redis connect failed');
+}
+
 async function getWarningProbeTarget() {
   const row = await sqlJsonObject(
     "SELECT TOP 1 d.id AS deviceId, d.imei, du.emp_id AS empId, e.emp_code AS empCode, e.emp_name AS empName, jt.risk_level AS riskLevel " +
@@ -707,7 +722,7 @@ try {
   const baseline = await getBaseline(target);
   stage('baseline', 'passed', `health_max=${baseline.healthMaxId}, warning_max=${baseline.warningMaxId}`);
 
-  redisClient = await RedisSocketClient.connect(REDIS_HOST, REDIS_PORT, REDIS_TIMEOUT_MS);
+  redisClient = await connectRedisWithRetry(REDIS_HOST, REDIS_PORT, REDIS_TIMEOUT_MS);
   stage('redis-connect', 'passed', `${REDIS_HOST}:${REDIS_PORT}`);
 
   await sendWarningProbe(target);

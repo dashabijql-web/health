@@ -418,6 +418,21 @@ class RedisSocketClient {
   }
 }
 
+async function connectRedisWithRetry(host, port, timeoutMs, attempts = 5, delayMs = 1000) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await RedisSocketClient.connect(host, port, timeoutMs);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await sleep(delayMs);
+      }
+    }
+  }
+  throw lastError || new Error('redis connect failed');
+}
+
 async function findProbePayloads(redisClient, target) {
   const items = await redisClient.execute('LRANGE', 'health:buffer', '0', '-1');
   const rows = Array.isArray(items) ? items.filter((item) => typeof item === 'string') : [];
@@ -621,7 +636,7 @@ try {
   baselineSnapshot = await getBaseline(target);
   stage('baseline', 'passed', `max_id=${baselineSnapshot.maxId}, count=${baselineSnapshot.totalCount}`);
 
-  redisClient = await RedisSocketClient.connect(REDIS_HOST, REDIS_PORT, REDIS_TIMEOUT_MS);
+  redisClient = await connectRedisWithRetry(REDIS_HOST, REDIS_PORT, REDIS_TIMEOUT_MS);
   stage('redis-connect', 'passed', `${REDIS_HOST}:${REDIS_PORT}`);
 
   await sendProbePackets(target);
