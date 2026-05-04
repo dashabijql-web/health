@@ -123,6 +123,20 @@ class RedisSocketClient:
         raise RuntimeError(f"unsupported redis reply prefix: {prefix!r}")
 
 
+def connect_redis_with_retry(host: str, port: int, timeout: float, attempts: int = 5, delay: float = 1.0):
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return RedisSocketClient(host, port, timeout)
+        except Exception as exc:  # pragma: no cover - best-effort runtime guard
+            last_error = exc
+            if attempt < attempts:
+                time.sleep(delay)
+    if last_error is None:
+        raise RuntimeError("redis connect failed")
+    raise last_error
+
+
 def current_month_table() -> str:
     return f"health_record_{datetime.now().strftime('%Y%m')}"
 
@@ -171,7 +185,7 @@ def cleanup_redis_payload(client: RedisSocketClient, payload: str) -> int:
 
 def main() -> int:
     user_code, record_time, payload = build_probe_record()
-    client = RedisSocketClient(REDIS_HOST, REDIS_PORT, REDIS_TIMEOUT)
+    client = connect_redis_with_retry(REDIS_HOST, REDIS_PORT, REDIS_TIMEOUT)
     inserted = None
 
     try:

@@ -62,6 +62,8 @@ python scripts/run_backend_regression.py
 2. 通过 `HEALTH_SKIP_DB_CHECK=true` 将字段同步检查降级为源码守卫
 3. 跳过 Redis live probe（`HEALTH_SKIP_REDIS_PROBE=true`）
 
+GitHub Actions 还会有一个 `nightly-regression.yml`，在自托管 runner 上跑完整后端回归。
+
 ## 手工检查
 
 下面这些仍然必须人工确认：
@@ -90,6 +92,7 @@ python scripts/run_backend_regression.py
 ```powershell
 cd ..\HealthShow
 npm run audit:ci
+npm run audit:nightly
 npm run audit:api
 npm run audit:pipeline
 npm run audit:pipeline-warning
@@ -100,4 +103,7 @@ npm run build
 说明：
 
 - GitHub Actions 只跑云端安全的 `npm run audit:ci`
+- 夜间全量回归可通过自托管 runner 的 `npm run audit:nightly` 跑完整套前端回归
+- 后端夜间全量回归由 `.github/workflows/nightly-regression.yml` 跑完整套守卫
 - `audit:api / audit:write / audit:pipeline / audit:pipeline-warning / audit:e2e` 仍然依赖本地后端、SQL Server、Redis、TCP 9000 或浏览器环境
+- nightly workflow 同样要求 runner 主机提前准备好后端、Redis、SQL Server 和 TCP 9000 模拟器；否则只建议跑 CI-safe 入口
