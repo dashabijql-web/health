@@ -1,12 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 import {
   buildWarningLifecycleItem,
   buildWarningLifecycleView,
   formatDateTime,
   markWarningHandled,
-  normalizeWarningLevel
+  normalizeWarningLevel,
+  warningHandledStatusLabel
 } from '../src/views/alert-management/common/warning-lifecycle.js'
 
 test('normalizeWarningLevel maps Chinese labels and numeric levels', () => {
@@ -18,6 +20,25 @@ test('normalizeWarningLevel maps Chinese labels and numeric levels', () => {
   assert.equal(normalizeWarningLevel(3), 'danger')
   assert.equal(normalizeWarningLevel(2), 'warn')
   assert.equal(normalizeWarningLevel(1), 'info')
+})
+
+test('warningHandledStatusLabel keeps notifications and records pending wording aligned', () => {
+  assert.equal(warningHandledStatusLabel({ handled: false }), '待处理')
+  assert.equal(warningHandledStatusLabel({ isHandled: 0 }), '待处理')
+  assert.equal(warningHandledStatusLabel({ handled: true }), '已处理')
+  assert.equal(warningHandledStatusLabel({ isHandled: 1 }), '已处理')
+})
+
+test('alert management pages use shared pending handled wording', () => {
+  const files = [
+    'src/views/alert-management/notifications/index.vue',
+    'src/views/alert-management/records/index.vue'
+  ]
+
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8')
+    assert.doesNotMatch(source, /label="未处理"|['`]未处理['`]/, file)
+  }
 })
 
 test('buildWarningLifecycleView derives deadline and overdue seconds from createTime', () => {

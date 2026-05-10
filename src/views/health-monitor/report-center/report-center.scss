@@ -39,6 +39,10 @@
     gap: 8px;
   }
 
+  .rc-export-wrap {
+    display: inline-flex;
+  }
+
   :deep(.el-input__wrapper) {
     background: #0d2847;
     border-color: #1a4d8f;

@@ -264,6 +264,22 @@ summary.finishedAt = new Date().toISOString();
 summary.failedRoutes = new Set(summary.results.filter((result) => result.status !== 'passed').map((result) => result.route)).size;
 summary.failedChecks = summary.results.filter((result) => result.status !== 'passed').length;
 summary.status = summary.failedChecks === 0 ? 'passed' : 'failed';
+summary.routeSummaries = summary.routes.map((routeSlug) => {
+  const routeResults = summary.results.filter((result) => result.route === routeSlug);
+  const routeIssues = summary.issues.filter((item) => item.route === routeSlug);
+  return {
+    route: routeSlug,
+    status: routeResults.every((result) => result.status === 'passed') ? 'passed' : 'failed',
+    passedViewports: routeResults.filter((result) => result.status === 'passed').length,
+    failedViewports: routeResults.filter((result) => result.status !== 'passed').length,
+    issueCount: routeIssues.length,
+    screenshots: routeResults.map((result) => ({
+      viewport: result.viewport,
+      status: result.status,
+      file: result.screenshot ? path.basename(result.screenshot) : null
+    }))
+  };
+});
 
 const jsonPath = path.join(ARTIFACT_DIR, 'layout-summary.json');
 const mdPath = path.join(ARTIFACT_DIR, 'layout-summary.md');
@@ -278,6 +294,19 @@ const lines = [
   `- failed_routes: ${summary.failedRoutes}`,
   `- failed_checks: ${summary.failedChecks}`,
   `- artifact_dir: ${ARTIFACT_DIR}`,
+  `- rerun_all: npm run audit:visual`,
+  `- rerun_one_route: VISUAL_ROUTES=<route-slug> npm run audit:visual`,
+  '',
+  '## Route Summary',
+  '',
+  '| route | status | passed viewports | failed viewports | issues | screenshots |',
+  '| --- | --- | ---: | ---: | ---: | --- |',
+  ...summary.routeSummaries.map((route) => {
+    const screenshots = route.screenshots
+      .map((screenshot) => `${screenshot.viewport}:${screenshot.file || '-'}`)
+      .join(', ');
+    return `| ${route.route} | ${route.status} | ${route.passedViewports} | ${route.failedViewports} | ${route.issueCount} | ${screenshots} |`;
+  }),
   '',
   '## Route / Viewport Results',
   '',

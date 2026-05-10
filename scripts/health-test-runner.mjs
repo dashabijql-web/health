@@ -21,7 +21,12 @@ const PROFILES = {
     description: 'Pure Node tests and source-guard tests; no backend/browser/database required.',
     preflight: 'fast',
     commands: [
-      command('npm', ['run', 'test:warning-semantics'], { env: { TZ: 'UTC' } })
+      command('npm', ['run', 'test:warning-semantics'], { env: { TZ: 'UTC' } }),
+      command('npm', ['run', 'test:realtime-detail']),
+      command('npm', ['run', 'test:report-center-export']),
+      command('npm', ['run', 'test:ai-chat-layout']),
+      command('npm', ['run', 'test:visual-audit-summary']),
+      command('npm', ['run', 'test:performance-triage-summary'])
     ]
   },
   frontend: {

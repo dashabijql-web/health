@@ -102,6 +102,7 @@
   flex-direction: column;
   gap: 5px;
   max-width: 72%;
+  min-width: 0;
 }
 .message.user .msg-body { align-items: flex-end; }
 
@@ -146,8 +147,8 @@
   border-radius: 6px;
   font-size: 12px;
   font-family: 'Consolas', 'Courier New', monospace;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
+  overflow-x: auto;
   margin: 0;
 }
 
@@ -283,6 +284,7 @@
 /* ─── P1/P2: 数据可视化 ──────────────────────────────── */
 .viz-table-wrap {
   max-height: 280px;
+  overflow-x: auto;
   overflow-y: auto;
   margin-top: 8px;
   border: 1px solid rgba(0, 212, 255, 0.15);
@@ -292,6 +294,8 @@
 .viz-table-wrap::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
 .viz-table {
   width: 100%;
+  min-width: max-content;
+  max-width: none;
   border-collapse: collapse;
   font-size: 12px;
   color: #c8d8e8;
@@ -320,4 +324,50 @@
   border: 1px solid rgba(0, 212, 255, 0.1);
   border-radius: 6px;
   background: rgba(0, 10, 30, 0.4);
+}
+
+@media (max-width: 768px) {
+  .ai-chat-page {
+    padding: 12px;
+  }
+
+  .chat-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chat-header .subtitle {
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .header-btns {
+    margin-left: auto;
+  }
+
+  .message-list {
+    padding: 10px;
+    gap: 14px;
+  }
+
+  .msg-body {
+    max-width: calc(100% - 44px);
+  }
+
+  .bubble,
+  .sql-debug,
+  .viz-table-wrap,
+  .viz-chart {
+    max-width: 100%;
+  }
+
+  .bubble {
+    padding: 9px 11px;
+    font-size: 13px;
+  }
+
+  .viz-table th,
+  .viz-table td {
+    padding: 5px 8px;
+  }
 }

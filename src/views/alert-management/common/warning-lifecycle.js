@@ -36,6 +36,10 @@ export function isWarningHandled(item = {}) {
   return ['1', 'true', 'yes', 'y', '已处理', 'handled'].includes(text)
 }
 
+export function warningHandledStatusLabel(item = {}) {
+  return isWarningHandled(item) ? '已处理' : '待处理'
+}
+
 export function levelClass(value) {
   return {
     danger: 'badge-danger',

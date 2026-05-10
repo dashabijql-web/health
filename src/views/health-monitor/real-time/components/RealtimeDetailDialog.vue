@@ -18,6 +18,9 @@
         <div class="rt-detail-value" :style="{ color: item.color }">{{ item.value }}</div>
       </div>
     </div>
+    <template #footer>
+      <el-button @click="$emit('update:visible', false)">关闭</el-button>
+    </template>
   </el-dialog>
 </template>
 

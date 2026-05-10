@@ -141,6 +141,31 @@ async function runEndpoint(session, item) {
   };
 }
 
+function buildPerformanceTriage(endpoints) {
+  const ranked = endpoints
+    .map((item) => {
+      const p95Usage = item.thresholds.p95Ms > 0 ? item.stats.p95Ms / item.thresholds.p95Ms : 0;
+      const maxUsage = item.thresholds.maxMs > 0 ? item.stats.maxMs / item.thresholds.maxMs : 0;
+      const utilization = Math.max(p95Usage, maxUsage);
+      return {
+        name: item.name,
+        status: item.status,
+        p95Ms: item.stats.p95Ms,
+        maxMs: item.stats.maxMs,
+        p95ThresholdMs: item.thresholds.p95Ms,
+        maxThresholdMs: item.thresholds.maxMs,
+        utilization,
+        headroomPercent: Math.max(0, Math.round((1 - utilization) * 100))
+      };
+    })
+    .sort((a, b) => b.utilization - a.utilization || b.p95Ms - a.p95Ms);
+
+  return {
+    slowestEndpoints: ranked.slice(0, 5),
+    outlierCandidates: ranked.filter((item) => item.status === 'failed' || item.utilization >= 0.8)
+  };
+}
+
 function buildMarkdownReport() {
   const failed = summary.endpoints.filter((item) => item.status === 'failed').length;
   return [
@@ -159,6 +184,18 @@ function buildMarkdownReport() {
     '| --- | --- | ---: | ---: | ---: | ---: | --- |',
     ...summary.endpoints.map((item) => `| ${item.name} | ${item.status} | ${item.stats.p50Ms}ms | ${item.stats.p95Ms}ms | ${item.stats.maxMs}ms | ${item.stats.failureCount}/${item.stats.count} | p95<=${item.thresholds.p95Ms}ms max<=${item.thresholds.maxMs}ms |`),
     '',
+    '## Slowest endpoints / threshold utilization',
+    '',
+    '| endpoint | status | p95 | max | utilization | headroom |',
+    '| --- | --- | ---: | ---: | ---: | ---: |',
+    ...(summary.performanceTriage?.slowestEndpoints || []).map((item) => `| ${item.name} | ${item.status} | ${item.p95Ms}ms/${item.p95ThresholdMs}ms | ${item.maxMs}ms/${item.maxThresholdMs}ms | ${Math.round(item.utilization * 100)}% | ${item.headroomPercent}% |`),
+    '',
+    '## Outlier candidates',
+    '',
+    ...(summary.performanceTriage?.outlierCandidates?.length
+      ? summary.performanceTriage.outlierCandidates.map((item) => `- ${item.name}: utilization=${Math.round(item.utilization * 100)}%, p95=${item.p95Ms}ms/${item.p95ThresholdMs}ms, max=${item.maxMs}ms/${item.maxThresholdMs}ms`)
+      : ['- none; no endpoint reached 80% of its p95/max threshold.']),
+    '',
     '## Violations',
     '',
     ...summary.endpoints.flatMap((item) => item.violations.length ? item.violations.map((violation) => `- ${item.name}: ${violation}`) : [])
@@ -171,6 +208,7 @@ summary.target = session.target;
 for (const item of ENDPOINTS) {
   summary.endpoints.push(await runEndpoint(session, item));
 }
+summary.performanceTriage = buildPerformanceTriage(summary.endpoints);
 
 summary.finishedAt = new Date().toISOString();
 await fs.writeFile(REPORT_JSON, JSON.stringify(summary, null, 2), 'utf8');

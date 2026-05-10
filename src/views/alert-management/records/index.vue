@@ -69,7 +69,7 @@
         </el-form-item>
         <el-form-item>
           <el-select v-model="searchForm.handleStatus" placeholder="处理状态" clearable :style="isMobile?'width:100%':'width:120px'">
-            <el-option label="全部" value="" /><el-option label="已处理" value="handled" /><el-option label="未处理" value="unhandled" />
+            <el-option label="全部" value="" /><el-option :label="warningHandledStatusLabel({ handled: true })" value="handled" /><el-option :label="warningHandledStatusLabel({ handled: false })" value="unhandled" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -102,7 +102,7 @@
           <div class="mob-card-top">
             <span class="mob-card-name">{{ row.userName || '--' }}</span>
             <el-tag :type="levelTag(row.warningLevel)" size="small" effect="dark">{{ levelLabel(row.warningLevel) }}</el-tag>
-            <el-tag :type="row.handled?'success':'danger'" size="small" effect="dark">{{ row.handled?'已处理':'未处理' }}</el-tag>
+            <el-tag :type="row.handled?'success':'danger'" size="small" effect="dark">{{ warningHandledStatusLabel(row) }}</el-tag>
           </div>
           <div class="mob-card-mid">
             <el-tag :type="typeTag(row.warningType)" size="small" effect="plain">{{ typeLabel(row.warningType) }}</el-tag>
@@ -143,7 +143,7 @@
             <template #default="{row}"><el-tag :type="levelTag(row.warningLevel)" size="small" effect="dark">{{ levelLabel(row.warningLevel) }}</el-tag></template>
           </el-table-column>
           <el-table-column label="处理状态" width="100" align="center">
-            <template #default="{row}"><el-tag :type="row.handled?'success':'danger'" size="small" effect="dark">{{ row.handled?'已处理':'未处理' }}</el-tag></template>
+            <template #default="{row}"><el-tag :type="row.handled?'success':'danger'" size="small" effect="dark">{{ warningHandledStatusLabel(row) }}</el-tag></template>
           </el-table-column>
           <el-table-column prop="handleBy" label="处理人" min-width="110">
             <template #default="{row}">{{ row.handleBy||'-' }}</template>
@@ -151,7 +151,7 @@
           <el-table-column label="操作" width="120" fixed="right" align="center">
             <template #default="{row}">
               <el-button v-if="!row.handled" type="warning" link size="small" @click.stop="openHandle(row)"><el-icon><Edit /></el-icon> 处理</el-button>
-              <span v-else class="handled-text">已处理</span>
+              <span v-else class="handled-text">{{ warningHandledStatusLabel(row) }}</span>
             </template>
           </el-table-column>
         </el-table>
@@ -193,7 +193,7 @@
           </div>
           <div class="detail-row">
             <span class="detail-label">处理状态</span>
-            <el-tag :type="detailRow.handled?'success':'danger'" size="small" effect="dark">{{ detailRow.handled?'已处理':'未处理' }}</el-tag>
+            <el-tag :type="detailRow.handled?'success':'danger'" size="small" effect="dark">{{ warningHandledStatusLabel(detailRow) }}</el-tag>
           </div>
         </div>
 
@@ -258,6 +258,7 @@ import { formatDate } from '@/utils'
 import { useClock } from '@/composables/useClock'
 import { getRiskWarningList, getRiskWarningOverview, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
 import { exportToExcel } from '@/utils/export-excel'
+import { buildWarningLifecycleItem, warningHandledStatusLabel } from '../common/warning-lifecycle'
 
 const route = useRoute()
 
@@ -302,7 +303,7 @@ const loadData = async () => {
     if (searchForm.handleStatus==='handled') p.handled=true; else if(searchForm.handleStatus==='unhandled') p.handled=false
     if (searchForm.keyword) p.userCode = searchForm.keyword
     const res = await getRiskWarningList(p)
-    if (res.code===200) { tableData.value = res.data?.list||[]; pagination.total = res.data?.total||0 }
+    if (res.code===200) { tableData.value = (res.data?.list||[]).map(r => buildWarningLifecycleItem(r)); pagination.total = res.data?.total||0 }
   } catch(e) { ElMessage.error('加载预警列表失败') }
   finally { loading.value = false }
 }
@@ -406,7 +407,7 @@ const exportExcel = async () => {
       '预警类型': typeLabel(r.warningType),
       '预警值': r.warningValue || '-',
       '预警级别': levelLabel(r.warningLevel),
-      '处理状态': r.handled ? '已处理' : '未处理',
+      '处理状态': warningHandledStatusLabel(r),
       '处理人': r.handleBy || '-',
       '处理备注': r.handleNote || '-'
     }))

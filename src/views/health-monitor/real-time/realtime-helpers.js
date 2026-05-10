@@ -115,6 +115,16 @@ export function buildRealtimeDetailItems(user) {
       value: hasValue(user.pressure) ? user.pressure : '--',
       color: colorFromStatusClass(classifyPressure(user.pressure), '#fb923c')
     },
+    {
+      label: '最近上报',
+      value: formatRealtimeTime(user.lastUpdate),
+      color: '#38bdf8'
+    },
+    {
+      label: '手表IMEI',
+      value: user.imei || '--',
+      color: '#38bdf8'
+    },
     { label: '部门', value: user.deptName || '--', color: '#a8c5e6' },
     { label: '工号', value: user.userCode || '--', color: '#a8c5e6' }
   ]

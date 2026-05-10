@@ -46,6 +46,41 @@ export function fmtReportMetric1(value) {
   return Number.isFinite(parsed) ? parsed.toFixed(1) : '--'
 }
 
+function hasRows(value) {
+  return Array.isArray(value) && value.length > 0
+}
+
+export function hasReportExportData({ monthlySummary = [], deptSummary = [], trendData = [] } = {}) {
+  return hasRows(monthlySummary) || hasRows(deptSummary) || hasRows(trendData)
+}
+
+export function buildReportExportState({
+  loading = false,
+  exporting = false,
+  exportingPdf = false,
+  monthlySummary = [],
+  deptSummary = [],
+  trendData = []
+} = {}) {
+  const hasExportData = hasReportExportData({ monthlySummary, deptSummary, trendData })
+  const exportDisabledReason = loading
+    ? '报表数据加载中，请稍后导出'
+    : hasExportData
+      ? ''
+      : '当前筛选范围暂无可导出的报表数据'
+  const excelDisabledReason = exporting ? 'Excel 正在导出，请稍后' : exportDisabledReason
+  const pdfDisabledReason = exportingPdf ? 'PDF 正在导出，请稍后' : exportDisabledReason
+
+  return {
+    canExportExcel: !loading && !exporting && hasExportData,
+    canExportPdf: !loading && !exportingPdf && hasExportData,
+    exportDisabledReason,
+    excelDisabledReason,
+    pdfDisabledReason,
+    hasExportData
+  }
+}
+
 export function buildMonthlyKpis(monthlySummary, deptSummary) {
   if (!monthlySummary.length) {
     return []

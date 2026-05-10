@@ -20,8 +20,8 @@
         </el-select>
         <el-select v-model="filter.handled" placeholder="全部状态" size="small" clearable style="width:110px" @change="fetchList">
           <el-option label="全部状态" value="" />
-          <el-option label="未处理" :value="false" />
-          <el-option label="已处理" :value="true" />
+          <el-option :label="warningHandledStatusLabel({ handled: false })" :value="false" />
+          <el-option :label="warningHandledStatusLabel({ handled: true })" :value="true" />
         </el-select>
         <el-input v-model="filter.userCode" placeholder="搜索员工工号" size="small" clearable style="width:150px" @change="fetchList" />
         <el-button size="small" type="primary" plain @click="handleMarkAllRead" :disabled="unhandledCount === 0">
@@ -107,7 +107,7 @@
             @click="handleSingle(item)"
             :loading="item._loading"
           >处理</el-button>
-          <span v-else class="ni-done-tag">已处理</span>
+          <span v-else class="ni-done-tag">{{ warningHandledStatusLabel(item) }}</span>
           <el-button size="small" plain @click="goToUser(item)">画像</el-button>
         </div>
       </div>
@@ -138,7 +138,7 @@ import WarningCenterNav from '@/components/WarningCenterNav.vue'
 import { getRiskWarningList, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
 import dayjs from 'dayjs'
 import { createIntervalTask } from '@/utils/task-timer'
-import { buildWarningLifecycleItem, levelLabel, markWarningHandled } from '../common/warning-lifecycle'
+import { buildWarningLifecycleItem, levelLabel, markWarningHandled, warningHandledStatusLabel } from '../common/warning-lifecycle'
 
 export default {
   name: 'NotificationCenter',
@@ -285,6 +285,7 @@ export default {
     levelLabel(lv) {
       return levelLabel(lv)
     },
+    warningHandledStatusLabel,
     formatTime(t) {
       if (!t) return '--'
       return dayjs(t).format('MM-DD HH:mm')

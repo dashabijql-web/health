@@ -18,12 +18,20 @@
           style="width:130px"
           @change="onMonthChange"
         />
-        <el-button size="small" type="primary" plain @click="exportExcel" :loading="exporting">
-          导出 Excel
-        </el-button>
-        <el-button size="small" type="warning" plain @click="exportPdf" :loading="exportingPdf">
-          导出 PDF
-        </el-button>
+        <el-tooltip :content="reportExportState.excelDisabledReason" :disabled="reportExportState.canExportExcel" placement="bottom">
+          <span class="rc-export-wrap">
+            <el-button size="small" type="primary" plain @click="exportExcel" :loading="exporting" :disabled="!reportExportState.canExportExcel">
+              导出 Excel
+            </el-button>
+          </span>
+        </el-tooltip>
+        <el-tooltip :content="reportExportState.pdfDisabledReason" :disabled="reportExportState.canExportPdf" placement="bottom">
+          <span class="rc-export-wrap">
+            <el-button size="small" type="warning" plain @click="exportPdf" :loading="exportingPdf" :disabled="!reportExportState.canExportPdf">
+              导出 PDF
+            </el-button>
+          </span>
+        </el-tooltip>
       </div>
     </div>
 
@@ -182,6 +190,7 @@ import {
 } from './report-center-runtime'
 import {
   buildMonthlyKpis,
+  buildReportExportState,
   buildReportInsightLines,
   buildReportOverviewCards,
   fmtReportMetric1
@@ -208,6 +217,16 @@ export default {
         deptSummary: this.deptSummary,
         trendData: this.trendData,
         trendDays: this.trendDays
+      })
+    },
+    reportExportState() {
+      return buildReportExportState({
+        loading: this.loading,
+        exporting: this.exporting,
+        exportingPdf: this.exportingPdf,
+        monthlySummary: this.monthlySummary,
+        deptSummary: this.deptSummary,
+        trendData: this.trendData
       })
     },
     insightLines() {
