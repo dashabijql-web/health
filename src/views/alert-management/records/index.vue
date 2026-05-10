@@ -277,7 +277,7 @@ import { formatDate } from '@/utils'
 import { useClock } from '@/composables/useClock'
 import { getRiskWarningList, getRiskWarningOverview, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
 import { exportToExcel } from '@/utils/export-excel'
-import { buildWarningLifecycleItem, warningHandledStatusLabel } from '../common/warning-lifecycle'
+import { buildWarningLifecycleItem, warningHandledStatusLabel, warningLevelFilterLabel } from '../common/warning-lifecycle'
 
 const route = useRoute()
 
@@ -330,17 +330,9 @@ const loadData = async () => {
 const handleSearch = () => { pagination.page=1; loadData() }
 const handleReset = () => { Object.assign(searchForm, { dateRange:null, warningType:'', warningLevel:'', handleStatus:'', keyword:'' }); handleSearch() }
 
-function normalizeRouteLevel(level) {
-  const text = String(level || '')
-  if (text === '3' || text === 'danger') return '高危'
-  if (text === '2' || text === 'warn' || text === 'warning') return '中危'
-  if (text === '1' || text === 'info') return '低危'
-  return text
-}
-
 function applyRouteFilters(query = route.query) {
   searchForm.warningType = query.warningType || ''
-  searchForm.warningLevel = normalizeRouteLevel(query.warningLevel)
+  searchForm.warningLevel = warningLevelFilterLabel(query.warningLevel)
   searchForm.handleStatus = query.handleStatus || ''
   searchForm.keyword = query.keyword || query.userCode || ''
   searchForm.dateRange = query.startDate && query.endDate

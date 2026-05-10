@@ -8,6 +8,7 @@ import {
   formatDateTime,
   markWarningHandled,
   normalizeWarningLevel,
+  warningLevelFilterLabel,
   warningHandledStatusLabel
 } from '../src/views/alert-management/common/warning-lifecycle.js'
 
@@ -20,6 +21,17 @@ test('normalizeWarningLevel maps Chinese labels and numeric levels', () => {
   assert.equal(normalizeWarningLevel(3), 'danger')
   assert.equal(normalizeWarningLevel(2), 'warn')
   assert.equal(normalizeWarningLevel(1), 'info')
+})
+
+test('warningLevelFilterLabel maps notification route levels to records filter labels', () => {
+  assert.equal(warningLevelFilterLabel(3), '高危')
+  assert.equal(warningLevelFilterLabel('danger'), '高危')
+  assert.equal(warningLevelFilterLabel(2), '中危')
+  assert.equal(warningLevelFilterLabel('warning'), '中危')
+  assert.equal(warningLevelFilterLabel(1), '低危')
+  assert.equal(warningLevelFilterLabel('info'), '低危')
+  assert.equal(warningLevelFilterLabel('高危'), '高危')
+  assert.equal(warningLevelFilterLabel('custom'), 'custom')
 })
 
 test('warningHandledStatusLabel keeps notifications and records pending wording aligned', () => {
@@ -61,8 +73,8 @@ test('notification records jump preserves lifecycle filters as route query', () 
   assert.match(notificationSource, /query\.handleStatus\s*=\s*this\.filter\.handled\s*\?\s*'handled'\s*:\s*'unhandled'/)
   assert.match(notificationSource, /query\.keyword\s*=\s*this\.filter\.userCode/)
 
-  assert.match(recordsSource, /function normalizeRouteLevel/)
-  assert.match(recordsSource, /searchForm\.warningLevel\s*=\s*normalizeRouteLevel\(query\.warningLevel\)/)
+  assert.match(recordsSource, /warningLevelFilterLabel/)
+  assert.match(recordsSource, /searchForm\.warningLevel\s*=\s*warningLevelFilterLabel\(query\.warningLevel\)/)
   assert.match(recordsSource, /searchForm\.handleStatus\s*=\s*query\.handleStatus\s*\|\|\s*''/)
   assert.match(recordsSource, /searchForm\.keyword\s*=\s*query\.keyword\s*\|\|\s*query\.userCode\s*\|\|\s*''/)
 })

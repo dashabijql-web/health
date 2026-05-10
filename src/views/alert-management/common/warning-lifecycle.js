@@ -20,6 +20,18 @@ export function normalizeWarningLevel(value) {
   return 'info'
 }
 
+export function warningLevelFilterLabel(value) {
+  const text = String(value ?? '').trim()
+  if (!text) return ''
+  const normalized = text.toLowerCase()
+  const labels = {
+    3: '高危', danger: '高危', high: '高危', highrisk: '高危', 高: '高危', 高危: '高危', 危险: '高危', 危急: '高危', 严重: '高危',
+    2: '中危', warn: '中危', warning: '中危', mid: '中危', medium: '中危', 中: '中危', 中危: '中危', 预警: '中危', 警告: '中危',
+    1: '低危', info: '低危', tip: '低危', low: '低危', 低: '低危', 低危: '低危', 提示: '低危', 注意: '低危'
+  }
+  return labels[normalized] || labels[text] || text
+}
+
 export function levelLabel(value) {
   return {
     danger: '危险',
