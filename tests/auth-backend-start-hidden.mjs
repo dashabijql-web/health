@@ -161,6 +161,21 @@ test('full stack runner treats one existing simulator process as already running
   );
 });
 
+test('full stack runner stops simulator before old full pipeline probes', () => {
+  const source = fs.readFileSync(fullStackRunnerPath, 'utf8');
+
+  assert.match(
+    source,
+    /function Stop-SimulatorForOldPipeline[\s\S]+old-full-pipeline-exclusive-tcp/,
+    'runner must have a dedicated simulator stop before old full TCP pipeline probes'
+  );
+  assert.match(
+    source,
+    /Invoke-Step\s+['"]test-perf-old['"][\s\S]+Stop-SimulatorForOldPipeline[\s\S]+Invoke-Step\s+['"]test-full-old['"]/,
+    'runner must stop the old-source simulator after perf coverage and before test-full-old runs audit:pipeline'
+  );
+});
+
 test('full stack runner records data-source database facts and simulator contamination', () => {
   const source = fs.readFileSync(fullStackRunnerPath, 'utf8');
 

@@ -265,6 +265,30 @@ function Stop-SimulatorForNew {
   Start-Sleep -Seconds 2
 }
 
+function Stop-SimulatorForOldPipeline {
+  $running = @(Get-SimulatorProcesses)
+  if ($running.Count -eq 0) {
+    Log 'READY old full pipeline: no watch-simulator process is running'
+    return
+  }
+
+  foreach ($process in $running) {
+    try {
+      Log "STOP watch-simulator pid=$($process.ProcessId) before old full pipeline TCP probes"
+      Stop-Process -Id $process.ProcessId -Force
+      [void]$stoppedProcesses.Add([ordered]@{
+        name = 'watch-simulator'
+        id = $process.ProcessId
+        stoppedAt = (Get-Date -Format o)
+        reason = 'old-full-pipeline-exclusive-tcp'
+      })
+    } catch {
+      Log "FAILED to stop watch-simulator pid=$($process.ProcessId): $($_.Exception.Message)"
+    }
+  }
+  Start-Sleep -Seconds 2
+}
+
 function Write-CombinedLog([string]$stdout, [string]$stderr, [string]$combined) {
   Set-Content -LiteralPath $combined -Encoding UTF8 -Value "### STDOUT`r`n"
   if (Test-Path -LiteralPath $stdout) {
@@ -696,6 +720,7 @@ if ($DataSource -eq 'old' -or $DataSource -eq 'both') {
     }
     Invoke-Step 'test-integration-old' 'npm run test:integration:old' $show | Out-Null
     Invoke-Step 'test-perf-old' 'npm run test:perf:old' $show | Out-Null
+    Stop-SimulatorForOldPipeline
     Invoke-Step 'test-full-old' 'npm run test:full:old' $show | Out-Null
   }
 }

@@ -44,3 +44,4 @@
 - Pipeline tests expect Redis, TCP `9000`, and the simulator to be available; `audit:preflight:pipeline` only verifies the detectable prerequisites.
 - `audit:pipeline` now pins the browser/API leg to the same data source as `SQL_DB` (`health` -> `old`, `health_new` -> `new`) so the TCP probe, API verification, and Playwright page check stay on one DB route.
 - `audit:pipeline` still tries to observe the transient Redis buffer, but it no longer fails solely because the probe flushed to SQL before the poll window caught it; SQL/API/page verification is the hard gate.
+- `tests/run-full-stack-local.ps1` stops the old-source simulator after `test-perf-old` and before `test-full-old`, so `audit:pipeline` and `audit:pipeline-warning` get exclusive TCP probe access instead of racing the 1000-watch simulator for the same IMEI.
