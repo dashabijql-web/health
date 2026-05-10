@@ -18,14 +18,15 @@ test('visual audit writes route-level artifact summaries', () => {
   assert.match(auditSource, /passedViewports/)
   assert.match(auditSource, /failedViewports/)
   assert.match(auditSource, /issueCount/)
+  assert.match(auditSource, /rerunCommand:\s*`node scripts\/with-env\.mjs VISUAL_ROUTES=\$\{routeSlug\} -- npm run audit:visual`/)
   assert.match(auditSource, /path\.basename\(result\.screenshot\)/)
 })
 
 test('visual audit markdown includes triage table and rerun hints', () => {
   assert.match(auditSource, /## Route Summary/)
-  assert.match(auditSource, /\| route \| status \| passed viewports \| failed viewports \| issues \| screenshots \|/)
+  assert.match(auditSource, /\| route \| status \| passed viewports \| failed viewports \| issues \| rerun \| screenshots \|/)
   assert.match(auditSource, /rerun_all: npm run audit:visual/)
-  assert.match(auditSource, /rerun_one_route: VISUAL_ROUTES=<route-slug> npm run audit:visual/)
+  assert.match(auditSource, /rerun_one_route: node scripts\/with-env\.mjs VISUAL_ROUTES=<route-slug> -- npm run audit:visual/)
 })
 
 test('visual audit groups issues by type for faster failure triage', () => {

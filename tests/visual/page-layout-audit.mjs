@@ -274,6 +274,7 @@ summary.routeSummaries = summary.routes.map((routeSlug) => {
     passedViewports: routeResults.filter((result) => result.status === 'passed').length,
     failedViewports: routeResults.filter((result) => result.status !== 'passed').length,
     issueCount: routeIssues.length,
+    rerunCommand: `node scripts/with-env.mjs VISUAL_ROUTES=${routeSlug} -- npm run audit:visual`,
     screenshots: routeResults.map((result) => ({
       viewport: result.viewport,
       status: result.status,
@@ -312,17 +313,17 @@ const lines = [
   `- failed_checks: ${summary.failedChecks}`,
   `- artifact_dir: ${ARTIFACT_DIR}`,
   `- rerun_all: npm run audit:visual`,
-  `- rerun_one_route: VISUAL_ROUTES=<route-slug> npm run audit:visual`,
+  `- rerun_one_route: node scripts/with-env.mjs VISUAL_ROUTES=<route-slug> -- npm run audit:visual`,
   '',
   '## Route Summary',
   '',
-  '| route | status | passed viewports | failed viewports | issues | screenshots |',
-  '| --- | --- | ---: | ---: | ---: | --- |',
+  '| route | status | passed viewports | failed viewports | issues | rerun | screenshots |',
+  '| --- | --- | ---: | ---: | ---: | --- | --- |',
   ...summary.routeSummaries.map((route) => {
     const screenshots = route.screenshots
       .map((screenshot) => `${screenshot.viewport}:${screenshot.file || '-'}`)
       .join(', ');
-    return `| ${route.route} | ${route.status} | ${route.passedViewports} | ${route.failedViewports} | ${route.issueCount} | ${screenshots} |`;
+    return `| ${route.route} | ${route.status} | ${route.passedViewports} | ${route.failedViewports} | ${route.issueCount} | \`${route.rerunCommand}\` | ${screenshots} |`;
   }),
   '',
   '## Issue Type Summary',
