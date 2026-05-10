@@ -280,7 +280,11 @@ export default {
       this.$router.push('/health-monitor/risk-warning')
     },
     goRecords() {
-      this.$router.push('/alert-management/records')
+      const query = {}
+      if (this.filter.level) query.warningLevel = this.filter.level
+      if (this.filter.handled !== '') query.handleStatus = this.filter.handled ? 'handled' : 'unhandled'
+      if (this.filter.userCode) query.keyword = this.filter.userCode
+      this.$router.push({ path: '/alert-management/records', query })
     },
     levelLabel(lv) {
       return levelLabel(lv)

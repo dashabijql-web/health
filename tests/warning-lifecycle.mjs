@@ -52,6 +52,21 @@ test('alert records page exposes shared SLA clock fields in table, mobile card, 
   assert.match(source, /records-sla-clock/)
 })
 
+test('notification records jump preserves lifecycle filters as route query', () => {
+  const notificationSource = readFileSync('src/views/alert-management/notifications/index.vue', 'utf8')
+  const recordsSource = readFileSync('src/views/alert-management/records/index.vue', 'utf8')
+
+  assert.match(notificationSource, /path:\s*'\/alert-management\/records'/)
+  assert.match(notificationSource, /query\.warningLevel\s*=\s*this\.filter\.level/)
+  assert.match(notificationSource, /query\.handleStatus\s*=\s*this\.filter\.handled\s*\?\s*'handled'\s*:\s*'unhandled'/)
+  assert.match(notificationSource, /query\.keyword\s*=\s*this\.filter\.userCode/)
+
+  assert.match(recordsSource, /function normalizeRouteLevel/)
+  assert.match(recordsSource, /searchForm\.warningLevel\s*=\s*normalizeRouteLevel\(query\.warningLevel\)/)
+  assert.match(recordsSource, /searchForm\.handleStatus\s*=\s*query\.handleStatus\s*\|\|\s*''/)
+  assert.match(recordsSource, /searchForm\.keyword\s*=\s*query\.keyword\s*\|\|\s*query\.userCode\s*\|\|\s*''/)
+})
+
 test('buildWarningLifecycleView derives deadline and overdue seconds from createTime', () => {
   const createTime = '2026-05-08T10:00:00+08:00'
   const now = Date.parse('2026-05-08T10:35:00+08:00')
