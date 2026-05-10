@@ -21,3 +21,11 @@ test('visual audit markdown includes triage table and rerun hints', () => {
   assert.match(auditSource, /rerun_all: npm run audit:visual/)
   assert.match(auditSource, /rerun_one_route: VISUAL_ROUTES=<route-slug> npm run audit:visual/)
 })
+
+test('visual audit groups issues by type for faster failure triage', () => {
+  assert.match(auditSource, /summary\.issueTypeSummaries\s*=/)
+  assert.match(auditSource, /## Issue Type Summary/)
+  assert.match(auditSource, /\| issue type \| count \| routes \| viewports \|/)
+  assert.match(auditSource, /routes:\s*Array\.from\(item\.routes\)\.sort\(\)/)
+  assert.match(auditSource, /viewports:\s*Array\.from\(item\.viewports\)\.sort\(\)/)
+})

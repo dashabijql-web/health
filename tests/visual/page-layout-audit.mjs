@@ -281,6 +281,22 @@ summary.routeSummaries = summary.routes.map((routeSlug) => {
   };
 });
 
+summary.issueTypeSummaries = Array.from(
+  summary.issues.reduce((counts, item) => {
+    const current = counts.get(item.type) || { type: item.type, count: 0, routes: new Set(), viewports: new Set() };
+    current.count += 1;
+    current.routes.add(item.route);
+    current.viewports.add(item.viewport);
+    counts.set(item.type, current);
+    return counts;
+  }, new Map()).values()
+).map((item) => ({
+  type: item.type,
+  count: item.count,
+  routes: Array.from(item.routes).sort(),
+  viewports: Array.from(item.viewports).sort()
+})).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
+
 const jsonPath = path.join(ARTIFACT_DIR, 'layout-summary.json');
 const mdPath = path.join(ARTIFACT_DIR, 'layout-summary.md');
 await fs.writeFile(jsonPath, JSON.stringify(summary, null, 2));
@@ -307,6 +323,16 @@ const lines = [
       .join(', ');
     return `| ${route.route} | ${route.status} | ${route.passedViewports} | ${route.failedViewports} | ${route.issueCount} | ${screenshots} |`;
   }),
+  '',
+  '## Issue Type Summary',
+  '',
+  ...(summary.issueTypeSummaries.length > 0
+    ? [
+        '| issue type | count | routes | viewports |',
+        '| --- | ---: | --- | --- |',
+        ...summary.issueTypeSummaries.map((item) => `| ${item.type} | ${item.count} | ${item.routes.join(', ')} | ${item.viewports.join(', ')} |`)
+      ]
+    : ['- none']),
   '',
   '## Route / Viewport Results',
   '',
