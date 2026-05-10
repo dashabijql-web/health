@@ -5,15 +5,23 @@ import process from 'node:process';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chromium } from 'playwright';
+import {
+  assert,
+  assertResultOk,
+  pruneArtifacts,
+  requestJson,
+  resolveSession,
+  truncate
+} from '../shared/health-test-utils.mjs';
 
 const execFileAsync = promisify(execFile);
 
-const LOGIN_CREDENTIALS = { username: 'admin', password: 'admin123' };
 const SQLCMD_BIN = process.env.SQLCMD_BIN || 'sqlcmd';
 const SQL_SERVER = process.env.SQL_SERVER || 'localhost,58135';
 const SQL_USER = process.env.SQL_USER || 'sa';
-const SQL_PASSWORD = process.env.SQL_PASSWORD || '123abcd.';
+const SQL_PASSWORD = process.env.SQL_PASSWORD || '';
 const SQL_DB = process.env.SQL_DB || 'health';
+const PIPELINE_DATA_SOURCE = process.env.PIPELINE_DATA_SOURCE || (SQL_DB === 'health_new' ? 'new' : 'old');
 const TCP_HOST = process.env.WATCH_TCP_HOST || '127.0.0.1';
 const TCP_PORT = Number.parseInt(process.env.WATCH_TCP_PORT || '9000', 10);
 const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
@@ -30,7 +38,10 @@ const SCREENSHOT_PATH = path.join(ARTIFACT_DIR, 'warning-center.jpeg');
 const MONTH_SUFFIX = new Date().toISOString().slice(0, 7).replace('-', '');
 const HEALTH_TABLE = `health_record_${MONTH_SUFFIX}`;
 const WARNING_TABLE = `warning_record_${MONTH_SUFFIX}`;
+const DATA_SOURCE_HEADER = 'X-Health-Data-Source';
+const DATA_SOURCE_COOKIE = 'Health-Data-Source';
 const SCRIPT_TIME = new Date().toISOString().slice(0, 19).replace('T', ' ');
+const REDIS_BUFFER_KEYS = [`health:buffer:${PIPELINE_DATA_SOURCE}`, 'health:buffer'];
 
 const PROBE = {
   indicator: '体温',
@@ -46,15 +57,9 @@ const PROBE = {
   battery: 88
 };
 
-const TARGETS = [
-  { label: 'vite-127', origin: 'http://127.0.0.1:9528', apiPrefix: '/dev-api' },
-  { label: 'vite-localhost', origin: 'http://localhost:9528', apiPrefix: '/dev-api' },
-  { label: 'backend-127', origin: 'http://127.0.0.1:8080', apiPrefix: '/health' },
-  { label: 'backend-localhost', origin: 'http://localhost:8080', apiPrefix: '/health' }
-];
-
 const summary = {
   runId: RUN_ID,
+  status: 'passed',
   startedAt: new Date().toISOString(),
   baseUrl: '',
   target: null,
@@ -72,21 +77,19 @@ const summary = {
 await fs.mkdir(ARTIFACT_DIR, { recursive: true });
 await pruneArtifacts(path.dirname(ARTIFACT_DIR), ARTIFACT_RETENTION);
 
-function truncate(value, max = 260) {
-  if (!value) return '';
-  return value.length > max ? `${value.slice(0, max - 3)}...` : value;
-}
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
-
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+assert(SQL_PASSWORD, 'SQL_PASSWORD is required for SQL-backed pipeline tests');
+
 function stage(name, status, note = '') {
   summary.stages.push({ name, status, note, at: new Date().toISOString() });
+}
+
+function markSkipped(note) {
+  summary.status = 'skipped';
+  stage('warning-pipeline', 'skipped', note);
 }
 
 function normalizeWarningLevel(value) {
@@ -98,89 +101,6 @@ function classifyWarningLevel(row) {
   if (Number(row?.isMediumRisk) === 1) return '中危';
   if (Number(row?.isLowRisk) === 1) return '低危';
   return normalizeWarningLevel(row?.warningLevel);
-}
-
-async function pruneArtifacts(rootDir, keep = 5) {
-  if (!Number.isFinite(keep) || keep <= 0) return;
-  const entries = await fs.readdir(rootDir, { withFileTypes: true }).catch(() => []);
-  const dirs = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-  const obsolete = dirs.slice(0, Math.max(0, dirs.length - keep));
-  await Promise.allSettled(
-    obsolete.map((dirName) => fs.rm(path.join(rootDir, dirName), { recursive: true, force: true }))
-  );
-}
-
-async function tryLogin(target) {
-  const response = await fetch(`${target.origin}${target.apiPrefix}/auth/login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(LOGIN_CREDENTIALS)
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  const payload = await response.json();
-  assert(payload?.code === 200, payload?.message || 'login rejected');
-  assert(payload?.data?.token, 'login response missing token');
-  return { target, token: payload.data.token };
-}
-
-async function resolveSession() {
-  const errors = [];
-  for (const target of TARGETS) {
-    try {
-      return await tryLogin(target);
-    } catch (error) {
-      errors.push(`${target.label}: ${truncate(String(error))}`);
-    }
-  }
-  throw new Error(`unable to login to any target: ${errors.join(' | ')}`);
-}
-
-function buildHeaders(session, extraHeaders = {}) {
-  return {
-    accept: 'application/json',
-    satoken: session.token,
-    cookie: `User-Token=${session.token}; satoken=${session.token}`,
-    ...extraHeaders
-  };
-}
-
-async function requestJson(session, method, routePath, options = {}) {
-  const url = new URL(`${session.target.origin}${session.target.apiPrefix}${routePath}`);
-  const { query, data, headers } = options;
-
-  if (query) {
-    for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined && value !== null && value !== '') {
-        url.searchParams.set(key, String(value));
-      }
-    }
-  }
-
-  const response = await fetch(url, {
-    method,
-    headers: buildHeaders(session, data ? { 'content-type': 'application/json', ...headers } : headers),
-    body: data ? JSON.stringify(data) : undefined
-  });
-
-  const text = await response.text();
-  let payload = null;
-  try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    payload = null;
-  }
-
-  return { status: response.status, payload, raw: text, url: url.toString() };
-}
-
-function assertResultOk(result) {
-  assert(result.status >= 200 && result.status < 300, `HTTP ${result.status}`);
-  assert(result.payload && typeof result.payload === 'object', 'response body is not JSON object');
-  assert(result.payload.code === 200, result.payload.message || `unexpected code ${result.payload.code}`);
 }
 
 async function sqlRaw(query) {
@@ -201,8 +121,7 @@ async function sqlRaw(query) {
       '0',
       '-Y',
       '0',
-      '-h-1',
-      '-Q',
+        '-Q',
       `SET NOCOUNT ON; ${query}`
     ],
     { encoding: 'utf8', windowsHide: true, timeout: 120000, maxBuffer: 20 * 1024 * 1024 }
@@ -382,6 +301,11 @@ async function getWarningProbeTarget() {
     ") " +
     "ORDER BY d.id"
   );
+  if (row?.imei && row?.empCode) return row;
+  if (PIPELINE_DATA_SOURCE === 'new') {
+    markSkipped('new data source has no warning probe target; empty health_new bootstrap data is expected');
+    return null;
+  }
   assert(row?.imei && row?.empCode, 'no warning probe target found');
   return row;
 }
@@ -487,23 +411,30 @@ async function waitForWarningRows(target, baseline) {
 }
 
 async function findProbePayloads(redisClient, target) {
-  const items = await redisClient.execute('LRANGE', 'health:buffer', '0', '-1');
-  const rows = Array.isArray(items) ? items.filter((item) => typeof item === 'string') : [];
-  return rows.filter(
-    (row) =>
-      row.includes(`"userCode":"${target.empCode}"`) &&
-      row.includes(`"temperature":${PROBE.temperatureStored}`) &&
-      row.includes(`"heartRate":${PROBE.heartRate}`) &&
-      row.includes(`"bloodOxygen":${PROBE.bloodOxygen}`)
-  );
+  const matched = [];
+  for (const key of REDIS_BUFFER_KEYS) {
+    const items = await redisClient.execute('LRANGE', key, '0', '-1').catch(() => []);
+    const rows = Array.isArray(items) ? items.filter((item) => typeof item === 'string') : [];
+    for (const row of rows) {
+      if (
+        row.includes(`"userCode":"${target.empCode}"`) &&
+        row.includes(`"temperature":${PROBE.temperatureStored}`) &&
+        row.includes(`"heartRate":${PROBE.heartRate}`) &&
+        row.includes(`"bloodOxygen":${PROBE.bloodOxygen}`)
+      ) {
+        matched.push({ key, payload: row });
+      }
+    }
+  }
+  return matched;
 }
 
 async function observeRedisPayloads(redisClient, target) {
   const startedAt = Date.now();
-  const payloads = new Set();
+  const payloads = new Map();
   while (Date.now() - startedAt < 6000) {
     const matches = await findProbePayloads(redisClient, target);
-    for (const match of matches) payloads.add(match);
+    for (const match of matches) payloads.set(`${match.key}::${match.payload}`, match);
     if (payloads.size > 0) return [...payloads];
     await sleep(150);
   }
@@ -514,7 +445,7 @@ async function cleanupRedisPayloads(redisClient, payloads) {
   let removed = 0;
   for (const payload of payloads) {
     try {
-      const delta = await redisClient.execute('LREM', 'health:buffer', '0', payload);
+      const delta = await redisClient.execute('LREM', payload.key, '0', payload.payload);
       removed += Number(delta || 0);
     } catch {
       // Best-effort cleanup.
@@ -662,7 +593,8 @@ async function launchBrowser() {
 async function bootstrapLogin(page, session) {
   await page.context().addCookies([
     { name: 'User-Token', value: session.token, url: session.target.origin },
-    { name: 'satoken', value: session.token, url: session.target.origin }
+    { name: 'satoken', value: session.token, url: session.target.origin },
+    { name: DATA_SOURCE_COOKIE, value: PIPELINE_DATA_SOURCE, url: session.target.origin }
   ]);
 }
 
@@ -709,76 +641,82 @@ try {
 
   const target = await getWarningProbeTarget();
   summary.target = target;
-  stage('pick-target', 'passed', `${target.empCode} / ${target.imei} / risk=${target.riskLevel ?? 'default'}`);
-
-  const temperatureConfig = await loadTemperatureConfig(target.riskLevel);
-  const appliedProbe = applyTemperatureProbe(temperatureConfig);
-  stage(
-    'probe-config',
-    'passed',
-    `criticalHigh=${appliedProbe.criticalHigh}, probe=${appliedProbe.probeTemperature}, configRisk=${temperatureConfig.riskLevel ?? 'default'}`
-  );
-
-  const baseline = await getBaseline(target);
-  stage('baseline', 'passed', `health_max=${baseline.healthMaxId}, warning_max=${baseline.warningMaxId}`);
-
-  redisClient = await connectRedisWithRetry(REDIS_HOST, REDIS_PORT, REDIS_TIMEOUT_MS);
-  stage('redis-connect', 'passed', `${REDIS_HOST}:${REDIS_PORT}`);
-
-  await sendWarningProbe(target);
-  stage('tcp-warning-probe', 'passed', `${TCP_HOST}:${TCP_PORT} <- ${target.imei}`);
-
-  redisPayloads = await observeRedisPayloads(redisClient, target);
-  if (redisPayloads.length > 0) {
-    stage('redis-buffer', 'passed', `${redisPayloads.length} payload(s) observed`);
+  if (!target) {
+    summary.warnings.push('warning pipeline skipped for new data source because no bound warning probe target exists');
   } else {
-    stage('redis-buffer', 'passed', 'no payload observed before flush');
+    stage('pick-target', 'passed', `${target.empCode} / ${target.imei} / risk=${target.riskLevel ?? 'default'}`);
+
+    const temperatureConfig = await loadTemperatureConfig(target.riskLevel);
+    const appliedProbe = applyTemperatureProbe(temperatureConfig);
+    stage(
+      'probe-config',
+      'passed',
+      `criticalHigh=${appliedProbe.criticalHigh}, probe=${appliedProbe.probeTemperature}, configRisk=${temperatureConfig.riskLevel ?? 'default'}`
+    );
+
+    const baseline = await getBaseline(target);
+    stage('baseline', 'passed', `health_max=${baseline.healthMaxId}, warning_max=${baseline.warningMaxId}`);
+
+    redisClient = await connectRedisWithRetry(REDIS_HOST, REDIS_PORT, REDIS_TIMEOUT_MS);
+    stage('redis-connect', 'passed', `${REDIS_HOST}:${REDIS_PORT}`);
+
+    await sendWarningProbe(target);
+    stage('tcp-warning-probe', 'passed', `${TCP_HOST}:${TCP_PORT} <- ${target.imei}`);
+
+    redisPayloads = await observeRedisPayloads(redisClient, target);
+    if (redisPayloads.length > 0) {
+      stage('redis-buffer', 'passed', `${redisPayloads.length} payload(s) observed in ${[...new Set(redisPayloads.map((item) => item.key))].join(', ')}`);
+    } else {
+      stage('redis-buffer', 'passed', 'no payload observed before flush');
+    }
+
+    const healthRows = await waitForHealthRows(target, baseline);
+    assert(healthRows.length > 0, `no health probe rows found in ${HEALTH_TABLE}`);
+    healthRowIds = [...new Set(healthRows.map((row) => Number(row.id)).filter(Number.isFinite))];
+    stage('sql.health-record', 'passed', `rows=${healthRowIds.join(',')}`);
+
+    const warningRows = await waitForWarningRows(target, baseline);
+    assert(warningRows.length > 0, `no warning probe rows found in ${WARNING_TABLE}`);
+    warningRowIds = [...new Set(warningRows.map((row) => Number(row.id)).filter(Number.isFinite))];
+    const matchedLevels = [...new Set(warningRows.map((row) => classifyWarningLevel(row)).filter(Boolean))];
+    assert(
+      warningRows.some((row) => classifyWarningLevel(row) === normalizeWarningLevel(PROBE.level)),
+      `warning level mismatch: expected=${PROBE.level}, actual=${matchedLevels.join(',') || 'none'}`
+    );
+    stage('sql.warning-record', 'passed', `rows=${warningRowIds.join(',')} / level=${matchedLevels.join(',')}`);
+
+    const warningList = await requestJson(session, 'GET', '/risk-warning/list', {
+      query: { page: 1, size: 20, handled: false, userCode: target.empCode },
+      dataSource: PIPELINE_DATA_SOURCE
+    });
+    assertResultOk(warningList);
+    const warningItems = warningList.payload?.data?.list || warningList.payload?.data?.records || [];
+    const apiRow = warningItems.find((item) => warningRowIds.includes(Number(item.id)));
+    assert(apiRow, 'risk-warning list missing probe warning');
+    stage('api.risk-warning-list', 'passed', `${apiRow.warningType || apiRow.indicatorName} ${apiRow.warningValue || apiRow.indicatorValue || ''}`.trim());
+
+    const pageState = await verifyNotificationsPage(session, target, apiRow.userName || apiRow.empName || target.empCode);
+    stage(
+      'page.notifications.handle',
+      'passed',
+      `${truncate(pageState.before.text, 80)} -> ${pageState.after.handled ? '已处理' : '未处理'}`
+    );
+
+    const handledRows = await verifyWarningsHandled(warningRowIds);
+    assert(handledRows.length === warningRowIds.length, 'handled warning rows could not be reloaded from SQL');
+    assert(
+      handledRows.every((row) => row.handled === true || row.handled === 1),
+      `warning rows not marked handled: ${handledRows.map((row) => `${row.id}:${row.handled}`).join(', ')}`
+    );
+    stage(
+      'sql.warning-handled',
+      'passed',
+      handledRows.map((row) => `${row.id}:${row.handleBy || 'unknown'}`).join(', ')
+    );
   }
-
-  const healthRows = await waitForHealthRows(target, baseline);
-  assert(healthRows.length > 0, `no health probe rows found in ${HEALTH_TABLE}`);
-  healthRowIds = [...new Set(healthRows.map((row) => Number(row.id)).filter(Number.isFinite))];
-  stage('sql.health-record', 'passed', `rows=${healthRowIds.join(',')}`);
-
-  const warningRows = await waitForWarningRows(target, baseline);
-  assert(warningRows.length > 0, `no warning probe rows found in ${WARNING_TABLE}`);
-  warningRowIds = [...new Set(warningRows.map((row) => Number(row.id)).filter(Number.isFinite))];
-  const matchedLevels = [...new Set(warningRows.map((row) => classifyWarningLevel(row)).filter(Boolean))];
-  assert(
-    warningRows.some((row) => classifyWarningLevel(row) === normalizeWarningLevel(PROBE.level)),
-    `warning level mismatch: expected=${PROBE.level}, actual=${matchedLevels.join(',') || 'none'}`
-  );
-  stage('sql.warning-record', 'passed', `rows=${warningRowIds.join(',')} / level=${matchedLevels.join(',')}`);
-
-  const warningList = await requestJson(session, 'GET', '/risk-warning/list', {
-    query: { page: 1, size: 20, handled: false, userCode: target.empCode }
-  });
-  assertResultOk(warningList);
-  const warningItems = warningList.payload?.data?.list || warningList.payload?.data?.records || [];
-  const apiRow = warningItems.find((item) => warningRowIds.includes(Number(item.id)));
-  assert(apiRow, 'risk-warning list missing probe warning');
-  stage('api.risk-warning-list', 'passed', `${apiRow.warningType || apiRow.indicatorName} ${apiRow.warningValue || apiRow.indicatorValue || ''}`.trim());
-
-  const pageState = await verifyNotificationsPage(session, target, apiRow.userName || apiRow.empName || target.empCode);
-  stage(
-    'page.notifications.handle',
-    'passed',
-    `${truncate(pageState.before.text, 80)} -> ${pageState.after.handled ? '已处理' : '未处理'}`
-  );
-
-  const handledRows = await verifyWarningsHandled(warningRowIds);
-  assert(handledRows.length === warningRowIds.length, 'handled warning rows could not be reloaded from SQL');
-  assert(
-    handledRows.every((row) => row.handled === true || row.handled === 1),
-    `warning rows not marked handled: ${handledRows.map((row) => `${row.id}:${row.handled}`).join(', ')}`
-  );
-  stage(
-    'sql.warning-handled',
-    'passed',
-    handledRows.map((row) => `${row.id}:${row.handleBy || 'unknown'}`).join(', ')
-  );
 } catch (error) {
   fatalError = error;
+  summary.status = 'failed';
   stage('warning-pipeline', 'failed', truncate(String(error), 320));
 } finally {
   if (redisClient && redisPayloads.length > 0) {
@@ -800,13 +738,16 @@ try {
 }
 
 const failedStages = summary.stages.filter((item) => item.status === 'failed').length;
+const skippedStages = summary.stages.filter((item) => item.status === 'skipped').length;
 
 console.log(JSON.stringify({
   artifactDir: ARTIFACT_DIR,
   reportFile: REPORT_MD,
   stageCount: summary.stages.length,
   failedStages,
+  skippedStages,
   warnings: summary.warnings.length,
+  status: summary.status,
   cleanup: summary.cleanup
 }, null, 2));
 

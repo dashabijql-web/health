@@ -247,7 +247,6 @@
 
 <script>
 import dayjs from 'dayjs'
-import { ElMessage } from 'element-plus'
 import {
   getPressureOverview,
   getPressureTrend,
@@ -257,15 +256,26 @@ import {
   getPressureRealtime,
   getPressureHourly
 } from '@/api/pressure'
-import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
-import { initChart, distOption, gaugeOption, gradH, gradV } from '@/utils/chart-helpers'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
-import { exportToExcel } from '@/utils/export-excel'
+import {
+  createHourlySeries,
+  fetchMetricData,
+  getMetricToday,
+  loadMetricDistribution,
+  loadMetricOverview,
+  loadMetricRangeChart,
+  loadMetricRealtime,
+  loadMetricTopUsers,
+  metricDaysForPeriod
+} from '@/views/health-monitor/metric-page/metric-data-loader'
+import { exportMetricRows } from '@/views/health-monitor/metric-page/metric-export'
+import metricPageMixin from '@/views/health-monitor/metric-page/metric-page-mixin'
+import { pressureChartMethods } from './pressure-chart'
 
 export default {
   name: 'PressureAnalysis',
-  mixins: [chartPageMixin],
+  mixins: [chartPageMixin, metricPageMixin],
   data() {
     return {
       pageLoading: false,
@@ -282,7 +292,7 @@ export default {
       pageSize: 20,
       activePeriod: 'month',
       periodOptions: PERIOD_OPTIONS,
-      _top5ScrollTimer: null,
+      _top5ScrollLoop: null,
       psRanges: [
         { label: '放松 (低压力)', range: '< 50',      color: '#4FC3F7' },
         { label: '正常 (健康)',   range: '50 – 69',   color: '#52c41a' },
@@ -358,29 +368,13 @@ export default {
   },
   mounted() {
     this.initPage(() => this.loadRealtime())
-    this.$nextTick(() => {
-      this._ro = new ResizeObserver(() => this.setPageSize(27))
-      const el = this.$refs.listRef
-      if (el) { this._ro.observe(el); this.setPageSize(27) }
-    })
-  },
-  beforeUnmount() {
-    if (this._ro) this._ro.disconnect()
-    if (this._top5ScrollTimer) clearInterval(this._top5ScrollTimer)
+    this.initAutoPageSize(27)
   },
   methods: {
+    ...pressureChartMethods,
 
     async exportExcel() {
       const list = this.realtimeList
-      if (!list.length) { ElMessage.warning('暂无数据可导出'); return }
-      const data = list.map(r => ({
-        userName: r.userName || '--',
-        deptName: r.deptName || '--',
-        empCode: r.empCode || '--',
-        pressure: r.pressure ?? '--',
-        status: (r.pressure >= 85) ? '高危' : (r.pressure >= 70) ? '偏高' : (r.pressure >= 50) ? '正常' : '放松',
-        recordTime: r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
-      }))
       const cols = [
         { label: '姓名', key: 'userName' },
         { label: '部门', key: 'deptName' },
@@ -389,8 +383,19 @@ export default {
         { label: '状态', key: 'status' },
         { label: '记录时间', key: 'recordTime' }
       ]
-      await exportToExcel(data, cols, `压力分析_${dayjs().format('YYYYMMDD')}`)
-      ElMessage.success(`已导出 ${list.length} 条记录`)
+      await exportMetricRows({
+        rows: list,
+        columns: cols,
+        filenamePrefix: '压力分析',
+        mapRow: r => ({
+          userName: r.userName || '--',
+          deptName: r.deptName || '--',
+          empCode: r.empCode || '--',
+          pressure: r.pressure ?? '--',
+          status: (r.pressure >= 85) ? '高危' : (r.pressure >= 70) ? '偏高' : (r.pressure >= 50) ? '正常' : '放松',
+          recordTime: r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
+        })
+      })
     },
 
     async fetchData() {
@@ -405,185 +410,42 @@ export default {
     },
 
     async loadOverview() {
-      const { startDate, endDate } = this.periodRange
-      try {
-        const r = await getPressureOverview(startDate, endDate)
-        if (r.code === 200) this.overview = r.data || {}
-      } catch { this.overview = {} }
+      await loadMetricOverview(this, getPressureOverview, {})
       this.$nextTick(() => this.initGauge())
     },
 
     async loadTopUsers() {
-      const { startDate, endDate } = this.periodRange
-      let d = []
-      try {
-        const r = await getPressureTopUsers(1000, startDate, endDate)
-        if (r.code === 200) d = r.data || []
-      } catch {}
-      this.top5Data = d
-      this.$nextTick(() => this.startTop5Scroll())
+      await loadMetricTopUsers(this, getPressureTopUsers)
     },
 
     async loadDept() {
-      const { startDate, endDate } = this.periodRange
-      let d = []
-      try {
-        const r = await getPressureDeptStats(startDate, endDate)
-        if (r.code === 200) d = r.data || []
-      } catch {}
-      this.deptData = d
-      this.$nextTick(() => this.initDept(d))
+      await loadMetricRangeChart(this, getPressureDeptStats, 'initDept', { assignTo: 'deptData' })
     },
 
     async loadDist() {
-      const { startDate, endDate } = this.periodRange
-      let d = []
-      try {
-        const r = await getPressureDistribution(startDate, endDate)
-        if (r.code === 200) {
-          d = (r.data || []).filter(x => x.name && x.value > 0)
-          this.distLegend = d
-        }
-      } catch {}
-      this.$nextTick(() => this.initDist(d))
+      await loadMetricDistribution(this, getPressureDistribution, 'initDist')
     },
 
     async loadHourly() {
       if (this.activePeriod === 'day') {
-        const today = dayjs().format('YYYY-MM-DD')
-        const vals = new Array(24).fill(null)
-        try {
-          const r = await getPressureHourly(today)
-          if (r.code === 200 && Array.isArray(r.data)) {
-            r.data.forEach(({ hour, avgPressure }) => {
-              if (hour >= 0 && hour < 24) vals[hour] = avgPressure
-            })
-          }
-        } catch {}
+        const today = getMetricToday()
+        const rows = await fetchMetricData(() => getPressureHourly(today), [])
+        const vals = createHourlySeries(rows, 'avgPressure')
         this.$nextTick(() => this.renderHourly(vals))
       } else {
-        const days = this.activePeriod === 'week' ? 7 : 30
-        let dates = [], vals = []
-        try {
-          const r = await getPressureTrend(days)
-          if (r.code === 200 && r.data) {
-            dates = r.data.dates  || []
-            vals  = r.data.values || []
-          }
-        } catch {}
+        const days = metricDaysForPeriod(this.activePeriod)
+        const data = await fetchMetricData(() => getPressureTrend(days), {})
+        const dates = data.dates || []
+        const vals = data.values || []
         this.$nextTick(() => this.renderHourlyDaily(dates, vals))
       }
     },
 
     async loadRealtime() {
-      try {
-        const r = await getPressureRealtime(1000)
-        if (r.code === 200) this.realtimeList = r.data || []
-      } catch {}
+      await loadMetricRealtime(this, getPressureRealtime)
     },
     fmtRtTime(ts) {
       return ts ? dayjs(ts).format('HH:mm:ss') : ''
-    },
-
-    // ── ECharts ──
-
-    initGauge() {
-      const c = initChart(this.charts, 'gauge', this.$refs.gaugeRef)
-      if (c) c.setOption(gaugeOption(this.overview.avgPressure || 0, {
-        max: 100, pointer: '#fb923c',
-        colors: [[0.50,'#4FC3F7'],[0.70,'#52c41a'],[0.85,'#FFB84D'],[1,'#ff5252']]
-      }))
-    },
-
-    initDept(data) {
-      const c = initChart(this.charts, 'dept', this.$refs.deptRef); if (!c) return
-      if (!data.length) { c.setOption(emptyOption()); return }
-      const d = data.slice(0, 10)
-      c.setOption({
-        backgroundColor: 'transparent',
-        grid: { ...deptGrid(), top: '8%' },
-        xAxis: { ...valueAxis(), min: 0, max: 100 },
-        yAxis: { ...categoryAxis(d.map(x => x.deptName), { show: false }), inverse: true },
-        series: [{
-          name: '平均压力', type: 'bar', barWidth: '46%',
-          data: d.map(x => ({
-            value: x.avgPressure,
-            itemStyle: {
-              color: gradH(x.avgPressure >= 85 ? '#ff5252' : x.avgPressure >= 70 ? '#FFB84D' : '#fb923c',
-                           x.avgPressure >= 85 ? '#b91c1c' : x.avgPressure >= 70 ? '#d97706' : '#c2410c'),
-              borderRadius: [0, 4, 4, 0]
-            }
-          })),
-          label: barLabel(),
-          markLine: {
-            silent: true, lineStyle: { color: '#FFB84D55', type: 'dashed' },
-            data: [{ xAxis: 70, name: '偏高线' }]
-          }
-        }]
-      })
-      c.off('click')
-      c.on('click', params => {
-        const name = d[params.dataIndex]?.deptName
-        if (!name) return
-        this.filterDept = this.filterDept === name ? '' : name
-      })
-    },
-
-    initDist(data) {
-      const c = initChart(this.charts, 'dist', this.$refs.distRef)
-      if (c) c.setOption(distOption(data))
-    },
-
-    renderHourly(vals) {
-      const c = initChart(this.charts, 'hourly', this.$refs.hourlyRef); if (!c) return
-      const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
-      c.setOption({
-        backgroundColor: 'transparent',
-        tooltip: chartTooltip(p => p[0].value != null
-            ? `${p[0].name}<br/>压力指数：<b style="color:#fb923c">${p[0].value}</b>`
-            : `${p[0].name}<br/>暂无数据`),
-        grid: hourlyGrid(),
-        xAxis: { ...categoryAxis(hours, { fontSize: 9, interval: 3, lineColor: 'rgba(251,146,60,0.15)' }), boundaryGap: false },
-        yAxis: { ...valueAxis({ fontSize: 9, splitColor: 'rgba(251,146,60,0.06)' }), min: 0, max: 100 },
-        series: [{
-          type: 'line', data: vals, smooth: true, symbol: 'none', connectNulls: false,
-          lineStyle: { color: '#fb923c', width: 2 },
-          areaStyle: { color: gradV('rgba(251,146,60,0.28)', 'rgba(251,146,60,0.02)') },
-          markLine: {
-            silent: true, symbol: 'none',
-            data: [
-              { yAxis: 70, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '偏高 70' } },
-              { yAxis: 85, lineStyle: { color: '#ff5252', type: 'dashed', width: 1 }, label: { color: '#ff5252', fontSize: 10, formatter: '高压 85' } }
-            ]
-          }
-        }]
-      })
-    },
-
-    renderHourlyDaily(dates, vals) {
-      const c = initChart(this.charts, 'hourly', this.$refs.hourlyRef); if (!c) return
-      if (!dates.length) { c.setOption(emptyOption('暂无数据', 13)); return }
-      c.setOption({
-        backgroundColor: 'transparent',
-        tooltip: chartTooltip(p => `${p[0].name}<br/>压力指数：<b style="color:#fb923c">${p[0].value}</b>`),
-        grid: hourlyGrid(),
-        xAxis: { ...categoryAxis(dates, { fontSize: 9, interval: Math.floor(dates.length / 5), lineColor: 'rgba(251,146,60,0.15)' }), boundaryGap: true },
-        yAxis: { ...valueAxis({ fontSize: 9, splitColor: 'rgba(251,146,60,0.06)' }), min: 0, max: 100 },
-        series: [{
-          type: 'bar', data: vals, barMaxWidth: 14,
-          itemStyle: {
-            color: gradV('#fb923c', 'rgba(251,146,60,0.2)'),
-            borderRadius: [3, 3, 0, 0]
-          },
-          markLine: {
-            silent: true, symbol: 'none',
-            data: [
-              { yAxis: 70, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '偏高 70' } },
-              { yAxis: 85, lineStyle: { color: '#ff5252', type: 'dashed', width: 1 }, label: { color: '#ff5252', fontSize: 10, formatter: '高压 85' } }
-            ]
-          }
-        }]
-      })
     },
 
     psLevel(v) {
@@ -607,372 +469,10 @@ export default {
       return '#4FC3F7'
     },
 
-
-
-
-    startTop5Scroll() {
-      if (this._top5ScrollTimer) { clearInterval(this._top5ScrollTimer); this._top5ScrollTimer = null }
-      const el = this.$refs.top5ScrollRef
-      if (!el || el.scrollHeight <= el.clientHeight) return
-      let paused = false
-      this._top5ScrollTimer = setInterval(() => {
-        if (paused) return
-        el.scrollTop += 1
-        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
-          paused = true
-          setTimeout(() => { el.scrollTop = 0; paused = false }, 1500)
-        }
-      }, 40)
-    },
-
     // setPageSize → chartPageMixin
 
   }
 }
 </script>
 
-<style lang="scss" scoped>
-$accent: #fb923c;
-@import '@/styles/hm-vars';
-@import '@/styles/hm-layout';
-$cyan:   #00d4ff;
-
-@include hm-body('ps');
-@include hm-main('ps');
-@include hm-panel('ps');
-@include hm-overview('ps');
-@include hm-kpi-cards('ps');
-@include hm-range-info('ps');
-@include hm-pagination('ps');
-
-// ── Root ──
-.ps-root {
-  width: 100%;
-  height: calc(100vh - 50px) !important; /* 视口高度 - 顶部导航栏 */
-  min-height: 600px; /* 最小高度防止过小 */
-  background: $bg;
-  background-image:
-    radial-gradient(circle at 18% 28%, rgba(251,146,60,0.05) 0%, transparent 48%),
-    radial-gradient(circle at 82% 72%, rgba(42,82,152,0.08) 0%, transparent 48%);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  font-family: 'Microsoft YaHei', sans-serif;
-  color: $text;
-}
-
-// ── Header ──
-.ps-hd {
-  height: 56px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  padding: 0 22px;
-  gap: 20px;
-  background: rgba(0, 6, 24, 0.65);
-  border-bottom: 1px solid $border;
-}
-.ps-hd-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-
-.ps-live-dot {
-  width: 9px; height: 9px;
-  border-radius: 50%;
-  background: $accent;
-  box-shadow: 0 0 8px $accent;
-  animation: hmPulse 2s ease-in-out infinite;
-}
-
-.ps-hd-title {
-  font-size: 20px; font-weight: 700; color: $white; margin: 0;
-  letter-spacing: 2px;
-  background: linear-gradient(90deg, #fb923c, #fde68a);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: none;
-  filter: drop-shadow(0 0 10px rgba(251,146,60,0.5));
-}
-
-.ps-hd-kpis {
-  flex: 1; display: flex; justify-content: center;
-}
-.ps-kpi {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 0 32px;
-  border-right: 1px solid $border;
-  &:first-child { border-left: 1px solid $border; }
-}
-.ps-kpi-n {
-  font-size: 20px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1;
-  &.kpi-orange { color: $accent;  text-shadow: 0 0 10px rgba(251,146,60,0.5); }
-  &.kpi-green  { color: #52c41a; text-shadow: 0 0 10px rgba(82,196,26,0.35);  }
-  &.kpi-yellow { color: #FFB84D; text-shadow: 0 0 10px rgba(255,184,77,0.4);  }
-  &.kpi-red    { color: #ff5252; text-shadow: 0 0 10px rgba(255,82,82,0.4);   }
-}
-.ps-kpi-l { font-size: 11px; color: $dim; margin-top: 2px; white-space: nowrap; }
-.ps-hd-time { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: $dim; }
-
-.ps-period-tabs {
-  display: flex;
-  background: rgba(251,146,60,0.06);
-  border: 1px solid rgba(251,146,60,0.2);
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.ps-period-tab {
-  padding: 4px 14px;
-  font-size: 12px;
-  color: $dim;
-  cursor: pointer;
-  transition: all 0.2s;
-  &:hover { color: $white; background: rgba(251,146,60,0.1); }
-  &.is-active { color: $bg; background: $accent; font-weight: 700; }
-}
-
-// ── Body（hm-body mixin） ──
-
-// ── Aside（左侧）──
-.ps-aside {
-  width: 260px; flex-shrink: 0;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.ps-aside-top { height: 200px; flex-shrink: 0; display: flex; flex-direction: column; }
-.ps-aside-bot { flex: 1; }
-
-// TOP5 紧凑列表
-.ps-top5-empty { padding: 20px 0; text-align: center; color: rgba(251,146,60,0.5); font-size: 12px; }
-.ps-top5-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(251,146,60,0.18); border-radius: 2px; }
-}
-.ps-top5-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.ps-top5-rank {
-  width: 18px; height: 18px;
-  border-radius: 4px;
-  font-size: 11px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  &.rank-1 { background: rgba(255,184,77,0.2); color: #FFB84D; border: 1px solid rgba(255,184,77,0.4); }
-  &.rank-2 { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
-  &.rank-3 { background: rgba(82,196,26,0.12); color: #52c41a; border: 1px solid rgba(82,196,26,0.3); }
-  &.rank-4, &.rank-5, &.rank-n { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
-}
-.ps-top5-name { font-size: 12px; color: $white; width: 60px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ps-top5-bar-wrap { flex: 1; height: 6px; background: rgba(251,146,60,0.08); border-radius: 3px; overflow: hidden; }
-.ps-top5-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
-.ps-top5-val { font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; width: 26px; text-align: right; flex-shrink: 0; }
-.ps-top5-more {
-  text-align: center; padding: 8px 0 4px;
-  font-size: 12px; color: #a78bfa; cursor: pointer;
-  border-top: 1px solid rgba(167,139,250,0.15); margin-top: 4px;
-}
-
-// ── Main（hm-main mixin） ──
-.ps-overview-panel { height: 162px; flex-shrink: 0; }
-.ps-mid-row        { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }
-.ps-panel-hourly   { flex: 1; }
-.ps-panel-dist     { flex: 0 0 258px; }
-
-// ── Right list ──
-.ps-rtlist {
-  width: 272px; flex-shrink: 0;
-  display: flex; flex-direction: column; min-height: 0;
-  .ps-panel { flex: 1; min-height: 0; }
-}
-
-// ── Panel（hm-panel mixin + 页面特有） ──
-.ps-ph {
-  height: 38px; flex-shrink: 0;
-  display: flex; align-items: center; gap: 8px; padding: 0 12px;
-  border-bottom: 1px solid rgba(0,212,255,0.09);
-  background: rgba(251,146,60,0.03);
-}
-.ps-ph-bar {
-  width: 3px; height: 14px;
-  background: linear-gradient(180deg, $accent, rgba(251,146,60,0.3));
-  border-radius: 2px;
-  box-shadow: 0 0 6px rgba(251,146,60,0.7);
-}
-// ph-title, rt-total, trend-tags, tag, pc → hm-panel mixin
-
-// overview + kpi-cards → hm-overview + hm-kpi-cards mixins
-// KPI 小卡片 orange overrides
-.ps-kpi-cards {
-}
-.ps-kpi-card {
-  background: rgba(251,146,60,0.04);
-  border: 1px solid rgba(251,146,60,0.1);
-  border-radius: 7px;
-  padding: 7px 10px;
-  display: flex; flex-direction: column; justify-content: center;
-}
-// kpi-card-val, kpi-card-unit, kpi-card-label → hm-kpi-cards mixin
-// 压力等级说明 - ps uses orange colors + wider name, override mixin defaults
-.ps-range-info { background: rgba(251,146,60,0.03); border-color: rgba(251,146,60,0.1); }
-.ps-range-name { width: 78px; }
-
-// 部门筛选标签
-.ps-dept-tag {
-  margin-left: auto; font-size: 11px; padding: 1px 6px; border-radius: 3px;
-  background: rgba(251,146,60,0.15); color: $accent; border: 1px solid rgba(251,146,60,0.35);
-  cursor: pointer;
-  &:hover { background: rgba(251,146,60,0.25); }
-}
-
-// ── 分布图 ──
-.ps-dist-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
-.ps-dist-chart { width: 120px; height: 120px; flex-shrink: 0; }
-.ps-dist-legend { flex: 1; display: flex; flex-direction: column; gap: 12px; }
-.ps-dist-row { display: flex; align-items: center; gap: 7px; }
-.ps-dist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.ps-dist-name { font-size: 11px; color: $text; flex-shrink: 0; width: 56px; }
-.ps-dist-bar-wrap { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
-.ps-dist-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; opacity: 0.85; }
-.ps-dist-pct { font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; width: 34px; text-align: right; flex-shrink: 0; }
-
-// ── 实时列表 ──
-.ps-rt-hd {
-  display: grid; grid-template-columns: 28px 1fr 44px 42px 44px;
-  gap: 6px; padding: 6px 10px; flex-shrink: 0;
-  background: rgba(251,146,60,0.06);
-  span { font-size: 11px; color: $dim; font-weight: 600; }
-}
-.ps-rt-body {
-  flex: 1; overflow-y: auto; padding: 3px 6px; min-height: 0;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(251,146,60,0.18); border-radius: 2px; }
-}
-.ps-rt-row {
-  display: grid; grid-template-columns: 28px 1fr 44px 42px 44px;
-  gap: 6px; padding: 6px 4px; margin-bottom: 1px;
-  border-radius: 5px; align-items: center;
-  border-left: 2px solid transparent;
-  transition: background 0.2s;
-  &:hover { background: rgba(251,146,60,0.055); }
-  &.relaxed  { border-left-color: rgba(79,195,247,0.55);  }
-  &.normal   { border-left-color: rgba(82,196,26,0.45);   }
-  &.elevated { border-left-color: rgba(255,184,77,0.55);  }
-  &.high     { border-left-color: rgba(255,82,82,0.65);   }
-}
-.ps-rt-idx  { font-size: 11px; color: $dim; font-family: 'Consolas', monospace; text-align: center; }
-.ps-rt-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ps-rt-val {
-  font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; color: #52c41a;
-  .ps-rt-row.elevated & { color: #FFB84D; }
-  .ps-rt-row.high     & { color: #ff5252; }
-  .ps-rt-row.relaxed  & { color: #4FC3F7; }
-}
-.ps-rt-badge {
-  font-size: 10px; padding: 1px 4px; border-radius: 3px; text-align: center;
-  &.relaxed  { background: rgba(79,195,247,0.13);  color: #4FC3F7; border: 1px solid rgba(79,195,247,0.28);  }
-  &.normal   { background: rgba(82,196,26,0.13);   color: #52c41a; border: 1px solid rgba(82,196,26,0.28);   }
-  &.elevated { background: rgba(255,184,77,0.13);  color: #FFB84D; border: 1px solid rgba(255,184,77,0.28);  }
-  &.high     { background: rgba(255,82,82,0.13);   color: #ff5252; border: 1px solid rgba(255,82,82,0.28);   }
-}
-.ps-rt-time { font-size: 10px; color: $dim; }
-
-// pagination → hm-pagination mixin + orange overrides
-.ps-rt-pg { border-top-color: rgba(251,146,60,0.1); }
-.ps-pg-btn {
-  background: rgba(251,146,60,0.07); border-color: rgba(251,146,60,0.18);
-  color: $accent;
-  &:hover:not(:disabled) { background: rgba(251,146,60,0.16); }
-}
-.ps-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; }
-
-// ── 异常明细面板 ──
-.ps-panel-anomaly { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-.ps-anomaly-count {
-  margin-left: auto; font-size: 12px; color: #FFB84D;
-  em { font-style: normal; font-weight: 700; }
-}
-.ps-anomaly-empty {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  font-size: 13px; color: rgba(82,196,26,0.8);
-  .ps-anomaly-ok { font-size: 16px; margin-right: 6px; }
-}
-.ps-anomaly-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.ps-anomaly-hd {
-  display: grid; grid-template-columns: 64px 1fr 80px 52px 88px;
-  gap: 6px; padding: 4px 10px; flex-shrink: 0;
-  background: rgba(255,184,77,0.06);
-  span { font-size: 11px; color: $dim; font-weight: 600; }
-}
-.ps-anomaly-list {
-  flex: 1; overflow-y: auto; padding: 3px 6px;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(255,184,77,0.2); border-radius: 2px; }
-}
-.ps-anomaly-more {
-  text-align: center; font-size: 11px; color: #ffb84d; padding: 6px 0; cursor: pointer; opacity: 0.7;
-  &:hover { opacity: 1; }
-}
-.ps-anomaly-row {
-  display: grid; grid-template-columns: 64px 1fr 80px 52px 88px;
-  gap: 6px; padding: 5px 4px; margin-bottom: 1px;
-  border-radius: 4px; align-items: center;
-  border-left: 2px solid transparent;
-  transition: background 0.15s;
-  &:hover { background: rgba(255,255,255,0.04); }
-  &.anom-high     { border-left-color: rgba(255,82,82,0.6);   background: rgba(255,82,82,0.04); }
-  &.anom-elevated { border-left-color: rgba(255,184,77,0.6);  background: rgba(255,184,77,0.04); }
-}
-.pa-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pa-dept { font-size: 11px; color: $dim; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pa-val  {
-  font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace;
-  .anom-high     & { color: #ff5252; }
-  .anom-elevated & { color: #FFB84D; }
-}
-.pa-type {
-  font-size: 11px; padding: 1px 5px; border-radius: 3px; text-align: center;
-  .anom-high     & { color: #ff5252; background: rgba(255,82,82,0.12);   border: 1px solid rgba(255,82,82,0.25);   }
-  .anom-elevated & { color: #FFB84D; background: rgba(255,184,77,0.12);  border: 1px solid rgba(255,184,77,0.25);  }
-}
-.pa-time { font-size: 10px; color: $dim; }
-
-// ── 压力分布统计面板 ──
-.ps-panel-dist-stat { flex-shrink: 0; height: 140px; }
-.ps-ds-total {
-  margin-left: auto; font-size: 12px; color: $dim;
-  em { color: #93c5fd; font-style: normal; font-weight: 700; }
-}
-.ps-ds-body {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 8px; padding: 6px 0 8px;
-}
-.ps-ds-zone {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px; padding: 10px 8px 8px;
-  text-align: center; transition: background 0.15s;
-  &:hover { background: rgba(255,255,255,0.07); }
-  &.zone-relaxed  { border-color: rgba(79,195,247,0.2);  }
-  &.zone-normal   { border-color: rgba(82,196,26,0.2);   }
-  &.zone-elevated { border-color: rgba(255,184,77,0.2);  }
-  &.zone-high     { border-color: rgba(255,82,82,0.2);   }
-}
-.ps-ds-icon  { font-size: 16px; margin-bottom: 4px; }
-.ps-ds-count { font-size: 24px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
-.ps-ds-pct   { font-size: 11px; margin-top: 1px; }
-.ps-ds-label { font-size: 13px; font-weight: 600; color: $white; margin-top: 4px; }
-.ps-ds-range { font-size: 10px; color: $dim; margin-top: 2px; }
-.ps-ds-bar-row {
-  display: flex; height: 6px; border-radius: 3px; overflow: hidden;
-  background: rgba(255,255,255,0.05); margin-bottom: 2px;
-}
-.ps-ds-seg { transition: width 0.4s ease; min-width: 0; }
-
-@include hm-mobile('ps');
-</style>
+<style lang="scss" scoped src="./pressure.scss"></style>

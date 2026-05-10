@@ -5,8 +5,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
-import { gsap } from 'gsap'
+import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 
 const props = defineProps({
   // 目标数值
@@ -68,6 +67,15 @@ const props = defineProps({
 
 // 当前显示的数值
 const currentValue = ref(0)
+const frameId = ref(null)
+
+const EASING_MAP = {
+  linear: (t) => t,
+  'power1.out': (t) => 1 - Math.pow(1 - t, 1),
+  'power2.out': (t) => 1 - Math.pow(1 - t, 2),
+  'power3.out': (t) => 1 - Math.pow(1 - t, 3),
+  'power4.out': (t) => 1 - Math.pow(1 - t, 4)
+}
 
 // 格式化数字
 const formatNumber = (num) => {
@@ -99,17 +107,49 @@ const numberStyle = computed(() => ({
   transition: 'all 0.3s ease'
 }))
 
+const roundValue = (value) => {
+  const factor = Math.pow(10, props.decimals)
+  return Math.round(value * factor) / factor
+}
+
+const stopAnimation = () => {
+  if (frameId.value !== null) {
+    cancelAnimationFrame(frameId.value)
+    frameId.value = null
+  }
+}
+
+const resolveEase = (easeName) => EASING_MAP[easeName] || EASING_MAP['power2.out']
+
 // 执行动画
 const animateTo = (target) => {
-  gsap.to(currentValue, {
-    value: target,
-    duration: props.duration / 1000, // GSAP使用秒为单位
-    ease: props.ease,
-    onUpdate: () => {
-      // 动画过程中更新值
-      currentValue.value = Math.round(currentValue.value * Math.pow(10, props.decimals)) / Math.pow(10, props.decimals)
+  stopAnimation()
+
+  const from = Number(currentValue.value) || 0
+  const to = Number(target) || 0
+
+  if (props.duration <= 0 || from === to) {
+    currentValue.value = roundValue(to)
+    return
+  }
+
+  const easeFn = resolveEase(props.ease)
+  const startedAt = performance.now()
+
+  const step = (now) => {
+    const progress = Math.min((now - startedAt) / props.duration, 1)
+    const nextValue = from + (to - from) * easeFn(progress)
+    currentValue.value = roundValue(progress >= 1 ? to : nextValue)
+
+    if (progress < 1) {
+      frameId.value = requestAnimationFrame(step)
+      return
     }
-  })
+
+    frameId.value = null
+  }
+
+  frameId.value = requestAnimationFrame(step)
 }
 
 // 监听value变化
@@ -120,15 +160,15 @@ watch(() => props.value, (newVal) => {
 // 组件挂载时执行初始动画
 onMounted(() => {
   currentValue.value = 0
-  setTimeout(() => {
-    animateTo(props.value)
-  }, 100)
+  frameId.value = requestAnimationFrame(() => animateTo(props.value))
+})
+
+onBeforeUnmount(() => {
+  stopAnimation()
 })
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
-
 .animated-number {
   display: inline-block;
   font-variant-numeric: tabular-nums;

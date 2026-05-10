@@ -109,6 +109,7 @@
 import WarningCenterNav from '@/components/WarningCenterNav.vue'
 import { getRiskWarningList, handleRiskWarning } from '@/api/risk-warning'
 import dayjs from 'dayjs'
+import { createIntervalTask } from '@/utils/task-timer'
 
 export default {
   name: 'SosPage',
@@ -122,8 +123,7 @@ export default {
       todayHandled: 0,
       affectedPersons: 0,
       lastUpdateTime: '--',
-      pagination: { page: 1, size: 30, total: 0 },
-      pollTimer: null
+      pagination: { page: 1, size: 30, total: 0 }
     }
   },
   computed: {
@@ -133,10 +133,11 @@ export default {
   },
   mounted() {
     this.fetchAll()
-    this.pollTimer = setInterval(this.fetchAll, 15000)
+    this._pollTask = createIntervalTask(() => this.fetchAll(), 15000)
+    this._pollTask.start()
   },
   beforeUnmount() {
-    if (this.pollTimer) clearInterval(this.pollTimer)
+    this._pollTask?.stop()
   },
   methods: {
     async fetchAll() {

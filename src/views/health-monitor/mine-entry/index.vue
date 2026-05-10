@@ -186,12 +186,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Refresh, CircleCheck, CircleClose, UserFilled } from '@element-plus/icons-vue'
 import { getMineEntryList, getPreShiftCompliance } from '@/api/health'
 import dayjs from 'dayjs'
 import { exportToExcel } from '@/utils/export-excel'
+import { useIntervalTask } from '@/composables/useIntervalTask'
+import {
+  bloodPressureClass,
+  mineEntryFailReasons,
+  mineEntryRateClass,
+  vitalClass
+} from './mine-entry-view-model.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -232,9 +239,7 @@ const entryList = ref([])
 const summary = ref({ totalToday: 0, qualifiedCount: 0, failedCount: 0, preShiftRate: null })
 
 const rateClass = computed(() => {
-  const r = summary.value.preShiftRate
-  if (r === null) return ''
-  return r >= 90 ? 'me-stat-rate-ok' : r >= 70 ? 'me-stat-rate-warn' : 'me-stat-rate-bad'
+  return mineEntryRateClass(summary.value.preShiftRate)
 })
 
 const deptOptions = computed(() => {
@@ -261,21 +266,13 @@ const paginatedPassList = computed(() => {
 })
 
 function vClass(val, min, max, isHeartRate) {
-  if (val === null || val === undefined) return ''
-  if (isHeartRate) return (val < min || val > max) ? 'vital-bad' : 'vital-ok'
-  return val < min ? 'vital-bad' : 'vital-ok'
+  return vitalClass(val, min, max, isHeartRate)
 }
 function bpClass(sys, dia) {
-  if ((sys !== null && sys >= 140) || (dia !== null && dia >= 90)) return 'vital-bad'
-  return 'vital-ok'
+  return bloodPressureClass(sys, dia)
 }
 function failReasons(item) {
-  const reasons = []
-  if (item.heartRate !== null && (item.heartRate < 60 || item.heartRate > 100)) reasons.push(`心率${item.heartRate}bpm`)
-  if (item.bloodOxygen !== null && item.bloodOxygen < 95) reasons.push(`血氧${item.bloodOxygen}%`)
-  if (item.systolic !== null && item.systolic >= 140) reasons.push(`高压${item.systolic}`)
-  if (item.diastolic !== null && item.diastolic >= 90) reasons.push(`低压${item.diastolic}`)
-  return reasons
+  return mineEntryFailReasons(item)
 }
 function fmtTime(t) {
   if (!t) return '--'
@@ -332,226 +329,13 @@ function exportList() {
   exportToExcel(data, cols, `班前健康检查_${dayjs().format('YYYYMMDD')}`)
 }
 
-let timer = null
+const { start: startMineEntryRefresh } = useIntervalTask(load, 60000)
 onMounted(() => {
   load()
-  timer = setInterval(load, 60000)
+  startMineEntryRefresh()
 })
-onBeforeUnmount(() => clearInterval(timer))
 </script>
 
-<style scoped>
-.me-root {
-  min-height: 100%;
-  background: #060d1f;
-  color: #c0d4e8;
-  padding: 16px 20px;
-  font-size: 13px;
-}
-
-/* ── Header ── */
-.me-hd {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.me-hd-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-.me-live-dot {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: #00ff88;
-  box-shadow: 0 0 8px #00ff88;
-  animation: pulse 1.5s infinite;
-  flex-shrink: 0;
-}
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-.me-hd-title { margin: 0; font-size: 18px; font-weight: 700; color: #e8f4ff; }
-.me-hd-sub { font-size: 12px; color: #5ea4c8; white-space: nowrap; }
-.me-profile-btn {
-  padding: 5px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(0,180,255,0.28);
-  background: rgba(0,180,255,0.08);
-  color: #b7e9ff;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all .2s ease;
-}
-.me-profile-btn:hover { background: rgba(0,180,255,0.16); }
-
-.me-hd-stats {
-  display: flex;
-  gap: 12px;
-  flex-shrink: 0;
-}
-.me-stat-card {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(0,180,255,0.2);
-  border-radius: 8px;
-  padding: 8px 16px;
-  text-align: center;
-  min-width: 80px;
-}
-.me-stat-val { font-size: 22px; font-weight: 700; color: #00d4ff; }
-.me-stat-label { font-size: 11px; color: #5ea4c8; margin-top: 2px; }
-.me-stat-pass .me-stat-val { color: #38ef7d; }
-.me-stat-fail .me-stat-val { color: #ff5252; }
-.me-stat-rate-ok .me-stat-val { color: #38ef7d; }
-.me-stat-rate-warn .me-stat-val { color: #ffd200; }
-.me-stat-rate-bad .me-stat-val { color: #ff5252; }
-
-.me-hd-right {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-/* ── Criteria ── */
-.me-criteria {
-  background: rgba(0,212,255,0.06);
-  border: 1px solid rgba(0,212,255,0.15);
-  border-radius: 6px;
-  padding: 8px 16px;
-  margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 12px;
-}
-.me-criteria-label { color: #5ea4c8; font-weight: 600; }
-.me-criteria-item { color: #38ef7d; }
-.me-criteria-sep { color: #2d4060; }
-.me-criteria-note { color: #5ea4c8; }
-.me-export-btn {
-  padding: 4px 12px; background: rgba(0,212,255,.08); border: 1px solid rgba(0,212,255,.25);
-  border-radius: 4px; color: #00d4ff; font-size: 11px; cursor: pointer; white-space: nowrap; transition: background .2s;
-  &:hover { background: rgba(0,212,255,.18); }
-}
-
-/* ── Table wrap ── */
-.me-table-wrap { min-height: 300px; }
-.me-empty { text-align: center; padding: 60px 0; color: #4a6080; }
-.me-empty p { margin-top: 12px; font-size: 13px; }
-
-/* ── Group headers ── */
-.me-group-hd {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 6px 6px 0 0;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 0;
-}
-.fail-hd { background: rgba(255,82,82,0.12); color: #ff5252; border-bottom: 1px solid rgba(255,82,82,0.3); }
-.pass-hd { background: rgba(56,239,125,0.08); color: #38ef7d; border-bottom: 1px solid rgba(56,239,125,0.2); margin-top: 20px; }
-.me-fail-dot { width:8px;height:8px;border-radius:50%;background:#ff5252;box-shadow:0 0 6px #ff5252; }
-.me-pass-dot { width:8px;height:8px;border-radius:50%;background:#38ef7d;box-shadow:0 0 6px #38ef7d; }
-.me-group-tip { font-size:11px;opacity:0.7;font-weight:400; }
-
-/* ── Fail cards ── */
-.me-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(255,82,82,0.04);
-  border: 1px solid rgba(255,82,82,0.15);
-  border-top: none;
-  border-radius: 0 0 6px 6px;
-}
-.me-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: rgba(255,82,82,0.08);
-  border: 1px solid rgba(255,82,82,0.25);
-  border-radius: 8px;
-  padding: 12px 14px;
-  width: calc(33.33% - 8px);
-  min-width: 280px;
-}
-@media (max-width: 1200px) { .me-card { width: calc(50% - 6px); } }
-@media (max-width: 800px)  { .me-card { width: 100%; } }
-
-.me-card-avatar {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; font-weight: 700;
-  flex-shrink: 0;
-}
-.fail-avatar { background: rgba(255,82,82,0.2); color: #ff8080; border: 1px solid rgba(255,82,82,0.4); }
-.me-card-body { flex: 1; min-width: 0; }
-.me-card-name { font-size: 15px; font-weight: 600; color: #e0d0d0; }
-.me-card-dept { font-size: 11px; color: #8ba6c8; margin: 2px 0 6px; }
-.me-vitals-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.me-vital {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.05);
-  display: flex; align-items: center; gap: 4px;
-}
-.me-vital-icon { font-size: 12px; }
-.vital-bad { color: #ff5252; background: rgba(255,82,82,0.12); border: 1px solid rgba(255,82,82,0.3); }
-.vital-ok  { color: #38ef7d; background: rgba(56,239,125,0.08); }
-
-.me-fail-reasons { display: flex; flex-wrap: wrap; gap: 4px; }
-.me-reason-tag {
-  font-size: 11px;
-  background: rgba(255,82,82,0.15);
-  color: #ff7070;
-  border: 1px solid rgba(255,82,82,0.4);
-  border-radius: 4px;
-  padding: 1px 7px;
-}
-.me-card-status {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 4px; flex-shrink: 0;
-}
-.fail-status { color: #ff5252; font-size: 11px; }
-
-/* ── Pass table cell ── */
-.me-td-val { font-family: Consolas, monospace; }
-.me-td-val.vital-ok { color: #38ef7d; }
-.me-td-val.vital-bad { color: #ff5252; font-weight: 600; }
-
-/* ── Pagination ── */
-.me-pagination {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 0 4px;
-}
-:deep(.el-pagination) {
-  --el-pagination-bg-color: #0d1830;
-  --el-pagination-text-color: #5ea4c8;
-  --el-pagination-button-color: #5ea4c8;
-}
-:deep(.el-pagination.is-background .el-pager li.is-active) {
-  background: #00d4ff;
-  color: #000;
-}
-
-/* ── Footer ── */
-.me-footer {
-  text-align: right;
-  font-size: 11px;
-  color: #3a5070;
-  margin-top: 16px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(0,180,255,0.08);
-}
+<style scoped lang="scss">
+@import './mine-entry.scss';
 </style>

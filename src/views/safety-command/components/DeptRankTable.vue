@@ -16,27 +16,26 @@
       <table>
         <thead>
           <tr>
-            <th>#</th><th>部门</th><th>在线/总</th>
-            <th>健康率</th><th>SOS</th><th>跌倒</th><th>预警</th><th>状态</th>
+            <th>#</th><th>部门</th><th>风险值</th>
+            <th>SOS</th><th>跌倒</th><th>异常</th><th>状态</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(dept, i) in departments" :key="dept.id" :class="getDeptRowClass(dept)" @click="$emit('showDept', dept)">
             <td><span :class="['rn', i===0?'rn-1':i===1?'rn-2':i===2?'rn-3':'rn-n']">{{ String(i+1).padStart(2,'0') }}</span></td>
             <td class="td-name">{{ dept.name }}</td>
-            <td class="mono dim">{{ dept.online }}/{{ dept.total }}</td>
             <td>
               <div class="hb">
                 <div class="hb-tr">
-                  <div class="hb-fl" :style="{ width:(dept.healthRate||0)+'%', background:healthColor(dept.healthRate) }"></div>
+                  <div class="hb-fl" :style="{ width: riskWidth(dept) + '%', background:riskColor(dept.level) }"></div>
                 </div>
-                <span class="hb-v" :style="{ color:healthColor(dept.healthRate) }">{{ dept.healthRate }}%</span>
+                <span class="hb-v" :style="{ color:riskColor(dept.level) }">{{ dept.warnings || 0 }}</span>
               </div>
             </td>
             <td><span v-if="dept.sos>0" class="an an-r">{{ dept.sos }}</span><span v-else class="dim2">—</span></td>
             <td><span v-if="dept.fall>0" class="an an-o">{{ dept.fall }}</span><span v-else class="dim2">—</span></td>
             <td><span v-if="(dept.static+dept.abnormal)>0" class="an an-y">{{ dept.static+dept.abnormal }}</span><span v-else class="dim2">—</span></td>
-            <td><span :class="['st', dept.status]">{{ dept.statusText }}</span></td>
+            <td><span :class="['st', riskStatusClass(dept)]">{{ dept.statusText || statusText(dept.level) }}</span></td>
           </tr>
         </tbody>
       </table>
@@ -45,33 +44,32 @@
 </template>
 
 <script setup>
-import { ref, onUnmounted } from 'vue'
+import { computed, ref } from 'vue'
+import { useScrollLoop } from '@/composables/useScrollLoop'
 
-defineProps({ departments: { type: Array, default: () => [] } })
-defineEmits(['showDetail','showDept'])
+const props = defineProps({ departments: { type: Array, default: () => [] } })
+defineEmits(['showDept'])
 
 const autoScroll = ref(false)
 const rankingTableRef = ref(null)
-let scrollTimer = null
+const maxWarnings = computed(() => Math.max(...props.departments.map(d => d.warnings || 0), 1))
+const scrollLoop = useScrollLoop({
+  getElement: () => rankingTableRef.value,
+  intervalMs: 50,
+  step: 1,
+  endPauseMs: 1500
+})
 
 const toggleAutoScroll = () => {
   autoScroll.value = !autoScroll.value
-  autoScroll.value ? startScroll() : stopScroll()
+  autoScroll.value ? scrollLoop.start() : scrollLoop.stop()
 }
-const startScroll = () => {
-  if (scrollTimer) return
-  scrollTimer = setInterval(() => {
-    const el = rankingTableRef.value
-    if (!el) return
-    el.scrollTop = el.scrollTop + el.clientHeight >= el.scrollHeight - 5 ? 0 : el.scrollTop + 1
-  }, 50)
-}
-const stopScroll = () => { if (scrollTimer) { clearInterval(scrollTimer); scrollTimer = null } }
 
-const getDeptRowClass = (d) => d.sos>0||d.fall>0 ? 'tr-danger' : d.static>0||d.abnormal>1 ? 'tr-warn' : ''
-const healthColor = (r) => r >= 90 ? '#2ed573' : r >= 75 ? '#ffd32a' : '#ff4757'
-
-onUnmounted(() => stopScroll())
+const riskWidth = (d) => Math.max(((d.warnings || 0) / maxWarnings.value) * 100, 2)
+const riskColor = (lv) => ({ H: '#ff4757', M: '#ff8c00', L: '#00d4ff', N: '#2ed573' }[lv] || '#2ed573')
+const statusText = (lv) => ({ H: '高危', M: '中危', L: '低', N: '正常' }[lv] || '正常')
+const riskStatusClass = (d) => d.level === 'H' ? 'danger' : d.level === 'M' ? 'warning' : 'safe'
+const getDeptRowClass = (d) => d.level === 'H' || d.sos > 0 || d.fall > 0 ? 'tr-danger' : d.level === 'M' || d.static > 0 || d.abnormal > 1 ? 'tr-warn' : ''
 </script>
 
 <style scoped lang="scss">
@@ -86,7 +84,7 @@ $mono:'JetBrains Mono','Courier New',monospace;
   &::before { content:''; position:absolute; top:0; left:14px; right:14px; height:1px; background:linear-gradient(90deg,transparent,rgba($cyan,.15),transparent); }
 }
 .ph { display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; margin-bottom:8px; flex-shrink:0; border-bottom:1px solid rgba($cyan,.08); }
-.pt { font-size:11px; font-weight:600; color:#fff; display:flex; align-items:center; gap:7px; letter-spacing:.5px; text-transform:uppercase; }
+.pt { font-size:11px; font-weight:600; color:#fff; display:flex; align-items:center; gap:7px; letter-spacing:.5px; text-transform:uppercase; min-width:0; }
 .pt-bar { width:2px; height:12px; border-radius:1px; flex-shrink:0; }
 .green-bar { background:$green; box-shadow:0 0 6px $green; }
 
@@ -126,5 +124,16 @@ tbody tr { cursor:pointer; transition:background .1s; &:hover { background:rgba(
   &.safe    { background:rgba($green,.18); color:$green; }
   &.warning { background:rgba($yellow,.18); color:$yellow; }
   &.danger  { background:rgba($red,.18); color:$red; }
+}
+
+@media (max-width: 768px) {
+  .panel { padding:10px; }
+  .ph { align-items:flex-start; gap:6px; flex-wrap:wrap; }
+  .pt { flex:1 1 100%; line-height:1.3; }
+  .rank-ctrl { flex:1 1 100%; justify-content:flex-end; gap:7px; }
+  .lg { font-size:8px; white-space:nowrap; }
+  .scroll-btn { flex-shrink:0; }
+  .rank-scroll { width:100%; }
+  table { min-width:460px; }
 }
 </style>

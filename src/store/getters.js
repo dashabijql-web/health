@@ -85,6 +85,8 @@ const getters = {
    */
   name: state => state.user.name,
 
+  canSwitchDataSource: state => state.user.canSwitchDataSource,
+
   /**
    * 当前用户的角色列表（如 ['user', 'admin']）
    * permission.js 中用 roles.length > 0 判断是否已获取用户信息
@@ -102,7 +104,7 @@ const getters = {
   /**
    * 经过权限过滤后的路由列表
    * 用于侧边栏菜单渲染（只显示当前用户有权访问的菜单项）
-   * 由 store/modules/user.js 中的 filterRoutes() 过滤生成
+   * 由 store/modules/user.js 中的 getPermittedAppRoutes() 过滤生成
    *
    */
   routes: state => state.user.resultAllRoutes

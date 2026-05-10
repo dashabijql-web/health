@@ -1,37 +1,6 @@
-/**
- * ╔══════════════════════════════════════════════════════════════════╗
- * ║              Vue 应用入口文件（新手必读）                             ║
- * ╚══════════════════════════════════════════════════════════════════╝
- *
- * 【main.js 的作用】
- *
- * 这是整个前端应用的"总开关"，负责：
- *   1. 创建 Vue 应用实例
- *   2. 注册全局依赖（UI 框架、图标库）
- *   3. 安装插件（路由、状态管理）
- *   4. 注册全局组件
- *   5. 挂载应用到 HTML 页面的 #app 元素
- *
- * 这个文件在 index.html 加载时会被 Vite 自动引入并执行。
- *
- * 【Vue 3 vs Vue 2 的入口差异】
- *
- * Vue 2 写法（老项目可能见到）：
- *   new Vue({ el: '#app', router, store, render: h => h(App) })
- *
- * Vue 3 写法（本项目）：
- *   const app = createApp(App)
- *   app.use(router).use(store).mount('#app')
- *
- * 区别：Vue 3 用工厂函数创建实例，而不是直接 new，
- *       可以创建多个独立的 Vue 实例，互不干扰。
- *
- * 【import 语句执行顺序说明】
- *
- * JS 的 import 语句会按顺序执行被引入文件的代码。
- * 因此 './permission' 在 './heartbeat' 之前引入，
- * 路由守卫（permission.js）先于心跳检测（heartbeat.js）注册。
- */
+// Vue 应用入口：
+// - 只负责创建应用实例、安装 store/router 和全局服务
+// - 路由守卫与心跳检测通过副作用 import 注册
 
 // ─── Vue 3 核心 ───────────────────────────────────────────────────
 import { createApp } from 'vue'
@@ -54,8 +23,6 @@ import '@/styles/index.scss'
 import App from './App.vue'         // 根组件（所有组件的父级容器）
 import store from './store'         // Vuex 状态管理（用户信息、Token 等全局状态）
 import router from './router'       // Vue Router（页面路由，URL 与组件的对应关系）
-import { ensureAppRoutes } from './router'
-import { getToken } from '@/utils/auth'
 
 // ─── SVG 图标注册 ────────────────────────────────────────────────
 // vite-plugin-svg-icons 插件：
@@ -85,12 +52,6 @@ import './heartbeat'
 const app = createApp(App)
 
 async function bootstrap() {
-  // 只有已登录会话才提前注入业务路由，避免带 token 直达业务页时出现
-  // “No match found” 的首跳告警，同时不影响未登录首屏的瘦身收益。
-  if (getToken()) {
-    await ensureAppRoutes()
-  }
-
   // 2. 挂载 Element Plus 全局消息服务
   app.config.globalProperties.$message = ElMessage
 

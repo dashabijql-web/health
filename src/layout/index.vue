@@ -44,18 +44,6 @@ export default {
       }
     }
   },
-  watch: {
-    device(val) {
-      const mc = document.querySelector('.main-container')
-      const am = document.querySelector('.app-main')
-      console.log('[Layout] device:', val,
-        '| viewport:', window.innerWidth + 'x' + window.innerHeight,
-        '| main-container width:', mc ? mc.offsetWidth : 'N/A',
-        '| app-main overflow:', am ? getComputedStyle(am).overflow : 'N/A',
-        '| classObj:', JSON.stringify(this.classObj)
-      )
-    }
-  },
   methods: {
     handleClickOutside() {
       this.$store.dispatch('app/closeSideBar', { withoutAnimation: false })

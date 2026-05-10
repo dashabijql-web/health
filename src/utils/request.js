@@ -68,6 +68,7 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'   // Element Plus 的消息提示组件
 import store from '@/store'
 import { getToken } from '@/utils/auth'
+import { DATA_SOURCE_HEADER, getDataSource } from '@/utils/data-source'
 import router from '@/router'
 
 /**
@@ -150,6 +151,12 @@ function isAuthRequest(config) {
  */
 service.interceptors.request.use(
   config => {
+    config.headers = config.headers || {}
+    if (store.getters.canSwitchDataSource) {
+      config.headers[DATA_SOURCE_HEADER] = getDataSource()
+    } else {
+      delete config.headers[DATA_SOURCE_HEADER]
+    }
     if (store.getters.token) {
       // 从 Cookie 读取最新 Token（保证使用的是当前有效 Token）
       config.headers['satoken'] = getToken()

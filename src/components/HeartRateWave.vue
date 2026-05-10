@@ -220,8 +220,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
-
 .heart-rate-container {
   position: relative;
   background: rgba(0, 20, 0, 0.9);

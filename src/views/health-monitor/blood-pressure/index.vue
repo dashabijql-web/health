@@ -269,7 +269,6 @@
 
 <script>
 import dayjs from 'dayjs'
-import { ElMessage } from 'element-plus'
 import {
   getBPOverview,
   getBPTrend,
@@ -279,15 +278,26 @@ import {
   getBPRealtime,
   getBPHourly
 } from '@/api/blood-pressure'
-import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
-import { initChart, distOption, gradH, gradV } from '@/utils/chart-helpers'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
-import { exportToExcel } from '@/utils/export-excel'
+import {
+  createHourlySeries,
+  fetchMetricData,
+  getMetricToday,
+  loadMetricDistribution,
+  loadMetricOverview,
+  loadMetricRangeChart,
+  loadMetricRealtime,
+  loadMetricTopUsers,
+  metricDaysForPeriod
+} from '@/views/health-monitor/metric-page/metric-data-loader'
+import { exportMetricRows } from '@/views/health-monitor/metric-page/metric-export'
+import metricPageMixin from '@/views/health-monitor/metric-page/metric-page-mixin'
+import { bloodPressureChartMethods } from './blood-pressure-chart'
 
 export default {
   name: 'BloodPressureAnalysis',
-  mixins: [chartPageMixin],
+  mixins: [chartPageMixin, metricPageMixin],
   data() {
     return {
       pageLoading: false,
@@ -302,7 +312,7 @@ export default {
       top5Expanded: false,
       anomalyExpanded: false,
       filterDept: '',
-      _top5ScrollTimer: null,
+      _top5ScrollLoop: null,
       bpGrades: [
         { label: '正常',       range: '< 120 / < 80 mmHg',  color: '#52c41a' },
         { label: '偏高',       range: '120~139 / 80~89',     color: '#FFB84D' },
@@ -383,30 +393,13 @@ export default {
   },
   mounted() {
     this.initPage(() => this.loadRealtime())
-    this.$nextTick(() => {
-      this._ro = new ResizeObserver(() => this.setPageSize(27))
-      const el = this.$refs.listRef
-      if (el) { this._ro.observe(el); this.setPageSize(27) }
-    })
-  },
-  beforeUnmount() {
-    if (this._ro) this._ro.disconnect()
-    if (this._top5ScrollTimer) clearInterval(this._top5ScrollTimer)
+    this.initAutoPageSize(27)
   },
   methods: {
+    ...bloodPressureChartMethods,
 
     async exportExcel() {
       const list = this.realtimeList
-      if (!list.length) { ElMessage.warning('暂无数据可导出'); return }
-      const data = list.map(r => ({
-        userName: r.userName || '--',
-        deptName: r.deptName || '--',
-        empCode: r.empCode || '--',
-        systolic: r.systolic ?? '--',
-        diastolic: r.diastolic ?? '--',
-        status: (r.systolic >= 140 || r.diastolic >= 90) ? '偏高' : r.systolic < 90 ? '偏低' : '正常',
-        recordTime: r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
-      }))
       const cols = [
         { label: '姓名', key: 'userName' },
         { label: '部门', key: 'deptName' },
@@ -416,8 +409,20 @@ export default {
         { label: '状态', key: 'status' },
         { label: '记录时间', key: 'recordTime' }
       ]
-      await exportToExcel(data, cols, `血压分析_${dayjs().format('YYYYMMDD')}`)
-      ElMessage.success(`已导出 ${list.length} 条记录`)
+      await exportMetricRows({
+        rows: list,
+        columns: cols,
+        filenamePrefix: '血压分析',
+        mapRow: r => ({
+          userName: r.userName || '--',
+          deptName: r.deptName || '--',
+          empCode: r.empCode || '--',
+          systolic: r.systolic ?? '--',
+          diastolic: r.diastolic ?? '--',
+          status: (r.systolic >= 140 || r.diastolic >= 90) ? '偏高' : r.systolic < 90 ? '偏低' : '正常',
+          recordTime: r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
+        })
+      })
     },
 
     async fetchData() {
@@ -433,197 +438,38 @@ export default {
     },
 
     async loadOverview() {
-      const { startDate, endDate } = this.periodRange
-      try {
-        const r = await getBPOverview(startDate, endDate)
-        if (r.code === 200) this.overview = r.data || {}
-      } catch { this.overview = {} }
+      await loadMetricOverview(this, getBPOverview, {})
     },
 
     async loadTopUsers() {
-      const { startDate, endDate } = this.periodRange
-      try {
-        const r = await getBPTopUsers(1000, startDate, endDate)
-        if (r.code === 200) this.top5Data = r.data || []
-      } catch { this.top5Data = [] }
-      this.$nextTick(() => this.startTop5Scroll())
+      await loadMetricTopUsers(this, getBPTopUsers)
     },
 
     async loadDept() {
-      const { startDate, endDate } = this.periodRange
-      let d = []
-      try {
-        const r = await getBPDeptStats(startDate, endDate)
-        if (r.code === 200) d = r.data || []
-      } catch {}
-      this.$nextTick(() => this.initDeptChart(d))
+      await loadMetricRangeChart(this, getBPDeptStats, 'initDeptChart')
     },
 
     async loadDist() {
-      const { startDate, endDate } = this.periodRange
-      let d = []
-      try {
-        const r = await getBPDistribution(startDate, endDate)
-        if (r.code === 200) {
-          d = (r.data || []).filter(x => x.name && x.value > 0)
-          this.distLegend = d
-        }
-      } catch {}
-      this.$nextTick(() => this.initDistChart(d))
+      await loadMetricDistribution(this, getBPDistribution, 'initDistChart')
     },
 
     async loadTrend() {
-      const days = this.activePeriod === 'day' ? 1 : this.activePeriod === 'week' ? 7 : 30
-      let dates = [], sysVals = [], diaVals = []
-      try {
-        const r = await getBPTrend(days)
-        if (r.code === 200 && r.data) {
-          dates   = r.data.dates          || []
-          sysVals = r.data.systolicValues  || []
-          diaVals = r.data.diastolicValues || []
-        }
-      } catch {}
+      const data = await fetchMetricData(() => getBPTrend(metricDaysForPeriod(this.activePeriod)), {})
+      const dates = data.dates || []
+      const sysVals = data.systolicValues || []
+      const diaVals = data.diastolicValues || []
       this.$nextTick(() => this.initTrendChart(dates, sysVals, diaVals))
     },
 
     async loadHourly() {
-      const today = dayjs().format('YYYY-MM-DD')
-      const sysVals = new Array(24).fill(null)
-      const diaVals = new Array(24).fill(null)
-      try {
-        const r = await getBPHourly(today)
-        if (r.code === 200 && Array.isArray(r.data)) {
-          r.data.forEach(({ hour, avgSystolic, avgDiastolic }) => {
-            if (hour >= 0 && hour < 24) {
-              sysVals[hour] = avgSystolic
-              diaVals[hour] = avgDiastolic
-            }
-          })
-        }
-      } catch {}
+      const rows = await fetchMetricData(() => getBPHourly(getMetricToday()), [])
+      const sysVals = createHourlySeries(rows, 'avgSystolic')
+      const diaVals = createHourlySeries(rows, 'avgDiastolic')
       this.$nextTick(() => this.initHourlyChart(sysVals, diaVals))
     },
 
     async loadRealtime() {
-      try {
-        const r = await getBPRealtime(1000)
-        if (r.code === 200) this.realtimeList = r.data || []
-      } catch { this.realtimeList = [] }
-    },
-
-    // ── ECharts ──
-    initDeptChart(data) {
-      const c = initChart(this.charts, 'dept', this.$refs.deptRef); if (!c) return
-      if (!data.length) { c.setOption(emptyOption()); return }
-      const d = data.slice(0, 12)
-      c.setOption({
-        backgroundColor: 'transparent',
-        legend: { data: ['收缩压','舒张压'], right: 10, top: 6, textStyle: { color: '#8ba6c8', fontSize: 11 }, itemWidth: 10, itemHeight: 10, icon: 'rect' },
-        grid: { ...deptGrid(), top: '14%' },
-        xAxis: valueAxis(),
-        yAxis: { ...categoryAxis(d.map(x => x.deptName), { show: false }), inverse: true },
-        series: [
-          {
-            name: '收缩压', type: 'bar', stack: 'none', barWidth: '35%',
-            data: d.map(x => x.avgSystolic || 0),
-            itemStyle: { color: gradH('#a78bfa', '#7c3aed') },
-            label: barLabel()
-          },
-          {
-            name: '舒张压', type: 'bar', stack: 'none', barWidth: '35%',
-            data: d.map(x => x.avgDiastolic || 0),
-            itemStyle: { color: gradH('#38bdf8', '#0284c7'), borderRadius: [0, 4, 4, 0] },
-            label: barLabel()
-          }
-        ]
-      })
-      c.off('click')
-      c.on('click', params => {
-        const name = d[params.dataIndex]?.deptName
-        if (!name) return
-        this.filterDept = this.filterDept === name ? '' : name
-      })
-    },
-
-    initDistChart(data) {
-      const c = initChart(this.charts, 'dist', this.$refs.distRef)
-      if (c) c.setOption(distOption(data))
-    },
-
-    initTrendChart(dates, sysVals, diaVals) {
-      const c = initChart(this.charts, 'trend', this.$refs.trendRef); if (!c) return
-      if (!dates.length) { c.setOption(emptyOption('暂无数据', 13)); return }
-      c.setOption({
-        backgroundColor: 'transparent',
-        tooltip: chartTooltip(p => {
-            const sys = p.find(x => x.seriesName === '收缩压')
-            const dia = p.find(x => x.seriesName === '舒张压')
-            return `${p[0].name}<br/>` +
-              (sys ? `收缩压：<b style="color:#a78bfa">${sys.value || '--'}</b> mmHg<br/>` : '') +
-              (dia ? `舒张压：<b style="color:#38bdf8">${dia.value || '--'}</b> mmHg` : '')
-          }),
-        legend: {
-          data: ['收缩压', '舒张压'], right: 10, top: 4,
-          textStyle: { color: '#8ba6c8', fontSize: 11 }, itemWidth: 14, itemHeight: 3
-        },
-        grid: { ...trendGrid(), right: '5%', top: '16%' },
-        xAxis: { ...categoryAxis(dates, { fontSize: 10, interval: Math.floor(dates.length / 6) }), boundaryGap: false },
-        yAxis: valueAxis({ name: 'mmHg', min: v => Math.max(0, Math.floor(v.min - 8)), max: v => Math.ceil(v.max + 8) }),
-        series: [
-          {
-            name: '收缩压', type: 'line', data: sysVals,
-            smooth: true, symbol: 'none', connectNulls: false,
-            lineStyle: { color: '#a78bfa', width: 2 },
-            areaStyle: { color: gradV('rgba(167,139,250,0.28)', 'rgba(167,139,250,0.02)') },
-            markLine: { silent: true, symbol: 'none', lineStyle: { color: '#a78bfa55', type: 'dashed' },
-              data: [{ yAxis: 139, label: { color: '#a78bfa', fontSize: 10, formatter: '偏高 139' } }] }
-          },
-          {
-            name: '舒张压', type: 'line', data: diaVals,
-            smooth: true, symbol: 'none', connectNulls: false,
-            lineStyle: { color: '#38bdf8', width: 2 },
-            areaStyle: { color: gradV('rgba(56,189,248,0.2)', 'rgba(56,189,248,0.02)') },
-            markLine: { silent: true, symbol: 'none', lineStyle: { color: '#38bdf855', type: 'dashed' },
-              data: [{ yAxis: 89, label: { color: '#38bdf8', fontSize: 10, formatter: '偏高 89' } }] }
-          }
-        ]
-      })
-    },
-
-    initHourlyChart(sysVals, diaVals) {
-      const c = initChart(this.charts, 'hourly', this.$refs.hourlyRef); if (!c) return
-      const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
-      c.setOption({
-        backgroundColor: 'transparent',
-        tooltip: chartTooltip(p => {
-            const sys = p.find(x => x.seriesName === '收缩压')
-            const dia = p.find(x => x.seriesName === '舒张压')
-            return `${p[0].name}<br/>` +
-              `收缩压：<b style="color:#a78bfa">${sys?.value ?? '--'}</b> mmHg<br/>` +
-              `舒张压：<b style="color:#38bdf8">${dia?.value ?? '--'}</b> mmHg`
-          }),
-        legend: {
-          data: ['收缩压', '舒张压'], right: 4, top: 2,
-          textStyle: { color: '#8ba6c8', fontSize: 10 }, itemWidth: 12, itemHeight: 3
-        },
-        grid: { ...hourlyGrid(), top: '18%' },
-        xAxis: { ...categoryAxis(hours, { fontSize: 9, interval: 3, lineColor: 'rgba(0,212,255,0.15)' }), boundaryGap: false },
-        yAxis: valueAxis({ fontSize: 9, splitColor: 'rgba(0,212,255,0.06)', min: v => v.min > 0 ? v.min - 8 : 50, max: v => v.max > 0 ? v.max + 8 : 160 }),
-        series: [
-          {
-            name: '收缩压', type: 'line', data: sysVals,
-            smooth: true, symbol: 'none', connectNulls: false,
-            lineStyle: { color: '#a78bfa', width: 1.5 },
-            areaStyle: { color: gradV('rgba(167,139,250,0.22)', 'rgba(167,139,250,0.02)') }
-          },
-          {
-            name: '舒张压', type: 'line', data: diaVals,
-            smooth: true, symbol: 'none', connectNulls: false,
-            lineStyle: { color: '#38bdf8', width: 1.5 },
-            areaStyle: { color: gradV('rgba(56,189,248,0.18)', 'rgba(56,189,248,0.02)') }
-          }
-        ]
-      })
+      await loadMetricRealtime(this, getBPRealtime)
     },
 
     bpLevel(item) {
@@ -638,390 +484,9 @@ export default {
     },
 
 
-    startTop5Scroll() {
-      if (this._top5ScrollTimer) { clearInterval(this._top5ScrollTimer); this._top5ScrollTimer = null }
-      const el = this.$refs.top5ScrollRef
-      if (!el || el.scrollHeight <= el.clientHeight) return
-      let paused = false
-      this._top5ScrollTimer = setInterval(() => {
-        if (paused) return
-        el.scrollTop += 1
-        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
-          paused = true
-          setTimeout(() => { el.scrollTop = 0; paused = false }, 1500)
-        }
-      }, 40)
-    },
-
     // setPageSize → chartPageMixin
   }
 }
 </script>
 
-<style lang="scss" scoped>
-@import '@/styles/hm-vars';
-@import '@/styles/hm-layout';
-$purple: #a78bfa;
-
-@include hm-body('bp');
-@include hm-main('bp');
-@include hm-panel('bp');
-@include hm-kpi-cards('bp');
-@include hm-pagination('bp');
-$sky:    #38bdf8;
-
-// ── Root：自适应视口高度 ──
-.bp-root {
-  width: 100%;
-  height: calc(100vh - 50px) !important; /* 视口高度 - 顶部导航栏 */
-  min-height: 600px; /* 最小高度防止过小 */
-  background: $bg;
-  background-image:
-    radial-gradient(circle at 18% 28%, rgba(167,139,250,0.06) 0%, transparent 48%),
-    radial-gradient(circle at 82% 72%,  rgba(56,189,248,0.06) 0%, transparent 48%);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  font-family: 'Microsoft YaHei', sans-serif;
-  color: $text;
-}
-
-// ── Header ──
-.bp-hd {
-  height: 58px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  padding: 0 22px;
-  gap: 20px;
-  background: rgba(0, 6, 24, 0.65);
-  border-bottom: 1px solid $border;
-}
-.bp-hd-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-
-.bp-live-dot {
-  width: 9px; height: 9px;
-  border-radius: 50%;
-  background: $purple;
-  box-shadow: 0 0 8px $purple;
-  animation: hmPulse 2s ease-in-out infinite;
-}
-
-.bp-hd-title {
-  font-size: 20px; font-weight: 700; color: $white; margin: 0;
-  letter-spacing: 2px;
-  background: linear-gradient(90deg, #a78bfa, #38bdf8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  filter: drop-shadow(0 0 8px rgba(167,139,250,0.5));
-}
-
-.bp-hd-kpis {
-  flex: 1; display: flex; justify-content: center;
-}
-.bp-kpi {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 0 32px;
-  border-right: 1px solid $border;
-  &:first-child { border-left: 1px solid $border; }
-}
-.bp-kpi-n {
-  font-size: 20px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1;
-  &.kpi-purple { color: $purple; text-shadow: 0 0 10px rgba(167,139,250,0.5); }
-  &.kpi-sky    { color: $sky;    text-shadow: 0 0 10px rgba(56,189,248,0.4);  }
-  &.kpi-green  { color: #52c41a; text-shadow: 0 0 10px rgba(82,196,26,0.35);  }
-  &.kpi-red    { color: #ff5252; text-shadow: 0 0 10px rgba(255,82,82,0.4);   }
-}
-.bp-kpi-l { font-size: 11px; color: $dim; margin-top: 2px; white-space: nowrap; }
-.bp-hd-time { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: $dim; }
-
-// ── Period tabs ──
-.bp-period-tabs {
-  display: flex;
-  background: rgba(167,139,250,0.06);
-  border: 1px solid rgba(167,139,250,0.2);
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.bp-period-tab {
-  padding: 4px 14px;
-  font-size: 12px;
-  color: $dim;
-  cursor: pointer;
-  transition: all 0.2s;
-  &:hover { color: $white; background: rgba(167,139,250,0.1); }
-  &.is-active { color: $bg; background: $purple; font-weight: 700; }
-}
-
-// ── Body（hm-body mixin） ──
-
-// ── Aside（左侧）──
-.bp-aside {
-  width: 260px; flex-shrink: 0;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.bp-aside-top { height: 200px; flex-shrink: 0; display: flex; flex-direction: column; }
-.bp-aside-bot { flex: 1; }
-
-// ── Main（hm-main mixin） ──
-.bp-overview-panel { height: 162px; flex-shrink: 0; }
-.bp-mid-row {
-  height: 185px; flex-shrink: 0; display: flex; gap: 10px;
-}
-.bp-panel-trend   { flex: 1; min-width: 0; }
-.bp-panel-dist    { flex: 0 0 250px; }
-.bp-panel-hourly  { flex: 0 0 280px; }
-.bp-panel-zones   { flex-shrink: 0; }
-.bp-panel-anomaly { flex-shrink: 0; }
-
-// ── Right list ──
-.bp-rtlist {
-  width: 272px; flex-shrink: 0;
-  display: flex; flex-direction: column; min-height: 0;
-  .bp-panel { flex: 1; min-height: 0; }
-}
-
-// ── Panel（hm-panel mixin + 页面特有） ──
-.bp-ph {
-  height: 38px; flex-shrink: 0;
-  display: flex; align-items: center; gap: 8px; padding: 0 12px;
-  border-bottom: 1px solid rgba(0,212,255,0.09);
-  background: rgba(167,139,250,0.03);
-}
-.bp-ph-bar {
-  width: 3px; height: 14px;
-  background: linear-gradient(180deg, $purple, rgba(167,139,250,0.3));
-  border-radius: 2px;
-  box-shadow: 0 0 6px rgba(167,139,250,0.7);
-}
-// ph-title, rt-total, ph-legend, leg-dot, leg-txt, trend-tags, tag, pc → hm-panel mixin
-
-// ── TOP5 紧凑列表 ──
-.bp-top5-empty { padding: 20px 0; text-align: center; color: rgba(167,139,250,0.5); font-size: 12px; }
-.bp-top5-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 12px;
-  display: flex; flex-direction: column; gap: 8px;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.18); border-radius: 2px; }
-}
-.bp-top5-row {
-  display: flex; align-items: center; gap: 8px;
-}
-.bp-top5-rank {
-  width: 18px; height: 18px; border-radius: 4px;
-  font-size: 11px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  &.rank-1 { background: rgba(255,184,77,0.2); color: #FFB84D; border: 1px solid rgba(255,184,77,0.4); }
-  &.rank-2 { background: rgba(167,139,250,0.12); color: $purple; border: 1px solid rgba(167,139,250,0.3); }
-  &.rank-3 { background: rgba(56,189,248,0.12); color: $sky; border: 1px solid rgba(56,189,248,0.3); }
-  &.rank-4, &.rank-5, &.rank-n { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
-}
-.bp-top5-name { font-size: 12px; color: $white; width: 56px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bp-top5-bar-wrap { flex: 1; height: 6px; background: rgba(167,139,250,0.08); border-radius: 3px; overflow: hidden; }
-.bp-top5-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, $purple, #7c3aed); transition: width 0.8s ease; }
-.bp-top5-val { font-size: 13px; font-weight: 700; color: $purple; font-family: 'Consolas', monospace; width: 28px; text-align: right; flex-shrink: 0; }
-.bp-top5-more { text-align: center; font-size: 11px; color: $purple; padding: 6px 0; cursor: pointer; opacity: 0.7; &:hover { opacity: 1; } }
-
-// 部门筛选标签
-.bp-dept-tag {
-  margin-left: auto; font-size: 11px; padding: 1px 6px; border-radius: 3px;
-  background: rgba(167,139,250,0.15); color: $purple; border: 1px solid rgba(167,139,250,0.35);
-  cursor: pointer;
-  &:hover { background: rgba(167,139,250,0.25); }
-}
-
-// ── 概况面板内容 ──
-.bp-overview-body {
-  flex: 1; min-height: 0;
-  display: flex; align-items: center; padding: 8px 14px; gap: 16px;
-}
-.bp-dual-wrap {
-  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
-  background: rgba(167,139,250,0.04);
-  border: 1px solid rgba(167,139,250,0.12);
-  border-radius: 10px; padding: 10px 16px;
-}
-.bp-dual-item { text-align: center; }
-.bp-dual-val {
-  font-size: 38px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1;
-}
-.bp-dual-label { font-size: 12px; color: $text; margin-top: 4px; }
-.bp-dual-unit  { font-size: 10px; color: $dim; font-weight: normal; }
-.bp-dual-sub   { font-size: 10px; color: $dim; margin-top: 2px; }
-.bp-dual-sep   { font-size: 28px; color: $dim; align-self: center; padding-bottom: 6px; }
-
-// kpi-cards → hm-kpi-cards mixin + purple overrides
-.bp-kpi-card {
-  background: rgba(167,139,250,0.04);
-  border: 1px solid rgba(167,139,250,0.1);
-}
-
-// 血压等级说明
-.bp-grade-info {
-  width: 168px; flex-shrink: 0;
-  background: rgba(167,139,250,0.03);
-  border: 1px solid rgba(167,139,250,0.1);
-  border-radius: 8px;
-  padding: 8px 10px;
-  display: flex; flex-direction: column; gap: 5px;
-}
-.bp-grade-title { font-size: 11px; color: $dim; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.5px; }
-.bp-grade-item  { display: flex; align-items: center; gap: 6px; }
-.bp-grade-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.bp-grade-name  { font-size: 10px; width: 62px; flex-shrink: 0; }
-.bp-grade-val   { font-size: 10px; color: $dim; font-family: 'Consolas', monospace; }
-
-// ── 分布图 ──
-.bp-dist-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
-.bp-dist-chart { width: 110px; height: 110px; flex-shrink: 0; }
-.bp-dist-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
-.bp-dist-row { display: flex; align-items: center; gap: 7px; }
-.bp-dist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.bp-dist-name { font-size: 11px; color: $text; flex-shrink: 0; width: 64px; }
-.bp-dist-bar-wrap { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
-.bp-dist-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; opacity: 0.85; }
-.bp-dist-pct { font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; width: 34px; text-align: right; flex-shrink: 0; }
-
-// ── 血压区间分布统计 ──
-.bp-ds-total {
-  margin-left: auto; font-size: 12px; color: $dim;
-  em { color: #93c5fd; font-style: normal; font-weight: 700; }
-}
-.bp-ds-body {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 8px; padding: 6px 0 8px;
-}
-.bp-ds-zone {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px; padding: 10px 8px 8px;
-  text-align: center; transition: background 0.15s;
-  &:hover { background: rgba(255,255,255,0.07); }
-  &.zone-normal { border-color: rgba(82,196,26,0.2);   }
-  &.zone-pre    { border-color: rgba(255,184,77,0.2);  }
-  &.zone-stage1 { border-color: rgba(255,112,67,0.2);  }
-  &.zone-danger { border-color: rgba(255,82,82,0.2);   }
-}
-.bp-ds-icon  { font-size: 16px; margin-bottom: 4px; }
-.bp-ds-count { font-size: 24px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
-.bp-ds-pct   { font-size: 11px; margin-top: 1px; }
-.bp-ds-label { font-size: 13px; font-weight: 600; color: $white; margin-top: 4px; }
-.bp-ds-range { font-size: 10px; color: $dim; margin-top: 2px; }
-.bp-ds-bar-row {
-  display: flex; height: 6px; border-radius: 3px; overflow: hidden;
-  background: rgba(255,255,255,0.05); margin-bottom: 2px;
-}
-.bp-ds-seg { transition: width 0.4s ease; min-width: 0; }
-
-// ── 异常明细面板 ──
-.bp-panel-anomaly { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.bp-anomaly-count {
-  margin-left: auto; font-size: 12px; color: #ff7043;
-  em { font-style: normal; font-weight: 700; }
-}
-.bp-anomaly-empty {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  font-size: 13px; color: rgba(82,196,26,0.8); padding: 10px;
-}
-.bp-anomaly-ok { font-size: 16px; margin-right: 6px; }
-.bp-anomaly-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.bp-anomaly-hd {
-  display: grid; grid-template-columns: 64px 1fr 72px 72px 80px 90px;
-  gap: 6px; padding: 4px 10px; flex-shrink: 0;
-  background: rgba(255,112,67,0.06);
-  span { font-size: 11px; color: $dim; font-weight: 600; }
-}
-.bp-anomaly-list {
-  flex: 1; overflow-y: auto; padding: 3px 6px;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(255,112,67,0.2); border-radius: 2px; }
-}
-.bp-anomaly-more {
-  text-align: center; font-size: 11px; color: $purple; padding: 6px 0; cursor: pointer; opacity: 0.7;
-  &:hover { opacity: 1; }
-}
-.bp-anomaly-row {
-  display: grid; grid-template-columns: 64px 1fr 72px 72px 80px 90px;
-  gap: 6px; padding: 5px 4px; margin-bottom: 1px;
-  border-radius: 4px; align-items: center;
-  border-left: 2px solid transparent;
-  transition: background 0.15s;
-  &:hover { background: rgba(255,255,255,0.04); }
-  &.anom-danger { border-left-color: rgba(255,82,82,0.6);  background: rgba(255,82,82,0.04);  }
-  &.anom-stage1 { border-left-color: rgba(255,112,67,0.6); background: rgba(255,112,67,0.04); }
-}
-.ba-name  { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ba-dept  { font-size: 11px; color: $dim; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ba-sys   {
-  font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; color: $purple;
-  .anom-danger & { color: #ff5252; }
-}
-.ba-dia   {
-  font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; color: $sky;
-  .anom-danger & { color: #ff7043; }
-}
-.ba-level {
-  font-size: 11px; padding: 1px 5px; border-radius: 3px; text-align: center;
-  .anom-danger & { color: #ff5252; background: rgba(255,82,82,0.12);  border: 1px solid rgba(255,82,82,0.25);  }
-  .anom-stage1 & { color: #ff7043; background: rgba(255,112,67,0.12); border: 1px solid rgba(255,112,67,0.25); }
-}
-.ba-time  { font-size: 10px; color: $dim; }
-
-// ── 实时列表 ──
-.bp-rt-hd {
-  display: grid; grid-template-columns: 28px 1fr 40px 40px 80px;
-  gap: 6px; padding: 6px 10px; flex-shrink: 0;
-  background: rgba(167,139,250,0.06);
-  span { font-size: 11px; color: $dim; font-weight: 600; }
-}
-.bp-rt-body {
-  flex: 1; overflow-y: auto; padding: 3px 6px; min-height: 0;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.18); border-radius: 2px; }
-}
-.bp-rt-row {
-  display: grid; grid-template-columns: 28px 1fr 40px 40px 80px;
-  gap: 6px; padding: 6px 4px; margin-bottom: 1px;
-  border-radius: 5px; align-items: center;
-  border-left: 2px solid transparent;
-  transition: background 0.2s;
-  &:hover { background: rgba(167,139,250,0.055); }
-  &.normal { border-left-color: rgba(82,196,26,0.45); }
-  &.pre    { border-left-color: rgba(255,184,77,0.55); }
-  &.stage1 { border-left-color: rgba(255,112,67,0.6); }
-  &.danger { border-left-color: rgba(255,82,82,0.7); }
-}
-.bp-rt-idx  { font-size: 11px; color: $dim; font-family: 'Consolas', monospace; text-align: center; }
-.bp-rt-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bp-rt-sys  {
-  font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; color: $purple;
-  .bp-rt-row.danger & { color: #ff5252; }
-  .bp-rt-row.stage1 & { color: #ff7043; }
-  .bp-rt-row.pre    & { color: #FFB84D; }
-}
-.bp-rt-dia  {
-  font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; color: $sky;
-  .bp-rt-row.danger & { color: #ff7043; }
-}
-.bp-rt-badge {
-  font-size: 10px; padding: 1px 4px; border-radius: 3px; text-align: center;
-  &.normal { background: rgba(82,196,26,0.13);  color: #52c41a; border: 1px solid rgba(82,196,26,0.28); }
-  &.pre    { background: rgba(255,184,77,0.13); color: #FFB84D; border: 1px solid rgba(255,184,77,0.28); }
-  &.stage1 { background: rgba(255,112,67,0.13); color: #ff7043; border: 1px solid rgba(255,112,67,0.28); }
-  &.danger { background: rgba(255,82,82,0.13);  color: #ff5252; border: 1px solid rgba(255,82,82,0.28); }
-}
-
-// pagination → hm-pagination mixin + purple overrides
-.bp-pg-btn {
-  background: rgba(167,139,250,0.07); border-color: rgba(167,139,250,0.18);
-  color: $purple;
-  &:hover:not(:disabled) { background: rgba(167,139,250,0.16); }
-}
-.bp-pg-info { font-size: 12px; color: $purple; min-width: 44px; text-align: center; }
-
-@include hm-mobile('bp');
-</style>
+<style lang="scss" scoped src="./blood-pressure.scss"></style>

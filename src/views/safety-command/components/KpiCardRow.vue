@@ -67,11 +67,21 @@ defineEmits(['detail'])
 </script>
 
 <style scoped lang="scss">
+@use 'sass:color';
+
 $cyan:#00d4ff; $red:#ff4757; $orange:#ff6b35; $yellow:#ffd32a; $green:#2ed573; $teal:#26c6da;
 $panel:rgba(10,22,42,.82); $border2:rgba(0,212,255,.07);
 $mono:'JetBrains Mono','Courier New',monospace;
 
-.kpi { display:grid; grid-template-columns:repeat(5,1fr); gap:7px; flex-shrink:0; }
+.kpi {
+  grid-column: 1 / 5;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+  flex-shrink: 0;
+  min-width: 0;
+}
 
 .kcard {
   background:$panel; border:1px solid $border2; border-radius:5px;
@@ -92,17 +102,31 @@ $mono:'JetBrains Mono','Courier New',monospace;
 
 .kc-glow { position:absolute; right:-18px; bottom:-18px; width:80px; height:80px; border-radius:50%; pointer-events:none; filter:blur(14px); }
 
-.kc-head { display:flex; align-items:center; justify-content:space-between; }
-.kc-lbl  { font-size:9px; color:rgba(255,255,255,.45); letter-spacing:.8px; text-transform:uppercase; }
-.kc-ico  { font-size:15px; opacity:.6; }
+.kc-head { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
+.kc-lbl  {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: rgba(255,255,255,.58);
+  letter-spacing: .4px;
+  white-space: nowrap;
+}
+.kc-ico  { flex-shrink: 0; font-size:15px; opacity:.6; }
 .kc-num  { display:flex; align-items:baseline; gap:3px; line-height:1; font-family:$mono; }
 .kc-total{ font-size:13px; color:rgba(255,255,255,.35); font-family:$mono; }
-.kc-foot { display:flex; align-items:center; gap:4px; flex-wrap:wrap; font-size:10px; }
+.kc-foot { display:flex; align-items:center; gap:4px; flex-wrap:wrap; font-size:10px; position:relative; z-index:1; }
+.kc-foot .dim { display:inline-flex; align-items:center; min-width:0; }
 .dim     { color:rgba(255,255,255,.38); }
 
+@media (max-width: 768px) {
+  .kcard { padding:10px 12px; }
+  .kc-foot { line-height:1.25; }
+  .kc-foot .dim { flex-basis:100%; margin-top:1px; }
+}
+
 .ft { font-size:9px; padding:1px 6px; border-radius:2px; }
-.ft-g { background:rgba($green,.12); color:lighten($green,10%); border:1px solid rgba($green,.2); }
+.ft-g { background:rgba($green,.12); color:color.adjust($green, $lightness: 10%); border:1px solid rgba($green,.2); }
 .ft-r { background:rgba($red,.15);   color:#ff8090;             border:1px solid rgba($red,.2);   }
 .ft-o { background:rgba($orange,.12);color:#ff9a55;             border:1px solid rgba($orange,.2);}
-.ft-c { background:rgba($cyan,.1);   color:lighten($cyan,10%);  border:1px solid rgba($cyan,.2);  }
+.ft-c { background:rgba($cyan,.1);   color:color.adjust($cyan, $lightness: 10%);  border:1px solid rgba($cyan,.2);  }
 </style>

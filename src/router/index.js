@@ -1,70 +1,13 @@
-/**
- * ╔══════════════════════════════════════════════════════════════════╗
- * ║              路由配置（新手必读）                                    ║
- * ╚══════════════════════════════════════════════════════════════════╝
- *
- * 【什么是前端路由？】
- *
- * 传统网站：每次点击链接，浏览器向服务器请求新页面（重新加载整个页面）。
- *
- * SPA（单页应用）：
- *   - 只加载一次 HTML（index.html）
- *   - 之后所有"页面切换"都是在同一个 HTML 中替换内容（不重新加载）
- *   - URL 的变化由前端 JavaScript 控制
- *   - 速度更快，体验更接近原生 App
- *
- * Vue Router 就是实现 SPA 路由的库：URL 变化 → 渲染对应的 Vue 组件
- *
- * 【Hash 模式 vs History 模式】
- *
- * createWebHashHistory()（本项目使用）：
- *   - URL 格式：http://localhost:3000/#/health-monitor/dashboard
- *   - # 号后面的部分不会发送到服务器，完全由前端处理
- *   - 优点：无需服务器配置，刷新页面不会 404
- *   - 缺点：URL 中有 # 号，不太美观
- *
- * createWebHistory()（另一种模式）：
- *   - URL 格式：http://localhost:3000/health-monitor/dashboard
- *   - 更美观，但需要服务器配置（Nginx）支持，否则刷新 404
- *
- * 本项目选择 Hash 模式，配置简单，适合内网部署。
- *
- * 【路由对象的属性说明】
- *
- * path：URL 路径（如 '/login'、'/health-monitor/dashboard'）
- * component：对应的 Vue 组件（() => import(...) 是懒加载方式）
- * name：路由命名（用于编程式导航 this.$router.push({ name: 'Login' })）
- * redirect：重定向（访问 / 时自动跳转到 /health-monitor/dashboard）
- * hidden：自定义属性，true 表示不在侧边栏菜单中显示
- * meta：路由元信息（存放额外数据）
- *   - title：菜单/标签页标题
- *   - icon：菜单图标（使用 Element Plus Icons 的图标名）
- *   - affix：是否固定在标签页栏（不可关闭）
- *   - permCode：权限码（用于过滤路由，决定哪些用户能看到此菜单）
- *
- * 【懒加载（Lazy Loading）说明】
- *
- * component: () => import('@/views/login/index.vue')
- *
- * 不加懒加载：所有组件在首次加载时一次性下载（首屏慢）
- * 加懒加载：只在第一次访问该路由时才下载对应组件（首屏快）
- *
- * 【constantRoutes vs asyncRoutes】
- *
- * constantRoutes：所有用户都能访问的路由（登录页、404、健康监测等）
- * asyncRoutes：需要动态加载的路由（根据用户权限动态添加，本项目暂未使用）
- *
- * 本项目全部用 constantRoutes，通过 filterRoutes() 函数过滤显示哪些菜单，
- * 而不是动态添加/删除路由（这种方式更简单，适合中小型项目）。
- */
+// 路由总入口：
+// - Hash 模式，避免本地和内网环境下的服务器重写依赖
+// - 业务路由静态注册，减少首跳竞态和 /404 类问题
 
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { getToken } from '@/utils/auth'
+import appRoutes from './app-routes.mjs'
 
-async function resolveRootEntry() {
-  if (!getToken()) return '/login'
-  await ensureAppRoutes()
-  return '/health-monitor/dashboard'
+function resolveRootEntry() {
+  return getToken() ? '/health-monitor/dashboard' : '/login'
 }
 
 
@@ -75,7 +18,7 @@ async function resolveRootEntry() {
  *   /login          → 登录页（hidden=true，不在侧边栏显示）
  *   /404            → 404 页面（hidden=true）
  *   /               → 重定向到 /health-monitor/dashboard
- *   /health-monitor → 健康监测模块（从 health-monitor.js 引入）
+ *   /health-monitor → 健康监测模块（从 health-monitor.mjs 引入）
  *   /user-management → 用户管理模块
  *   /permission-management → 权限管理模块
  *   /:pathMatch(.*) → 通配符，任何未匹配路径都重定向到 /404
@@ -96,12 +39,15 @@ export const constantRoutes = [
   },
 
   // 根路径重定向
-  // 未登录直接进 /login，已登录会先注入业务路由，再去 dashboard
+  // 未登录直接进 /login，已登录进 dashboard。
+  // 这里必须用 redirect，而不是“只有 beforeEnter 的空路由”，
+  // 否则 Hash 根路径 "#/" 会被通配符当成未匹配路径，直接掉进 /404。
   {
     path: '/',
-    beforeEnter: resolveRootEntry,
+    redirect: resolveRootEntry,
     hidden: true
-  }
+  },
+  ...appRoutes
 ]
 
 /**
@@ -115,52 +61,6 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),  // 切换路由时自动滚动到顶部
   routes: constantRoutes
 })
-
-let appRoutesCache = null
-let appRoutesPromise = null
-let appRoutesLoaded = false
-
-function cloneRouteRecord(route) {
-  return {
-    ...route,
-    meta: route.meta ? { ...route.meta } : route.meta,
-    children: route.children ? route.children.map(cloneRouteRecord) : route.children
-  }
-}
-
-async function loadAppRoutes() {
-  const mod = await import('./app-routes')
-  const routes = mod.default || mod.appRoutes || []
-  return routes.map(cloneRouteRecord)
-}
-
-export function hasLoadedAppRoutes() {
-  return appRoutesLoaded
-}
-
-export async function ensureAppRoutes() {
-  if (appRoutesLoaded && appRoutesCache) return appRoutesCache
-
-  if (!appRoutesPromise) {
-    appRoutesPromise = loadAppRoutes()
-      .then((routes) => {
-        routes.map(cloneRouteRecord).forEach(route => router.addRoute(route))
-        appRoutesCache = routes
-        appRoutesLoaded = true
-        return appRoutesCache
-      })
-      .catch((error) => {
-        appRoutesPromise = null
-        throw error
-      })
-  }
-
-  return appRoutesPromise
-}
-
-export async function getAppRoutes() {
-  return appRoutesCache || ensureAppRoutes()
-}
 
 /**
  * 动态路由（本项目暂未使用）

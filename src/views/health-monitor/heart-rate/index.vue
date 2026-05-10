@@ -268,7 +268,6 @@
 
 <script>
 import dayjs from 'dayjs'
-import { ElMessage } from 'element-plus'
 import {
   getHeartRateOverview,
   getHeartRateTrend,
@@ -279,16 +278,26 @@ import {
   getHourlyHeartRate,
   getDailyAnomalyHeartRate
 } from '@/api/heart-rate'
-import { hrLevel, HR } from '@/constants/health-thresholds'
-import { initChart, gaugeOption, gradH, gradV } from '@/utils/chart-helpers'
+import { hrLevel } from '@/constants/health-thresholds'
 import chartPageMixin from '@/mixins/chartPage'
 import { PERIOD_OPTIONS } from '@/constants/periods'
-import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, ageGrid, barLabel } from '@/utils/echarts-config'
-import { exportToExcel } from '@/utils/export-excel'
+import {
+  createHourlySeries,
+  fetchMetricData,
+  getMetricToday,
+  loadMetricOverview,
+  loadMetricRangeChart,
+  loadMetricRealtime,
+  loadMetricTopUsers,
+  metricDaysForPeriod
+} from '@/views/health-monitor/metric-page/metric-data-loader'
+import { exportMetricRows } from '@/views/health-monitor/metric-page/metric-export'
+import metricPageMixin from '@/views/health-monitor/metric-page/metric-page-mixin'
+import { heartRateChartMethods } from './heart-rate-chart'
 
 export default {
   name: 'HeartRateAnalysis',
-  mixins: [chartPageMixin],
+  mixins: [chartPageMixin, metricPageMixin],
   data() {
     return {
       pageLoading: false,
@@ -314,7 +323,9 @@ export default {
       charts: {},
       detailItem: null,
       detailVisible: false,
-      filterDept: ''
+      filterDept: '',
+      _top5Paused: false,
+      _top5ScrollLoop: null
     }
   },
   computed: {
@@ -382,48 +393,21 @@ export default {
   },
   mounted() {
     this.initPage()
-    this._top5Paused = false
-    this._top5ScrollTimer = setInterval(() => {
-      if (this._top5Paused) return
-      const el = this.$refs.top5ScrollRef
-      if (!el) return
-      const max = el.scrollHeight - el.clientHeight
-      if (max <= 0) return
-      el.scrollTop += 1
-      if (el.scrollTop >= max - 1) {
-        this._top5Paused = true
-        setTimeout(() => {
-          if (el) el.scrollTop = 0
-          this._top5Paused = false
-        }, 1500)
-      }
-    }, 80)
-    this.$nextTick(() => {
-      this._ro = new ResizeObserver(() => this.setPageSize(27))
-      const el = this.$refs.listRef
-      if (el) {
-        this._ro.observe(el)
-        this.setPageSize(27)
-      }
-    })
-  },
-  beforeUnmount() {
-    clearInterval(this._top5ScrollTimer)
-    if (this._ro) this._ro.disconnect()
+    this.startTop5Scroll()
+    this.initAutoPageSize(27)
   },
   methods: {
+    ...heartRateChartMethods,
+
+    getTop5ScrollOptions() {
+      return {
+        intervalMs: 80,
+        shouldScroll: () => !this._top5Paused
+      }
+    },
 
     async exportExcel() {
       const list = this.realtimeList
-      if (!list.length) { ElMessage.warning('暂无数据可导出'); return }
-      const data = list.map(r => ({
-        userName: r.userName || '--',
-        deptName: r.deptName || '--',
-        empCode: r.empCode || '--',
-        heartRate: r.heartRate ?? '--',
-        status: (r.heartRate && (r.heartRate < 55 || r.heartRate > 120)) ? '异常' : '正常',
-        recordTime: r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
-      }))
       const cols = [
         { label: '姓名', key: 'userName' },
         { label: '部门', key: 'deptName' },
@@ -432,8 +416,19 @@ export default {
         { label: '状态', key: 'status' },
         { label: '记录时间', key: 'recordTime' }
       ]
-      await exportToExcel(data, cols, `心率分析_${dayjs().format('YYYYMMDD')}`)
-      ElMessage.success(`已导出 ${list.length} 条记录`)
+      await exportMetricRows({
+        rows: list,
+        columns: cols,
+        filenamePrefix: '心率分析',
+        mapRow: r => ({
+          userName: r.userName || '--',
+          deptName: r.deptName || '--',
+          empCode: r.empCode || '--',
+          heartRate: r.heartRate ?? '--',
+          status: (r.heartRate && (r.heartRate < 55 || r.heartRate > 120)) ? '异常' : '正常',
+          recordTime: r.recordTime ? dayjs(r.recordTime).format('YYYY-MM-DD HH:mm') : '--'
+        })
+      })
     },
 
     async fetchData() {
@@ -449,261 +444,49 @@ export default {
     },
 
     async loadOverview() {
-      const { startDate, endDate } = this.periodRange
-      try { const r = await getHeartRateOverview(startDate, endDate); if (r.code === 200) this.overview = r.data } catch {}
+      await loadMetricOverview(this, getHeartRateOverview, this.overview)
       this.$nextTick(() => this.initGauge())
     },
     async loadTopUsers() {
-      const { startDate, endDate } = this.periodRange
-      let d = []; try { const r = await getHeartRateTopUsers(1000, startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
-      this.top5Data = d
+      await loadMetricTopUsers(this, getHeartRateTopUsers)
     },
     async loadDept() {
-      const { startDate, endDate } = this.periodRange
-      let d = []; try { const r = await getHeartRateDeptStats(startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
-      this.$nextTick(() => this.initDept(d))
+      await loadMetricRangeChart(this, getHeartRateDeptStats, 'initDept')
     },
     async loadAge() {
-      const { startDate, endDate } = this.periodRange
-      let d = []; try { const r = await getAgeHeartRate(startDate, endDate); if (r.code === 200) d = r.data || [] } catch {}
-      this.$nextTick(() => this.initAge(d))
+      await loadMetricRangeChart(this, getAgeHeartRate, 'initAge')
     },
     async loadHourly() {
       if (this.activePeriod === 'day') {
-        const _n = new Date(); const today = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`
-        const vals = new Array(24).fill(null)
-        try {
-          const r = await getHourlyHeartRate(today, today)
-          if (r.code === 200 && Array.isArray(r.data)) {
-            r.data.forEach(({ hour, avgHeartRate }) => {
-              if (hour >= 0 && hour < 24) vals[hour] = avgHeartRate
-            })
-          }
-        } catch {}
+        const today = getMetricToday()
+        const rows = await fetchMetricData(() => getHourlyHeartRate(today, today), [])
+        const vals = createHourlySeries(rows, 'avgHeartRate')
         this.$nextTick(() => this.renderHourly(vals))
       } else {
         const { startDate, endDate } = this.periodRange
-        let dates = [], counts = []
-        try {
-          const r = await getDailyAnomalyHeartRate(startDate, endDate)
-          if (r.code === 200 && Array.isArray(r.data)) {
-            dates  = r.data.map(x => x.date)
-            counts = r.data.map(x => x.anomalyCount)
-          }
-        } catch {}
+        const rows = await fetchMetricData(() => getDailyAnomalyHeartRate(startDate, endDate), [])
+        const dates = rows.map(x => x.date)
+        const counts = rows.map(x => x.anomalyCount)
         this.$nextTick(() => this.renderDailyAnomaly(dates, counts))
       }
     },
     async loadTrend() {
       if (this.activePeriod === 'day') {
-        const _n = new Date(); const today = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`
-        const vals = new Array(24).fill(null)
-        try {
-          const r = await getHourlyHeartRate(today, today)
-          if (r.code === 200 && Array.isArray(r.data)) {
-            r.data.forEach(({ hour, avgHeartRate }) => {
-              if (hour >= 0 && hour < 24) vals[hour] = avgHeartRate
-            })
-          }
-        } catch {}
+        const today = getMetricToday()
+        const rows = await fetchMetricData(() => getHourlyHeartRate(today, today), [])
+        const vals = createHourlySeries(rows, 'avgHeartRate')
         this.$nextTick(() => this.initTrendDay(vals))
       } else {
-        const days = this.activePeriod === 'week' ? 7 : 30
-        let d = {}
-        try { const r = await getHeartRateTrend(days); if (r.code === 200) d = r.data || {} } catch {}
+        const days = metricDaysForPeriod(this.activePeriod)
+        const d = await fetchMetricData(() => getHeartRateTrend(days), {})
         this.$nextTick(() => this.initTrend(d))
       }
     },
     async loadRealtime() {
-      try { const r = await getRealtimeHeartRate(1000); if (r.code === 200) this.realtimeList = r.data || [] } catch {}
+      await loadMetricRealtime(this, getRealtimeHeartRate)
     },
     fmtRtTime(ts) {
       return ts ? dayjs(ts).format('HH:mm:ss') : ''
-    },
-
-    // ── ECharts 初始化 ──
-    initGauge() {
-      const c = initChart(this.charts, 'gauge', this.$refs.gaugeRef)
-      if (c) c.setOption(gaugeOption(this.overview.avgHeartRate || 0, {
-        min: 0, max: 160, colors: [[0.34,'#4FC3F7'],[0.75,'#52c41a'],[1,'#FFB84D']]
-      }))
-    },
-
-    initDept(data) {
-      const c = initChart(this.charts, 'dept', this.$refs.deptRef); if (!c) return
-      if (!data.length) { c.setOption(emptyOption()); return }
-      const d = data.map(x => {
-        const low   = x.lowCount  || 0
-        const high  = x.highCount || 0
-        const total = x.totalCount || 1
-        return {
-          deptName: x.deptName || x.name,
-          rate: Math.round((low + high) / total * 100)
-        }
-      })
-      c.setOption({
-        backgroundColor: 'transparent',
-        grid: deptGrid(),
-        xAxis: { ...valueAxis(), max: v => Math.ceil(v.max) + 1 },
-        yAxis: { ...categoryAxis(d.map(x => x.deptName)), inverse: true },
-        series: [{
-          type: 'bar', barWidth: '46%', data: d.map(x => x.rate),
-          itemStyle: { color: gradH('#FFB84D', '#FF6B35'), borderRadius: [0, 4, 4, 0] },
-          label: { show: true, position: 'right', color: '#FFB84D', fontSize: 11, fontFamily: 'Consolas',
-                   formatter: p => p.value + '%' }
-        }]
-      })
-      c.off('click')
-      c.on('click', (params) => {
-        this.filterDept = this.filterDept === params.name ? '' : params.name
-      })
-    },
-
-    initAge(data) {
-      const c = initChart(this.charts, 'age', this.$refs.ageRef); if (!c) return
-      const d = data
-      c.setOption({
-        backgroundColor: 'transparent',
-        grid: ageGrid(),
-        xAxis: categoryAxis(d.map(x => x.ageRange)),
-        yAxis: valueAxis({ name: 'bpm', min: v => Math.max(0, v.min - 5), max: v => v.max + 5 }),
-        series: [{
-          type: 'bar', data: d.map(x => x.avgHeartRate), barWidth: '46%',
-          itemStyle: {
-            color: gradV('#00d4ff', 'rgba(0,100,220,0.35)'),
-            borderRadius: [6, 6, 0, 0]
-          },
-          label: { show: true, position: 'top', color: '#00d4ff', fontSize: 11, fontWeight: 'bold' }
-        }]
-      })
-    },
-
-    initTrend(data) {
-      const c = initChart(this.charts, 'trend', this.$refs.trendRef); if (!c) return
-      const dates = data.dates  || []
-      const vals  = data.values || []
-      if (!dates.length) { c.setOption(emptyOption('暂无趋势数据')); return }
-      c.setOption({
-        backgroundColor: 'transparent',
-        tooltip: chartTooltip(p => `${p[0].name}<br/>平均心率：<b style="color:#00d4ff">${p[0].value}</b> 次/分`),
-        grid: trendGrid(),
-        xAxis: { ...categoryAxis(dates, { fontSize: 10, interval: 4 }), boundaryGap: false },
-        yAxis: valueAxis({ min: v => Math.max(0, v.min - 3), max: v => v.max + 3 }),
-        series: [{
-          type: 'line', data: vals, smooth: true, symbol: 'none',
-          lineStyle: { color: '#00d4ff', width: 2 },
-          areaStyle: { color: gradV('rgba(0,212,255,0.28)', 'rgba(0,212,255,0.02)') },
-          markPoint: {
-            symbol: 'circle', symbolSize: 6,
-            label: { fontSize: 10, fontWeight: 'bold', fontFamily: 'Consolas', offset: [0, -14] },
-            data: [
-              { type: 'max', name: '最高', itemStyle: { color: '#FFB84D' }, label: { color: '#FFB84D', formatter: p => '▲' + p.value } },
-              { type: 'min', name: '最低', itemStyle: { color: '#4FC3F7' }, label: { color: '#4FC3F7', formatter: p => '▼' + p.value } }
-            ]
-          },
-          markLine: {
-            silent: true, symbol: 'none',
-            data: [
-              { yAxis: HR.HIGH, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '偏高 ' + HR.HIGH } },
-              { yAxis: HR.LOW,  lineStyle: { color: '#4FC3F7', type: 'dashed', width: 1 }, label: { color: '#4FC3F7', fontSize: 10, formatter: '偏低 ' + HR.LOW } }
-            ]
-          }
-        }]
-      })
-    },
-
-    renderHourly(vals) {
-      const c = initChart(this.charts, 'hourly', this.$refs.hourlyRef); if (!c) return
-      const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
-      c.setOption({
-        backgroundColor: 'transparent',
-        tooltip: chartTooltip(p => p[0].value != null
-            ? `${p[0].name}<br/>心率：<b style="color:#00d4ff">${p[0].value}</b> bpm`
-            : `${p[0].name}<br/>暂无数据`),
-        grid: hourlyGrid(),
-        xAxis: { ...categoryAxis(hours, { fontSize: 9, interval: 3, lineColor: 'rgba(0,212,255,0.15)' }), boundaryGap: false },
-        yAxis: valueAxis({ fontSize: 9, splitColor: 'rgba(0,212,255,0.06)', min: v => v.min > 0 ? v.min - 4 : 50, max: v => v.max > 0 ? v.max + 4 : 120 }),
-        series: [{
-          type: 'line', data: vals, smooth: true, symbol: 'none', connectNulls: false,
-          lineStyle: { color: '#a78bfa', width: 1.5 },
-          areaStyle: { color: gradV('rgba(167,139,250,0.22)', 'rgba(167,139,250,0.02)') }
-        }]
-      })
-    },
-
-    renderHourlyDaily(dates, vals) {
-      const c = initChart(this.charts, 'hourly', this.$refs.hourlyRef); if (!c) return
-      if (!dates.length) { c.setOption(emptyOption('暂无数据', 13)); return }
-      c.setOption({
-        backgroundColor: 'transparent',
-        tooltip: chartTooltip(p => `${p[0].name}<br/>心率：<b style="color:#a78bfa">${p[0].value}</b> bpm`),
-        grid: hourlyGrid(),
-        xAxis: { ...categoryAxis(dates, { fontSize: 9, interval: Math.floor(dates.length / 5), lineColor: 'rgba(0,212,255,0.15)' }), boundaryGap: true },
-        yAxis: valueAxis({ fontSize: 9, splitColor: 'rgba(0,212,255,0.06)', min: v => v.min > 0 ? v.min - 4 : 50, max: v => v.max > 0 ? v.max + 4 : 120 }),
-        series: [{
-          type: 'bar', data: vals, barMaxWidth: 14,
-          itemStyle: {
-            color: gradV('#a78bfa', 'rgba(167,139,250,0.2)'),
-            borderRadius: [3, 3, 0, 0]
-          }
-        }]
-      })
-    },
-
-    renderDailyAnomaly(dates, counts) {
-      const c = initChart(this.charts, 'hourly', this.$refs.hourlyRef); if (!c) return
-      if (!dates.length) { c.setOption(emptyOption('暂无数据', 13)); return }
-      // 用中位数的3倍截断y轴，防止离群值压扁其他柱子
-      const sorted = [...counts].sort((a, b) => a - b)
-      const median = sorted[Math.floor(sorted.length / 2)] || 1
-      const yMax = Math.max(median * 3, 10)
-      c.setOption({
-        backgroundColor: 'transparent',
-        tooltip: chartTooltip(p => `${p[0].name}<br/>异常人数：<b style="color:#FFB84D">${p[0].value}</b> 人`),
-        grid: hourlyGrid(),
-        xAxis: { ...categoryAxis(dates, { fontSize: 9, interval: Math.floor(dates.length / 5), lineColor: 'rgba(0,212,255,0.15)' }), boundaryGap: true },
-        yAxis: valueAxis({ fontSize: 9, splitColor: 'rgba(0,212,255,0.06)', max: yMax }),
-        series: [{
-          type: 'bar', data: counts, barMaxWidth: 14,
-          itemStyle: { color: gradV('#FFB84D', 'rgba(255,184,77,0.2)'), borderRadius: [3, 3, 0, 0] },
-          label: {
-            show: true, position: 'top', color: '#FFB84D', fontSize: 9, fontFamily: 'Consolas',
-            formatter: p => {
-              if (p.value > yMax) {
-                const v = p.value >= 1000 ? (p.value / 1000).toFixed(1) + 'k' : p.value
-                return v + '↑'
-              }
-              return p.value
-            }
-          }
-        }]
-      })
-    },
-
-    initTrendDay(vals) {
-      const c = initChart(this.charts, 'trend', this.$refs.trendRef); if (!c) return
-      const hours = Array.from({ length: 24 }, (_, i) => i + ':00')
-      c.setOption({
-        backgroundColor: 'transparent',
-        tooltip: chartTooltip(p => p[0].value != null
-            ? `${p[0].name}<br/>心率：<b style="color:#00d4ff">${p[0].value}</b> bpm`
-            : `${p[0].name}<br/>暂无数据`),
-        grid: trendGrid(),
-        xAxis: { ...categoryAxis(hours, { fontSize: 10, interval: 3 }), boundaryGap: false },
-        yAxis: valueAxis({ min: v => v.min > 0 ? v.min - 4 : 50, max: v => v.max > 0 ? v.max + 4 : 120 }),
-        series: [{
-          type: 'line', data: vals, smooth: true, symbol: 'none', connectNulls: false,
-          lineStyle: { color: '#00d4ff', width: 2 },
-          areaStyle: { color: gradV('rgba(0,212,255,0.28)', 'rgba(0,212,255,0.02)') },
-          markLine: {
-            silent: true, symbol: 'none',
-            data: [
-              { yAxis: HR.HIGH, lineStyle: { color: '#FFB84D', type: 'dashed', width: 1 }, label: { color: '#FFB84D', fontSize: 10, formatter: '偏高 ' + HR.HIGH } },
-              { yAxis: HR.LOW,  lineStyle: { color: '#4FC3F7', type: 'dashed', width: 1 }, label: { color: '#4FC3F7', fontSize: 10, formatter: '偏低 ' + HR.LOW } }
-            ]
-          }
-        }]
-      })
     },
 
     hrLevel,
@@ -713,451 +496,4 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
-@use 'sass:color';
-@import '@/styles/hm-vars';
-@import '@/styles/hm-layout';
-
-@include hm-body('hr');
-@include hm-main('hr');
-@include hm-panel('hr');
-@include hm-overview('hr');
-@include hm-kpi-cards('hr');
-@include hm-range-info('hr');
-@include hm-pagination('hr');
-
-// ── Root：自适应视口高度 ──
-.hr-root {
-  width: 100%;
-  height: calc(100vh - 50px) !important; /* 视口高度 - 顶部导航栏 */
-  min-height: 600px; /* 最小高度防止过小 */
-  background: $bg;
-  background-image:
-    radial-gradient(circle at 18% 28%, rgba(0,212,255,0.06) 0%, transparent 48%),
-    radial-gradient(circle at 82% 72%, rgba(42,82,152,0.08) 0%, transparent 48%);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  font-family: 'Microsoft YaHei', sans-serif;
-  color: $text;
-}
-
-// ── Header ──
-.hr-hd {
-  height: 58px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  padding: 0 22px;
-  gap: 20px;
-  background: rgba(0, 6, 24, 0.65);
-  border-bottom: 1px solid $border;
-}
-.hr-hd-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-
-.hr-live-dot {
-  width: 9px; height: 9px;
-  border-radius: 50%;
-  background: $accent;
-  box-shadow: 0 0 8px $accent;
-  animation: hmPulse 2s ease-in-out infinite;
-}
-
-.hr-hd-title {
-  font-size: 20px; font-weight: 700; color: $white; margin: 0;
-  letter-spacing: 2px; text-shadow: 0 0 14px rgba(0,212,255,0.45);
-}
-
-.hr-hd-kpis {
-  flex: 1; display: flex; justify-content: center;
-}
-.hr-kpi {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 0 32px;
-  border-right: 1px solid $border;
-  &:first-child { border-left: 1px solid $border; }
-}
-.hr-kpi-n {
-  font-size: 20px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1;
-  &.kpi-cyan   { color: $accent; text-shadow: 0 0 10px rgba(0,212,255,0.5); }
-  &.kpi-orange { color: #FFB84D; text-shadow: 0 0 10px rgba(255,184,77,0.4); }
-  &.kpi-green  { color: #52c41a; text-shadow: 0 0 10px rgba(82,196,26,0.35); }
-  &.kpi-blue   { color: #7eb8f7; }
-}
-.hr-kpi-l { font-size: 11px; color: $dim; margin-top: 2px; white-space: nowrap; }
-.hr-hd-time { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: $dim; }
-
-// ── Body（hm-body mixin） ──
-
-// ── Aside（左侧：TOP5紧凑列表 + 部门图）──
-.hr-aside {
-  width: 300px; flex-shrink: 0;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.hr-aside-top { height: 190px; flex-shrink: 0; display: flex; flex-direction: column; }
-.hr-aside-bot { flex: 1; }
-
-// TOP5 紧凑列表
-.hr-top5-empty { padding: 20px 0; text-align: center; color: rgba(126,184,247,0.5); font-size: 12px; }
-.hr-top5-list {
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-  flex: 1;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.25); border-radius: 2px; }
-}
-.hr-top5-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.hr-top5-rank {
-  width: 18px; height: 18px;
-  border-radius: 4px;
-  font-size: 11px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  &.rank-1 { background: rgba(255,184,77,0.2); color: #FFB84D; border: 1px solid rgba(255,184,77,0.4); }
-  &.rank-2 { background: rgba(0,212,255,0.12); color: #00d4ff; border: 1px solid rgba(0,212,255,0.3); }
-  &.rank-3 { background: rgba(82,196,26,0.12); color: #52c41a; border: 1px solid rgba(82,196,26,0.3); }
-  &.rank-n { background: rgba(168,196,230,0.08); color: #8ba6c8; border: 1px solid rgba(168,196,230,0.2); }
-}
-.hr-top5-name { font-size: 12px; color: $white; width: 64px; flex-shrink: 0; }
-.hr-top5-bar-wrap { flex: 1; height: 6px; background: rgba(0,212,255,0.08); border-radius: 3px; overflow: hidden; }
-.hr-top5-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #00d4ff, #0066cc); transition: width 0.8s ease; }
-.hr-top5-val  { font-size: 13px; font-weight: 700; color: #00d4ff; font-family: 'Consolas', monospace; width: 22px; text-align: right; flex-shrink: 0; }
-.hr-top5-days { font-size: 10px; color: #FFB84D; width: 28px; text-align: right; flex-shrink: 0; }
-.hr-top5-more {
-  text-align: center; padding: 8px 0 4px;
-  font-size: 12px; color: $accent; cursor: pointer;
-  border-top: 1px solid rgba(0,212,255,0.1); margin-top: 4px;
-  &:hover { color: color.adjust(#00d4ff, $lightness: 10%); }
-}
-
-// panel header legend → hm-panel mixin
-
-// ── Main（hm-main mixin） ──
-.hr-overview-panel { height: 162px; flex-shrink: 0; }
-.hr-mid-row        { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }
-.hr-panel-age      { flex: 1; }
-.hr-panel-hourly   { flex: 1.4; }
-.hr-panel-trend    { flex: 1; min-height: 160px; max-height: 220px; }
-
-// ── Right list ──
-.hr-rtlist {
-  width: 272px; flex-shrink: 0;
-  display: flex; flex-direction: column; min-height: 0;
-  .hr-panel { flex: 1; min-height: 0; }
-}
-
-// ── Panel（hm-panel mixin + 页面特有） ──
-.hr-ph {
-  height: 38px; flex-shrink: 0;
-  display: flex; align-items: center; gap: 8px; padding: 0 12px;
-  border-bottom: 1px solid rgba(0,212,255,0.09);
-  background: rgba(0,212,255,0.035);
-}
-.hr-ph-bar {
-  width: 3px; height: 14px;
-  background: linear-gradient(180deg, $accent, rgba(0,212,255,0.3));
-  border-radius: 2px;
-  box-shadow: 0 0 6px rgba(0,212,255,0.7);
-}
-.hr-dept-tag {
-  font-size: 11px; padding: 1px 6px; border-radius: 3px;
-  background: rgba(0,212,255,0.15); color: $accent; border: 1px solid rgba(0,212,255,0.35);
-  cursor: pointer; white-space: nowrap;
-  &:hover { background: rgba(0,212,255,0.25); }
-}
-.hr-period-tabs {
-  display: flex;
-  background: rgba(0,212,255,0.06);
-  border: 1px solid rgba(0,212,255,0.2);
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.hr-period-tab {
-  padding: 4px 14px;
-  font-size: 12px;
-  color: $dim;
-  cursor: pointer;
-  transition: all 0.2s;
-  &:hover { color: $white; background: rgba(0,212,255,0.1); }
-  &.is-active { color: $bg; background: $accent; font-weight: 700; }
-}
-// overview/kpi-cards/range-info → hm-overview + hm-kpi-cards + hm-range-info mixins
-.hr-range-name { width: 78px; } // override mixin default 38px
-
-.hr-rt-total { font-size: 12px; color: $dim; margin-left: 4px; }
-.hr-export-btn {
-  margin-left: auto; height: 24px; padding: 0 10px;
-  background: rgba(0,212,255,.07); border: 1px solid rgba(0,212,255,.2);
-  border-radius: 4px; color: $accent; font-size: 11px; cursor: pointer; white-space: nowrap; transition: background .2s;
-  &:hover { background: rgba(0,212,255,.16); }
-}
-
-// ── 实时列表 ──
-.hr-rt-hd {
-  display: grid; grid-template-columns: 28px 1fr 52px 44px 44px;
-  gap: 8px; padding: 7px 12px; flex-shrink: 0;
-  background: rgba(0,212,255,0.06);
-  span { font-size: 11px; color: $dim; font-weight: 600; }
-}
-.hr-rt-body {
-  flex: 1; overflow-y: auto; padding: 4px 8px; min-height: 0;
-  scrollbar-width: thin; scrollbar-color: rgba(0,212,255,0.2) transparent;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
-}
-.hr-rt-row {
-  display: grid; grid-template-columns: 28px 1fr 52px 44px 44px;
-  gap: 8px; padding: 9px 6px; margin-bottom: 2px;
-  border-radius: 6px; align-items: center;
-  border-left: 2px solid transparent;
-  transition: background 0.2s;
-  &:hover { background: rgba(0,212,255,0.055); }
-  &.normal { border-left-color: rgba(82,196,26,0.45); }
-  &.high   { border-left-color: rgba(255,184,77,0.55); }
-  &.low    { border-left-color: rgba(79,195,247,0.55); }
-}
-.hr-rt-idx  { font-size: 11px; color: $dim; font-family: 'Consolas', monospace; text-align: center; }
-.hr-rt-name { font-size: 13px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hr-rt-val {
-  font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; color: #52c41a;
-  .hr-rt-row.high & { color: #FFB84D; }
-  .hr-rt-row.low  & { color: #4FC3F7; }
-}
-.hr-rt-arrow { font-style: normal; font-size: 10px; animation: blink 1.2s infinite; }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
-.hr-rt-badge {
-  font-size: 10px; padding: 1px 4px; border-radius: 3px; text-align: center;
-  &.normal { background: rgba(82,196,26,0.13); color: #52c41a; border: 1px solid rgba(82,196,26,0.28); }
-  &.high   { background: rgba(255,184,77,0.13); color: #FFB84D; border: 1px solid rgba(255,184,77,0.28); }
-  &.low    { background: rgba(79,195,247,0.13); color: #4FC3F7; border: 1px solid rgba(79,195,247,0.28); }
-}
-.hr-rt-time { font-size: 11px; color: $dim; }
-
-// pagination → hm-pagination mixin
-.hr-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; } // override mixin
-
-// ── 异常明细面板 ──
-.hr-panel-anomaly { flex: 1; min-height: 150px; display: flex; flex-direction: column; overflow: hidden; }
-
-/* 心率区间统计卡 */
-.hr-zone-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  flex-shrink: 0;
-}
-.hr-zone-card {
-  background: rgba(0,212,255,0.04);
-  border: 1px solid rgba(0,212,255,0.15);
-  border-radius: 8px;
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.hr-zone-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.hr-zone-label { font-size: 12px; color: #a8c5e6; }
-.hr-zone-range { font-size: 10px; color: #5a6a80; }
-.hr-zone-count {
-  font-size: 22px;
-  font-weight: 700;
-  font-family: 'Consolas', monospace;
-  color: #e0f0ff;
-  line-height: 1.2;
-  em { font-size: 11px; font-style: normal; color: #8ba6c8; margin-left: 2px; }
-}
-.hr-zone-bar  { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; }
-.hr-zone-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; min-width: 3px; }
-.zone-low      { border-color: rgba(79,195,247,0.35); }
-.zone-normal   { border-color: rgba(82,196,26,0.35); }
-.zone-elevated { border-color: rgba(255,184,77,0.35); }
-.zone-danger   { border-color: rgba(255,82,82,0.35); }
-.hr-anomaly-count {
-  margin-left: auto; font-size: 12px; color: #FFB84D;
-  em { font-style: normal; font-weight: 700; }
-}
-.hr-anomaly-empty {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  font-size: 13px; color: rgba(82,196,26,0.8);
-  .hr-anomaly-ok { font-size: 16px; margin-right: 6px; }
-}
-.hr-anomaly-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.hr-anomaly-hd {
-  display: grid; grid-template-columns: 58px 68px 1fr 80px 76px 54px 88px;
-  gap: 6px; padding: 5px 12px; flex-shrink: 0;
-  background: rgba(255,184,77,0.06);
-  span { font-size: 11px; color: $dim; font-weight: 600; }
-}
-.hr-anomaly-list {
-  flex: 1; overflow-y: auto; padding: 4px 8px;
-  scrollbar-width: thin; scrollbar-color: rgba(255,184,77,0.25) transparent;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: rgba(255,184,77,0.25); border-radius: 2px; }
-  &::-webkit-scrollbar-thumb:hover { background: rgba(255,184,77,0.5); }
-}
-.hr-anomaly-row {
-  display: grid; grid-template-columns: 58px 68px 1fr 80px 76px 54px 88px;
-  gap: 6px; padding: 7px 6px; margin-bottom: 2px;
-  border-radius: 4px; align-items: center;
-  border-left: 2px solid transparent;
-  transition: background 0.15s;
-  &:hover { background: rgba(255,255,255,0.04); }
-  &.anom-high { border-left-color: rgba(255,184,77,0.6); background: rgba(255,184,77,0.04); }
-  &.anom-low  { border-left-color: rgba(79,195,247,0.6); background: rgba(79,195,247,0.04); }
-}
-.ha-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ha-gender {
-  display: flex; align-items: center; gap: 3px; font-size: 11px;
-  em { font-style: normal; font-size: 11px; font-weight: 600; padding: 0 3px; border-radius: 2px; }
-  em.g-m { color: #4FC3F7; background: rgba(79,195,247,0.1); }
-  em.g-f { color: #f48fb1; background: rgba(244,143,177,0.1); }
-  i { font-style: normal; color: #5a7090; font-size: 11px; }
-}
-.ha-dept { font-size: 11px; color: $dim; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ha-job  { font-size: 11px; color: #6a8aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ha-val  {
-  font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace;
-  .anom-high & { color: #FFB84D; }
-  .anom-low  & { color: #4FC3F7; }
-}
-.ha-type {
-  font-size: 11px; padding: 1px 5px; border-radius: 3px; text-align: center;
-  .anom-high & { color: #FFB84D; background: rgba(255,184,77,0.12); border: 1px solid rgba(255,184,77,0.25); }
-  .anom-low  & { color: #4FC3F7; background: rgba(79,195,247,0.12); border: 1px solid rgba(79,195,247,0.25); }
-}
-.ha-time { font-size: 10px; color: $dim; }
-
-// ── 心率分布统计面板 ──
-.hr-panel-dist-stat { flex-shrink: 0; }
-.hr-ds-total {
-  margin-left: auto; font-size: 12px; color: $dim;
-  em { color: #93c5fd; font-style: normal; font-weight: 700; }
-}
-.hr-ds-body {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 8px; padding: 6px 0 8px;
-}
-.hr-ds-zone {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px; padding: 10px 8px 8px;
-  text-align: center; transition: background 0.15s;
-  &:hover { background: rgba(255,255,255,0.07); }
-  &.zone-low     { border-color: rgba(79,195,247,0.2);  }
-  &.zone-normal  { border-color: rgba(82,196,26,0.2);   }
-  &.zone-elevated{ border-color: rgba(255,184,77,0.2);  }
-  &.zone-danger  { border-color: rgba(255,82,82,0.2);   }
-}
-.hr-ds-icon  { font-size: 16px; margin-bottom: 4px; }
-.hr-ds-count { font-size: 24px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
-.hr-ds-pct   { font-size: 11px; margin-top: 1px; }
-.hr-ds-label { font-size: 13px; font-weight: 600; color: $white; margin-top: 4px; }
-.hr-ds-range { font-size: 10px; color: $dim; margin-top: 2px; }
-.hr-ds-bar-row {
-  display: flex; height: 6px; border-radius: 3px; overflow: hidden;
-  background: rgba(255,255,255,0.05); margin-bottom: 2px;
-}
-.hr-ds-seg { transition: width 0.4s ease; min-width: 0; }
-
-/* ══ 移动端适配 ══ */
-@media (max-width: 768px) {
-  /* 根容器改为可滚动 */
-  .hr-root {
-    height: auto !important;
-    min-height: calc(100vh - 50px);
-    overflow-y: auto !important;
-    overflow-x: hidden;
-    padding-bottom: 64px;
-  }
-
-  /* Header 紧凑 */
-  .hr-hd {
-    height: auto;
-    flex-wrap: wrap;
-    padding: 8px 12px;
-    gap: 6px;
-  }
-  .hr-hd-kpis {
-    order: 3;
-    width: 100%;
-    overflow-x: auto;
-    justify-content: flex-start;
-    padding-bottom: 2px;
-    &::-webkit-scrollbar { height: 2px; }
-    &::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); }
-  }
-  .hr-kpi { padding: 0 14px; }
-  .hr-period-tabs { order: 2; }
-  .hr-hd-time, .hm-export-btn { display: none; }
-
-  /* Body 竖向堆叠 */
-  .hr-bd {
-    flex-direction: column !important;
-    overflow: visible !important;
-    height: auto !important;
-    padding: 8px 10px;
-  }
-
-  /* 左侧面板全宽 */
-  .hr-aside {
-    width: 100% !important;
-    height: auto;
-    gap: 8px;
-  }
-  .hr-aside-top { height: auto; min-height: 180px; }
-  .hr-aside-bot { flex: none; }
-  .hr-aside-bot .hr-pc { height: 260px; }
-
-  /* 中间主区域 */
-  .hr-main {
-    overflow: visible !important;
-    height: auto;
-  }
-  /* 年龄段+异常人数两列 → 竖向堆叠 */
-  .hr-mid-row {
-    flex-direction: column !important;
-    height: auto !important;
-    gap: 8px;
-  }
-  .hr-panel-age, .hr-panel-hourly {
-    flex: none !important;
-    min-height: 220px;
-  }
-  .hr-panel-age .hr-pc, .hr-panel-hourly .hr-pc { height: 200px; }
-  .hr-panel-trend  { flex: none; min-height: 220px; max-height: none; }
-  .hr-panel-trend .hr-pc  { height: 200px; }
-  .hr-panel-dist-stat .hr-ds-body {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .hr-panel-anomaly { min-height: 300px; }
-  /* 异常明细表格隐藏不重要的列 */
-  .hr-anomaly-hd   { grid-template-columns: 60px 1fr 60px 54px; }
-  .hr-anomaly-row  { grid-template-columns: 60px 1fr 60px 54px; }
-  .hr-anomaly-hd span:nth-child(2), .hr-anomaly-row .ha-gender,
-  .hr-anomaly-hd span:nth-child(4), .hr-anomaly-row .ha-job { display: none; }
-
-  /* 右侧实时列表全宽 */
-  .hr-rtlist {
-    width: 100% !important;
-    height: 320px;
-    flex-shrink: 0;
-  }
-
-  /* 弹窗宽度 */
-  :deep(.el-dialog) { width: 95% !important; }
-}
-</style>
+<style lang="scss" scoped src="./heart-rate.scss"></style>

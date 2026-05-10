@@ -14,63 +14,23 @@
 
 <script>
 import { mapState } from 'vuex'
+import { buildMobileNavItems, isActiveNavigationTarget } from '@/layout/menu/navigation'
 
 export default {
   name: 'MobileBottomNav',
   computed: {
-    ...mapState({ device: s => s.app.device }),
+    ...mapState({
+      device: s => s.app.device,
+      resultAllRoutes: s => s.user.resultAllRoutes
+    }),
     isMobile() { return this.device === 'mobile' },
     navItems() {
-      return [
-        {
-          path: '/health-monitor/dashboard',
-          icon: '📊',
-          label: '指挥',
-          matches: ['/health-monitor/dashboard', '/safety-command']
-        },
-        {
-          path: '/health-monitor/real-time',
-          icon: '❤️',
-          label: '监测',
-          matches: [
-            '/health-monitor/real-time',
-            '/health-monitor/heart-rate',
-            '/health-monitor/pressure',
-            '/health-monitor/blood-pressure',
-            '/health-monitor/blood-oxygen',
-            '/health-monitor/trend-warning'
-          ]
-        },
-        {
-          path: '/health-monitor/mine-entry',
-          icon: '🪪',
-          label: '准入',
-          matches: ['/health-monitor/mine-entry']
-        },
-        {
-          path: '/alert-management/notifications',
-          icon: '🔔',
-          label: '预警',
-          matches: ['/alert-management', '/health-monitor/risk-warning']
-        },
-        {
-          path: '/health-monitor/employee-archive',
-          icon: '👤',
-          label: '人员',
-          matches: [
-            '/health-monitor/employee-archive',
-            '/health-monitor/employee-profile',
-            '/health-monitor/health-portrait',
-            '/health-monitor/workbench'
-          ]
-        },
-      ]
-    },
+      return buildMobileNavItems(this.resultAllRoutes || [])
+    }
   },
   methods: {
     isActive(item) {
-      const matchers = item.matches || [item.path]
-      return matchers.some(prefix => this.$route.path.startsWith(prefix))
+      return isActiveNavigationTarget(this.$route.path, item)
     }
   }
 }

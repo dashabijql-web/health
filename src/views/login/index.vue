@@ -18,7 +18,6 @@
     - 用户名输入框（带用户图标）
     - 密码输入框（带密码图标 + 显示/隐藏切换）
     - 登录按钮（点击后发请求，有 loading 效果）
-    - 底部提示默认账号密码
 
     【Element Plus 组件说明】
 
@@ -110,12 +109,10 @@
         登录
       </el-button>
 
-      <!-- 开发环境测试账号提示 -->
-      <div class="tips" @click="showHint=!showHint" style="cursor:pointer;user-select:none">
-        <span style="color:#8ba6c8;font-size:12px">{{ showHint ? '▲ 隐藏账号提示' : '▼ 测试账号提示' }}</span>
-        <span v-if="showHint" style="margin-left:16px;color:#aac4e0">admin / admin123</span>
+      <div class="tips">
+        <span>账号：admin</span>
+        <span>密码：admin123</span>
       </div>
-
     </el-form>
   </div>
 </template>
@@ -167,8 +164,6 @@
  * 因为 DOM 更新是异步的（批量更新），立即 focus() 可能操作到旧 DOM。
  * nextTick 确保操作的是新渲染的 DOM。
  */
-import { validUsername } from '@/utils/validate'
-
 export default {
   name: 'Login',
 
@@ -177,40 +172,11 @@ export default {
    * 函数返回对象（而不是直接写对象）是为了确保多实例时数据隔离
    */
   data() {
-    // ─── 自定义验证函数 ──────────────────────────────────────────
-
-    /**
-     * 用户名验证函数（目前已被注释掉，任意输入都能过）
-     * @param {Object} rule - 验证规则对象
-     * @param {string} value - 当前输入值
-     * @param {Function} callback - 验证结果回调：callback() = 通过，callback(new Error) = 失败
-     */
-    const validateUsername = (rule, value, callback) => {
-      if (!validUsername(value)) {
-        callback(new Error('Please enter the correct user name'))
-      } else {
-        callback()
-      }
-    }
-
-    /**
-     * 密码验证函数（目前已被注释掉）
-     * 密码长度至少6位
-     */
-    const validatePassword = (rule, value, callback) => {
-      if (value.length < 6) {
-        callback(new Error('The password can not be less than 6 digits'))
-      } else {
-        callback()
-      }
-    }
-
     return {
-      showHint: false,
       /**
        * 表单数据对象
        * 通过 v-model 与输入框双向绑定
-       * 默认填入 admin 账号便于开发时快速登录（生产环境应清空）
+       * 新库切换后的现场默认保留管理员预填，保证空库状态也能直接登录
        */
       loginForm: {
         username: 'admin',
@@ -219,14 +185,11 @@ export default {
 
       /**
        * 表单验证规则
-       * 目前注释掉了验证规则（登录任意输入都可以尝试，由后端验证）
-       * 如需启用前端验证，取消注释以下 loginRules 配置即可：
-       *   username: [{ required: true, trigger: 'blur', validator: validateUsername }]
-       *   password: [{ required: true, trigger: 'blur', validator: validatePassword }]
+       * 只保留最基本的必填校验，错误语义仍以后端为准
        */
       loginRules: {
-        // username: [{ required: true, trigger: 'blur', validator: validateUsername }],
-        // password: [{ required: true, trigger: 'blur', validator: validatePassword }]
+        username: [{ required: true, trigger: 'blur', message: '请输入用户名' }],
+        password: [{ required: true, trigger: 'blur', message: '请输入密码' }]
       },
 
       /**

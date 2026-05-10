@@ -186,18 +186,31 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Close } from '@element-plus/icons-vue'
 import { getCalendarData, getDayHeartRateRank, getDayBloodOxygenRank, getDayStepsRank, getDayWarnings } from '@/api/workbench'
 import { getDeptHealthComparison } from '@/api/health'
-import * as echarts from '@/utils/echarts-setup-radar'
 import { getHtml2Canvas, getJsPDF } from '@/utils/lazy-vendors'
+import { createEventBinding } from '@/utils/task-timer'
+import {
+  DEPT_COLORS,
+  WEEK_DAYS,
+  calendarCellClass,
+  createCalendarCells,
+  healthMetricClass,
+  rankTitleFor,
+  rankValueClass,
+  summarizeCalendarRows,
+  warningLevelClass,
+  warningLevelLabel
+} from './workbench-view-model'
+import { disposeDeptRadarChart, renderDeptRadarChart, resizeDeptRadarChart } from './workbench-chart'
 
 const route = useRoute()
 const router = useRouter()
-const weekDays = ['日', '一', '二', '三', '四', '五', '六']
+const weekDays = WEEK_DAYS
 
 // ── 当前月份 ────────────────────────────────────────────────────────
 const today    = new Date()
@@ -257,50 +270,22 @@ watch([curYear, curMonth], loadData)
 
 // ── 日历格子生成 ─────────────────────────────────────────────────────
 const calCells = computed(() => {
-  const cells = []
-  const firstDay = new Date(curYear.value, curMonth.value - 1, 1).getDay()  // 0=Sun
-  const daysInMonth = new Date(curYear.value, curMonth.value, 0).getDate()
-
-  // 补充前空白
-  for (let i = 0; i < firstDay; i++) cells.push({ day: 0 })
-  // 实际日期
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${curYear.value}-${String(curMonth.value).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-    const data = dayData.value[dateStr] || null
-    const isToday = dateStr === `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
-    cells.push({ day: d, dateStr, data, isToday })
-  }
-  // 补充后空白到 7 的倍数
-  while (cells.length % 7 !== 0) cells.push({ day: 0 })
-  return cells
+  return createCalendarCells({
+    year: curYear.value,
+    month: curMonth.value,
+    dayData: dayData.value,
+    today
+  })
 })
 
 // ── 统计摘要 ─────────────────────────────────────────────────────────
 const summary = computed(() => {
-  const rows  = Object.values(dayData.value)
-  const totalDays    = rows.length
-  const warnDays     = rows.filter(r => r.warningCount > 0).length
-  const goodDays     = rows.filter(r => r.warningCount === 0 && r.avgHeartRate).length
-  const totalWarnings = rows.reduce((s, r) => s + (r.warningCount || 0), 0)
-  const hrRows = rows.filter(r => r.avgHeartRate)
-  const boRows = rows.filter(r => r.avgBloodOxygen)
-  const avgHR  = hrRows.length ? Math.round(hrRows.reduce((s, r) => s + r.avgHeartRate, 0) / hrRows.length) : 0
-  const avgBO  = boRows.length ? (boRows.reduce((s, r) => s + r.avgBloodOxygen, 0) / boRows.length).toFixed(1) : 0
-  return { totalDays, goodDays, warnDays, totalWarnings, avgHR: avgHR || 0, avgBO: avgBO || 0 }
+  return summarizeCalendarRows(dayData.value)
 })
 
 // ── 格子样式 ─────────────────────────────────────────────────────────
 function cellClass(cell) {
-  if (!cell.day) return 'cal-cell-empty'
-  const cls = []
-  if (cell.isToday) cls.push('cal-cell-today')
-  if (cell.data) {
-    cls.push(cell.data.warningCount > 0 ? 'cal-cell-warn' : 'cal-cell-good')
-  } else {
-    cls.push('cal-cell-nodata')
-  }
-  if (selected.value?.dateStr === cell.dateStr) cls.push('cal-cell-selected')
-  return cls
+  return calendarCellClass(cell, selected.value?.dateStr)
 }
 
 // ── 选中详情 ─────────────────────────────────────────────────────────
@@ -316,8 +301,7 @@ function selectDay(cell) {
 }
 
 const rankTitle = computed(() => {
-  const map = { heartRate: '心率排行（偏差最大）', bloodOxygen: '血氧排行（最低）', steps: '步数排行（最少）', warnings: '当日预警列表（严重优先）' }
-  return map[activeRank.value] || ''
+  return rankTitleFor(activeRank.value)
 })
 
 async function toggleRank(type) {
@@ -336,25 +320,15 @@ async function toggleRank(type) {
 }
 
 function rankValClass(row) {
-  if (activeRank.value === 'heartRate') {
-    const v = row.avgHeartRate
-    return (v < 60 || v > 100) ? 'text-red' : 'text-green'
-  }
-  if (activeRank.value === 'bloodOxygen') return row.avgBloodOxygen < 95 ? 'text-red' : 'text-green'
-  if (activeRank.value === 'steps') return row.avgSteps < 6000 ? 'text-red' : ''
-  return ''
+  return rankValueClass(activeRank.value, row)
 }
 
 function warnLevelLabel(level) {
-  return level || '—'
+  return warningLevelLabel(level)
 }
 
 function warnLevelClass(level) {
-  if (!level) return ''
-  if (['危急','高危','高','危险'].includes(level)) return 'wl-high'
-  if (['中','警告'].includes(level)) return 'wl-mid'
-  if (['低'].includes(level)) return 'wl-low'
-  return ''
+  return warningLevelClass(level)
 }
 
 // ── 部门健康对比 ──────────────────────────────────────────────────────
@@ -362,8 +336,9 @@ const deptRadarRef    = ref(null)
 const deptCompareData = ref([])
 const deptDays        = ref(7)
 let   deptChart       = null
+let   resizeBinding   = null
 
-const deptColors = ['#60a5fa','#34d399','#f59e0b','#f87171','#a78bfa','#fb923c','#38bdf8','#4ade80']
+const deptColors = DEPT_COLORS
 
 async function loadDeptComparison() {
   try {
@@ -382,79 +357,35 @@ function setDeptDays(d) {
 }
 
 function renderDeptRadar() {
-  if (!deptRadarRef.value) return
-  if (!deptChart) deptChart = echarts.init(deptRadarRef.value, 'dark')
-  const data = deptCompareData.value
-  if (!data.length) { deptChart.clear(); return }
-
-  // 标准化各维度分数 (0-100)
-  const indicators = [
-    { name: '心率健康', max: 100 },
-    { name: '血氧水平', max: 100 },
-    { name: '血压安全', max: 100 },
-    { name: '睡眠充足', max: 100 },
-    { name: '活动量',   max: 100 },
-    { name: '压力控制', max: 100 },
-  ]
-
-  function normalize(row) {
-    const hr  = row.avgHeartRate  || 75
-    const bo  = row.avgBloodOxygen || 97
-    const sbp = row.avgSystolic   || 120
-    const slp = row.avgSleepMinutes || 360
-    const stp = row.avgSteps      || 5000
-    const prs = row.avgPressure   || 50
-
-    const hrScore  = hr >= 60 && hr <= 100 ? 90 - Math.abs(hr - 75) * 0.6 : Math.max(0, 60 - Math.abs(hr - 80))
-    const boScore  = Math.min(100, Math.max(0, (bo - 85) / 15 * 100))
-    const sbpScore = sbp < 120 ? 95 : sbp < 130 ? 80 : sbp < 140 ? 60 : Math.max(0, 40 - (sbp - 140) * 2)
-    const slpScore = Math.min(100, slp / 480 * 100)
-    const stpScore = Math.min(100, stp / 10000 * 100)
-    const prsScore = Math.max(0, 100 - prs)
-
-    return [Math.round(hrScore), Math.round(boScore), Math.round(sbpScore),
-            Math.round(slpScore), Math.round(stpScore), Math.round(prsScore)]
-  }
-
-  const seriesData = data.slice(0, 6).map((row, i) => ({
-    name: row.deptName,
-    value: normalize(row),
-    lineStyle: { color: deptColors[i % deptColors.length], width: 2 },
-    itemStyle: { color: deptColors[i % deptColors.length] },
-    areaStyle: { color: deptColors[i % deptColors.length], opacity: 0.08 },
-  }))
-
-  deptChart.setOption({
-    backgroundColor: 'transparent',
-    legend: {
-      data: seriesData.map(s => s.name),
-      bottom: 0,
-      textStyle: { color: '#9ca3af', fontSize: 11 },
-      itemWidth: 12, itemHeight: 8,
-    },
-    radar: {
-      indicator: indicators,
-      shape: 'circle',
-      radius: '62%',
-      center: ['50%', '46%'],
-      splitNumber: 5,
-      axisName: { color: '#9ca3af', fontSize: 11 },
-      axisLabel: { show: false },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
-      splitArea: { show: false },
-      axisLine:  { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
-    },
-    series: [{ type: 'radar', data: seriesData, symbol: 'circle', symbolSize: 4 }],
-    tooltip: { trigger: 'item', backgroundColor: '#1a1f3a', borderColor: 'rgba(255,255,255,0.15)', textStyle: { color: '#e2e8f0', fontSize: 12 } },
-  }, true)
+  deptChart = renderDeptRadarChart({
+    chart: deptChart,
+    element: deptRadarRef.value,
+    data: deptCompareData.value,
+    deptColors
+  })
 }
 
-function hrClass(v)   { return !v ? '' : (v < 60 || v > 100) ? 'wt-red' : 'wt-green' }
-function boClass(v)   { return !v ? '' : v < 95 ? 'wt-red' : 'wt-green' }
-function sbpClass(v)  { return !v ? '' : v >= 140 ? 'wt-red' : v >= 130 ? 'wt-orange' : 'wt-green' }
-function pressClass(v){ return !v ? '' : v > 70 ? 'wt-red' : v > 50 ? 'wt-orange' : '' }
+function resizeDeptRadar() {
+  resizeDeptRadarChart(deptChart)
+}
 
-onMounted(() => { loadData(); loadDeptComparison() })
+function hrClass(v) { return healthMetricClass('heartRate', v) }
+function boClass(v) { return healthMetricClass('bloodOxygen', v) }
+function sbpClass(v) { return healthMetricClass('systolic', v) }
+function pressClass(v) { return healthMetricClass('pressure', v) }
+
+onMounted(() => {
+  loadData()
+  loadDeptComparison()
+  resizeBinding = createEventBinding(() => window, 'resize', resizeDeptRadar)
+  resizeBinding.start()
+})
+
+onUnmounted(() => {
+  resizeBinding?.stop?.()
+  disposeDeptRadarChart(deptChart)
+  deptChart = null
+})
 
 const pdfExporting = ref(false)
 
@@ -485,412 +416,4 @@ async function exportPDF() {
 }
 </script>
 
-<style scoped lang="scss">
-.wb-page {
-  padding: 20px;
-  color: #e0e6f0;
-}
-
-/* 头部 */
-.wb-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-.wb-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #fff;
-}
-.wb-nav {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.wb-profile-btn {
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(0,212,255,0.28);
-  background: rgba(0,212,255,0.08);
-  color: #b7e9ff;
-  font-size: 12px;
-  cursor: pointer;
-}
-.wb-profile-btn:hover { background: rgba(0,212,255,0.16); }
-.wb-month-label {
-  font-size: 16px;
-  font-weight: 600;
-  min-width: 110px;
-  text-align: center;
-  color: #93c5fd;
-}
-.wb-legend {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  margin-left: auto;
-}
-.wb-pdf-btn {
-  margin-left: 12px;
-  background: rgba(0,212,255,.1) !important;
-  border-color: rgba(0,212,255,.3) !important;
-  color: #00d4ff !important;
-  font-size: 12px !important;
-  &:hover { background: rgba(0,212,255,.2) !important; }
-}
-.leg-dot {
-  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
-}
-.leg-good  { background: #22c55e; }
-.leg-warn  { background: #f97316; }
-.leg-empty { background: #374151; }
-
-/* 统计卡片 */
-.wb-stats {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-.stat-card {
-  flex: 1;
-  min-width: 100px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  padding: 12px 16px;
-  text-align: center;
-}
-.sc-val {
-  font-size: 24px;
-  font-weight: 700;
-  color: #93c5fd;
-}
-.sc-lbl {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 4px;
-}
-.text-green  { color: #22c55e !important; }
-.text-orange { color: #f97316 !important; }
-.text-red    { color: #ef4444 !important; }
-
-/* 日历 */
-.wb-calendar {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.cal-week-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  background: rgba(255,255,255,0.07);
-}
-.cal-week-cell {
-  padding: 8px 0;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: #9ca3af;
-}
-.cal-body {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-}
-.cal-cell {
-  min-height: 90px;
-  padding: 8px;
-  border: 1px solid rgba(255,255,255,0.05);
-  cursor: pointer;
-  transition: background 0.15s;
-  position: relative;
-  &:hover { background: rgba(255,255,255,0.06); }
-}
-.cal-cell-empty {
-  background: rgba(0,0,0,0.15);
-  cursor: default;
-  &:hover { background: rgba(0,0,0,0.15); }
-}
-.cal-cell-today {
-  border-color: #3b82f6 !important;
-  .cell-day { color: #60a5fa; font-weight: 700; }
-}
-.cal-cell-good   { background: rgba(34,197,94,0.08); }
-.cal-cell-warn   { background: rgba(249,115,22,0.1); }
-.cal-cell-nodata { background: rgba(255,255,255,0.02); }
-.cal-cell-selected { outline: 2px solid #3b82f6; }
-
-.cell-day {
-  font-size: 14px;
-  font-weight: 600;
-  color: #d1d5db;
-  margin-bottom: 4px;
-}
-.cell-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.cm-item {
-  font-size: 11px;
-  color: #9ca3af;
-}
-.cm-hr { color: #f87171; }
-.cm-bo { color: #60a5fa; }
-.cm-steps { color: #22c55e; }
-.cm-pres  { color: #a78bfa; }
-.cell-metrics-2 { margin-top: 1px; }
-.cell-no-data {
-  font-size: 11px;
-  color: #374151;
-  margin-top: 10px;
-  letter-spacing: 1px;
-}
-.cell-warn {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-}
-.warn-badge-custom {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  font-family: 'Consolas', monospace;
-  padding: 1px 5px;
-  border-radius: 8px;
-  line-height: 16px;
-  min-width: 20px;
-  text-align: center;
-}
-.wbc-low  { background: rgba(249,115,22,0.2);  color: #fb923c; border: 1px solid rgba(249,115,22,0.4); }
-.wbc-mid  { background: rgba(239,68,68,0.2);   color: #f87171; border: 1px solid rgba(239,68,68,0.4); }
-.wbc-high { background: rgba(239,68,68,0.35);  color: #fff;    border: 1px solid #ef4444; }
-
-/* 详情面板 */
-.wb-detail {
-  margin-top: 16px;
-  background: rgba(59,130,246,0.1);
-  border: 1px solid rgba(59,130,246,0.3);
-  border-radius: 8px;
-  padding: 12px 16px;
-}
-.detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-.detail-date {
-  font-weight: 600;
-  color: #93c5fd;
-  font-size: 15px;
-}
-.detail-body {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 12px;
-  border-radius: 6px;
-}
-.di-clickable {
-  cursor: pointer;
-  border: 1px solid rgba(255,255,255,0.08);
-  transition: background 0.15s, border-color 0.15s;
-  &:hover { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); }
-}
-.di-active {
-  background: rgba(59,130,246,0.2) !important;
-  border-color: #3b82f6 !important;
-}
-.di-hint {
-  font-size: 10px;
-  color: #6b7280;
-  margin-top: 2px;
-}
-.di-label {
-  font-size: 12px;
-  color: #9ca3af;
-}
-.di-val {
-  font-size: 18px;
-  font-weight: 600;
-  color: #e2e8f0;
-  small { font-size: 11px; color: #9ca3af; }
-}
-
-/* 排行榜面板 */
-.rank-panel {
-  margin-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-  padding-top: 10px;
-  max-height: 280px;
-  overflow-y: auto;
-}
-.rank-title {
-  font-size: 12px;
-  color: #60a5fa;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-.rank-empty {
-  font-size: 12px;
-  color: #6b7280;
-  padding: 12px 0;
-  text-align: center;
-}
-.rank-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 4px;
-  border-radius: 4px;
-  font-size: 13px;
-  &:hover { background: rgba(255,255,255,0.04); }
-}
-.rank-no {
-  width: 20px;
-  text-align: center;
-  font-size: 12px;
-  color: #6b7280;
-  flex-shrink: 0;
-}
-.rank-top { color: #f59e0b; font-weight: 700; }
-.rank-name { width: 64px; color: #e2e8f0; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rank-dept { flex: 1; color: #9ca3af; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rank-val { width: 80px; text-align: right; font-weight: 600; color: #93c5fd; small { font-size: 10px; color: #6b7280; } }
-.warn-type { flex: 1; color: #fbbf24; font-size: 12px; }
-.warn-val  { width: 50px; text-align: right; color: #e2e8f0; font-size: 12px; }
-.warn-level { width: 24px; text-align: center; font-size: 11px; font-weight: 700; border-radius: 3px; padding: 1px 4px; flex-shrink: 0; }
-.wl-low  { background: rgba(234,179,8,0.2);  color: #fbbf24; }
-.wl-mid  { background: rgba(249,115,22,0.2); color: #fb923c; }
-.wl-high { background: rgba(239,68,68,0.2);  color: #f87171; }
-
-/* ── 部门健康对比 ── */
-.wb-dept-compare {
-  margin-bottom: 20px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.wdc-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  background: rgba(255,255,255,0.03);
-}
-.wdc-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #fff;
-}
-.wdc-tabs {
-  display: flex;
-  gap: 4px;
-  margin-left: 8px;
-}
-.wdc-tab {
-  padding: 3px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  color: #9ca3af;
-  cursor: pointer;
-  border: 1px solid rgba(255,255,255,0.1);
-  transition: all 0.15s;
-  &:hover { color: #60a5fa; border-color: rgba(96,165,250,0.4); }
-}
-.wdc-tab-active {
-  color: #60a5fa !important;
-  background: rgba(59,130,246,0.15);
-  border-color: rgba(59,130,246,0.4) !important;
-}
-.wdc-hint {
-  margin-left: auto;
-  font-size: 12px;
-  color: #6b7280;
-}
-.wdc-body {
-  display: flex;
-  gap: 0;
-  @media (max-width: 800px) { flex-direction: column; }
-}
-.wdc-radar {
-  width: 360px;
-  height: 280px;
-  flex-shrink: 0;
-  @media (max-width: 800px) { width: 100%; }
-}
-.wdc-table {
-  flex: 1;
-  padding: 12px 16px;
-  overflow-x: auto;
-}
-.wdt-head {
-  display: flex;
-  gap: 4px;
-  padding: 6px 4px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  font-size: 11px;
-  color: #6b7280;
-  font-weight: 600;
-}
-.wdt-row {
-  display: flex;
-  gap: 4px;
-  padding: 7px 4px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  font-size: 12px;
-  color: #e2e8f0;
-  align-items: center;
-  &:hover { background: rgba(255,255,255,0.03); }
-}
-.wdt-c {
-  flex: 1;
-  min-width: 50px;
-  text-align: center;
-}
-.wdt-dept {
-  flex: 2;
-  min-width: 90px;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wdt-color {
-  width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
-}
-.wdt-right { text-align: right; }
-.wdt-empty {
-  padding: 24px 0;
-  text-align: center;
-  font-size: 12px;
-  color: #6b7280;
-}
-.wt-green  { color: #22c55e !important; }
-.wt-orange { color: #f97316 !important; }
-.wt-red    { color: #ef4444 !important; }
-
-@media (max-width: 768px) {
-  .wb-page { padding: 10px 10px 64px; }
-  .wb-title { font-size: 16px; }
-  .wb-stats { gap: 8px; }
-  .stat-card { min-width: 80px; padding: 8px 10px; }
-  .sc-val { font-size: 18px; }
-  .wb-dept-compare { padding: 10px; }
-}
-</style>
+<style scoped lang="scss" src="./workbench.scss"></style>

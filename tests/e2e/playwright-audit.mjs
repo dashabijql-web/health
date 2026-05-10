@@ -2,15 +2,28 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { chromium, devices } from 'playwright';
+import {
+  LOGIN_CREDENTIALS,
+  pruneArtifacts,
+  resolveFrontendBaseUrl,
+  truncate
+} from '../shared/health-test-utils.mjs';
 
-const LOGIN_CREDENTIALS = { username: 'admin', password: 'admin123' };
-const DEFAULT_BASE_URL = 'http://127.0.0.1:4173';
-const BASE_URL = process.env.BASE_URL || await resolveBaseUrl();
+const BASE_URL = await resolveFrontendBaseUrl();
 const RUN_ID = new Date().toISOString().replace(/[:.]/g, '-');
 const ARTIFACT_DIR = path.resolve(process.cwd(), 'tests', 'e2e', 'artifacts', RUN_ID);
 const STORAGE_STATE_PATH = path.join(ARTIFACT_DIR, 'storage-state.json');
 const SCREENSHOT_MODE = process.env.E2E_SCREENSHOTS || 'failures';
 const ARTIFACT_RETENTION = Number.parseInt(process.env.E2E_ARTIFACT_RETENTION || '5', 10);
+const ROUTE_FILTER = new Set(
+  (process.env.E2E_ROUTE_FILTER || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+);
+const SKIP_NAV_AUDITS = process.env.E2E_SKIP_NAV_AUDITS === '1' || ROUTE_FILTER.size > 0;
+const SKIP_EMPLOYEE_FLOW = process.env.E2E_SKIP_EMPLOYEE_FLOW === '1' || ROUTE_FILTER.size > 0;
+const SKIP_MOBILE = process.env.E2E_SKIP_MOBILE === '1' || ROUTE_FILTER.size > 0;
 
 const DESKTOP_ROUTES = [
   { slug: 'safety-command', path: '/safety-command/index' },
@@ -58,16 +71,21 @@ const DESKTOP_NAV_GROUPS = ['指挥中心', '监测中心', '预警中心', '人
 const MOBILE_NAV_LABELS = ['指挥', '监测', '准入', '预警', '人员'];
 
 const ROUTE_EXPECTATIONS = {
-  dashboard: ['.dm-main-dispatch'],
-  'risk-warning': ['.wcn-wrap'],
-  'alert-notifications': ['.wcn-wrap'],
-  'alert-records': ['.wcn-wrap'],
-  'alert-config': ['.wcn-wrap'],
-  'alert-sos': ['.wcn-wrap'],
-  'report-center': ['.rc-ai-card']
+  dashboard: ['.dm-root'],
+  'risk-warning': ['.rw-root'],
+  'alert-notifications': ['.notif-page'],
+  'alert-records': ['.page-container'],
+  'alert-config': ['.page-container'],
+  'alert-sos': ['.sos-page'],
+  'report-center': ['.rc-page']
 };
 
 DESKTOP_ROUTES.push(...GROUP_ENTRY_ROUTES);
+
+function selectRoutes(routes) {
+  if (ROUTE_FILTER.size === 0) return routes;
+  return routes.filter((route) => ROUTE_FILTER.has(route.slug));
+}
 
 const summary = {
   runId: RUN_ID,
@@ -83,56 +101,6 @@ let currentDevice = 'desktop';
 
 await fs.mkdir(ARTIFACT_DIR, { recursive: true });
 await pruneArtifacts(path.dirname(ARTIFACT_DIR), ARTIFACT_RETENTION);
-
-async function pruneArtifacts(rootDir, keep = 5) {
-  if (!Number.isFinite(keep) || keep <= 0) return;
-
-  const entries = await fs.readdir(rootDir, { withFileTypes: true }).catch(() => []);
-  const dirs = entries
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-
-  const obsolete = dirs.slice(0, Math.max(0, dirs.length - keep));
-  await Promise.allSettled(
-    obsolete.map((dirName) => fs.rm(path.join(rootDir, dirName), { recursive: true, force: true }))
-  );
-}
-
-async function resolveBaseUrl() {
-  const candidates = [
-    'http://127.0.0.1:9528',
-    'http://localhost:9528',
-    'http://127.0.0.1:4173',
-    'http://localhost:4173'
-  ];
-
-  for (const base of candidates) {
-    try {
-      const response = await fetch(`${base}/dev-api/auth/login`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(LOGIN_CREDENTIALS)
-      });
-
-      if (!response.ok) continue;
-
-      const payload = await response.json().catch(() => null);
-      if (payload?.code === 200 && payload?.data?.token) {
-        return base;
-      }
-    } catch {
-      // Try the next candidate.
-    }
-  }
-
-  return DEFAULT_BASE_URL;
-}
-
-function truncate(value, max = 260) {
-  if (!value) return '';
-  return value.length > max ? `${value.slice(0, max - 3)}...` : value;
-}
 
 function setScope(device, route) {
   currentDevice = device;
@@ -206,7 +174,7 @@ async function waitForRouteShell(page, timeout = 20000) {
     // Some pages never show an overlay; some keep polling in the background.
   }
 
-  await page.waitForTimeout(1800);
+  await page.waitForTimeout(3200);
 }
 
 async function collectDomStats(page) {
@@ -458,12 +426,47 @@ async function auditEmployeeProfileFlow(page) {
   const issueStartIndex = summary.issues.length;
 
   try {
+    const base = new URL(BASE_URL);
+    await page.context().addCookies([{
+      name: 'Health-Data-Source',
+      value: 'old',
+      domain: base.hostname,
+      path: '/'
+    }]);
     await page.goto(`${BASE_URL}/#/health-monitor/employee-archive`, { waitUntil: 'domcontentloaded' });
     await waitForRouteShell(page);
-    await page.locator('.ea-card').first().click();
+    const cards = page.locator('.ea-card');
+    await cards.first().waitFor({ state: 'visible', timeout: 10000 });
+
+    const firstEmp = {
+      name: (await cards.nth(0).locator('.ea-name').textContent())?.trim() || '',
+      code: (await cards.nth(0).locator('.ef-val.code').textContent())?.trim() || ''
+    };
+    const secondEmp = await (async () => {
+      const count = await cards.count();
+      if (count < 2) return null;
+      return {
+        name: (await cards.nth(1).locator('.ea-name').textContent())?.trim() || '',
+        code: (await cards.nth(1).locator('.ef-val.code').textContent())?.trim() || ''
+      };
+    })();
+
+    await cards.nth(0).click();
     await page.waitForFunction(() => window.location.hash.includes('/health-monitor/employee-profile'), null, { timeout: 15000 });
     await page.locator('.ep-quickbar').first().waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('.ep-ai-summary').first().waitFor({ state: 'visible', timeout: 10000 });
+
+    if (secondEmp?.code && secondEmp.code !== firstEmp.code) {
+      await page.evaluate((target) => {
+        const params = new URLSearchParams({ empCode: target.code, empName: target.name || target.code });
+        window.location.hash = `#/health-monitor/employee-profile?${params.toString()}`;
+      }, secondEmp);
+      await page.waitForFunction((expectedName) => {
+        const text = document.querySelector('.ep-basic-name')?.textContent?.trim();
+        return text === expectedName;
+      }, secondEmp.name, { timeout: 15000 });
+    }
+
     await page.getByRole('button', { name: '月度日历' }).click();
     await page.waitForFunction(() => window.location.hash.includes('/health-monitor/workbench'), null, { timeout: 15000 });
     await page.locator('.wb-profile-btn').first().waitFor({ state: 'visible', timeout: 10000 });
@@ -575,28 +578,36 @@ try {
   attachObservers(desktopPage);
 
   await login(desktopPage);
-  await auditDesktopNavigation(desktopPage);
+  if (!SKIP_NAV_AUDITS) {
+    await auditDesktopNavigation(desktopPage);
+  }
 
-  for (const route of DESKTOP_ROUTES) {
+  for (const route of selectRoutes(DESKTOP_ROUTES)) {
     await visitRoute(desktopPage, 'desktop', route);
   }
-  await auditEmployeeProfileFlow(desktopPage);
+  if (!SKIP_EMPLOYEE_FLOW) {
+    await auditEmployeeProfileFlow(desktopPage);
+  }
 
   await desktopContext.close();
 
-  const mobileContext = await browser.newContext({
-    ...devices['iPhone 13'],
-    storageState: STORAGE_STATE_PATH
-  });
-  const mobilePage = await mobileContext.newPage();
-  attachObservers(mobilePage);
+  if (!SKIP_MOBILE) {
+    const mobileContext = await browser.newContext({
+      ...devices['iPhone 13'],
+      storageState: STORAGE_STATE_PATH
+    });
+    const mobilePage = await mobileContext.newPage();
+    attachObservers(mobilePage);
 
-  for (const route of MOBILE_ROUTES) {
-    await visitRoute(mobilePage, 'mobile', route);
+    for (const route of selectRoutes(MOBILE_ROUTES)) {
+      await visitRoute(mobilePage, 'mobile', route);
+    }
+    if (!SKIP_NAV_AUDITS) {
+      await auditMobileNavigation(mobilePage);
+    }
+
+    await mobileContext.close();
   }
-  await auditMobileNavigation(mobilePage);
-
-  await mobileContext.close();
 } finally {
   await browser.close();
 }
@@ -615,10 +626,21 @@ await fs.writeFile(
   'utf8'
 );
 
+const failedRoutes = summary.routeResults.filter((item) => item.status === 'failed').length;
+const issueRoutes = summary.routeResults.filter((item) => item.status === 'passed_with_issues').length;
+const errorIssues = summary.issues.filter((item) => item.severity === 'error').length;
+
 console.log(JSON.stringify({
   artifactDir: ARTIFACT_DIR,
   summaryFile: path.join(ARTIFACT_DIR, 'summary.json'),
   reportFile: path.join(ARTIFACT_DIR, 'summary.md'),
   routeCount: summary.routeResults.length,
-  issueCount: summary.issues.length
+  issueCount: summary.issues.length,
+  failedRoutes,
+  issueRoutes,
+  errorIssues
 }, null, 2));
+
+if (failedRoutes > 0 || issueRoutes > 0 || errorIssues > 0) {
+  process.exitCode = 1;
+}

@@ -1,7 +1,7 @@
 /**
  * 健康监测页面通用 mixin
  * 提供：initClock、handleResize、startAutoScroll、fmtTime、periodRange、switchPeriod
- * 自动注册/注销 resize 事件，管理 clock/scroll/resize/refresh 定时器
+ * 自动注册/注销 resize 事件，管理 clock/scroll/resize/refresh 任务
  * 自动 dispose 所有 ECharts 实例
  *
  * 使用方式：
@@ -16,14 +16,16 @@
  *   - template 中 ref="listRef" 绑定到需要自动滚动的容器
  */
 import dayjs from 'dayjs'
+import { createEventBinding, createIntervalTask, createTimeoutTask } from '@/utils/task-timer'
+import { createScrollLoop } from '@/composables/useScrollLoop'
 
 export default {
   data() {
     return {
-      clockTimer: null,
-      scrollTimer: null,
-      resizeTimer: null,
-      refreshTimer: null,
+      clockTask: null,
+      scrollLoop: null,
+      resizeTask: null,
+      refreshTask: null,
       filterDept: '',
       pageLoading: false
     }
@@ -51,55 +53,77 @@ export default {
     }
   },
   mounted() {
-    window.addEventListener('resize', this.handleResize)
-    document.addEventListener('visibilitychange', this._handlePageVisibility)
+    this._resizeBinding = createEventBinding(() => window, 'resize', this.handleResize)
+    this._visibilityBinding = createEventBinding(() => document, 'visibilitychange', this._handlePageVisibility)
+    this._resizeBinding.start()
+    this._visibilityBinding.start()
   },
   beforeUnmount() {
-    clearInterval(this.clockTimer)
-    clearInterval(this.scrollTimer)
-    clearInterval(this.refreshTimer)
-    clearTimeout(this.resizeTimer)
-    window.removeEventListener('resize', this.handleResize)
-    document.removeEventListener('visibilitychange', this._handlePageVisibility)
-    if (this._listScrollCleanup) this._listScrollCleanup()
+      this.clockTask?.stop?.()
+      this.scrollLoop?.stop?.()
+      this.refreshTask?.stop?.()
+      this.resizeTask?.stop?.()
+      this._pageSizeObserver?.disconnect?.()
+      this._resizeBinding?.stop?.()
+      this._visibilityBinding?.stop?.()
+      this._listScrollBinding?.stop?.()
     if (this.charts) Object.values(this.charts).forEach(c => c && c.dispose())
   },
   methods: {
     initClock() {
       const tick = () => { this.currentTime = dayjs().format('YYYY年MM月DD日 HH:mm:ss') }
       tick()
-      this.clockTimer = setInterval(tick, 1000)
+      this.clockTask = this.clockTask || createIntervalTask(tick, 1000)
+      this.clockTask.start()
     },
     handleResize() {
-      clearTimeout(this.resizeTimer)
-      this.resizeTimer = setTimeout(() => {
+      this.resizeTask = this.resizeTask || createTimeoutTask(() => {
         this.$nextTick(() => Object.values(this.charts).forEach(c => c?.resize?.()))
       }, 200)
+      this.resizeTask.start()
     },
     startAutoScroll() {
       const el = this.$refs.listRef
       if (!el) return
-      let top = 0
+      let lastAutoScrollTop = 0
       let pausedUntil = 0
 
-      const onScroll = () => {
-        // If the scroll position differs significantly from what the timer set,
-        // the user manually scrolled — sync top and pause auto-scroll for 2s
-        if (Math.abs(el.scrollTop - top) > 2) {
-          top = el.scrollTop
-          pausedUntil = Date.now() + 2000
-        }
-      }
-      el.addEventListener('scroll', onScroll)
-      this._listScrollCleanup = () => el.removeEventListener('scroll', onScroll)
+      this.scrollLoop?.stop?.()
+      this._listScrollBinding?.stop?.()
 
-      this.scrollTimer = setInterval(() => {
-        if (Date.now() < pausedUntil) return
-        const max = el.scrollHeight - el.clientHeight
-        if (max <= 0) return
-        if (top >= max) { setTimeout(() => { top = 0; el.scrollTop = 0 }, 1500) }
-        else { top += 1; el.scrollTop = top }
-      }, 80)
+      this.scrollLoop = createScrollLoop({
+        getElement: () => this.$refs.listRef,
+        intervalMs: 80,
+        step: 1,
+        endPauseMs: 1500,
+        shouldScroll: () => Date.now() >= pausedUntil,
+        onTick: current => {
+          lastAutoScrollTop = current.scrollTop
+        },
+        onReachEnd: () => {
+          const current = this.$refs.listRef
+          if (!current) return
+          lastAutoScrollTop = 0
+          current.scrollTop = 0
+        }
+      })
+
+      this._listScrollBinding = createEventBinding(
+        () => this.$refs.listRef,
+        'scroll',
+        () => {
+          const current = this.$refs.listRef
+          if (!current) return
+          if (Math.abs(current.scrollTop - lastAutoScrollTop) > 2) {
+            lastAutoScrollTop = current.scrollTop
+            pausedUntil = Date.now() + 2000
+          }
+        },
+        { passive: true }
+      )
+
+      this._listScrollBinding.start()
+      this.scrollLoop.start()
     },
     /** 通用页面初始化：时钟 + 首次加载 + 自动滚动 + 定时刷新 */
     initPage(refreshFn, interval = 30000) {
@@ -108,7 +132,8 @@ export default {
       this.initClock()
       this._doFetchWithLoading()
       this.$nextTick(() => this.startAutoScroll())
-      this.refreshTimer = setInterval(this.__refreshFn, interval)
+      this.refreshTask = this.refreshTask || createIntervalTask(this.__refreshFn, interval)
+      this.refreshTask.start(interval)
     },
     /** 首次加载时显示 loading 遮罩，刷新时静默更新 */
     async _doFetchWithLoading() {
@@ -118,11 +143,11 @@ export default {
     /** 标签页隐藏时暂停轮询，显示时立即刷新并重启定时器 */
     _handlePageVisibility() {
       if (document.hidden) {
-        clearInterval(this.refreshTimer)
-        this.refreshTimer = null
+        this.refreshTask?.stop?.()
       } else if (this.__refreshFn) {
         this.__refreshFn()
-        this.refreshTimer = setInterval(this.__refreshFn, this.__refreshInterval)
+        this.refreshTask = this.refreshTask || createIntervalTask(this.__refreshFn, this.__refreshInterval)
+        this.refreshTask.start(this.__refreshInterval)
       }
     },
     switchPeriod(val) {
@@ -148,6 +173,16 @@ export default {
         this.pageSize = n
         this.currentPage = 1
       }
+    },
+    initAutoPageSize(rowH = 27) {
+      this.$nextTick(() => {
+        this._pageSizeObserver?.disconnect?.()
+        const el = this.$refs.listRef
+        if (!el) return
+        this._pageSizeObserver = new ResizeObserver(() => this.setPageSize(rowH))
+        this._pageSizeObserver.observe(el)
+        this.setPageSize(rowH)
+      })
     },
     showDetail(item) {
       this.detailItem = item

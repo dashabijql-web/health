@@ -23,8 +23,11 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, nextTick, ref } from 'vue'
 import dayjs from 'dayjs'
+import { useIntervalTask } from '@/composables/useIntervalTask'
+import { useTimeoutTask } from '@/composables/useTimeoutTask'
 
 const ALL_TIPS = [
   { id: 1,  emoji: '💧', text: '每天至少喝 1500–2000ml 水，分次少量补充，出汗多时适量补充电解质。' },
@@ -47,68 +50,62 @@ const ALL_TIPS = [
   { id: 19, emoji: '🧊', text: '运动前热身 5–10 分钟，结束后做静态拉伸，有助于降低受伤风险并加速恢复。' }
 ]
 
-export default {
-  name: 'HealthTips',
-  props: {
-    count: { type: Number, default: 5 }
-  },
-  data() {
-    return {
-      refreshSeed: 0,
-      paused: false,
-      scrollTimer: null
-    }
-  },
-  computed: {
-    dateLabel() {
-      return dayjs().format('MM月DD日 健康提示')
-    },
-    todayTips() {
-      const seed = parseInt(dayjs().format('YYYYMMDD')) + this.refreshSeed
-      const shuffled = [...ALL_TIPS].sort((a, b) => {
-        const ha = Math.sin(seed * a.id) * 10000
-        const hb = Math.sin(seed * b.id) * 10000
-        return (ha - Math.floor(ha)) - (hb - Math.floor(hb))
-      })
-      return shuffled.slice(0, this.count)
-    }
-  },
-  mounted() {
-    this.startScroll()
-  },
-  beforeUnmount() {
-    clearInterval(this.scrollTimer)
-  },
-  methods: {
-    refresh() {
-      this.refreshSeed += 1
-      this.$nextTick(() => {
-        const el = this.$refs.list
-        if (el) el.scrollTop = 0
-      })
-    },
-    pause()  { this.paused = true },
-    resume() { this.paused = false },
-    startScroll() {
-      this.scrollTimer = setInterval(() => {
-        if (this.paused) return
-        const el = this.$refs.list
-        if (!el) return
-        const max = el.scrollHeight - el.clientHeight
-        if (max <= 0) return
-        el.scrollTop += 1
-        if (el.scrollTop >= max) {
-          // 滚到底后停顿 1.5s 回顶
-          this.paused = true
-          setTimeout(() => {
-            el.scrollTop = 0
-            this.paused = false
-          }, 1500)
-        }
-      }, 40)
-    }
+const props = defineProps({
+  count: { type: Number, default: 5 }
+})
+
+const list = ref(null)
+const refreshSeed = ref(0)
+const paused = ref(false)
+
+const dateLabel = computed(() => dayjs().format('MM月DD日 健康提示'))
+const todayTips = computed(() => {
+  const seed = parseInt(dayjs().format('YYYYMMDD')) + refreshSeed.value
+  const shuffled = [...ALL_TIPS].sort((a, b) => {
+    const ha = Math.sin(seed * a.id) * 10000
+    const hb = Math.sin(seed * b.id) * 10000
+    return (ha - Math.floor(ha)) - (hb - Math.floor(hb))
+  })
+  return shuffled.slice(0, props.count)
+})
+
+const { start: startScrollLoop, stop: stopScrollLoop } = useIntervalTask(() => {
+  if (paused.value) return
+  const el = list.value
+  if (!el) return
+  const max = el.scrollHeight - el.clientHeight
+  if (max <= 0) return
+  el.scrollTop += 1
+  if (el.scrollTop >= max) {
+    paused.value = true
+    stopScrollLoop()
+    scheduleResume()
   }
+}, 40)
+
+const { start: scheduleResume } = useTimeoutTask(() => {
+  if (!list.value) return
+  list.value.scrollTop = 0
+  paused.value = false
+  startScrollLoop()
+}, 1500)
+
+function refresh() {
+  refreshSeed.value += 1
+  nextTick(() => {
+    if (list.value) list.value.scrollTop = 0
+  })
 }
+
+function pause() {
+  paused.value = true
+}
+
+function resume() {
+  paused.value = false
+}
+
+startScrollLoop()
 </script>
 
 <style lang="scss" scoped>

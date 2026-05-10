@@ -1,6 +1,6 @@
 # 矿山工人健康安全管理系统 — 技术文档
 
-> 版本：v1.0 | 编写日期：2026-03-04 | 适用人员：前后端开发、运维、新入职工程师
+> 版本：v1.1 | 最近更新：2026-05-10 | 适用人员：前后端开发、运维、新入职工程师
 
 ---
 
@@ -111,18 +111,19 @@ D:\HealthShow\                      # 前端项目根目录
 │   │
 │   ├── layout/                     # 主布局组件
 │   │   ├── index.vue               # 布局根组件（侧边栏+顶部+内容区）
+│   │   ├── menu/
+│   │   │   └── navigation.mjs      # 侧栏/移动底栏导航派生入口
 │   │   └── components/
 │   │       ├── AppMain.vue         # 内容区（包裹 <router-view>）
 │   │       ├── Navbar.vue          # 顶部导航栏
 │   │       └── Sidebar/            # 侧边栏菜单
 │   │
 │   ├── router/                     # 路由配置
-│   │   ├── index.js                # 路由总配置（汇总所有模块路由）
-│   │   ├── health-monitor.js       # 健康监测模块路由
-│   │   ├── org-management.js       # 组织管理模块路由
-│   │   ├── personnel-management.js # 人员管理模块路由
-│   │   ├── alert-management.js     # 告警管理模块路由
-│   │   └── statistics.js           # 统计分析模块路由
+│   │   ├── index.js                # 路由入口（汇总 app-routes.mjs）
+│   │   ├── app-routes.mjs          # 主应用路由事实源
+│   │   ├── health-monitor.mjs      # 健康监测模块路由
+│   │   ├── alert-management.mjs    # 预警管理模块路由
+│   │   ├── app-route-access.js     # 路由可见性/权限裁剪
 │   │
 │   ├── store/                      # Vuex 状态管理
 │   │   ├── index.js                # Store 根配置
@@ -146,27 +147,27 @@ D:\HealthShow\                      # 前端项目根目录
 │   │   ├── safety-command/         # 安全指挥中心大屏
 │   │   │   └── components/         # 子组件（KpiCardRow、EventPanel 等）
 │   │   ├── health-monitor/         # 健康监测模块
-│   │   │   ├── dashboard/          # 统一管控（数据总览）
-│   │   │   ├── real-time/          # 实时监控（在线人员列表）
-│   │   │   ├── heart-rate/         # 心率分析
-│   │   │   ├── pressure/           # 压力分析
-│   │   │   ├── blood-pressure/     # 血压分析
-│   │   │   ├── blood-oxygen/       # 血氧分析
-│   │   │   ├── sleep/              # 睡眠分析（已隐藏，手表不离井下）
-│   │   │   └── risk-warning/       # 风险预警
-│   │   │   ├── employee-archive/    # 员工档案库
-│   │   │   ├── employee-profile/    # 员工健康画像
-│   │   │   ├── mine-entry/         # 班前准入
-│   │   │   ├── workbench/          # 月度工作台
-│   │   │   ├── report-center/      # 报告中心
-│   │   │   └── trend-warning/      # 趋势预警
-│   │   ├── device-management/      # 设备管理
-│   │   ├── user-list/              # 用户管理
-│   │   ├── role-management/        # 角色权限管理
+│   │   │   ├── dashboard/          # 统一管控（index + runtime/chart/view-model/actions/scss）
+│   │   │   ├── real-time/          # 实时监控（index + runtime/helpers/components）
+│   │   │   ├── heart-rate/         # 心率分析（index + chart/scss + metric-page runtime）
+│   │   │   ├── pressure/           # 压力分析（index + chart/scss + metric-page runtime）
+│   │   │   ├── blood-pressure/     # 血压分析（index + chart/scss + metric-page runtime）
+│   │   │   ├── blood-oxygen/       # 血氧分析（index + chart/scss + metric-page runtime）
+│   │   │   ├── sleep/              # 睡眠分析（已隐藏，index + page-state/runtime/view-model/scss）
+│   │   │   └── risk-warning/       # 风险预警（index + page-state/runtime/view-model/scss）
+│   │   │   ├── employee-archive/    # 员工档案库（index + use-page + runtime/view-model/scss）
+│   │   │   ├── employee-profile/    # 员工健康画像（index + use-page + runtime/view-model/scss）
+│   │   │   ├── mine-entry/         # 班前准入（index + view-model/scss）
+│   │   │   ├── workbench/          # 月度工作台（index + view-model/chart/scss）
+│   │   │   ├── report-center/      # 报告中心（index + runtime/chart/view-model/export/scss）
+│   │   │   └── trend-warning/      # 趋势预警（index + sparkline/scss）
+│   │   ├── device-management/      # 设备管理（index + use-page + runtime/view-model/scss）
+│   │   ├── user-list/              # 用户管理（index + use-page + runtime/view-model/scss）
+│   │   ├── role-management/        # 角色权限管理（index + use-page + runtime/view-model/scss）
 │   │   ├── org-management/         # 组织管理（部门/岗位）
-│   │   ├── personnel-management/   # 人员管理（员工/健康画像）
-│   │   ├── alert-management/       # 告警管理（记录/配置/SOS）
-│   │   ├── ai-chat/                # AI 问答
+│   │   ├── personnel-management/   # 人员管理（员工/健康画像，health-portrait 已拆 use-page/runtime/chart/export/scss）
+│   │   ├── alert-management/       # 告警管理（notifications/records 已拆 scss）
+│   │   ├── ai-chat/                # AI 问答（index + chart/export/query/session/text/scss）
 │   │   └── statistics/             # 统计分析（月度/部门报表）
 │   │
 │   ├── heartbeat.js                # 心跳检测（每30s请求/auth/info 保持登录）
@@ -185,6 +186,76 @@ D:\HealthShow\                      # 前端项目根目录
 ├── package.json                    # 依赖声明与 npm scripts
 └── TECHNICAL_DOCS.md               # 本文档
 ```
+
+### 3.1 当前前端事实源
+
+- 路由事实源：`src/router/app-routes.mjs` 汇总业务路由，模块路由只保留 `health-monitor.mjs` 和 `alert-management.mjs` 等稳定边界。
+- 权限裁剪入口：`src/router/app-route-access.js`，`store/modules/user.js` 只保存用户信息和过滤后的可见路由。
+- 侧栏与移动底栏事实源：`src/layout/menu/navigation.mjs`，从同一份路由元数据派生菜单组和移动端入口。
+- 回归护栏：`npm run audit:nav` 会检查旧 `.js` 路由文件是否残留、入口是否引用 `.mjs`、可见菜单是否具备 `navGroup/navOrder`。
+
+### 3.2 大页目录模板
+
+已经迁移的大页默认按以下边界组织：
+
+```text
+page/
+├── index.vue                 # 页面壳：模板、组合关系、少量路由交互
+├── use-xxx-page.js           # Composition API 页面组合入口，按需存在
+├── xxx-page-state.js         # 默认状态与常量，按需存在
+├── xxx-runtime.js            # API、轮询、生命周期、图表实例编排
+├── xxx-view-model.js         # 展示模型、字段归一化、状态派生
+├── xxx-actions.js            # 交互动作，按需存在
+├── xxx-chart.js              # 图表 option 或图表数据，按需存在
+├── xxx-export.js             # 导出/打印，按需存在
+├── xxx.scss                  # 页面样式
+└── components/               # 页面内可复用组件，按需存在
+```
+
+当前纳入 `npm run audit:page-structure` 的已迁移页面包括：
+
+- `dashboard`
+- `real-time`
+- `safety-command`
+- `health-portrait`
+- `employee-profile`
+- `report-center`
+- `risk-warning`
+- `trend-warning`
+- `mine-entry`
+- `sleep`
+- `device-management`
+- `user-list`
+- `role-management`
+- `alert-notifications`
+- `alert-records`
+- `ai-chat`
+- `heart-rate`
+- `blood-oxygen`
+- `pressure`
+- `blood-pressure`
+- `workbench`
+
+当前 `audit:page-structure` 跟踪 `21` 个已迁移页面，`legacyTrackedPages = 0`。
+
+指标页当前第一轮边界：
+
+- `src/views/health-monitor/metric-page/metric-scroll.js` 统一 Top5 滚动循环。
+- `src/views/health-monitor/metric-page/metric-export.js` 统一导出空数据提示、文件名日期和成功提示。
+- `src/views/health-monitor/metric-page/metric-page-mixin.js` 统一 Top5 滚动启动参数和卸载清理。
+- `heart-rate`、`blood-oxygen`、`pressure`、`blood-pressure` 均已拆出同目录 `*-chart.js` 与 `*.scss`。
+- `ai-chat` 已拆出 `ai-chat-chart.js`、`ai-chat-export.js`、`ai-chat-query-result.js`、`ai-chat-session.js`、`ai-chat-text.js` 与 `ai-chat.scss`。
+- `trend-warning` 已把内联迷你图拆到 `TrendSparkLine.js`，页面样式拆到 `trend-warning.scss`。
+- `mine-entry` 已把准入展示判断拆到 `mine-entry-view-model.js`，样式拆到 `mine-entry.scss`。
+- `alert-management/notifications` 与 `alert-management/records` 已把样式移入各自 `*.scss`，并纳入结构门禁。
+- `alert-management/notifications` 的预警 SLA 展示由 `alert-management/common/warning-lifecycle.js` 统一派生，列表直接显示状态、剩余/超时时长和到期时间；新增或调整 SLA 口径时同步跑 `node --test tests/warning-lifecycle.mjs`。
+
+后续 `G4` 第二轮继续把指标页数据加载、状态派生和模板块抽成 page engine，不再把新逻辑堆回 `index.vue`。
+
+当前大页副作用约束：
+
+- `dashboard`、`real-time`、`report-center`、`health-portrait`、`safety-command` 的页面级 resize / visibility / fullscreen 监听统一通过 `src/utils/task-timer.js` 的 `createEventBinding` 注册和释放。
+- 新增页面级 DOM 事件监听时，不要手写 `addEventListener/removeEventListener` 成对逻辑，优先复用 `createEventBinding`。
 
 ---
 
@@ -257,10 +328,10 @@ Netty TCP Server
   │ DataProcessService 解析数据包
   ↓
 RedisHealthBufferService
-  │ push() 写入 Redis List（health:buffer）
+  │ push() 写入 Redis List（health:buffer:old / health:buffer:new）
   │ flush() 每5s批量写入数据库
   ↓
-SQL Server（health库）
+SQL Server（health / health_new 双库）
   │ 月度分区表（health_record_202601 等）
   │
   ├─ Redis（realtime:user:{imei}）← 实时数据缓存（前端轮询）
@@ -274,6 +345,25 @@ SQL Server（health库）
   ↓
 用户浏览器
 ```
+
+### 5.1 运维与观测入口
+
+- 后端健康检查：`http://localhost:8080/health/actuator/health`
+- 后端指标入口：`http://localhost:8080/health/actuator/metrics`
+- 当前关键指标族：
+  - `health.ai.call.duration`
+  - `health.ai.reject.total`
+  - `health.ai.sql.auto_repair.total`
+  - `health.buffer.queue.size`
+  - `health.buffer.push.total`
+  - `health.buffer.flush.total`
+  - `health.datasource.request.total`
+  - `health.datasource.watch.route.total`
+  - `health.watch.online.count`
+  - `health.warning.generated.total`
+  - `health.warning.dedup.total`
+  - `health.sql.statement.duration`
+  - `health.sql.slow.total`
 
 ### 关键设计决策
 
@@ -339,9 +429,13 @@ SQL Server（health库）
 #### 睡眠分析（sleep）
 当前已从菜单隐藏（`hidden: true`）。
 原因：手表设备仅在矿井下（4G内网）使用，员工上井后设备归还，无法采集睡眠数据。
+当前结构：`index.vue + sleep-page-state.js + sleep-runtime.js + sleep-view-model.js + sleep.scss`。
+`index.vue` 只保留模板、组合模块引用和弹窗全局样式，数据加载、导出、图表渲染和定时刷新在 runtime 中维护。
 
 #### 风险预警（risk-warning）
 历史预警记录的统计分析，包含预警趋势、类型分布、部门统计等。
+当前结构：`index.vue + risk-warning-page-state.js + risk-warning-runtime.js + risk-warning-view-model.js + risk-warning.scss`。
+`index.vue` 只保留模板、组合模块引用和抽屉全局样式；自动滚动使用共享 `createScrollLoop`，resize 回到 `chartPageMixin` 统一管理。
 
 ### 6.3 统计分析（`/statistics`）
 
@@ -378,33 +472,43 @@ SQL Server（health库）
 
 ```
 /login                              # 登录页（不需要权限）
-/demo-screen                        # 演示大屏（不需要权限）
-/safety-command/index               # 安全指挥中心（不需要 permCode）
+/404                                # 404 页面
+/safety-command/index               # 安全指挥中心
 /health-monitor/dashboard           # 统一管控（permCode: health:dashboard）
 /health-monitor/real-time           # 实时监控（permCode: health:realtime）
 /health-monitor/heart-rate          # 心率分析（permCode: health:heart）
+/health-monitor/pressure            # 压力分析（permCode: health:pressure）
+/health-monitor/blood-pressure      # 血压分析（permCode: health:bloodpressure）
 /health-monitor/blood-oxygen        # 血氧分析（permCode: health:oxygen）
+/health-monitor/sleep               # 睡眠分析（隐藏，permCode: health:sleep）
 /health-monitor/risk-warning        # 风险预警（permCode: health:risk）
-/device-management/list             # 设备管理（permCode: device:list）
-/user-management/list               # 用户管理（permCode: user:list）
-/permission-management/role         # 角色管理（permCode: role:list）
-/org-management/department          # 部门管理（permCode: org:dept）
-/org-management/job-type            # 岗位类型（permCode: org:jobType）
-/personnel-management/employee      # 员工管理（permCode: personnel:employee）
-/personnel-management/health-portrait # 健康画像（permCode: personnel:portrait）
+/health-monitor/employee-archive    # 职工健康档案库（permCode: health:employee）
+/health-monitor/employee-profile    # 职工健康画像（隐藏）
+/health-monitor/health-portrait     # 健康画像兼容入口（隐藏）
+/health-monitor/mine-entry          # 入井准入管理（permCode: health:mine-entry）
+/health-monitor/report-center       # 报表中心（permCode: health:report）
+/health-monitor/trend-warning       # 趋势预警（permCode: health:trend）
+/alert-management/notifications     # 消息通知中心（permCode: alert:notifications）
+/alert-management/sos               # SOS 紧急救援（permCode: alert:sos）
 /alert-management/records           # 告警记录（permCode: alert:records）
 /alert-management/config            # 告警配置（permCode: alert:config）
-/statistics/monthly                 # 月度报告（permCode: stats:monthly）
-/statistics/dept-report             # 部门报表（permCode: stats:dept）
+/admin/device-list                  # 设备列表（permCode: device:list）
+/admin/user-list                    # 用户列表（permCode: user:list）
+/admin/role                         # 角色管理（permCode: role:list）
+/admin/department                   # 部门管理（permCode: org:department）
+/admin/job-type                     # 工种管理（permCode: org:job-type）
+/ai-chat/index                      # AI健康助手
 ```
+
+当前没有单独维护菜单配置文件。侧栏、移动底栏、面包屑显示都从路由 `meta` 和 `src/layout/menu/navigation.mjs` 派生。
 
 ### 权限控制流程
 
-1. 用户登录 → 后端返回 Token
-2. `permission.js` 的路由守卫检测 Token
-3. 调用 `/auth/info` 获取用户信息，包含 `routes[]` 权限码数组
-4. `filterRoutes(constantRoutes, permCodes)` 过滤路由
-5. 过滤结果存入 Vuex，侧边栏组件读取并渲染菜单
+1. 用户登录 → 后端返回 Sa-Token token、角色、权限码等信息
+2. `store/modules/user.js` 将 token 写入 `User-Token` Session Cookie，并同步到 Vuex
+3. `permission.js` 的路由守卫优先检测 Cookie 中 token；若刷新后 Vuex 为空，则调用 `/auth/info`
+4. `getPermittedAppRoutes(data.routes)` 根据后端返回的 `routes[]` 权限码生成可见菜单树
+5. 过滤结果存入 Vuex，侧边栏和移动端导航都从同一份路由元数据读取
 
 ### 给页面添加/去掉权限控制
 
@@ -430,14 +534,13 @@ store/
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `token` | String | JWT Token，从 Cookie 读取 |
+| `token` | String | Sa-Token token，从 `User-Token` Session Cookie 读取 |
 | `name` | String | 用户显示名 |
-| `roles` | Array | 角色列表（`['admin']`）|
+| `canSwitchDataSource` | Boolean | 当前用户是否允许显式切换“新库 / 老库” |
+| `roles` | Array | 角色列表（`roles.length > 0` 也作为“用户信息已恢复”的标志） |
 | `routes` | Array | 后端返回的权限码数组 |
 | `buttons` | Array | 按钮级权限码 |
-| `resultAllRputes` | Array | 过滤后的可见路由（侧边栏菜单用） |
-
-> ⚠️ 注意：`resultAllRputes` 是历史拼写错误（Routes → Rputes），保留以兼容现有代码，不要修改。
+| `resultAllRoutes` | Array | 通过 `getPermittedAppRoutes()` 过滤后的可见路由（侧边栏菜单用） |
 
 ### 在组件中使用 Store
 
@@ -488,6 +591,7 @@ const res = await request({
 
 ```
 请求前：自动在 Header 中添加 satoken: <token值>
+若当前用户具备切库权限，再附加 X-Health-Data-Source: new|old
 ```
 
 ### 响应拦截器（统一错误处理）
@@ -498,6 +602,7 @@ const res = await request({
 | HTTP 200 + code 401 | 静默跳转登录 |
 | HTTP 401 | 静默跳转登录 |
 | HTTP 500 + 有 Token | 静默跳转登录（后端重启时的 Token 失效） |
+| 并发多个 401 | 通过内部锁收敛为一次跳转登录和一次 Cookie 清理 |
 | HTTP 502/503 | 弹出"服务暂时不可用"提示 |
 | 超时 | 弹出"请求超时"提示 |
 | /auth/info 路径失败 | 静默（心跳检测路径，不弹错误） |
@@ -675,12 +780,13 @@ JOIN 方式：CAST(RIGHT(device.imei, 5) AS BIGINT) = CAST(RIGHT(employee.emp_co
 ### 12.2 用户认证流程
 
 ```
-1. 前端 POST /auth/login {username, password}
-2. 后端 Sa-Token 验证，返回 { token, userInfo }
-3. 前端 Cookie 存 Token（7天有效期），Vuex 存用户信息
-4. 后续请求 Header: satoken: <token>
-5. heartbeat.js 每30s调用 /auth/info 保活
-6. Token 过期 → 后端返回 401 → request.js 静默跳转 /login
+1. 当前双库切换现场的登录页默认预填 `admin / admin123`，保证 `health_new` 空库状态仍有管理员入口
+2. 前端 POST /auth/login {username, password}
+3. 后端 Sa-Token 验证，返回 { token, roles, routes, buttons, canSwitchDataSource, ... }
+4. 前端把 token 写入 `User-Token` Session Cookie，Vuex 只保存当前内存态
+5. 页面刷新后，`permission.js` 发现 Cookie 有 token 但 Vuex 无角色信息时，会调用 `/auth/info` 恢复状态
+6. 后续请求统一注入 `satoken`；只有有切库权限的用户才会附加 `X-Health-Data-Source`
+7. `heartbeat.js` 每 30 秒调用 `/auth/info` 检测会话；Token 失效、后端重启或并发 401 时都会静默收敛到登录页
 ```
 
 ### 12.3 路由权限过滤
@@ -846,7 +952,7 @@ beforeUnmount() {
 **检查步骤：**
 1. 确认路由 meta 中没有 `permCode`，或者确认该 permCode 已分配给当前用户的角色
 2. 在后端数据库 `sys_role.permission_codes` 中查看角色的权限码列表
-3. 在前端 DevTools → Application → Cookies → satoken → 确认 Token 有效
+3. 在前端 DevTools → Application → Cookies → `User-Token` → 确认 Token 有效
 4. 清除 Cookie 重新登录
 
 ### Q9：sqlcmd 插入中文失败
@@ -860,6 +966,8 @@ beforeUnmount() {
 **推荐命令：**
 ```bash
 npm run audit:ci
+npm run audit:structure
+npm run audit:page-structure
 npm run audit:nightly
 npm run audit:api
 npm run audit:write
@@ -871,12 +979,12 @@ npm run audit:e2e
 `audit:write` 会自动：
 1. 回写一个预警处理并恢复原状态
 2. 更新一条告警配置并恢复原值
-3. 观察现网实时写库链路，等待一条新健康记录从 SQL 被 API 读回
+3. 向 TCP `9000` 发送最小手表协议探针，等待探针健康记录从 SQL 被 API 和实时接口读回，并清理探针健康记录
 4. 生成一份员工 AI 报告并清理缓存行
 
 `audit:pipeline` 会额外跑一条更重的端到端链路：
 1. 向 TCP `9000` 发送真实手表协议探针（`AP00 + AP03 + APHP`）
-2. 观察 Redis `health:buffer` 确实出现探针 payload
+2. 观察 Redis `health:buffer:old` / `health:buffer:new`（兼容回看旧 `health:buffer`）确实出现探针 payload
 3. 等待定时 flush 写入当月 `health_record_YYYYMM`
 4. 验证 `/api/health/record/page`、`/health-portrait/{empCode}`、`/realtime/user/{userCode}`
 5. 用 Playwright 打开 `employee-profile` 页面确认体征卡片
@@ -891,10 +999,12 @@ npm run audit:e2e
 6. 自动删除探针产生的健康记录、预警记录和残留 Redis payload
 
 注意：`audit:pipeline` 会短暂写入和回收真实本地数据，因此默认不并入 `audit:all`。
+`audit:structure` 会连续执行 `audit:nav` 和 `audit:page-structure`，用于检查路由/菜单事实源和已迁移大页目录边界。
 `audit:ci` 只跑云端安全的构建检查，供 GitHub Actions 使用。
 `audit:nightly` 跑完整本地回归，适合自托管 runner 或手动夜间执行。
 其余 `audit:*` 依赖本地后端、SQL Server、Redis、TCP 9000 或浏览器环境，仍属于本地回归。
 nightly workflow 假设 runner 主机已先行启动后端、Redis、SQL Server 和 TCP 9000 模拟器；没有这些基础设施时只会跑 CI-safe 流程。
+`audit:auth` 会在“stale token after backend restart”步骤里主动重启后端，因此不要和 `audit:e2e` / `audit:pipeline` 并行跑，否则很容易把后两者打脏。
 
 ---
 

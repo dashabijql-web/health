@@ -3,7 +3,7 @@
     <div class="ph">
       <span class="pt">
         <span class="pt-bar"></span>
-        井下人员分布
+        {{ title }}
       </span>
       <div class="ctrl">
         <span :class="['tb', viewMode==='grid'&&'on']" @click="viewMode='grid'">网格</span>
@@ -39,7 +39,10 @@
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import * as echarts from '@/utils/echarts-setup'
 
-const props = defineProps({ areas: { type: Array, default: () => [] } })
+const props = defineProps({
+  areas: { type: Array, default: () => [] },
+  title: { type: String, default: '井下人员分布' }
+})
 defineEmits(['fullscreen','refresh','showArea','callLeader'])
 
 const viewMode = ref('grid')

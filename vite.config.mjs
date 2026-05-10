@@ -170,7 +170,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '0.0.0.0', // 监听所有网卡（允许局域网内其他设备访问 http://本机IP:9528）
       port: 9528,       // 前端开发服务器端口
-      open: true,       // 启动后自动打开浏览器
+      open: false,      // 启动后不自动打开浏览器，避免桌面环境下的额外 spawn
       proxy: {
         // SSE 流式接口单独配置，禁止响应缓冲（必须在通用规则之前）
         '/dev-api/ai/chat/stream': {

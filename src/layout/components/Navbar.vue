@@ -5,6 +5,14 @@
     <breadcrumb class="breadcrumb-container" />
 
     <div class="right-menu">
+      <div v-if="canSwitchDataSource" class="source-switch">
+        <span class="source-switch__label">数据源</span>
+        <el-select v-model="dataSource" size="small" class="source-switch__select" @change="handleDataSourceChange">
+          <el-option label="新库" value="new" />
+          <el-option label="老库" value="old" />
+        </el-select>
+      </div>
+
       <!-- 未处理预警角标 -->
       <div class="warning-badge-btn" @click="$router.push('/alert-management/notifications')" title="点击查看消息通知中心">
         <el-badge :value="pendingWarnings" :hidden="pendingWarnings === 0" :max="99" type="danger">
@@ -43,6 +51,8 @@ import { mapGetters } from 'vuex'
 import Breadcrumb from '@/components/Breadcrumb/index.vue'
 import Hamburger from '@/components/Hamburger/index.vue'
 import request from '@/utils/request'
+import { getDataSource, setDataSource } from '@/utils/data-source'
+import { createIntervalTask } from '@/utils/task-timer'
 
 export default {
   components: {
@@ -52,23 +62,25 @@ export default {
   data() {
     return {
       pendingWarnings: 0,
-      warningPollTimer: null,
+      dataSource: getDataSource(),
       defaultAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDgwIDgwIj48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iODAiIGZpbGw9IiMxYTRkOGYiLz48Y2lyY2xlIGN4PSI0MCIgY3k9IjI4IiByPSIxMiIgZmlsbD0iIzAwZDRmZiIvPjxwYXRoIGQ9Ik0yMCA1NnEwLTE2IDE2LTE2aDE2cTE2IDAgMTYgMTZ6IiBmaWxsPSIjMDBkNGZmIi8+PC9zdmc+',
       avatarError: false
     }
   },
   mounted() {
     this.fetchPendingWarnings()
-    this.warningPollTimer = setInterval(this.fetchPendingWarnings, 30000)
+    this._warningPollTask = createIntervalTask(() => this.fetchPendingWarnings(), 30000)
+    this._warningPollTask.start()
   },
   beforeUnmount() {
-    if (this.warningPollTimer) clearInterval(this.warningPollTimer)
+    this._warningPollTask?.stop()
   },
   computed: {
     ...mapGetters([
       'sidebar',
       'avatar',
-      'name'
+      'name',
+      'canSwitchDataSource'
     ]),
     avatarUrl() {
       // 如果头像加载失败，使用默认头像
@@ -99,6 +111,10 @@ export default {
     },
     toggleSideBar() {
       this.$store.dispatch('app/toggleSideBar')
+    },
+    handleDataSourceChange(value) {
+      setDataSource(value)
+      window.location.reload()
     },
     async logout() {
       await this.$store.dispatch('user/logout')
@@ -164,6 +180,23 @@ export default {
       .warn-label {
         color: #ff6b6b; font-size: 12px; font-weight: 600;
         white-space: nowrap; animation: warn-pulse 1.5s infinite;
+      }
+    }
+
+    .source-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 16px;
+
+      &__label {
+        color: #8ba6c8;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      &__select {
+        width: 96px;
       }
     }
 
@@ -238,6 +271,7 @@ export default {
   @media (max-width: 768px) {
     .breadcrumb-container { display: none; }
     .right-menu .avatar-container { margin-right: 12px; }
+    .right-menu .source-switch__label { display: none; }
     .user-name { display: none; }
   }
 }

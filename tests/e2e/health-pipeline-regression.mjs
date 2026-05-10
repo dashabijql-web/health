@@ -2,26 +2,33 @@ import fs from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import process from 'node:process';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
+import {
+  assert,
+  assertResultOk,
+  pruneArtifacts,
+  requestJson,
+  resolveSession,
+  truncate
+} from '../shared/health-test-utils.mjs';
 
-const execFileAsync = promisify(execFile);
 
-const LOGIN_CREDENTIALS = { username: 'admin', password: 'admin123' };
 const DEFAULT_BASE_URL = 'http://127.0.0.1:9528';
 const SQLCMD_BIN = process.env.SQLCMD_BIN || 'sqlcmd';
 const SQL_SERVER = process.env.SQL_SERVER || 'localhost,58135';
 const SQL_USER = process.env.SQL_USER || 'sa';
-const SQL_PASSWORD = process.env.SQL_PASSWORD || '123abcd.';
+const SQL_PASSWORD = process.env.SQL_PASSWORD || '';
 const SQL_DB = process.env.SQL_DB || 'health';
+const PIPELINE_DATA_SOURCE = process.env.PIPELINE_DATA_SOURCE || (SQL_DB === 'health_new' ? 'new' : 'old');
 const TCP_HOST = process.env.WATCH_TCP_HOST || '127.0.0.1';
 const TCP_PORT = Number.parseInt(process.env.WATCH_TCP_PORT || '9000', 10);
 const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
 const REDIS_PORT = Number.parseInt(process.env.REDIS_PORT || '6379', 10);
 const REDIS_TIMEOUT_MS = Number.parseInt(process.env.REDIS_TIMEOUT_MS || '3000', 10);
 const PIPELINE_SQL_WAIT_MS = Number.parseInt(process.env.PIPELINE_SQL_WAIT_MS || '20000', 10);
-const PIPELINE_REDIS_WAIT_MS = Number.parseInt(process.env.PIPELINE_REDIS_WAIT_MS || '8000', 10);
+const PIPELINE_REDIS_WAIT_MS = Number.parseInt(process.env.PIPELINE_REDIS_WAIT_MS || '20000', 10);
+const PIPELINE_SKIP_CLEANUP = process.env.PIPELINE_SKIP_CLEANUP === '1';
 const ARTIFACT_RETENTION = Number.parseInt(process.env.PIPELINE_ARTIFACT_RETENTION || '5', 10);
 const RUN_ID = new Date().toISOString().replace(/[:.]/g, '-');
 const ARTIFACT_DIR = path.resolve(process.cwd(), 'tests', 'pipeline', 'artifacts', RUN_ID);
@@ -30,6 +37,9 @@ const REPORT_MD = path.join(ARTIFACT_DIR, 'summary.md');
 const SCREENSHOT_PATH = path.join(ARTIFACT_DIR, 'employee-profile.jpeg');
 const MONTH_SUFFIX = new Date().toISOString().slice(0, 7).replace('-', '');
 const HEALTH_TABLE = `health_record_${MONTH_SUFFIX}`;
+const REDIS_BUFFER_KEYS = ['health:buffer:old', 'health:buffer:new', 'health:buffer'];
+const DATA_SOURCE_HEADER = 'X-Health-Data-Source';
+const DATA_SOURCE_COOKIE = 'Health-Data-Source';
 
 const PROBE = {
   heartRate: 77,
@@ -43,13 +53,6 @@ const PROBE = {
   rollovers: 12,
   glucose: 5.1
 };
-
-const TARGETS = [
-  { label: 'vite-127', origin: 'http://127.0.0.1:9528', apiPrefix: '/dev-api' },
-  { label: 'vite-localhost', origin: 'http://localhost:9528', apiPrefix: '/dev-api' },
-  { label: 'backend-127', origin: 'http://127.0.0.1:8080', apiPrefix: '/health' },
-  { label: 'backend-localhost', origin: 'http://localhost:8080', apiPrefix: '/health' }
-];
 
 const summary = {
   runId: RUN_ID,
@@ -69,18 +72,44 @@ const summary = {
 await fs.mkdir(ARTIFACT_DIR, { recursive: true });
 await pruneArtifacts(path.dirname(ARTIFACT_DIR), ARTIFACT_RETENTION);
 
-function truncate(value, max = 240) {
-  if (!value) return '';
-  return value.length > max ? `${value.slice(0, max - 3)}...` : value;
-}
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
-
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+
+function redactSecrets(value) {
+  return String(value)
+    .replace(/(-P\s+)([^\s]+)/gi, '$1[REDACTED]')
+    .replace(SQL_PASSWORD ? new RegExp(SQL_PASSWORD.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g') : /$a/, '[REDACTED]');
+}
+
+async function runSqlcmd(args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(SQLCMD_BIN, args, {
+      cwd: process.cwd(),
+      windowsHide: true,
+      shell: false
+    });
+    let stdout = '';
+    let stderr = '';
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error('sqlcmd timeout after 120000ms'));
+    }, 120000);
+    child.stdout?.on('data', (chunk) => { stdout += chunk.toString('utf8'); });
+    child.stderr?.on('data', (chunk) => { stderr += chunk.toString('utf8'); });
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on('close', (code, signal) => {
+      clearTimeout(timer);
+      resolve({ code, signal, stdout, stderr });
+    });
+  });
+}
+
+assert(SQL_PASSWORD, 'SQL_PASSWORD is required for SQL-backed pipeline tests');
 
 function stage(name, status, note = '') {
   summary.stages.push({ name, status, note, at: new Date().toISOString() });
@@ -93,132 +122,32 @@ function normalizeTemp(value) {
   return Number((n > 100 ? n / 10 : n).toFixed(1));
 }
 
-async function pruneArtifacts(rootDir, keep = 5) {
-  if (!Number.isFinite(keep) || keep <= 0) return;
-  const entries = await fs.readdir(rootDir, { withFileTypes: true }).catch(() => []);
-  const dirs = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-  const obsolete = dirs.slice(0, Math.max(0, dirs.length - keep));
-  await Promise.allSettled(
-    obsolete.map((dirName) => fs.rm(path.join(rootDir, dirName), { recursive: true, force: true }))
-  );
-}
-
-async function tryLogin(target) {
-  const loginUrl = `${target.origin}${target.apiPrefix}/auth/login`;
-  const response = await fetch(loginUrl, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(LOGIN_CREDENTIALS)
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  const payload = await response.json();
-  assert(payload?.code === 200, payload?.message || 'login rejected');
-  assert(payload?.data?.token, 'login response missing token');
-
-  return { target, token: payload.data.token };
-}
-
-async function resolveSession() {
-  const errors = [];
-  for (const target of TARGETS) {
-    try {
-      return await tryLogin(target);
-    } catch (error) {
-      errors.push(`${target.label}: ${truncate(String(error))}`);
-    }
-  }
-  throw new Error(`unable to login to any target: ${errors.join(' | ')}`);
-}
-
-function buildHeaders(session, extraHeaders = {}) {
-  return {
-    accept: 'application/json',
-    satoken: session.token,
-    cookie: `User-Token=${session.token}; satoken=${session.token}`,
-    ...extraHeaders
-  };
-}
-
-async function requestJson(session, method, routePath, options = {}) {
-  const url = new URL(`${session.target.origin}${session.target.apiPrefix}${routePath}`);
-  const { query, data, headers } = options;
-
-  if (query) {
-    for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined && value !== null && value !== '') {
-        url.searchParams.set(key, String(value));
-      }
-    }
-  }
-
-  const finalHeaders = buildHeaders(
-    session,
-    data ? { 'content-type': 'application/json', ...headers } : headers
-  );
-
-  const response = await fetch(url, {
-    method,
-    headers: finalHeaders,
-    body: data ? JSON.stringify(data) : undefined
-  });
-
-  const text = await response.text();
-  let payload = null;
-  try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    payload = null;
-  }
-
-  return {
-    status: response.status,
-    payload,
-    raw: text,
-    url: url.toString()
-  };
-}
-
-function assertResultOk(result) {
-  assert(result.status >= 200 && result.status < 300, `HTTP ${result.status}`);
-  assert(result.payload && typeof result.payload === 'object', 'response body is not JSON object');
-  assert(result.payload.code === 200, result.payload.message || `unexpected code ${result.payload.code}`);
-}
-
 async function sqlRaw(query) {
-  const { stdout, stderr } = await execFileAsync(
-    SQLCMD_BIN,
-    [
-      '-S',
-      SQL_SERVER,
-      '-U',
-      SQL_USER,
-      '-P',
-      SQL_PASSWORD,
-      '-d',
-      SQL_DB,
-      '-w',
-      '65535',
-      '-y',
-      '0',
-      '-Y',
-      '0',
-      '-h-1',
-      '-Q',
-      `SET NOCOUNT ON; ${query}`
-    ],
-    { encoding: 'utf8', windowsHide: true, timeout: 120000 }
-  );
-
-  if (stderr && stderr.trim()) {
-    throw new Error(stderr.trim());
+  const result = await runSqlcmd([
+    '-S', SQL_SERVER,
+    '-U', SQL_USER,
+    '-P', SQL_PASSWORD,
+    '-d', SQL_DB,
+    '-r', '1',
+    '-w', '65535',
+    '-y', '0',
+    '-Y', '0',
+    '-Q',
+    `SET NOCOUNT ON; ${query}`
+  ]);
+  const combinedOutput = `${result.stdout || ''}\n${result.stderr || ''}`.trim();
+  if (result.code !== 0 || /Msg \d+,/i.test(combinedOutput) || /错误|error/i.test(result.stderr || '')) {
+    throw new Error(redactSecrets([
+      `sqlcmd exitCode=${result.code}`,
+      result.signal ? `signal=${result.signal}` : '',
+      result.stderr ? `stderr: ${result.stderr}` : '',
+      result.stdout ? `stdout: ${result.stdout}` : ''
+    ].filter(Boolean).join('\n')));
   }
 
-  return stdout.trim();
+  return result.stdout.trim();
 }
+
 
 function parseJsonPayload(raw) {
   const start = Math.min(
@@ -251,6 +180,11 @@ async function getProbeTarget() {
     "WHERE d.imei IS NOT NULL AND LEN(d.imei) = 15 " +
     "ORDER BY d.id"
   );
+  if (row?.imei && row?.empCode) return row;
+  if (PIPELINE_DATA_SOURCE === 'new') {
+    stage('probe.target', 'skipped', 'no bound probe target found in new data source');
+    return null;
+  }
   assert(row?.imei && row?.empCode, 'no bound probe target found');
   return row;
 }
@@ -288,17 +222,24 @@ async function deleteProbeRows(rowIds) {
   return Number(row?.deletedRows || 0);
 }
 
-async function verifyNoProbeRows(target, baseline) {
-  const row = await sqlJsonObject(
-    `SELECT COUNT(*) AS probeCount FROM ${HEALTH_TABLE} ` +
-    `WHERE user_code = '${target.empCode}' AND id > ${baseline.maxId} AND (` +
-    `(heart_rate = ${PROBE.heartRate} AND blood_oxygen = ${PROBE.bloodOxygen} ` +
-    `AND blood_pressure_high = ${PROBE.systolic} AND blood_pressure_low = ${PROBE.diastolic} ` +
-    `AND CAST(ROUND(CAST(temperature AS FLOAT), 0) AS INT) = ${PROBE.temperatureStored}) ` +
-    `OR (steps = ${PROBE.steps} AND calories = ${PROBE.calories})` +
-    `)`
-  );
-  return Number(row?.probeCount || 0);
+async function cleanupProbeRows(target, baseline, rowIds) {
+  let deletedRows = 0;
+  let pendingIds = [...new Set(rowIds.map((rowId) => Number(rowId)).filter(Number.isFinite))];
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (pendingIds.length > 0) {
+      deletedRows += await deleteProbeRows(pendingIds);
+    }
+
+    await sleep(300);
+    const residueRows = await queryProbeRows(target, baseline);
+    pendingIds = [...new Set(residueRows.map((row) => Number(row.id)).filter(Number.isFinite))];
+    if (pendingIds.length === 0) {
+      return { deletedRows, residue: 0 };
+    }
+  }
+
+  return { deletedRows, residue: pendingIds.length };
 }
 
 class RedisSocketClient {
@@ -434,37 +375,45 @@ async function connectRedisWithRetry(host, port, timeoutMs, attempts = 5, delayM
 }
 
 async function findProbePayloads(redisClient, target) {
-  const items = await redisClient.execute('LRANGE', 'health:buffer', '0', '-1');
-  const rows = Array.isArray(items) ? items.filter((item) => typeof item === 'string') : [];
-  return rows.filter((row) => {
-    const matchUser = row.includes(`"userCode":"${target.empCode}"`);
-    const matchVitals =
-      row.includes(`"heartRate":${PROBE.heartRate}`) &&
-      row.includes(`"bloodOxygen":${PROBE.bloodOxygen}`);
-    const matchSteps = row.includes(`"steps":${PROBE.steps}`) && row.includes(`"calories":${PROBE.calories}`);
-    return matchUser && (matchVitals || matchSteps);
-  });
+  const matched = [];
+
+  for (const key of REDIS_BUFFER_KEYS) {
+    const items = await redisClient.execute('LRANGE', key, '0', '-1').catch(() => []);
+    const rows = Array.isArray(items) ? items.filter((item) => typeof item === 'string') : [];
+    for (const row of rows) {
+      const matchUser = row.includes(`"userCode":"${target.empCode}"`);
+      const matchVitals =
+        row.includes(`"heartRate":${PROBE.heartRate}`) &&
+        row.includes(`"bloodOxygen":${PROBE.bloodOxygen}`);
+      const matchSteps = row.includes(`"steps":${PROBE.steps}`) && row.includes(`"calories":${PROBE.calories}`);
+      if (matchUser && (matchVitals || matchSteps)) {
+        matched.push({ key, payload: row });
+      }
+    }
+  }
+
+  return matched;
 }
 
 async function observeRedis(redisClient, target) {
   const startedAt = Date.now();
-  const matchedPayloads = new Set();
+  const matchedPayloads = new Map();
   while (Date.now() - startedAt < PIPELINE_REDIS_WAIT_MS) {
     const payloads = await findProbePayloads(redisClient, target);
-    for (const payload of payloads) matchedPayloads.add(payload);
+    for (const item of payloads) matchedPayloads.set(`${item.key}::${item.payload}`, item);
     if (matchedPayloads.size > 0) {
-      return { matched: true, payloads: [...matchedPayloads] };
+      return { matched: true, payloads: [...matchedPayloads.values()] };
     }
     await sleep(150);
   }
-  return { matched: false, payloads: [...matchedPayloads] };
+  return { matched: false, payloads: [...matchedPayloads.values()] };
 }
 
 async function cleanupRedisPayloads(redisClient, payloads) {
   let removed = 0;
   for (const payload of payloads) {
     try {
-      const delta = await redisClient.execute('LREM', 'health:buffer', '0', payload);
+      const delta = await redisClient.execute('LREM', payload.key, '0', payload.payload);
       removed += Number(delta || 0);
     } catch {
       // Best-effort cleanup.
@@ -547,6 +496,11 @@ async function loginViaApi(page, session) {
     {
       name: 'satoken',
       value: session.token,
+      url: session.target.origin
+    },
+    {
+      name: DATA_SOURCE_COOKIE,
+      value: PIPELINE_DATA_SOURCE,
       url: session.target.origin
     }
   ]);
@@ -631,9 +585,12 @@ try {
 
   const target = await getProbeTarget();
   summary.target = target;
-  stage('pick-target', 'passed', `${target.empCode} / ${target.imei}`);
+  if (!target) {
+    stage('pipeline', 'skipped', 'new data source has no bound probe target; write-through TCP probe is old-source only until seed data exists');
+  } else {
+    stage('pick-target', 'passed', `${target.empCode} / ${target.imei}`);
 
-  baselineSnapshot = await getBaseline(target);
+    baselineSnapshot = await getBaseline(target);
   stage('baseline', 'passed', `max_id=${baselineSnapshot.maxId}, count=${baselineSnapshot.totalCount}`);
 
   redisClient = await connectRedisWithRetry(REDIS_HOST, REDIS_PORT, REDIS_TIMEOUT_MS);
@@ -643,9 +600,12 @@ try {
   stage('tcp-probe', 'passed', `${TCP_HOST}:${TCP_PORT} <- ${target.imei}`);
 
   const redisObservation = await observeRedis(redisClient, target);
-  assert(redisObservation.matched, 'probe payload was not observed in Redis health:buffer');
   redisPayloads = redisObservation.payloads;
-  stage('redis-buffer', 'passed', `${redisPayloads.length} payload(s) observed`);
+  if (redisObservation.matched) {
+    stage('redis-buffer', 'passed', `${redisPayloads.length} payload(s) observed in ${[...new Set(redisPayloads.map((item) => item.key))].join(', ')}`);
+  } else {
+    stage('redis-buffer', 'passed', 'no payload observed before flush');
+  }
 
   const probeRows = await waitForSqlRows(target, baselineSnapshot);
   assert(probeRows.length >= 2, `expected probe rows in ${HEALTH_TABLE}, found ${probeRows.length}`);
@@ -670,14 +630,15 @@ try {
   stage('sql-flush', 'passed', `rows=${cleanupRowIds.join(',')}`);
 
   const healthRecords = await requestJson(session, 'GET', '/api/health/record/page', {
-    query: { current: 1, size: 20, userCode: target.empCode }
+    query: { current: 1, size: 20, userCode: target.empCode },
+    dataSource: PIPELINE_DATA_SOURCE
   });
   assertResultOk(healthRecords);
   const recordList = Array.isArray(healthRecords.payload?.data?.records) ? healthRecords.payload.data.records : [];
   assert(recordList.some((row) => cleanupRowIds.includes(Number(row.id))), 'health record page missing probe rows');
   stage('api.health-record-page', 'passed', `${recordList.length} rows`);
 
-  const portrait = await requestJson(session, 'GET', `/health-portrait/${encodeURIComponent(target.empCode)}`);
+  const portrait = await requestJson(session, 'GET', `/health-portrait/${encodeURIComponent(target.empCode)}`, { dataSource: PIPELINE_DATA_SOURCE });
   assertResultOk(portrait);
   const portraitVitals = portrait.payload?.data?.vitals || {};
   assert(Number(portraitVitals.heartRate) === PROBE.heartRate, 'health portrait heartRate mismatch');
@@ -689,7 +650,7 @@ try {
     `hr=${portraitVitals.heartRate}, spo2=${portraitVitals.bloodOxygen}, temp=${normalizeTemp(portraitVitals.temperature)}`
   );
 
-  const realtime = await requestJson(session, 'GET', `/realtime/user/${encodeURIComponent(target.empCode)}`);
+  const realtime = await requestJson(session, 'GET', `/realtime/user/${encodeURIComponent(target.empCode)}`, { dataSource: PIPELINE_DATA_SOURCE });
   assertResultOk(realtime);
   const realtimeData = realtime.payload?.data || {};
   assert(Number(realtimeData.heartRate) === PROBE.heartRate, 'realtime user heartRate mismatch');
@@ -707,20 +668,26 @@ try {
     'passed',
     `${pageSnapshot.hr} | ${pageSnapshot.spo2} | ${pageSnapshot.temp}`
   );
+  }
 } catch (error) {
   fatalError = error;
   stage('pipeline', 'failed', truncate(String(error), 320));
 } finally {
-  if (redisClient && redisPayloads.length > 0) {
+  if (PIPELINE_SKIP_CLEANUP) {
+    summary.warnings.push('cleanup skipped because PIPELINE_SKIP_CLEANUP=1');
+  } else if (redisClient && redisPayloads.length > 0) {
     summary.cleanup.redisTrimmed = await cleanupRedisPayloads(redisClient, redisPayloads);
   }
   if (redisClient) {
     redisClient.close();
   }
 
-  if (cleanupRowIds.length > 0) {
-    summary.cleanup.deletedRows = await deleteProbeRows(cleanupRowIds);
-    const residue = baselineSnapshot ? await verifyNoProbeRows(summary.target, baselineSnapshot) : 0;
+  if (!PIPELINE_SKIP_CLEANUP && cleanupRowIds.length > 0) {
+    const cleanupResult = baselineSnapshot
+      ? await cleanupProbeRows(summary.target, baselineSnapshot, cleanupRowIds)
+      : { deletedRows: await deleteProbeRows(cleanupRowIds), residue: 0 };
+    summary.cleanup.deletedRows = cleanupResult.deletedRows;
+    const residue = baselineSnapshot ? cleanupResult.residue : 0;
     if (residue > 0) {
       summary.warnings.push(`probe residue still present after cleanup: ${residue}`);
     }

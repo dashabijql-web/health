@@ -22,6 +22,7 @@ export default {
   overflow-x: hidden;
   overflow-y: auto;
 }
+
 @media (max-width: 768px) {
   .app-main {
     /* 54px 底部导航 + iPhone 安全区域 */
@@ -43,6 +44,11 @@ export default {
 .fade-page-enter-from,
 .fade-page-leave-to {
   opacity: 0;
+}
+
+.fade-page-enter-to,
+.fade-page-leave-from {
+  opacity: 1;
 }
 </style>
 
