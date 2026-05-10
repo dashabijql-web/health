@@ -1,12 +1,28 @@
 package com.xzkj.health.service;
 
 import com.xzkj.health.common.MapValueUtil;
+import com.xzkj.health.config.datasource.HealthCacheKeys;
+import com.xzkj.health.config.datasource.HealthAsyncQueryExecutor;
+import com.xzkj.health.dto.sleep.SleepDeptUploadView;
+import com.xzkj.health.dto.sleep.SleepDetailItemView;
+import com.xzkj.health.dto.sleep.SleepLegendItemView;
+import com.xzkj.health.dto.sleep.SleepOverviewView;
+import com.xzkj.health.dto.sleep.SleepPageDataView;
+import com.xzkj.health.dto.sleep.SleepQualityDistributionView;
+import com.xzkj.health.dto.sleep.SleepTrendView;
 import com.xzkj.health.mapper.SleepMapper;
+import com.xzkj.health.util.LocalTtlCache;
+import com.xzkj.health.util.TableSourceUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /**
  * 睡眠监测Service
@@ -14,13 +30,27 @@ import java.util.concurrent.CompletableFuture;
 @Service
 public class SleepService {
 
+    private static final long CACHE_TTL_MILLIS = 10 * 60 * 1000L;
+
     @Autowired
     private SleepMapper sleepMapper;
+
+    @Autowired
+    private HealthAsyncQueryExecutor asyncQueryExecutor;
+
+    private final LocalTtlCache<SleepTrendView> trendCache = new LocalTtlCache<>();
+    private final LocalTtlCache<SleepQualityDistributionView> qualityDistributionCache = new LocalTtlCache<>();
+    private final LocalTtlCache<SleepPageDataView> pageDataCache = new LocalTtlCache<>();
 
     /**
      * 获取睡眠趋势数据
      */
-    public Map<String, Object> getSleepTrend(int days) {
+    public SleepTrendView getSleepTrend(int days) {
+        String cacheKey = HealthCacheKeys.key("trend", days);
+        SleepTrendView hit = trendCache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
+        }
         List<Map<String, Object>> trendData = sleepMapper.getSleepTrend(days);
 
         List<String> dates = new ArrayList<>();
@@ -36,70 +66,90 @@ public class SleepService {
             lightSleep.add(MapValueUtil.getDouble(item, "avgLightSleep"));
         }
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("dates", dates);
-        result.put("avgData", avgData);
-        result.put("deepSleep", deepSleep);
-        result.put("lightSleep", lightSleep);
-
+        SleepTrendView result = new SleepTrendView(dates, avgData, deepSleep, lightSleep);
+        trendCache.put(cacheKey, result, CACHE_TTL_MILLIS);
         return result;
     }
 
     /**
      * 获取睡眠质量分布
      */
-    public Map<String, Object> getQualityDistribution() {
+    public SleepQualityDistributionView getQualityDistribution() {
+        String cacheKey = HealthCacheKeys.key("quality-distribution");
+        SleepQualityDistributionView hit = qualityDistributionCache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
+        }
         List<Map<String, Object>> distribution = sleepMapper.getSleepQualityDistribution();
 
-        Map<String, Object> result = new HashMap<>();
+        int excellent = 0;
+        int good = 0;
+        int fair = 0;
+        int poor = 0;
         for (Map<String, Object> item : distribution) {
-            String quality = (String) item.get("quality");
+            String quality = stringValue(item.get("quality"));
             int count = MapValueUtil.getInt(item, "count");
-            result.put(quality, count);
+            if ("excellent".equals(quality)) {
+                excellent = count;
+            } else if ("good".equals(quality)) {
+                good = count;
+            } else if ("fair".equals(quality)) {
+                fair = count;
+            } else if ("poor".equals(quality)) {
+                poor = count;
+            }
         }
 
+        SleepQualityDistributionView result = new SleepQualityDistributionView(excellent, good, fair, poor);
+        qualityDistributionCache.put(cacheKey, result, CACHE_TTL_MILLIS);
         return result;
     }
 
     /**
      * 获取睡眠页面完整数据（并行查询优化：7个DB查询并行执行，冷启动从3.2s降至~0.5s）
      */
-    public Map<String, Object> getSleepPageData() {
-        // 并行发起全部7个DB查询
-        CompletableFuture<Map<String, Object>> uploadRateFuture  = CompletableFuture.supplyAsync(() -> sleepMapper.getYesterdayUploadRate());
-        CompletableFuture<Map<String, Object>> greenLineFuture   = CompletableFuture.supplyAsync(() -> sleepMapper.getGreenLineRate());
-        CompletableFuture<Map<String, Object>> avgDataFuture     = CompletableFuture.supplyAsync(() -> sleepMapper.getAverageSleepData());
-        CompletableFuture<Map<String, Object>> durationFuture    = CompletableFuture.supplyAsync(() -> sleepMapper.getSleepDurationDistribution());
-        CompletableFuture<Map<String, Object>> categoryFuture    = CompletableFuture.supplyAsync(() -> sleepMapper.getSleepCategoryDistribution());
-        CompletableFuture<List<Map<String, Object>>> deptFuture  = CompletableFuture.supplyAsync(() -> sleepMapper.getDeptUploadStats());
-        CompletableFuture<List<Map<String, Object>>> detailFuture = CompletableFuture.supplyAsync(() -> sleepMapper.getLatestSleepDetails());
+    public SleepPageDataView getSleepPageData() {
+        String cacheKey = HealthCacheKeys.key("page-data");
+        SleepPageDataView hit = pageDataCache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
+        }
 
-        // 等待所有查询完成（join 不抛 checked exception）
-        Map<String, Object> uploadRateData = uploadRateFuture.join();
-        Map<String, Object> greenLineData  = greenLineFuture.join();
-        Map<String, Object> avgData        = avgDataFuture.join();
+        CompletableFuture<Map<String, Object>> lastNightOverviewFuture =
+                supply(() -> sleepMapper.getLastNightOverviewDirect(recentSleepSource()));
+        CompletableFuture<Map<String, Object>> durationFuture = supply(sleepMapper::getSleepDurationDistribution);
+        CompletableFuture<Map<String, Object>> categoryFuture = supply(sleepMapper::getSleepCategoryDistribution);
+        CompletableFuture<List<Map<String, Object>>> deptFuture = supply(sleepMapper::getDeptUploadStats);
+        CompletableFuture<List<Map<String, Object>>> detailFuture = supply(sleepMapper::getLatestSleepDetails);
+
+        CompletableFuture.allOf(
+                lastNightOverviewFuture,
+                durationFuture,
+                categoryFuture,
+                deptFuture,
+                detailFuture
+        ).join();
+
+        Map<String, Object> lastNightOverview = lastNightOverviewFuture.join();
         Map<String, Object> durationData   = durationFuture.join();
         Map<String, Object> categoryData   = categoryFuture.join();
         List<Map<String, Object>> deptStats = deptFuture.join();
         List<Map<String, Object>> details   = detailFuture.join();
 
-        Map<String, Object> result = new HashMap<>();
-
-        // 1. 概览：上传率、达标率、平均睡眠时长、平均得分
-        Map<String, Object> overview = new HashMap<>();
-        overview.put("uploadRate", Math.round(MapValueUtil.getDouble(uploadRateData, "uploadRate")));
-        overview.put("greenLineRate", Math.round(MapValueUtil.getDouble(greenLineData, "greenLineRate")));
-
-        double avgSleepTime = MapValueUtil.getDouble(avgData, "avgSleepTime");
+        double avgSleepTime = MapValueUtil.getDouble(lastNightOverview, "avgSleepTime");
         int hours = (int) avgSleepTime;
         int minutes = (int) Math.round((avgSleepTime - hours) * 60);
-        overview.put("avgSleepTime", hours + "小时" + minutes + "分钟");
-        overview.put("avgScore", Math.round(MapValueUtil.getDouble(avgData, "avgScore")));
-        result.put("overview", overview);
+        int totalCount = (int) MapValueUtil.getLong(durationData, "total");
+        SleepOverviewView overview = new SleepOverviewView(
+                Math.round((float) MapValueUtil.getDouble(lastNightOverview, "uploadRate")),
+                Math.round((float) MapValueUtil.getDouble(lastNightOverview, "greenLineRate")),
+                hours + "小时" + minutes + "分钟",
+                Math.round((float) MapValueUtil.getDouble(lastNightOverview, "avgScore")),
+                totalCount
+        );
 
-        // 2. 睡眠时长分布
-        List<Map<String, Object>> durationLegend = new ArrayList<>();
-        long total = MapValueUtil.getLong(durationData, "total");
+        List<SleepLegendItemView> durationLegend = new ArrayList<>();
+        long total = totalCount;
         if (total > 0) {
             durationLegend.add(createLegendItem("<4小时",
                     Math.round(MapValueUtil.getLong(durationData, "less4") * 100.0 / total), "#FF6B6B"));
@@ -110,11 +160,8 @@ public class SleepService {
             durationLegend.add(createLegendItem(">8小时",
                     Math.round(MapValueUtil.getLong(durationData, "more8") * 100.0 / total), "#66BB6A"));
         }
-        result.put("durationLegend", durationLegend);
-        result.put("durationTotal", (int) total);
 
-        // 3. 睡眠分类统计
-        List<Map<String, Object>> categoryLegend = new ArrayList<>();
+        List<SleepLegendItemView> categoryLegend = new ArrayList<>();
         long deepSleepMin  = MapValueUtil.getLong(categoryData, "deepSleep");
         long lightSleepMin = MapValueUtil.getLong(categoryData, "lightSleep");
         long dreamMin      = MapValueUtil.getLong(categoryData, "dream");
@@ -126,35 +173,83 @@ public class SleepService {
             categoryLegend.add(createLegendItem("梦境",  Math.round(dreamMin      * 100.0 / timeTotal), "#FFA726"));
             categoryLegend.add(createLegendItem("清醒",  Math.round(awakeMin      * 100.0 / timeTotal), "#FF6B6B"));
         }
-        result.put("categoryLegend", categoryLegend);
 
-        // 4. 部门上传统计
-        result.put("deptUpload", deptStats);
-
-        // 5. 最新数据明细（格式化睡眠时长和评级）
+        List<SleepDetailItemView> detailList = new ArrayList<>();
         for (Map<String, Object> detail : details) {
             double sleepHours = MapValueUtil.getDouble(detail, "sleepHours");
             int h = (int) sleepHours;
             int m = (int) Math.round((sleepHours - h) * 60);
-            detail.put("sleepHours", h + "小时" + m + "分钟");
-            String level = (String) detail.get("level");
+            String level = stringValue(detail.get("level"));
             String levelText = "良";
             if ("excellent".equals(level)) levelText = "优";
             else if ("fair".equals(level)) levelText = "中";
             else if ("poor".equals(level)) levelText = "差";
-            detail.put("levelText", levelText);
+            detailList.add(new SleepDetailItemView(
+                    stringValue(detail.get("userName")),
+                    stringValue(detail.get("deptName")),
+                    stringValue(detail.get("empCode")),
+                    h + "小时" + m + "分钟",
+                    nullableInt(detail.get("score")),
+                    level,
+                    levelText,
+                    stringValue(detail.get("recordTime"))
+            ));
         }
-        result.put("detailList", details);
 
+        SleepPageDataView result = new SleepPageDataView(
+                overview,
+                durationLegend,
+                categoryLegend,
+                toDeptUploadViews(deptStats),
+                detailList,
+                totalCount
+        );
+        pageDataCache.put(cacheKey, result, CACHE_TTL_MILLIS);
         return result;
     }
 
-    private Map<String, Object> createLegendItem(String name, long value, String color) {
-        Map<String, Object> item = new HashMap<>();
-        item.put("name", name);
-        item.put("value", value);
-        item.put("color", color);
-        return item;
+    private List<SleepDeptUploadView> toDeptUploadViews(List<Map<String, Object>> deptStats) {
+        List<SleepDeptUploadView> result = new ArrayList<>();
+        for (Map<String, Object> row : deptStats == null ? Collections.<Map<String, Object>>emptyList() : deptStats) {
+            result.add(new SleepDeptUploadView(
+                    stringValue(row.get("deptName")),
+                    MapValueUtil.getInt(row, "count")
+            ));
+        }
+        return result;
     }
 
+    private SleepLegendItemView createLegendItem(String name, long value, String color) {
+        return new SleepLegendItemView(name, value, color);
+    }
+
+    private <T> CompletableFuture<T> supply(Supplier<T> supplier) {
+        return asyncQueryExecutor.supply(supplier);
+    }
+
+    private String recentSleepSource() {
+        return TableSourceUtil.healthRecordSource(
+                LocalDate.now().minusDays(31),
+                LocalDate.now(),
+                "user_code,sleep_minutes,record_time"
+        );
+    }
+
+    private Integer nullableInt(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
 }

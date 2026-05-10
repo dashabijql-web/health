@@ -1,0 +1,77 @@
+# 双库切换说明（2026-05-06）
+
+## 当前状态
+
+- 老库：`health`
+- 新库：`health_new`
+- 新库已按“可写复制库 + 清空业务流水”方式创建完成
+- 保留的数据：
+  - `sys_user`
+  - `sys_role` / `sys_permission` / `sys_user_role` / `sys_role_permission`
+  - `job_type`
+  - `alert_config`
+- 已清空的数据：
+  - `department`
+  - `employee`
+  - `device`
+  - `device_user`
+  - `device_data_buffer`
+  - `health_record*`
+  - `warning_record*`
+  - `realtime_data`
+  - `user_online_status`
+  - `ai_health_report`
+
+## 当前新库核对结果（2026-05-07）
+
+- `department = 0`
+- `employee = 0`
+- `device = 0`
+- `device_user = 0`
+- `realtime_data = 0`
+- `user_online_status = 0`
+- `job_type = 12`
+- `alert_config = 20`
+- `sys_user = 1`
+
+说明：
+
+- 新库已不再保留组织和员工基础数据，后续需要在 `health_new` 内重建。
+- 目前仍保留登录、角色权限、工种、预警阈值等系统基础配置。
+- 默认保留可登录超级管理员：`admin / admin123`，并绑定 `SUPER_ADMIN`。
+
+## 代码默认规则
+
+- 无请求头的直接 HTTP 默认走：`old`
+- 前端页面默认显式请求：`new`
+- 手表数据默认写入：`new`
+- 模拟器 IMEI 正则：`^3594567800\\d{5}$`
+- 命中上述正则的设备写入：`old`
+- Redis 缓冲已按库拆分：
+  - `health:buffer:old`
+  - `health:buffer:new`
+
+## 前端切换
+
+- 顶栏新增“数据源”下拉，可在“新库 / 老库”之间切换
+- 切换后会刷新页面
+- 所有请求统一带请求头：`X-Health-Data-Source`
+- 下拉框只是前端选择，接口是否真正切库以响应头 `X-Health-Data-Source` 为准
+- 后端数据源过滤器早于 Sa-Token 拦截器执行，已改为直接从当前请求的 `satoken` header/cookie 解析用户后授权切库
+
+## 可调环境变量
+
+- `DB_NAME_OLD`：默认 `health`
+- `DB_NAME_NEW`：默认 `health_new`
+- `HEALTH_DEFAULT_SOURCE`：默认 `new`
+- `HEALTH_REQUEST_SOURCE`：默认 `old`
+- `HEALTH_WATCH_SOURCE`：默认 `new`
+- `HEALTH_SIMULATOR_SOURCE`：默认 `old`
+- `HEALTH_SIMULATOR_IMEI_REGEX`：默认 `^3594567800\\d{5}$`
+
+## 明天上线前建议核对
+
+1. 真实手表 IMEI 是否不会命中模拟器正则。
+2. 若真实手表也可能是 `3594567800xxxxx`，先改 `HEALTH_SIMULATOR_IMEI_REGEX`，再启动后端。
+3. 让一台真实手表先连一次，确认它出现在新库 `device` 表。
+4. 再跑一次模拟器，确认它只写老库。

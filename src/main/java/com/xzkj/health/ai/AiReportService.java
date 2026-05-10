@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * AI 健康诊断报告服务
@@ -22,7 +21,7 @@ import java.util.Map;
 public class AiReportService {
 
     @Autowired
-    private SqlExecutorMapper sqlExecutorMapper;
+    private AiReportMapper aiReportMapper;
 
     @Autowired
     private DeepSeekClient deepSeekClient;
@@ -135,51 +134,16 @@ public class AiReportService {
     public String generateDepartmentReport(String deptName) {
         log.info("生成部门健康报告: {}", deptName);
 
-        // Step 1: 查询部门基本信息
-        String deptInfoSql = String.format(
-            "SELECT d.id, d.dept_name, d.risk_level, COUNT(e.id) AS emp_count " +
-            "FROM department d LEFT JOIN employee e ON e.dept_id = d.id " +
-            "WHERE d.dept_name = '%s' GROUP BY d.id, d.dept_name, d.risk_level", deptName
-        );
-        List<Map<String, Object>> deptInfo = sqlExecutorMapper.executeQuery(deptInfoSql);
+        List<AiReportDepartmentInfoRow> deptInfo = aiReportMapper.selectDepartmentInfo(deptName);
         if (deptInfo.isEmpty()) return "未找到部门：" + deptName;
 
-        // Step 2: 查询部门近30天体征均值
-        String healthSql = String.format(
-            "SELECT AVG(CAST(h.heart_rate AS FLOAT)) AS avg_heart_rate, " +
-            "MIN(h.heart_rate) AS min_heart_rate, MAX(h.heart_rate) AS max_heart_rate, " +
-            "AVG(CAST(h.blood_oxygen AS FLOAT)) AS avg_blood_oxygen, " +
-            "MIN(h.blood_oxygen) AS min_blood_oxygen, " +
-            "AVG(CAST(h.blood_pressure_high AS FLOAT)) AS avg_bp_high, " +
-            "AVG(CAST(h.blood_pressure_low AS FLOAT)) AS avg_bp_low, " +
-            "AVG(CAST(h.temperature AS FLOAT)) AS avg_temperature, " +
-            "AVG(CAST(h.sleep_minutes AS FLOAT)) AS avg_sleep_minutes, " +
-            "AVG(CAST(h.steps AS FLOAT)) AS avg_steps, " +
-            "AVG(CAST(h.calories AS FLOAT)) AS avg_calories, " +
-            "AVG(CAST(h.pressure AS FLOAT)) AS avg_pressure, " +
-            "COUNT(DISTINCT h.user_code) AS monitored_emp_count, COUNT(*) AS record_count " +
-            "FROM v_health_record h " +
-            "JOIN employee e ON h.user_code = e.emp_code " +
-            "JOIN department d ON e.dept_id = d.id " +
-            "WHERE d.dept_name = '%s' " +
-            "  AND h.record_time >= DATEADD(DAY, -30, GETDATE()) " +
-            "  AND h.heart_rate IS NOT NULL AND h.heart_rate > 0", deptName
-        );
-        List<Map<String, Object>> healthData = sqlExecutorMapper.executeQuery(healthSql);
-
-        // Step 3: 查询近30天预警汇总
-        String warningSql = String.format(
-            "SELECT w.warning_type, w.warning_level, COUNT(*) AS cnt " +
-            "FROM v_warning_record w " +
-            "JOIN employee e ON w.user_code = e.emp_code " +
-            "JOIN department d ON e.dept_id = d.id " +
-            "WHERE d.dept_name = '%s' " +
-            "  AND w.create_time >= DATEADD(DAY, -30, GETDATE()) " +
-            "GROUP BY w.warning_type, w.warning_level ORDER BY cnt DESC", deptName
-        );
-        List<Map<String, Object>> warnings;
-        try { warnings = sqlExecutorMapper.executeQuery(warningSql); }
-        catch (Exception e) { warnings = List.of(); }
+        AiReportHealthSummaryRow healthData = aiReportMapper.selectDepartmentHealthSummary(deptName);
+        List<AiReportWarningSummaryRow> warnings;
+        try {
+            warnings = aiReportMapper.selectDepartmentWarnings(deptName);
+        } catch (Exception e) {
+            warnings = List.of();
+        }
 
         String userMessage = String.format(
             "请根据以下数据生成部门健康诊断报告：\n\n" +
@@ -187,7 +151,7 @@ public class AiReportService {
             "【近30天体征数据（全部门汇总均值）】\n%s\n\n" +
             "【近30天预警记录】\n%s",
             JSON.toJSONString(deptInfo.get(0)),
-            healthData.isEmpty() ? "暂无体征数据" : JSON.toJSONString(healthData.get(0)),
+            hasHealthData(healthData) ? JSON.toJSONString(healthData) : "暂无体征数据",
             warnings.isEmpty() ? "无预警记录" : JSON.toJSONString(warnings)
         );
 
@@ -204,59 +168,15 @@ public class AiReportService {
     public String generateEmployeeReport(String empCode) {
         log.info("生成员工健康报告: {}", empCode);
 
-        // Step 1: 查询员工基本信息
-        String empInfoSql = String.format(
-            "SELECT e.emp_name, e.emp_code, e.gender, e.birth_date, e.hire_date, " +
-            "d.dept_name, j.type_name AS job_name " +
-            "FROM employee e " +
-            "LEFT JOIN department d ON e.dept_id = d.id " +
-            "LEFT JOIN job_type j ON e.job_type_id = j.id " +
-            "WHERE e.emp_code = '%s'", empCode
-        );
-        List<Map<String, Object>> empInfo = sqlExecutorMapper.executeQuery(empInfoSql);
+        List<AiReportEmployeeInfoRow> empInfo = aiReportMapper.selectEmployeeInfo(empCode);
         if (empInfo.isEmpty()) {
             return "未找到员工工号 " + empCode + " 的信息";
         }
 
-        // Step 2: 查询近30天体征均值
-        String healthSql = String.format(
-            "SELECT " +
-            "  AVG(CAST(heart_rate AS FLOAT)) AS avg_heart_rate, " +
-            "  MIN(heart_rate) AS min_heart_rate, MAX(heart_rate) AS max_heart_rate, " +
-            "  AVG(CAST(blood_oxygen AS FLOAT)) AS avg_blood_oxygen, " +
-            "  MIN(blood_oxygen) AS min_blood_oxygen, " +
-            "  AVG(CAST(blood_pressure_high AS FLOAT)) AS avg_bp_high, " +
-            "  MAX(blood_pressure_high) AS max_bp_high, " +
-            "  AVG(CAST(blood_pressure_low AS FLOAT)) AS avg_bp_low, " +
-            "  MAX(blood_pressure_low) AS max_bp_low, " +
-            "  AVG(CAST(temperature AS FLOAT)) AS avg_temperature, " +
-            "  MAX(temperature) AS max_temperature, " +
-            "  AVG(CAST(sleep_minutes AS FLOAT)) AS avg_sleep_minutes, " +
-            "  MIN(sleep_minutes) AS min_sleep_minutes, " +
-            "  AVG(CAST(steps AS FLOAT)) AS avg_steps, " +
-            "  AVG(CAST(calories AS FLOAT)) AS avg_calories, " +
-            "  AVG(CAST(pressure AS FLOAT)) AS avg_pressure, " +
-            "  MAX(pressure) AS max_pressure, " +
-            "  COUNT(*) AS record_count " +
-            "FROM v_health_record " +
-            "WHERE user_code = '%s' " +
-            "  AND record_time >= DATEADD(DAY, -30, GETDATE()) " +
-            "  AND heart_rate IS NOT NULL AND heart_rate > 0", empCode
-        );
-        List<Map<String, Object>> healthData = sqlExecutorMapper.executeQuery(healthSql);
-
-        // Step 3: 查询近30天预警汇总
-        String warningSql = String.format(
-            "SELECT warning_type, warning_level, COUNT(*) AS cnt " +
-            "FROM v_warning_record " +
-            "WHERE user_code = '%s' " +
-            "  AND create_time >= DATEADD(DAY, -30, GETDATE()) " +
-            "GROUP BY warning_type, warning_level " +
-            "ORDER BY cnt DESC", empCode
-        );
-        List<Map<String, Object>> warnings;
+        AiReportHealthSummaryRow healthData = aiReportMapper.selectEmployeeHealthSummary(empCode);
+        List<AiReportWarningSummaryRow> warnings;
         try {
-            warnings = sqlExecutorMapper.executeQuery(warningSql);
+            warnings = aiReportMapper.selectEmployeeWarnings(empCode);
         } catch (Exception e) {
             log.warn("查询预警记录失败: {}", e.getMessage());
             warnings = List.of();
@@ -269,7 +189,7 @@ public class AiReportService {
             "【近30天体征数据】\n%s\n\n" +
             "【近30天预警记录】\n%s",
             JSON.toJSONString(empInfo.get(0)),
-            healthData.isEmpty() ? "暂无体征数据" : JSON.toJSONString(healthData.get(0)),
+            hasHealthData(healthData) ? JSON.toJSONString(healthData) : "暂无体征数据",
             warnings.isEmpty() ? "无预警记录" : JSON.toJSONString(warnings)
         );
 
@@ -277,5 +197,12 @@ public class AiReportService {
         String report = deepSeekClient.chat(REPORT_SYSTEM_PROMPT, userMessage);
         log.info("报告生成完毕: {} chars", report.length());
         return report;
+    }
+
+    private boolean hasHealthData(AiReportHealthSummaryRow row) {
+        if (row == null || row.getRecordCount() == null) {
+            return false;
+        }
+        return row.getRecordCount().longValue() > 0;
     }
 }

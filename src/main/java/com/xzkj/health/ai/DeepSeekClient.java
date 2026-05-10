@@ -2,17 +2,22 @@ package com.xzkj.health.ai;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.xzkj.health.common.exception.BusinessException;
+import com.xzkj.health.observability.HealthMetricsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -64,7 +69,11 @@ public class DeepSeekClient {
     @Value("${deepseek.timeout-seconds:60}")
     private int timeoutSeconds;
 
+    @Autowired
+    private HealthMetricsService healthMetricsService;
+
     private volatile String resolvedApiKey;
+    private volatile HttpClient httpClient;
 
     /**
      * 发送单轮对话请求
@@ -90,6 +99,8 @@ public class DeepSeekClient {
      */
     public String chatWithHistory(String systemPrompt, List<Map<String, Object>> history, String userMessage) {
         log.debug("调用 DeepSeek | history={} 轮 | userMessage: {}", history.size() / 2, userMessage);
+        long startedAt = System.nanoTime();
+        String metricResult = "success";
 
         // 构建完整 messages 列表：system + history + 当前 user
         List<Map<String, Object>> messages = new java.util.ArrayList<>();
@@ -106,7 +117,6 @@ public class DeepSeekClient {
 
         try {
             String apiToken = resolveApiKey();
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
                     .header("Content-Type", "application/json")
@@ -115,11 +125,13 @@ public class DeepSeekClient {
                     .timeout(Duration.ofSeconds(timeoutSeconds))
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
+                metricResult = "http-" + response.statusCode();
+                healthMetricsService.recordAiReject("provider", "http-" + response.statusCode());
                 log.error("DeepSeek API 返回错误: status={}, body={}", response.statusCode(), response.body());
-                throw new RuntimeException(toUserMessage(response.statusCode()));
+                throw new BusinessException(toUserCode(response.statusCode()), toUserMessage(response.statusCode()));
             }
 
             // 解析响应：choices[0].message.content
@@ -132,11 +144,30 @@ public class DeepSeekClient {
             log.debug("DeepSeek 回复: {}", content);
             return content;
 
-        } catch (RuntimeException e) {
+        } catch (BusinessException e) {
+            if ("success".equals(metricResult)) {
+                metricResult = "business-error";
+            }
             throw e;
+        } catch (HttpTimeoutException e) {
+            metricResult = "timeout";
+            log.warn("DeepSeek API 响应超时");
+            throw new BusinessException(504, "AI服务响应超时，请稍后重试");
+        } catch (InterruptedException e) {
+            metricResult = "interrupted";
+            Thread.currentThread().interrupt();
+            log.warn("DeepSeek API 调用被中断");
+            throw new BusinessException(503, "AI服务调用被中断，请稍后重试");
+        } catch (IOException e) {
+            metricResult = "io-error";
+            log.warn("调用 DeepSeek API 网络失败: {}", e.getMessage());
+            throw new BusinessException(503, "AI服务网络异常，请稍后重试");
         } catch (Exception e) {
+            metricResult = "error";
             log.error("调用 DeepSeek API 失败", e);
-            throw new RuntimeException("AI服务调用失败: " + e.getMessage());
+            throw new BusinessException(503, "AI服务暂时不可用，请稍后重试");
+        } finally {
+            healthMetricsService.recordAiCall("sync", metricResult, elapsedMs(startedAt));
         }
     }
 
@@ -159,6 +190,8 @@ public class DeepSeekClient {
     public void chatStream(String systemPrompt, List<Map<String, Object>> history,
                            String userMessage, Consumer<String> onToken, Consumer<String> onDone) {
         log.debug("流式调用 DeepSeek | history={}轮 | user: {}", history.size() / 2, userMessage);
+        long startedAt = System.nanoTime();
+        String metricResult = "success";
 
         List<Map<String, Object>> messages = new java.util.ArrayList<>();
         messages.add(Map.of("role", "system", "content", systemPrompt));
@@ -174,7 +207,6 @@ public class DeepSeekClient {
 
         try {
             String apiToken = resolveApiKey();
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
                     .header("Content-Type", "application/json")
@@ -184,13 +216,15 @@ public class DeepSeekClient {
                     .build();
 
             // 用流式 BodyHandler 接收响应，不等全部完成
-            HttpResponse<java.io.InputStream> response = client.send(
+            HttpResponse<java.io.InputStream> response = getHttpClient().send(
                 request, HttpResponse.BodyHandlers.ofInputStream()
             );
 
             if (response.statusCode() != 200) {
+                metricResult = "http-" + response.statusCode();
+                healthMetricsService.recordAiReject("provider", "http-" + response.statusCode());
                 log.error("DeepSeek API 流式返回错误: status={}", response.statusCode());
-                throw new RuntimeException(toUserMessage(response.statusCode()));
+                throw new BusinessException(toUserCode(response.statusCode()), toUserMessage(response.statusCode()));
             }
 
             StringBuilder fullContent = new StringBuilder();
@@ -224,11 +258,30 @@ public class DeepSeekClient {
 
             onDone.accept(fullContent.toString()); // 流结束：传入完整内容
 
-        } catch (RuntimeException e) {
+        } catch (BusinessException e) {
+            if ("success".equals(metricResult)) {
+                metricResult = "business-error";
+            }
             throw e;
+        } catch (HttpTimeoutException e) {
+            metricResult = "timeout";
+            log.warn("流式调用 DeepSeek 超时");
+            throw new BusinessException(504, "AI服务响应超时，请稍后重试");
+        } catch (InterruptedException e) {
+            metricResult = "interrupted";
+            Thread.currentThread().interrupt();
+            log.warn("流式调用 DeepSeek 被中断");
+            throw new BusinessException(503, "AI服务调用被中断，请稍后重试");
+        } catch (IOException e) {
+            metricResult = "io-error";
+            log.warn("流式调用 DeepSeek 网络失败: {}", e.getMessage());
+            throw new BusinessException(503, "AI服务网络异常，请稍后重试");
         } catch (Exception e) {
+            metricResult = "error";
             log.error("流式调用 DeepSeek 失败", e);
-            throw new RuntimeException("AI服务调用失败: " + e.getMessage());
+            throw new BusinessException(503, "AI服务暂时不可用，请稍后重试");
+        } finally {
+            healthMetricsService.recordAiCall("stream", metricResult, elapsedMs(startedAt));
         }
     }
 
@@ -252,7 +305,22 @@ public class DeepSeekClient {
             }
         }
 
-        throw new RuntimeException("AI服务密钥未配置：请设置 DEEPSEEK_API_KEY，或在 deepseek-key.txt 中填写有效密钥后重启后端");
+        throw new BusinessException(503, "AI服务未完成配置，请联系管理员");
+    }
+
+    private HttpClient getHttpClient() {
+        HttpClient client = httpClient;
+        if (client != null) {
+            return client;
+        }
+        synchronized (this) {
+            if (httpClient == null) {
+                httpClient = HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(Math.max(5, Math.min(timeoutSeconds, 15))))
+                        .build();
+            }
+            return httpClient;
+        }
     }
 
     private static String trimToNull(String value) {
@@ -263,11 +331,22 @@ public class DeepSeekClient {
 
     private static String toUserMessage(int statusCode) {
         if (statusCode == 401 || statusCode == 403) {
-            return "AI服务认证失败：DeepSeek API Key 无效或已过期，请检查密钥配置";
+            return "AI服务认证失败，请联系管理员检查配置";
         }
         if (statusCode == 429) {
             return "AI服务调用过于频繁或额度不足，请稍后重试";
         }
         return "AI服务暂时不可用，请稍后重试";
+    }
+
+    private static int toUserCode(int statusCode) {
+        if (statusCode == 429) {
+            return 429;
+        }
+        return 503;
+    }
+
+    private long elapsedMs(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000L;
     }
 }

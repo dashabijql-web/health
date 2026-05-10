@@ -2,12 +2,19 @@ package com.xzkj.health.controller;
 
 import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
+import com.xzkj.health.dto.pressure.PressureAbnormalPageView;
+import com.xzkj.health.dto.pressure.PressureDepartmentStatView;
+import com.xzkj.health.dto.pressure.PressureDistributionItemView;
+import com.xzkj.health.dto.pressure.PressureHourlyView;
+import com.xzkj.health.dto.pressure.PressureOverviewView;
+import com.xzkj.health.dto.pressure.PressureRealtimeView;
+import com.xzkj.health.dto.pressure.PressureTopUserView;
+import com.xzkj.health.dto.pressure.PressureTrendView;
 import com.xzkj.health.service.PressureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
 
 /**
  * 压力指数分析控制器
@@ -19,47 +26,23 @@ public class PressureController {
     @Autowired
     private PressureService pressureService;
 
-    // ── 模块级缓存（overview/department-stats/trend 查询较慢）──
-    private final ConcurrentHashMap<String, Object[]> overviewCache  = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Object[]> deptStatsCache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Object[]> trendCache     = new ConcurrentHashMap<>();
-    private static final long CACHE_TTL = 10 * 60 * 1000L; // 10 分钟
-
     @GetMapping("/overview")
-    public Result<Map<String, Object>> getOverview(
+    public Result<PressureOverviewView> getOverview(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         String[] d = DateParamUtil.range30(startDate, endDate);
-        String key = d[0] + "|" + d[1];
-        Object[] cached = overviewCache.get(key);
-        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> hit = (Map<String, Object>) cached[0];
-            return Result.ok("获取成功", hit);
-        }
-        Map<String, Object> data = pressureService.getOverview(d[0], d[1]);
-        overviewCache.put(key, new Object[]{ data, System.currentTimeMillis() + CACHE_TTL });
-        return Result.ok("获取成功", data);
+        return Result.ok("获取成功", pressureService.getPressureOverview(d[0], d[1]));
     }
 
     @GetMapping("/trend")
-    public Result<Map<String, Object>> getTrend(
+    public Result<PressureTrendView> getTrend(
             @RequestParam(defaultValue = "30") Integer days) {
         days = DateParamUtil.clampDays(days);
-        String key = "days:" + days;
-        Object[] cached = trendCache.get(key);
-        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> hit = (Map<String, Object>) cached[0];
-            return Result.ok("获取成功", hit);
-        }
-        Map<String, Object> data = pressureService.getTrend(days);
-        trendCache.put(key, new Object[]{ data, System.currentTimeMillis() + CACHE_TTL });
-        return Result.ok("获取成功", data);
+        return Result.ok("获取成功", pressureService.getPressureTrend(days));
     }
 
     @GetMapping("/distribution")
-    public Result<List<Map<String, Object>>> getDistribution(
+    public Result<List<PressureDistributionItemView>> getDistribution(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         String[] d = DateParamUtil.range30(startDate, endDate);
@@ -67,7 +50,7 @@ public class PressureController {
     }
 
     @GetMapping("/top-users")
-    public Result<List<Map<String, Object>>> getTopUsers(
+    public Result<List<PressureTopUserView>> getTopUsers(
             @RequestParam(defaultValue = "5") Integer limit,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
@@ -76,36 +59,27 @@ public class PressureController {
     }
 
     @GetMapping("/department-stats")
-    public Result<List<Map<String, Object>>> getDepartmentStats(
+    public Result<List<PressureDepartmentStatView>> getDepartmentStats(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         String[] d = DateParamUtil.range30(startDate, endDate);
-        String key = d[0] + "|" + d[1];
-        Object[] cached = deptStatsCache.get(key);
-        if (cached != null && System.currentTimeMillis() < (long) cached[1]) {
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> hit = (List<Map<String, Object>>) cached[0];
-            return Result.ok("获取成功", hit);
-        }
-        List<Map<String, Object>> data = pressureService.getDepartmentStats(d[0], d[1]);
-        deptStatsCache.put(key, new Object[]{ data, System.currentTimeMillis() + CACHE_TTL });
-        return Result.ok("获取成功", data);
+        return Result.ok("获取成功", pressureService.getDepartmentStats(d[0], d[1]));
     }
 
     @GetMapping("/realtime")
-    public Result<List<Map<String, Object>>> getRealtime(
+    public Result<List<PressureRealtimeView>> getRealtime(
             @RequestParam(defaultValue = "1000") Integer limit) {
         return Result.ok("获取成功", pressureService.getRealtime(limit));
     }
 
     @GetMapping("/hourly")
-    public Result<List<Map<String, Object>>> getHourly(
+    public Result<List<PressureHourlyView>> getHourly(
             @RequestParam(required = false) String date) {
         return Result.ok("获取成功", pressureService.getHourlyStats(DateParamUtil.today(date)));
     }
 
     @GetMapping("/abnormal")
-    public Result<Map<String, Object>> getAbnormal(
+    public Result<PressureAbnormalPageView> getAbnormal(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         size = DateParamUtil.clampSize(size);

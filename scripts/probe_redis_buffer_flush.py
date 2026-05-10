@@ -18,12 +18,21 @@ ROOT = Path(__file__).resolve().parents[1]
 SQL_SERVER = os.getenv("SQL_SERVER", "localhost,58135")
 SQL_USER = os.getenv("SQL_USER", "sa")
 SQL_PASSWORD = os.getenv("SQL_PASSWORD", "123abcd.")
-SQL_DB = os.getenv("SQL_DB", "health")
 SQLCMD_BIN = os.getenv("SQLCMD_BIN") or shutil.which("sqlcmd") or ""
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_TIMEOUT = float(os.getenv("REDIS_TIMEOUT", "3"))
 WAIT_SECONDS = int(os.getenv("HEALTH_BUFFER_WAIT_SECONDS", "20"))
+
+
+def normalize_source(raw: str | None) -> str:
+    value = (raw or "").strip().lower()
+    return value if value in {"old", "new"} else "old"
+
+
+PROBE_SOURCE = normalize_source(os.getenv("HEALTH_BUFFER_PROBE_SOURCE", os.getenv("HEALTH_SIMULATOR_SOURCE", "old")))
+SQL_DB = os.getenv("SQL_DB") or os.getenv(f"DB_NAME_{PROBE_SOURCE.upper()}") or ("health_new" if PROBE_SOURCE == "new" else "health")
+REDIS_BUFFER_KEY = os.getenv("HEALTH_BUFFER_KEY") or f"health:buffer:{PROBE_SOURCE}"
 
 
 def sql_json(query: str):
@@ -48,7 +57,6 @@ def sql_json(query: str):
             "0",
             "-Y",
             "0",
-            "-h-1",
             "-Q",
             batch,
         ],
@@ -179,7 +187,7 @@ def cleanup_sql_insert(user_code: str, record_time: str) -> int:
 
 
 def cleanup_redis_payload(client: RedisSocketClient, payload: str) -> int:
-    removed = client.execute("LREM", "health:buffer", "0", payload)
+    removed = client.execute("LREM", REDIS_BUFFER_KEY, "0", payload)
     return int(removed) if isinstance(removed, int) else 0
 
 
@@ -190,7 +198,7 @@ def main() -> int:
 
     try:
         client.execute("PING")
-        client.execute("RPUSH", "health:buffer", payload)
+        client.execute("RPUSH", REDIS_BUFFER_KEY, payload)
 
         deadline = time.time() + WAIT_SECONDS
         while time.time() < deadline:
@@ -221,6 +229,9 @@ def main() -> int:
                 [
                     "Redis buffer flush probe",
                     f"  - redis: {REDIS_HOST}:{REDIS_PORT}",
+                    f"  - source: {PROBE_SOURCE}",
+                    f"  - redis_key: {REDIS_BUFFER_KEY}",
+                    f"  - sql_db: {SQL_DB}",
                     f"  - sql_table: {current_month_table()}",
                     f"  - inserted_id: {inserted['id']}",
                     f"  - user_code: {user_code}",

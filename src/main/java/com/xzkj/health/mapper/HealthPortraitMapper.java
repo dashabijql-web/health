@@ -1,11 +1,16 @@
 package com.xzkj.health.mapper;
 
+import com.xzkj.health.dto.portrait.PortraitEmployeeRow;
+import com.xzkj.health.dto.portrait.PortraitExerciseRow;
+import com.xzkj.health.dto.portrait.PortraitHourlyHeartRateRow;
+import com.xzkj.health.dto.portrait.PortraitTrendRow;
+import com.xzkj.health.dto.portrait.PortraitVitalsRow;
+import com.xzkj.health.dto.portrait.PortraitWarningRow;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
-import java.util.Map;
 
 @Mapper
 public interface HealthPortraitMapper {
@@ -18,7 +23,7 @@ public interface HealthPortraitMapper {
             "LEFT JOIN department d ON e.dept_id = d.id " +
             "LEFT JOIN job_type j ON e.job_type_id = j.id " +
             "WHERE e.emp_code = #{empCode}")
-    Map<String, Object> getEmployeeDetail(@Param("empCode") String empCode);
+    PortraitEmployeeRow getEmployeeDetail(@Param("empCode") String empCode);
 
     @Select("WITH Base AS ( " +
             "  SELECT heart_rate, blood_oxygen, temperature, blood_pressure_high, blood_pressure_low, pressure, steps, calories, record_time, " +
@@ -45,7 +50,7 @@ public interface HealthPortraitMapper {
             "  MAX(CASE WHEN rn_st  = 1 AND steps    IS NOT NULL THEN steps    END) AS steps, " +
             "  MAX(CASE WHEN rn_cal = 1 AND calories IS NOT NULL THEN calories END) AS calories " +
             "FROM Base")
-    Map<String, Object> getLatestVitals(@Param("empCode") String empCode);
+    PortraitVitalsRow getLatestVitals(@Param("empCode") String empCode);
 
     @Select("SELECT TOP 1 " +
             "ISNULL(steps, 0) AS todaySteps, " +
@@ -56,7 +61,7 @@ public interface HealthPortraitMapper {
             "AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, CONVERT(DATE, GETDATE()))) " +
             "AND (steps IS NOT NULL OR calories IS NOT NULL) " +
             "ORDER BY record_time DESC")
-    Map<String, Object> getTodayExercise(@Param("empCode") String empCode);
+    PortraitExerciseRow getTodayExercise(@Param("empCode") String empCode);
 
     @Select("SELECT CONVERT(VARCHAR(10), record_time, 120) AS date, " +
             "ROUND(AVG(CAST(heart_rate   AS FLOAT)), 0) AS avgHeartRate, " +
@@ -67,7 +72,7 @@ public interface HealthPortraitMapper {
             "AND heart_rate IS NOT NULL " +
             "GROUP BY CONVERT(VARCHAR(10), record_time, 120) " +
             "ORDER BY date ASC")
-    List<Map<String, Object>> get7DayTrend(@Param("empCode") String empCode);
+    List<PortraitTrendRow> get7DayTrend(@Param("empCode") String empCode);
 
     @Select("SELECT TOP 50 " +
             "warning_type AS warningType, " +
@@ -79,7 +84,7 @@ public interface HealthPortraitMapper {
             "WHERE user_code = #{empCode} " +
             "AND create_time >= DATEADD(DAY, -30, GETDATE()) " +
             "ORDER BY create_time DESC")
-    List<Map<String, Object>> get30DayWarnings(@Param("empCode") String empCode);
+    List<PortraitWarningRow> get30DayWarnings(@Param("empCode") String empCode);
 
     @Select("SELECT DATEPART(HOUR, record_time) AS hour, " +
             "AVG(CAST(heart_rate AS FLOAT)) AS avgHr " +
@@ -90,5 +95,5 @@ public interface HealthPortraitMapper {
             "AND heart_rate IS NOT NULL AND heart_rate > 0 " +
             "GROUP BY DATEPART(HOUR, record_time) " +
             "ORDER BY hour ASC")
-    List<Map<String, Object>> getHourlyHeartRate(@Param("empCode") String empCode, @Param("date") String date);
+    List<PortraitHourlyHeartRateRow> getHourlyHeartRate(@Param("empCode") String empCode, @Param("date") String date);
 }

@@ -1,7 +1,16 @@
 package com.xzkj.health.service;
 
 import com.xzkj.health.common.MapValueUtil;
+import com.xzkj.health.config.datasource.HealthDataSourceContext;
+import com.xzkj.health.dto.riskwarning.RiskWarningDeptStatView;
+import com.xzkj.health.dto.riskwarning.RiskWarningItemView;
+import com.xzkj.health.dto.riskwarning.RiskWarningOverviewView;
+import com.xzkj.health.dto.riskwarning.RiskWarningPageView;
+import com.xzkj.health.dto.riskwarning.RiskWarningTrendSeriesView;
+import com.xzkj.health.dto.riskwarning.RiskWarningTrendView;
+import com.xzkj.health.dto.riskwarning.RiskWarningTypeCountView;
 import com.xzkj.health.mapper.RiskWarningMapper;
+import com.xzkj.health.observability.HealthMetricsService;
 import com.xzkj.health.util.TableNameUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,32 +38,40 @@ public class RiskWarningService {
     @Autowired
     private RiskWarningMapper riskWarningMapper;
 
+    @Autowired
+    private HealthMetricsService healthMetricsService;
+
     // ─── 读取 ─────────────────────────────────────────────────────────
 
-    public Map<String, Object> getWarningStats(String startDate, String endDate) {
+    public RiskWarningOverviewView getWarningStats(String startDate, String endDate) {
         Map<String, Object> stats = riskWarningMapper.getWarningOverview(startDate, endDate);
-        if (!stats.containsKey("handledRate")) {
-            long total = MapValueUtil.getLong(stats, "totalWarnings");
-            long handled = MapValueUtil.getLong(stats, "handledWarnings");
-            stats.put("handledRate", total > 0 ? (int) (handled * 100 / total) : 0);
-        }
-        return stats;
+        int handledRate = stats != null && stats.containsKey("handledRate")
+                ? MapValueUtil.getInt(stats, "handledRate")
+                : calculateHandledRate(stats);
+        return new RiskWarningOverviewView(
+                MapValueUtil.getInt(stats, "heartRateCount"),
+                MapValueUtil.getInt(stats, "sleepCount"),
+                MapValueUtil.getInt(stats, "bloodOxygenCount"),
+                MapValueUtil.getInt(stats, "temperatureCount"),
+                MapValueUtil.getInt(stats, "pressureCount"),
+                MapValueUtil.getInt(stats, "totalWarnings"),
+                MapValueUtil.getInt(stats, "handledWarnings"),
+                MapValueUtil.getInt(stats, "pendingWarnings"),
+                MapValueUtil.getInt(stats, "dangerCount"),
+                MapValueUtil.getInt(stats, "warningCount"),
+                handledRate
+        );
     }
 
-    public Map<String, Object> getWarningList(String level, Boolean handled, String userCode, String warningType, String startDate, String endDate, int page, int size) {
+    public RiskWarningPageView getWarningList(String level, Boolean handled, String userCode, String warningType, String startDate, String endDate, int page, int size) {
         int offset = (page - 1) * size;
         List<Map<String, Object>> list = riskWarningMapper.getWarningList(level, handled, userCode, warningType, startDate, endDate, offset, size);
         int total = riskWarningMapper.countWarnings(level, handled, userCode, warningType, startDate, endDate);
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("list", list);
-        result.put("total", total);
-        result.put("page", page);
-        result.put("size", size);
-        return result;
+        return new RiskWarningPageView(toItemViews(list), total, page, size);
     }
 
-    public Map<String, Object> getWarningTrend(int days) {
+    public RiskWarningTrendView getWarningTrend(int days) {
         List<Map<String, Object>> trendData = riskWarningMapper.getWarningTrendByType(days);
 
         List<String> dates = new ArrayList<>();
@@ -74,24 +91,43 @@ public class RiskWarningService {
             pressureData.add(MapValueUtil.getInt(item, "pressure"));
         }
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("dates", dates);
-        Map<String, List<Integer>> series = new HashMap<>();
-        series.put("heartRate", heartRateData);
-        series.put("bloodOxygen", bloodOxygenData);
-        series.put("sleep", sleepData);
-        series.put("temperature", temperatureData);
-        series.put("pressure", pressureData);
-        result.put("series", series);
+        return new RiskWarningTrendView(
+                dates,
+                new RiskWarningTrendSeriesView(
+                        heartRateData,
+                        bloodOxygenData,
+                        sleepData,
+                        temperatureData,
+                        pressureData
+                )
+        );
+    }
+
+    public List<RiskWarningDeptStatView> getDeptWarningStats(String startDate, String endDate) {
+        List<RiskWarningDeptStatView> result = new ArrayList<>();
+        for (Map<String, Object> row : MapValueUtil.orEmpty(riskWarningMapper.getDeptWarningStats(startDate, endDate))) {
+            result.add(new RiskWarningDeptStatView(
+                    stringValue(row.get("deptName")),
+                    MapValueUtil.getInt(row, "heartRate"),
+                    MapValueUtil.getInt(row, "bloodOxygen"),
+                    MapValueUtil.getInt(row, "sleep"),
+                    MapValueUtil.getInt(row, "temperature"),
+                    MapValueUtil.getInt(row, "pressure"),
+                    MapValueUtil.getInt(row, "total")
+            ));
+        }
         return result;
     }
 
-    public List<Map<String, Object>> getDeptWarningStats(String startDate, String endDate) {
-        return riskWarningMapper.getDeptWarningStats(startDate, endDate);
-    }
-
-    public List<Map<String, Object>> getTypeDistribution() {
-        return riskWarningMapper.getTypeDistribution();
+    public List<RiskWarningTypeCountView> getTypeDistribution() {
+        List<RiskWarningTypeCountView> result = new ArrayList<>();
+        for (Map<String, Object> row : MapValueUtil.orEmpty(riskWarningMapper.getTypeDistribution())) {
+            result.add(new RiskWarningTypeCountView(
+                    stringValue(row.get("type")),
+                    MapValueUtil.getInt(row, "count")
+            ));
+        }
+        return result;
     }
 
     // ─── 写入：新预警记录 ─────────────────────────────────────────────
@@ -103,8 +139,11 @@ public class RiskWarningService {
      */
     public boolean hasRecentWarning(String userCode, String indicatorName, int minutes) {
         try {
-            return riskWarningMapper.countRecentWarning(userCode, indicatorName, minutes) > 0;
+            boolean hit = riskWarningMapper.countRecentWarning(userCode, indicatorName, minutes) > 0;
+            healthMetricsService.recordWarningDedup(indicatorName, hit ? "hit" : "miss");
+            return hit;
         } catch (Exception e) {
+            healthMetricsService.recordWarningDedup(indicatorName, "failed-open");
             log.warn("检查近期预警失败，允许插入: userCode={}, indicator={}, error={}",
                     userCode, indicatorName, e.getMessage());
             return false;
@@ -118,11 +157,15 @@ public class RiskWarningService {
     public boolean insertWarning(String userCode, String warningType,
                                  String indicatorName, String indicatorValue, String warningLevel) {
         String tableName = TableNameUtil.warningRecordTable();
+        String source = HealthDataSourceContext.get() == null ? "unknown" : HealthDataSourceContext.get().key();
         try {
             int rows = riskWarningMapper.insertToWarningTable(
                     tableName, userCode, warningType, indicatorName, indicatorValue, warningLevel);
-            return rows > 0;
+            boolean success = rows > 0;
+            healthMetricsService.recordWarningGenerated(source, warningType, warningLevel, success ? "success" : "empty");
+            return success;
         } catch (Exception e) {
+            healthMetricsService.recordWarningGenerated(source, warningType, warningLevel, "failure");
             log.error("[分表] 插入预警到 {} 失败: {}", tableName, e.getMessage(), e);
             return false;
         }
@@ -252,6 +295,30 @@ public class RiskWarningService {
         return TableNameUtil.warningRecordTable(createTime);
     }
 
+    private List<RiskWarningItemView> toItemViews(List<Map<String, Object>> rows) {
+        List<RiskWarningItemView> result = new ArrayList<>();
+        for (Map<String, Object> row : MapValueUtil.orEmpty(rows)) {
+            result.add(new RiskWarningItemView(
+                    MapValueUtil.toLong(row.get("id")),
+                    stringValue(row.get("userName")),
+                    stringValue(row.get("userCode")),
+                    stringValue(row.get("deptName")),
+                    nullableInt(row.get("gender")),
+                    nullableInt(row.get("age")),
+                    stringValue(row.get("warningType")),
+                    stringValue(row.get("warningLevel")),
+                    stringValue(row.get("warningValue")),
+                    stringValue(row.get("indicatorName")),
+                    nullableBoolean(row.get("handled")),
+                    stringValue(row.get("createTime")),
+                    stringValue(row.get("handleBy")),
+                    stringValue(row.get("handleTime")),
+                    stringValue(row.get("handleNote"))
+            ));
+        }
+        return result;
+    }
+
     /** 将数据库返回的时间对象（可能是 Timestamp/String）解析为 LocalDateTime */
     private LocalDateTime parseDateTime(Object value) {
         if (value == null) return null;
@@ -266,6 +333,40 @@ public class RiskWarningService {
             }
         }
         return null;
+    }
+
+    private Integer nullableInt(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number number) return number.intValue();
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private Boolean nullableBoolean(Object value) {
+        if (value == null) return null;
+        if (value instanceof Boolean bool) return bool;
+        if (value instanceof Number number) return number.intValue() != 0;
+        String text = String.valueOf(value).trim();
+        if ("1".equals(text) || "true".equalsIgnoreCase(text) || "yes".equalsIgnoreCase(text)) {
+            return true;
+        }
+        if ("0".equals(text) || "false".equalsIgnoreCase(text) || "no".equalsIgnoreCase(text)) {
+            return false;
+        }
+        return null;
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private int calculateHandledRate(Map<String, Object> stats) {
+        long total = MapValueUtil.getLong(stats, "totalWarnings");
+        long handled = MapValueUtil.getLong(stats, "handledWarnings");
+        return total > 0 ? (int) (handled * 100 / total) : 0;
     }
 
 }

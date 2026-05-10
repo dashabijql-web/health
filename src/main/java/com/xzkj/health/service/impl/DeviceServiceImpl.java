@@ -2,11 +2,13 @@ package com.xzkj.health.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xzkj.health.config.datasource.HealthDataSourceContext;
 import com.xzkj.health.mapper.DeviceMapper;
 import com.xzkj.health.model.Device;
 import com.xzkj.health.model.DeviceUser;
 import com.xzkj.health.service.DeviceService;
 import com.xzkj.health.service.DeviceUserService;
+import com.xzkj.health.config.datasource.WatchDataSourceResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -30,6 +32,9 @@ public class DeviceServiceImpl extends ServiceImpl<DeviceMapper, Device> impleme
 
     @Autowired
     private DeviceUserService deviceUserService;
+
+    @Autowired
+    private WatchDataSourceResolver watchDataSourceResolver;
 
     @Override
     public Device getOrCreateByImei(String imei) {
@@ -72,14 +77,16 @@ public class DeviceServiceImpl extends ServiceImpl<DeviceMapper, Device> impleme
     @Override
     @Async
     public void updateOfflineStatus(String imei) {
-        Device device = baseMapper.selectOne(
-            new LambdaQueryWrapper<Device>().eq(Device::getImei, imei)
-        );
-        if (device != null) {
-            device.setStatus(0);
-            device.setUpdateTime(LocalDateTime.now());
-            baseMapper.updateById(device);
-        }
+        HealthDataSourceContext.runWith(watchDataSourceResolver.resolveWatchSource(imei), () -> {
+            Device device = baseMapper.selectOne(
+                new LambdaQueryWrapper<Device>().eq(Device::getImei, imei)
+            );
+            if (device != null) {
+                device.setStatus(0);
+                device.setUpdateTime(LocalDateTime.now());
+                baseMapper.updateById(device);
+            }
+        });
     }
 
     @Override

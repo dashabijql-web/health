@@ -3,11 +3,17 @@ package com.xzkj.health.controller;
 import com.xzkj.health.common.DateParamUtil;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.common.exception.BusinessException;
+import com.xzkj.health.dto.riskwarning.RiskWarningDeptStatView;
+import com.xzkj.health.dto.riskwarning.RiskWarningOverviewView;
+import com.xzkj.health.dto.riskwarning.RiskWarningPageView;
+import com.xzkj.health.dto.riskwarning.RiskWarningTrendView;
+import com.xzkj.health.dto.riskwarning.RiskWarningTypeCountView;
 import com.xzkj.health.service.RiskWarningService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 风险预警控制器
@@ -21,7 +27,7 @@ public class RiskWarningController {
 
     /** 获取风险预警统计概览 */
     @GetMapping("/overview")
-    public Result<Map<String, Object>> getOverview(
+    public Result<RiskWarningOverviewView> getOverview(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         String[] d = DateParamUtil.range30(startDate, endDate);
@@ -30,7 +36,7 @@ public class RiskWarningController {
 
     /** 获取预警列表（分页+过滤） */
     @GetMapping("/list")
-    public Result<Map<String, Object>> getList(
+    public Result<RiskWarningPageView> getList(
             @RequestParam(required = false) String level,
             @RequestParam(required = false) Boolean handled,
             @RequestParam(required = false) String userCode,
@@ -45,7 +51,7 @@ public class RiskWarningController {
 
     /** 获取预警趋势（按类型分组） */
     @GetMapping("/trend")
-    public Result<Map<String, Object>> getTrend(
+    public Result<RiskWarningTrendView> getTrend(
             @RequestParam(defaultValue = "30") Integer days) {
         days = DateParamUtil.clampDays(days);
         return Result.ok("获取成功", riskWarningService.getWarningTrend(days));
@@ -53,7 +59,7 @@ public class RiskWarningController {
 
     /** 获取各部门预警统计 */
     @GetMapping("/dept-stats")
-    public Result<List<Map<String, Object>>> getDeptStats(
+    public Result<List<RiskWarningDeptStatView>> getDeptStats(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         String[] d = DateParamUtil.range30(startDate, endDate);
@@ -62,7 +68,7 @@ public class RiskWarningController {
 
     /** 获取预警类型分布 */
     @GetMapping("/type-distribution")
-    public Result<List<Map<String, Object>>> getTypeDistribution() {
+    public Result<List<RiskWarningTypeCountView>> getTypeDistribution() {
         return Result.ok("获取成功", riskWarningService.getTypeDistribution());
     }
 

@@ -1,11 +1,19 @@
 package com.xzkj.health.mapper;
 
+import com.xzkj.health.dto.bloodoxygen.BloodOxygenAbnormalRecordRow;
+import com.xzkj.health.dto.bloodoxygen.BloodOxygenAgeStatRow;
+import com.xzkj.health.dto.bloodoxygen.BloodOxygenDepartmentStatRow;
+import com.xzkj.health.dto.bloodoxygen.BloodOxygenDistributionRow;
+import com.xzkj.health.dto.bloodoxygen.BloodOxygenHourlyRow;
+import com.xzkj.health.dto.bloodoxygen.BloodOxygenOverviewRow;
+import com.xzkj.health.dto.bloodoxygen.BloodOxygenRealtimeRow;
+import com.xzkj.health.dto.bloodoxygen.BloodOxygenTopUserRow;
+import com.xzkj.health.dto.bloodoxygen.BloodOxygenTrendRow;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 血氧数据访问接口
@@ -21,18 +29,18 @@ public interface BloodOxygenMapper {
      * 获取当月血氧统计概览（legacy — 直接查 v_health_record，跨月慢，保留供fallback）
      */
     @Select("SELECT " +
-            "CAST(AVG(CAST(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END AS FLOAT)) AS DECIMAL(5,2)) AS avgBloodOxygen, " +
-            "COALESCE(MAX(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END), 0) AS maxBloodOxygen, " +
-            "COALESCE(MIN(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END), 0) AS minBloodOxygen, " +
-            "COUNT(DISTINCT CASE WHEN blood_oxygen >= 95 THEN user_code END) AS normalCount, " +
-            "COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL AND blood_oxygen < 95 THEN user_code END) AS abnormalCount, " +
-            "COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL THEN user_code END) AS totalCount, " +
+            "CAST(AVG(CAST(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END AS FLOAT)) AS DECIMAL(5,2)) AS avg_blood_oxygen, " +
+            "COALESCE(MAX(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END), 0) AS max_blood_oxygen, " +
+            "COALESCE(MIN(CASE WHEN blood_oxygen IS NOT NULL THEN blood_oxygen END), 0) AS min_blood_oxygen, " +
+            "COUNT(DISTINCT CASE WHEN blood_oxygen >= 95 THEN user_code END) AS normal_count, " +
+            "COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL AND blood_oxygen < 95 THEN user_code END) AS abnormal_count, " +
+            "COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL THEN user_code END) AS total_count, " +
             "ISNULL(COUNT(DISTINCT CASE WHEN blood_oxygen IS NOT NULL THEN user_code END) * 100 / " +
-            "  NULLIF(COUNT(DISTINCT user_code), 0), 0) AS detectionRate " +
+            "  NULLIF(COUNT(DISTINCT user_code), 0), 0) AS detection_rate " +
             "FROM v_health_record " +
             "WHERE record_time >= CONVERT(DATETIME, #{startDate}) " +
             "AND   record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate}))")
-    Map<String, Object> getBloodOxygenStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
+    BloodOxygenOverviewRow getBloodOxygenStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取血氧统计概览 — 直接查分区表，避免 v_health_record UNION ALL 全扫描（Round 15优化）
@@ -42,13 +50,13 @@ public interface BloodOxygenMapper {
      * 再做外层聚合，消除 4 次 COUNT(DISTINCT) 对海量数据的全表哈希排序（6154ms→71ms）。
      */
     @Select("SELECT " +
-            "CAST(AVG(CAST(_agg.avg_bo AS FLOAT)) AS DECIMAL(5,2)) AS avgBloodOxygen, " +
-            "ISNULL(MAX(_agg.max_bo), 0) AS maxBloodOxygen, " +
-            "ISNULL(MIN(_agg.min_bo), 0) AS minBloodOxygen, " +
-            "SUM(CASE WHEN _agg.has_normal  = 1 THEN 1 ELSE 0 END) AS normalCount, " +
-            "SUM(CASE WHEN _agg.has_abnormal = 1 THEN 1 ELSE 0 END) AS abnormalCount, " +
-            "COUNT(*) AS totalCount, " +
-            "ISNULL(SUM(CASE WHEN _agg.has_normal = 1 THEN 1 ELSE 0 END) * 100 / NULLIF(COUNT(*), 0), 0) AS detectionRate " +
+            "CAST(AVG(CAST(_agg.avg_bo AS FLOAT)) AS DECIMAL(5,2)) AS avg_blood_oxygen, " +
+            "ISNULL(MAX(_agg.max_bo), 0) AS max_blood_oxygen, " +
+            "ISNULL(MIN(_agg.min_bo), 0) AS min_blood_oxygen, " +
+            "SUM(CASE WHEN _agg.has_normal  = 1 THEN 1 ELSE 0 END) AS normal_count, " +
+            "SUM(CASE WHEN _agg.has_abnormal = 1 THEN 1 ELSE 0 END) AS abnormal_count, " +
+            "COUNT(*) AS total_count, " +
+            "ISNULL(SUM(CASE WHEN _agg.has_normal = 1 THEN 1 ELSE 0 END) * 100 / NULLIF(COUNT(*), 0), 0) AS detection_rate " +
             "FROM ( " +
             "  SELECT user_code, " +
             "    AVG(CAST(blood_oxygen AS FLOAT)) AS avg_bo, " +
@@ -62,24 +70,24 @@ public interface BloodOxygenMapper {
             "  AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
             "  GROUP BY user_code " +
             ") AS _agg")
-    Map<String, Object> getBloodOxygenStatsDirect(@Param("tableSource") String tableSource,
-                                                   @Param("startDate") String startDate,
-                                                   @Param("endDate") String endDate);
+    BloodOxygenOverviewRow getBloodOxygenStatsDirect(@Param("tableSource") String tableSource,
+                                                     @Param("startDate") String startDate,
+                                                     @Param("endDate") String endDate);
 
     /**
      * 获取血氧趋势数据（无 DECLARE，原本就是单语句，保持不变）
      */
     @Select("SELECT " +
             "CONVERT(VARCHAR(10), record_time, 23) AS date, " +
-            "AVG(CAST(blood_oxygen AS FLOAT)) AS avgBloodOxygen, " +
-            "MAX(blood_oxygen) AS maxBloodOxygen, " +
-            "MIN(blood_oxygen) AS minBloodOxygen " +
+            "AVG(CAST(blood_oxygen AS FLOAT)) AS avg_blood_oxygen, " +
+            "MAX(blood_oxygen) AS max_blood_oxygen, " +
+            "MIN(blood_oxygen) AS min_blood_oxygen " +
             "FROM v_health_record " +
             "WHERE blood_oxygen IS NOT NULL " +
             "AND record_time >= DATEADD(DAY, -#{days}, GETDATE()) " +
             "GROUP BY CONVERT(VARCHAR(10), record_time, 23) " +
             "ORDER BY date")
-    List<Map<String, Object>> getBloodOxygenTrend(@Param("days") Integer days);
+    List<BloodOxygenTrendRow> getBloodOxygenTrend(@Param("days") Integer days);
 
     /**
      * 获取血氧分布统计
@@ -112,7 +120,7 @@ public interface BloodOxygenMapper {
             ") AS grouped " +
             "GROUP BY range, sort_order " +
             "ORDER BY sort_order")
-    List<Map<String, Object>> getBloodOxygenDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
+    List<BloodOxygenDistributionRow> getBloodOxygenDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取异常血氧记录（分页）
@@ -121,11 +129,11 @@ public interface BloodOxygenMapper {
      */
     @Select("SELECT " +
             "hr.id, " +
-            "hr.user_code AS userCode, " +
-            "ISNULL(e.emp_name, hr.user_code) AS userName, " +
-            "ISNULL(d.dept_name, '') AS deptName, " +
-            "hr.blood_oxygen AS bloodOxygen, " +
-            "hr.record_time AS recordTime, " +
+            "hr.user_code AS user_code, " +
+            "ISNULL(e.emp_name, hr.user_code) AS user_name, " +
+            "ISNULL(d.dept_name, '') AS dept_name, " +
+            "hr.blood_oxygen AS blood_oxygen, " +
+            "hr.record_time AS record_time, " +
             "CASE " +
             "  WHEN hr.blood_oxygen < 90 THEN 'danger' " +
             "  WHEN hr.blood_oxygen < 95 THEN 'warning' " +
@@ -138,8 +146,8 @@ public interface BloodOxygenMapper {
             "AND hr.record_time >= DATEADD(DAY, -30, GETDATE()) " +
             "ORDER BY hr.record_time DESC " +
             "OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY")
-    List<Map<String, Object>> getAbnormalRecords(@Param("offset") Integer offset,
-                                                 @Param("size") Integer size);
+    List<BloodOxygenAbnormalRecordRow> getAbnormalRecords(@Param("offset") Integer offset,
+                                                          @Param("size") Integer size);
 
     /**
      * 获取异常血氧记录总数
@@ -153,8 +161,8 @@ public interface BloodOxygenMapper {
      * 获取TOP异常人员统计
      */
     @Select("SELECT TOP (#{limit}) " +
-            "hr.user_code AS userCode, " +
-            "ISNULL(e.emp_name, hr.user_code) AS userName, " +
+            "hr.user_code AS user_code, " +
+            "ISNULL(e.emp_name, hr.user_code) AS user_name, " +
             "COUNT(*) AS count " +
             "FROM v_health_record hr " +
             "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
@@ -164,17 +172,17 @@ public interface BloodOxygenMapper {
             "AND hr.record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
             "GROUP BY hr.user_code, e.emp_name " +
             "ORDER BY count DESC")
-    List<Map<String, Object>> getTopUsers(@Param("limit") int limit, @Param("startDate") String startDate, @Param("endDate") String endDate);
+    List<BloodOxygenTopUserRow> getTopUsers(@Param("limit") int limit, @Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取部门血氧统计
      */
     @Select("SELECT " +
-            "d.dept_name AS deptName, " +
-            "CAST(AVG(CAST(hr.blood_oxygen AS FLOAT)) AS INT) AS avgBloodOxygen, " +
-            "SUM(CASE WHEN hr.blood_oxygen < 90 THEN 1 ELSE 0 END) AS lowCount, " +
-            "SUM(CASE WHEN hr.blood_oxygen >= 99 THEN 1 ELSE 0 END) AS highCount, " +
-            "COUNT(*) AS totalCount " +
+            "d.dept_name AS dept_name, " +
+            "CAST(AVG(CAST(hr.blood_oxygen AS FLOAT)) AS INT) AS avg_blood_oxygen, " +
+            "SUM(CASE WHEN hr.blood_oxygen < 90 THEN 1 ELSE 0 END) AS low_count, " +
+            "SUM(CASE WHEN hr.blood_oxygen >= 99 THEN 1 ELSE 0 END) AS high_count, " +
+            "COUNT(*) AS total_count " +
             "FROM v_health_record hr " +
             "INNER JOIN employee e ON hr.user_code = e.emp_code " +
             "INNER JOIN department d ON e.dept_id = d.id " +
@@ -183,8 +191,8 @@ public interface BloodOxygenMapper {
             "AND hr.record_time >= CONVERT(DATETIME, #{startDate}) " +
             "AND hr.record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
             "GROUP BY d.dept_name " +
-            "ORDER BY avgBloodOxygen DESC")
-    List<Map<String, Object>> getDepartmentStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
+            "ORDER BY avg_blood_oxygen DESC")
+    List<BloodOxygenDepartmentStatRow> getDepartmentStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取年龄段血氧分布（关联 employee.birth_date 计算真实年龄）
@@ -196,8 +204,8 @@ public interface BloodOxygenMapper {
             "  WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 40 THEN '30-40' " +
             "  WHEN DATEDIFF(YEAR, e.birth_date, GETDATE()) < 50 THEN '40-50' " +
             "  ELSE '50+' " +
-            "END AS ageRange, " +
-            "CAST(AVG(CAST(hr.blood_oxygen AS FLOAT)) AS INT) AS avgBloodOxygen " +
+            "END AS age_range, " +
+            "CAST(AVG(CAST(hr.blood_oxygen AS FLOAT)) AS INT) AS avg_blood_oxygen " +
             "FROM v_health_record hr " +
             "INNER JOIN employee e ON hr.user_code = e.emp_code " +
             "WHERE hr.blood_oxygen IS NOT NULL AND hr.blood_oxygen > 0 " +
@@ -212,50 +220,50 @@ public interface BloodOxygenMapper {
             "  ELSE '50+' " +
             "END " +
             "ORDER BY MIN(DATEDIFF(YEAR, e.birth_date, GETDATE()))")
-    List<Map<String, Object>> getAgeDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
+    List<BloodOxygenAgeStatRow> getAgeDistribution(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 获取实时血氧数据
      */
     @Select("SELECT TOP (#{limit}) " +
-            "hr.user_code AS userCode, " +
-            "ISNULL(e.emp_name, hr.user_code) AS userName, " +
-            "ISNULL(d.dept_name, '') AS deptName, " +
-            "hr.blood_oxygen AS bloodOxygen, " +
-            "hr.record_time AS recordTime " +
+            "hr.user_code AS user_code, " +
+            "ISNULL(e.emp_name, hr.user_code) AS user_name, " +
+            "ISNULL(d.dept_name, '') AS dept_name, " +
+            "hr.blood_oxygen AS blood_oxygen, " +
+            "hr.record_time AS record_time " +
             "FROM v_health_record hr " +
             "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
             "WHERE hr.blood_oxygen IS NOT NULL " +
             "AND hr.blood_oxygen > 0 " +
             "ORDER BY hr.record_time DESC")
-    List<Map<String, Object>> getRealtimeData(@Param("limit") int limit);
+    List<BloodOxygenRealtimeRow> getRealtimeData(@Param("limit") int limit);
 
     /**
      * 获取指定日期每小时平均血氧
      */
     @Select("SELECT DATEPART(HOUR, record_time) AS hour, " +
-            "CAST(AVG(CAST(blood_oxygen AS FLOAT)) AS DECIMAL(5,1)) AS avgBloodOxygen " +
+            "CAST(AVG(CAST(blood_oxygen AS FLOAT)) AS DECIMAL(5,1)) AS avg_blood_oxygen " +
             "FROM v_health_record " +
             "WHERE blood_oxygen IS NOT NULL AND blood_oxygen > 0 " +
             "AND record_time >= CONVERT(DATETIME, #{startDate}) " +
             "AND record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
             "GROUP BY DATEPART(HOUR, record_time) " +
             "ORDER BY hour")
-    List<Map<String, Object>> getHourlyStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
+    List<BloodOxygenHourlyRow> getHourlyStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /** 实时血氧列表（近2小时最新记录，按时间倒序） */
     @Select("SELECT TOP (#{limit}) " +
-            "hr.user_code AS userCode, " +
-            "ISNULL(e.emp_name, hr.user_code) AS userName, " +
-            "ISNULL(d.dept_name, '') AS deptName, " +
-            "hr.blood_oxygen AS bloodOxygen, " +
-            "hr.record_time AS recordTime " +
+            "hr.user_code AS user_code, " +
+            "ISNULL(e.emp_name, hr.user_code) AS user_name, " +
+            "ISNULL(d.dept_name, '') AS dept_name, " +
+            "hr.blood_oxygen AS blood_oxygen, " +
+            "hr.record_time AS record_time " +
             "FROM v_health_record hr " +
             "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
             "WHERE hr.blood_oxygen IS NOT NULL AND hr.blood_oxygen > 0 " +
             "AND hr.record_time >= DATEADD(HOUR, -2, GETDATE()) " +
             "ORDER BY hr.record_time DESC")
-    List<Map<String, Object>> getRealtime(@Param("limit") int limit);
+    List<BloodOxygenRealtimeRow> getRealtime(@Param("limit") int limit);
 }

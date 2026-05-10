@@ -3,6 +3,7 @@ package com.xzkj.health.config;
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpUtil;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -64,6 +65,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  */
 @Configuration
 public class SaTokenConfig implements WebMvcConfigurer {
+
+    @Value("${health.security.cors.allowed-origin-patterns:http://localhost:9528,http://127.0.0.1:9528}")
+    private String allowedOriginPatterns;
+
+    @Value("${health.security.cors.allow-credentials:true}")
+    private boolean allowCredentials;
 
     /**
      * 注册 Sa-Token 拦截器
@@ -136,14 +143,13 @@ public class SaTokenConfig implements WebMvcConfigurer {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // 允许所有域名发起跨域请求（开发环境使用 *, 生产环境改为具体域名）
-        // 注意：不能同时使用 addAllowedOrigin("*") 和 setAllowCredentials(true)
-        //       必须用 addAllowedOriginPattern("*") 代替
-        config.addAllowedOriginPattern("*");
+        for (String pattern : allowedOriginPatterns.split(",")) {
+            if (!pattern.isBlank()) {
+                config.addAllowedOriginPattern(pattern.trim());
+            }
+        }
 
-        // 允许携带凭证（Cookie、Authorization 头等）
-        // 前端需要在 axios 中设置 withCredentials: true 才能携带 Cookie
-        config.setAllowCredentials(true);
+        config.setAllowCredentials(allowCredentials);
 
         // 允许所有请求头（包括自定义的 satoken 头）
         config.addAllowedHeader("*");

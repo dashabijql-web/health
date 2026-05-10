@@ -36,15 +36,18 @@ public class SchemaProvider {
                 1. 只能生成 SELECT 语句，严禁 INSERT/UPDATE/DELETE/DROP 等修改操作
                 2. 生成的 SQL 必须用代码块包裹：```sql ... ```
                 3. 字符串比较使用单引号，SQL Server 日期用 GETDATE()、DATEADD()
-                4. 查询结果尽量控制在 100 行以内，复杂聚合查询优先
+                4. 必须使用 TOP 100 或更小结果集，禁止 SELECT *，优先输出聚合结果而不是大段明细
                 5. 如果问题无法用 SQL 回答，直接说明原因，不要强行生成 SQL
                 6. 列名必须严格按照下面的定义使用，不能随意发明不存在的列名
                 7. 【关键】时间过滤规则：
-                   - 用户没有明确提到时间（如"本周"、"今天"、"最近X天"、"本月"），则不加任何时间过滤条件
+                   - 查询健康记录或预警明细时，必须带时间范围
+                   - 用户没有明确提到时间（如"本周"、"今天"、"最近X天"、"本月"），默认只查最近30天
                    - 用户提到"本周"→ DATEADD(DAY, -7, GETDATE())
                    - 用户提到"今天"→ CAST(record_time AS DATE) = CAST(GETDATE() AS DATE)
                    - 用户提到"本月"→ DATEADD(DAY, -30, GETDATE())
-                   - 默认查询所有历史数据，不要擅自添加时间限制
+                   - 即使用户要求"全部历史/所有历史"，也必须加 TOP 限制并优先聚合
+                8. 只能使用这些表/视图：v_health_record、v_warning_record、employee、department、job_type，
+                   以及按月分表 health_record_YYYYMM、warning_record_YYYYMM
 
                 【数据库表结构】
 
@@ -67,7 +70,7 @@ public class SchemaProvider {
                     record_time,            -- 记录时间（datetime）
                     create_time,
                     update_time
-                FROM health_record_202601  -- 实际有 202601~202613 共13张分区表
+                FROM health_record_202601  -- 实际会有连续13个月分区表
 
                 -- 表：employee（员工信息）
                 -- 注意：部门名称需要 JOIN department 表，岗位需要 JOIN job_type 表
@@ -136,10 +139,11 @@ public class SchemaProvider {
                 JOIN employee e ON h.user_code = e.emp_code
                 JOIN department d ON e.dept_id = d.id
                 WHERE h.heart_rate IS NOT NULL AND h.heart_rate > 0
+                  AND h.record_time >= DATEADD(DAY, -30, GETDATE())
                 GROUP BY d.dept_name
                 ORDER BY 平均心率 DESC
 
-                -- 示例4：按部门统计平均血氧（无时间限制）
+                -- 示例4：按部门统计平均血氧（用户未提时间时默认最近30天）
                 SELECT d.dept_name AS 部门名称,
                        AVG(CAST(h.blood_oxygen AS FLOAT)) AS 平均血氧,
                        COUNT(DISTINCT h.user_code) AS 员工数
@@ -147,15 +151,17 @@ public class SchemaProvider {
                 JOIN employee e ON h.user_code = e.emp_code
                 JOIN department d ON e.dept_id = d.id
                 WHERE h.blood_oxygen IS NOT NULL AND h.blood_oxygen > 0
+                  AND h.record_time >= DATEADD(DAY, -30, GETDATE())
                 GROUP BY d.dept_name
                 ORDER BY 平均血氧 ASC
 
-                -- 示例5：睡眠不足的员工（sleep_minutes < 360 即不足6小时，无时间限制）
+                -- 示例5：睡眠不足的员工（sleep_minutes < 360 即不足6小时，默认最近30天）
                 SELECT e.emp_name, d.dept_name, AVG(h.sleep_minutes) AS 平均睡眠分钟
                 FROM v_health_record h
                 JOIN employee e ON h.user_code = e.emp_code
                 JOIN department d ON e.dept_id = d.id
                 WHERE h.sleep_minutes IS NOT NULL AND h.sleep_minutes > 0
+                  AND h.record_time >= DATEADD(DAY, -30, GETDATE())
                 GROUP BY e.emp_name, d.dept_name
                 HAVING AVG(h.sleep_minutes) < 360
                 ORDER BY 平均睡眠分钟 ASC

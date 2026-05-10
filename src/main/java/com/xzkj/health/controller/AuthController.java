@@ -2,6 +2,7 @@ package com.xzkj.health.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.xzkj.health.common.Result;
+import com.xzkj.health.config.datasource.HealthDataSourceOverrideAuthorizer;
 import com.xzkj.health.model.entity.SysUser;
 import com.xzkj.health.service.SysUserService;
 import lombok.Data;
@@ -78,6 +79,9 @@ public class AuthController {
     @Autowired
     private SysUserService userService;  // 注入用户服务
 
+    @Autowired
+    private HealthDataSourceOverrideAuthorizer dataSourceOverrideAuthorizer;
+
     /**
      * 用户登录接口
      *
@@ -135,6 +139,7 @@ public class AuthController {
             data.put("roles", userService.getUserRoles(user.getId()));              // 角色列表
             data.put("buttons", userService.getUserButtons(user.getId()));          // 按钮权限
             data.put("routes", userService.getUserRoutes(user.getId()));            // 路由权限
+            data.put("canSwitchDataSource", dataSourceOverrideAuthorizer.canSwitchDataSource(user.getUsername()));
 
             log.info("登录成功: {}", dto.getUsername());
             return Result.ok("登录成功", data);
@@ -190,6 +195,7 @@ public class AuthController {
             data.put("roles", userService.getUserRoles(userId));
             data.put("buttons", userService.getUserButtons(userId));
             data.put("routes", userService.getUserRoutes(userId));
+            data.put("canSwitchDataSource", dataSourceOverrideAuthorizer.canSwitchDataSource(user.getUsername()));
 
             return Result.ok("获取成功", data);
 

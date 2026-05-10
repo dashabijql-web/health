@@ -1,5 +1,10 @@
 package com.xzkj.health.mapper;
 
+import com.xzkj.health.dto.realtime.RealtimeAlertRow;
+import com.xzkj.health.dto.realtime.RealtimeOverviewRow;
+import com.xzkj.health.dto.realtime.RealtimeStatisticsRow;
+import com.xzkj.health.dto.realtime.RealtimeUserDetailRow;
+import com.xzkj.health.dto.realtime.RealtimeUserRow;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -33,7 +38,7 @@ public interface RealtimeMapper {
             "(SELECT COUNT(*) FROM v_warning_record WHERE create_time >= DATEADD(HOUR, -168, GETDATE()) AND is_handled = 0) AS todayWarningCount " +
             "FROM v_health_record " +
             "WHERE record_time >= DATEADD(HOUR, -168, GETDATE())")
-    Map<String, Object> getTodayAvgData();
+    RealtimeOverviewRow getTodayAvgData();
 
     /**
      * 获取活跃用户列表(近7天有健康记录，取每人最新一条)
@@ -62,7 +67,7 @@ public interface RealtimeMapper {
             "    WHEN hr.pressure > 84 THEN 'warning' " +
             "    ELSE 'normal' " +
             "END AS status, " +
-            "hr.record_time AS lastUpdate, " +
+            "CONVERT(varchar(19), hr.record_time, 120) AS lastUpdate, " +
             "dv.imei AS imei " +
             "FROM employee e " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
@@ -136,9 +141,9 @@ public interface RealtimeMapper {
             "WHERE (e.status IS NULL OR e.status = 0) " +
             "ORDER BY hr.record_time DESC " +
             "OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY")
-    List<Map<String, Object>> getOnlineUsersDirect(@Param("tableSource") String tableSource,
-                                                    @Param("offset") int offset,
-                                                    @Param("size") int size);
+    List<RealtimeUserRow> getOnlineUsersDirect(@Param("tableSource") String tableSource,
+                                               @Param("offset") int offset,
+                                               @Param("size") int size);
 
     /**
      * 活跃用户总数 — 直接查分区表
@@ -152,7 +157,7 @@ public interface RealtimeMapper {
      * 168h 窗口最多跨当月+上月两张表，避免扫 v_health_record UNION ALL 13 张表
      */
     @SelectProvider(type = RealtimeStatsSqlProvider.class, method = "getStatisticsDirect")
-    Map<String, Object> getStatisticsDirect();
+    RealtimeStatisticsRow getStatisticsDirect();
 
     /**
      * 动态 SQL 提供器：只 UNION 当月+上月两张分区表，而非 v_health_record 全部13张
@@ -219,14 +224,14 @@ public interface RealtimeMapper {
             "w.indicator_value AS indicatorValue, " +
             "w.warning_level AS warningLevel, " +
             "w.is_handled AS handled, " +
-            "w.create_time AS createTime " +
+            "CONVERT(varchar(19), w.create_time, 120) AS createTime " +
             "FROM v_warning_record w " +
             "LEFT JOIN employee e ON w.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
             "WHERE w.is_handled = 0 " +
             "AND w.create_time >= DATEADD(DAY, -7, GETDATE()) " +
             "ORDER BY w.create_time DESC")
-    List<Map<String, Object>> getRecentAlerts(@Param("limit") int limit);
+    List<RealtimeAlertRow> getRecentAlerts(@Param("limit") int limit);
 
     /**
      * 获取用户实时数据
@@ -244,7 +249,7 @@ public interface RealtimeMapper {
             "hr.steps, " +
             "hr.calories, " +
             "hr.sleep_minutes / 60.0 AS sleepHours, " +
-            "hr.record_time AS lastUpdate, " +
+            "CONVERT(varchar(19), hr.record_time, 120) AS lastUpdate, " +
             "CASE " +
             "    WHEN hr.heart_rate < 60 OR hr.heart_rate > 100 THEN 'warning' " +
             "    WHEN hr.blood_oxygen < 95 THEN 'warning' " +
@@ -258,5 +263,5 @@ public interface RealtimeMapper {
             "LEFT JOIN department d ON d.id = e.dept_id " +
             "WHERE hr.user_code = #{userCode} " +
             "ORDER BY hr.record_time DESC")
-    Map<String, Object> getUserRealtimeData(@Param("userCode") String userCode);
+    RealtimeUserDetailRow getUserRealtimeData(@Param("userCode") String userCode);
 }

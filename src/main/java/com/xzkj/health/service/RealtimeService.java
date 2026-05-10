@@ -1,7 +1,21 @@
 package com.xzkj.health.service;
 
-import com.xzkj.health.common.MapValueUtil;
+import com.xzkj.health.common.DateParamUtil;
+import com.xzkj.health.common.exception.BusinessException;
+import com.xzkj.health.config.datasource.HealthCacheKeys;
+import com.xzkj.health.dto.realtime.RealtimeAlertRow;
+import com.xzkj.health.dto.realtime.RealtimeAlertView;
+import com.xzkj.health.dto.realtime.RealtimeOverviewRow;
+import com.xzkj.health.dto.realtime.RealtimeOverviewView;
+import com.xzkj.health.dto.realtime.RealtimeStatisticsRow;
+import com.xzkj.health.dto.realtime.RealtimeStatisticsView;
+import com.xzkj.health.dto.realtime.RealtimeUserDetailRow;
+import com.xzkj.health.dto.realtime.RealtimeUserDetailView;
+import com.xzkj.health.dto.realtime.RealtimeUserPageView;
+import com.xzkj.health.dto.realtime.RealtimeUserRow;
+import com.xzkj.health.dto.realtime.RealtimeUserView;
 import com.xzkj.health.mapper.RealtimeMapper;
+import com.xzkj.health.util.LocalTtlCache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -11,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 实时监控Service - 更新版
@@ -19,33 +34,32 @@ import java.util.*;
 @Service
 public class RealtimeService {
 
+    private static final long STATISTICS_TTL = 30_000L;
+    private static final long ONLINE_USERS_TTL = 10_000L;
+
     @Autowired
     private RealtimeMapper realtimeMapper;
+
+    private final LocalTtlCache<RealtimeStatisticsView> statisticsCache = new LocalTtlCache<>();
+    private final ConcurrentHashMap<String, CacheEntry<RealtimeUserPageView>> onlineUsersCache = new ConcurrentHashMap<>();
 
     /**
      * 获取当日平均数据概览
      */
-    public Map<String, Object> getTodayAvgOverview() {
-        Map<String, Object> data = realtimeMapper.getTodayAvgData();
-        if (data == null) data = new HashMap<>();
+    public RealtimeOverviewView getTodayAvgOverview() {
+        RealtimeOverviewRow data = realtimeMapper.getTodayAvgData();
+        if (data == null) data = new RealtimeOverviewRow();
 
-        // 格式化数据
-        Map<String, Object> result = new HashMap<>();
-        result.put("avgHeartRate", Math.round(MapValueUtil.getDouble(data, "avgHeartRate")));
-        result.put("avgBloodOxygen", Math.round(MapValueUtil.getDouble(data, "avgBloodOxygen")));
-        result.put("avgSteps", Math.round(MapValueUtil.getDouble(data, "avgSteps")));
-
-        // 体温保留1位小数
-        double avgTemp = MapValueUtil.getDouble(data, "avgTemperature");
-        result.put("avgTemperature", Math.round(avgTemp * 10.0) / 10.0);
-
-        // 睡眠保留1位小数
-        double avgSleep = MapValueUtil.getDouble(data, "avgSleep");
-        result.put("avgSleep", Math.round(avgSleep * 10.0) / 10.0);
-
-        result.put("todayWarningCount", MapValueUtil.getLong(data, "todayWarningCount"));
-
-        return result;
+        double avgTemp = doubleValue(data.getAvgTemperature());
+        double avgSleep = doubleValue(data.getAvgSleep());
+        return new RealtimeOverviewView(
+                Math.round(doubleValue(data.getAvgHeartRate())),
+                Math.round(doubleValue(data.getAvgBloodOxygen())),
+                Math.round(doubleValue(data.getAvgSteps())),
+                Math.round(avgTemp * 10.0) / 10.0,
+                Math.round(avgSleep * 10.0) / 10.0,
+                longValue(data.getTodayWarningCount())
+        );
     }
 
     /** 计算近168h查询所需的分区表表达式（避免扫全部UNION ALL视图）
@@ -74,27 +88,46 @@ public class RealtimeService {
      * 获取在线用户列表(无分页版本)
      */
     @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
-    public Map<String, Object> getOnlineUsers(int page, int size) {
+    public RealtimeUserPageView getOnlineUsers(Integer page, Integer size) {
+        int safePage = Math.max(1, page == null ? 1 : page);
+        int safeSize = Math.max(1, DateParamUtil.clampSize(size == null ? 10000 : size, 10000));
+
+        if (safePage == 1 && safeSize >= 200) {
+            String cacheKey = HealthCacheKeys.key("online-users", safePage, safeSize);
+            long now = System.currentTimeMillis();
+            CacheEntry<RealtimeUserPageView> cached = onlineUsersCache.get(cacheKey);
+            if (cached != null && now < cached.expireAt()) {
+                return cached.value();
+            }
+            try {
+                RealtimeUserPageView data = loadOnlineUsersPage(safePage, safeSize, false);
+                onlineUsersCache.put(cacheKey, new CacheEntry<>(data, System.currentTimeMillis() + ONLINE_USERS_TTL));
+                return data;
+            } catch (Exception ex) {
+                log.warn("实时监控在线用户查询失败，尝试返回过期缓存: {}", ex.getMessage());
+                if (cached != null) {
+                    RealtimeUserPageView stale = cached.value();
+                    return new RealtimeUserPageView(
+                            stale.list(),
+                            stale.total(),
+                            stale.page(),
+                            stale.size(),
+                            true
+                    );
+                }
+                throw new BusinessException(503, "实时监控数据加载失败，请稍后重试");
+            }
+        }
+
+        return loadOnlineUsersPage(safePage, safeSize, false);
+    }
+
+    private RealtimeUserPageView loadOnlineUsersPage(int page, int size, boolean stale) {
         int offset = (page - 1) * size;
         String tblSrc = onlineUsersTableSource();
 
-        List<Map<String, Object>> list = realtimeMapper.getOnlineUsersDirect(tblSrc, offset, size);
-        if (list == null) list = Collections.emptyList();
-
-        // 格式化数据
-        for (Map<String, Object> user : list) {
-            // 格式化体温(保留1位小数)
-            if (user.containsKey("temperature") && user.get("temperature") != null) {
-                double temp = MapValueUtil.getDouble(user, "temperature");
-                user.put("temperature", Math.round(temp * 10.0) / 10.0);
-            }
-
-            // 格式化睡眠(保留1位小数)
-            if (user.containsKey("sleepHours") && user.get("sleepHours") != null) {
-                double sleep = MapValueUtil.getDouble(user, "sleepHours");
-                user.put("sleepHours", Math.round(sleep * 10.0) / 10.0);
-            }
-        }
+        List<RealtimeUserRow> rows = realtimeMapper.getOnlineUsersDirect(tblSrc, offset, size);
+        List<RealtimeUserView> list = toRealtimeUserViews(rows);
 
         // 短路计数优化：若本页返回的行数 < 请求的 size，说明已到最后一页，
         // total = offset + 实际返回数，无需再发一条 COUNT 查询（节省一次 DB 往返）。
@@ -106,67 +139,161 @@ public class RealtimeService {
             total = realtimeMapper.countOnlineUsersDirect(tblSrc);
         }
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("list", list);
-        result.put("total", total);
-        result.put("page", page);
-        result.put("size", size);
-
-        return result;
+        return new RealtimeUserPageView(list, total, page, size, stale);
     }
 
     /**
      * 获取用户实时数据
      */
-    public Map<String, Object> getUserRealtimeData(String userCode) {
-        Map<String, Object> data = realtimeMapper.getUserRealtimeData(userCode);
+    public RealtimeUserDetailView getUserRealtimeData(String userCode) {
+        RealtimeUserDetailRow data = realtimeMapper.getUserRealtimeData(userCode);
 
         if (data == null) {
-            data = new HashMap<>();
-            data.put("userCode", userCode);
-            data.put("status", "offline");
-        } else {
-            // 格式化体温
-            if (data.containsKey("temperature") && data.get("temperature") != null) {
-                double temp = MapValueUtil.getDouble(data, "temperature");
-                data.put("temperature", Math.round(temp * 10.0) / 10.0);
-            }
-
-            // 格式化睡眠
-            if (data.containsKey("sleepHours") && data.get("sleepHours") != null) {
-                double sleep = MapValueUtil.getDouble(data, "sleepHours");
-                data.put("sleepHours", Math.round(sleep * 10.0) / 10.0);
-            }
+            return new RealtimeUserDetailView(
+                    userCode,
+                    "",
+                    "",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "offline"
+            );
         }
 
-        return data;
+        return new RealtimeUserDetailView(
+                stringValue(data.getUserCode()),
+                stringValue(data.getUserName()),
+                stringValue(data.getDeptName()),
+                intValue(data.getHeartRate()),
+                intValue(data.getBloodOxygen()),
+                roundNullableDouble(data.getTemperature()),
+                intValue(data.getBloodPressureHigh()),
+                intValue(data.getBloodPressureLow()),
+                intValue(data.getPressure()),
+                intValue(data.getSteps()),
+                intValue(data.getCalories()),
+                roundNullableDouble(data.getSleepHours()),
+                stringValue(data.getLastUpdate()),
+                stringValue(data.getStatus())
+        );
     }
 
     /**
      * 获取实时统计数据 — 使用直接查分区表版本（2月表 vs 13张全扫描，性能提升约5-10x）
      */
     @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
-    public Map<String, Object> getStatistics() {
-        Map<String, Object> data = realtimeMapper.getStatisticsDirect();
-        if (data == null) data = new HashMap<>();
+    public RealtimeStatisticsView getStatistics() {
+        String cacheKey = HealthCacheKeys.key("statistics");
+        RealtimeStatisticsView hit = statisticsCache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
+        }
+        RealtimeStatisticsRow data = realtimeMapper.getStatisticsDirect();
+        if (data == null) data = new RealtimeStatisticsRow();
 
-        // 格式化百分比数据
-        Map<String, Object> result = new HashMap<>();
-        result.put("onlineUsers", MapValueUtil.getLong(data, "onlineUsers"));
-        result.put("totalUsers", MapValueUtil.getLong(data, "totalUsers"));
-        result.put("weekRecords", MapValueUtil.getLong(data, "weekRecords"));
-        result.put("todayRecords", MapValueUtil.getLong(data, "todayRecords"));
-        result.put("onlineRate", Math.round(MapValueUtil.getDouble(data, "onlineRate")));
-        result.put("normalRate", Math.round(MapValueUtil.getDouble(data, "normalRate")));
-
+        RealtimeStatisticsView result = new RealtimeStatisticsView(
+                longValue(data.getOnlineUsers()),
+                longValue(data.getTotalUsers()),
+                longValue(data.getWeekRecords()),
+                longValue(data.getTodayRecords()),
+                Math.round(doubleValue(data.getOnlineRate())),
+                Math.round(doubleValue(data.getNormalRate()))
+        );
+        statisticsCache.put(cacheKey, result, STATISTICS_TTL);
         return result;
     }
 
     /**
      * 获取近期未处理告警列表（默认取最近20条）
      */
-    public List<Map<String, Object>> getRealtimeAlerts(int limit) {
-        return realtimeMapper.getRecentAlerts(limit);
+    public List<RealtimeAlertView> getRealtimeAlerts(int limit) {
+        List<RealtimeAlertRow> rows = realtimeMapper.getRecentAlerts(limit);
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<RealtimeAlertView> result = new ArrayList<>();
+        for (RealtimeAlertRow row : rows) {
+            if (row == null) {
+                continue;
+            }
+            Integer handled = intValue(row.getHandled());
+            result.add(new RealtimeAlertView(
+                    longValue(row.getId()),
+                    stringValue(row.getUserCode()),
+                    stringValue(row.getUserName()),
+                    stringValue(row.getDeptName()),
+                    stringValue(row.getWarningType()),
+                    stringValue(row.getIndicatorName()),
+                    stringValue(row.getIndicatorValue()),
+                    stringValue(row.getWarningLevel()),
+                    handled != null && handled > 0,
+                    stringValue(row.getCreateTime())
+            ));
+        }
+        return result;
     }
 
+    private List<RealtimeUserView> toRealtimeUserViews(List<RealtimeUserRow> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<RealtimeUserView> result = new ArrayList<>();
+        for (RealtimeUserRow user : rows) {
+            if (user == null) {
+                continue;
+            }
+            result.add(new RealtimeUserView(
+                    longValue(user.getId()),
+                    stringValue(user.getUserCode()),
+                    stringValue(user.getUserName()),
+                    intValue(user.getGender()),
+                    intValue(user.getAge()),
+                    stringValue(user.getDeptName()),
+                    intValue(user.getHeartRate()),
+                    intValue(user.getBloodOxygen()),
+                    intValue(user.getSteps()),
+                    intValue(user.getCalories()),
+                    roundNullableDouble(user.getTemperature()),
+                    roundNullableDouble(user.getSleepHours()),
+                    intValue(user.getBloodPressureHigh()),
+                    intValue(user.getBloodPressureLow()),
+                    intValue(user.getPressure()),
+                    stringValue(user.getStatus()),
+                    stringValue(user.getLastUpdate()),
+                    stringValue(user.getImei())
+            ));
+        }
+        return result;
+    }
+
+    private Integer intValue(Number value) {
+        return value == null ? null : value.intValue();
+    }
+
+    private long longValue(Number value) {
+        return value == null ? 0L : value.longValue();
+    }
+
+    private double doubleValue(Number value) {
+        return value == null ? 0.0 : value.doubleValue();
+    }
+
+    private Double roundNullableDouble(Number value) {
+        return value == null ? null : Math.round(value.doubleValue() * 10.0) / 10.0;
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private record CacheEntry<T>(T value, long expireAt) {}
 }

@@ -1,9 +1,45 @@
 package com.xzkj.health.service.impl;
 
-import com.xzkj.health.common.MapValueUtil;
-import com.xzkj.health.mapper.DashboardMapper;
+import com.xzkj.health.config.datasource.HealthCacheKeys;
+import com.xzkj.health.dto.dashboard.CalendarDayView;
+import com.xzkj.health.dto.dashboard.DashboardBodyIndicatorsView;
+import com.xzkj.health.dto.dashboard.DashboardBodyAverageRow;
+import com.xzkj.health.dto.dashboard.DashboardDailyAnomalyRateRow;
+import com.xzkj.health.dto.dashboard.DashboardDeviceStatsRow;
+import com.xzkj.health.dto.dashboard.DashboardHourCountRow;
+import com.xzkj.health.dto.dashboard.DashboardMetricCountRow;
+import com.xzkj.health.dto.dashboard.DashboardOverviewView;
+import com.xzkj.health.dto.dashboard.DashboardTopUserRow;
+import com.xzkj.health.dto.dashboard.DashboardWarningEventRow;
+import com.xzkj.health.dto.dashboard.DashboardWarningRateRow;
+import com.xzkj.health.dto.dashboard.DayBloodOxygenRankView;
+import com.xzkj.health.dto.dashboard.DayHeartRateRankView;
+import com.xzkj.health.dto.dashboard.DayStepsRankView;
+import com.xzkj.health.dto.dashboard.DayWarningView;
+import com.xzkj.health.dto.dashboard.DeptHealthComparisonView;
+import com.xzkj.health.dto.dashboard.DeptRankingView;
+import com.xzkj.health.dto.dashboard.DeviceActivationView;
+import com.xzkj.health.dto.dashboard.DeviceStatsView;
+import com.xzkj.health.dto.dashboard.DailyAnomalyRateView;
+import com.xzkj.health.dto.dashboard.DeptDailyPersonView;
+import com.xzkj.health.dto.dashboard.DeptHealthCountView;
+import com.xzkj.health.dto.dashboard.DeptPersonStatView;
+import com.xzkj.health.dto.dashboard.DailyAbnormalStatView;
+import com.xzkj.health.dto.dashboard.HealthTrendView;
+import com.xzkj.health.dto.dashboard.MineEntryView;
+import com.xzkj.health.dto.dashboard.PersonCountsView;
+import com.xzkj.health.dto.dashboard.PreShiftComplianceView;
+import com.xzkj.health.dto.dashboard.Top5UserView;
+import com.xzkj.health.dto.dashboard.WarningDistributionView;
+import com.xzkj.health.dto.dashboard.WarningRateView;
+import com.xzkj.health.dto.dashboard.WarningEventView;
+import com.xzkj.health.mapper.DashboardOverviewMapper;
 import com.xzkj.health.service.DashboardService;
-import lombok.extern.slf4j.Slf4j;
+import com.xzkj.health.service.dashboard.DashboardCalendarQueryService;
+import com.xzkj.health.service.dashboard.DashboardDepartmentQueryService;
+import com.xzkj.health.service.dashboard.DashboardEntryQueryService;
+import com.xzkj.health.util.LocalTtlCache;
+import com.xzkj.health.util.TableSourceUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -20,14 +56,38 @@ import java.util.*;
  *
  * 规则：startTime/endTime 为 null 时，自动填入当月月初/月末。
  */
-@Slf4j
 @Service
 public class DashboardServiceImpl implements DashboardService {
 
     @Autowired
-    private DashboardMapper dashboardMapper;
+    private DashboardOverviewMapper dashboardOverviewMapper;
+
+    @Autowired
+    private DashboardCalendarQueryService dashboardCalendarQueryService;
+
+    @Autowired
+    private DashboardEntryQueryService dashboardEntryQueryService;
+
+    @Autowired
+    private DashboardDepartmentQueryService dashboardDepartmentQueryService;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    private final LocalTtlCache<DashboardOverviewView> currentMonthCountsCache = new LocalTtlCache<>();
+    private final LocalTtlCache<DashboardBodyIndicatorsView> currentMonthAverageCache = new LocalTtlCache<>();
+    private final LocalTtlCache<List<Top5UserView>> top5Cache = new LocalTtlCache<>();
+    private final LocalTtlCache<DeviceActivationView> deviceActivationCache = new LocalTtlCache<>();
+    private final LocalTtlCache<List<WarningEventView>> warningEventsCache = new LocalTtlCache<>();
+    private final LocalTtlCache<WarningDistributionView> warningCountsCache = new LocalTtlCache<>();
+    private final LocalTtlCache<List<DailyAnomalyRateView>> dailyTrendCache = new LocalTtlCache<>();
+
+    private static final long BODY_INDICATORS_TTL = 10 * 60 * 1000L;
+    private static final long OVERVIEW_TTL = 10 * 60 * 1000L;
+    private static final long DAILY_TREND_TTL = 5 * 60 * 1000L;
+    private static final long WARNING_COUNTS_TTL = 5 * 60 * 1000L;
+    private static final long WARNING_EVENTS_TTL = 30 * 1000L;
+    private static final long TOP5_TTL = 2 * 60 * 1000L;
+    private static final long DEVICE_ACTIVATION_TTL = 2 * 60 * 1000L;
 
     /** 当月月初，格式 yyyy-MM-dd */
     private String monthStart() {
@@ -44,17 +104,14 @@ public class DashboardServiceImpl implements DashboardService {
         return (val != null && !val.isBlank()) ? val : fallback;
     }
 
-    private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("yyyyMM");
-
     /** 根据日期范围构建健康记录分区表源（单月直接用表名，跨月用 UNION ALL 子查询） */
     private String healthSource(String start, String end) {
-        String m1 = LocalDate.parse(start).format(MONTH_FMT);
-        String m2 = LocalDate.parse(end).format(MONTH_FMT);
-        if (m1.equals(m2)) return "health_record_" + m1;
-        return "(SELECT user_code,record_time,heart_rate,blood_oxygen,blood_pressure_high,blood_pressure_low," +
-               "temperature,sleep_minutes,steps,calories,pressure FROM health_record_" + m1 +
-               " UNION ALL SELECT user_code,record_time,heart_rate,blood_oxygen,blood_pressure_high,blood_pressure_low," +
-               "temperature,sleep_minutes,steps,calories,pressure FROM health_record_" + m2 + ") AS hr_combined";
+        return TableSourceUtil.healthRecordSource(
+                LocalDate.parse(start),
+                LocalDate.parse(end),
+                "user_code,record_time,heart_rate,blood_oxygen,blood_pressure_high,blood_pressure_low," +
+                        "temperature,sleep_minutes,steps,calories,pressure"
+        );
     }
 
     /**
@@ -62,11 +119,11 @@ public class DashboardServiceImpl implements DashboardService {
      * 单月直接返回表名，跨月返回仅含 user_code+record_time 的 UNION ALL 子查询（无 AS xxx）
      */
     private String healthSourceForJoin(String start, String end) {
-        String m1 = LocalDate.parse(start).format(MONTH_FMT);
-        String m2 = LocalDate.parse(end).format(MONTH_FMT);
-        if (m1.equals(m2)) return "health_record_" + m1;
-        return "(SELECT user_code,record_time FROM health_record_" + m1 +
-               " UNION ALL SELECT user_code,record_time FROM health_record_" + m2 + ")";
+        return TableSourceUtil.healthRecordSource(
+                LocalDate.parse(start),
+                LocalDate.parse(end),
+                "user_code,record_time"
+        );
     }
 
     /**
@@ -74,289 +131,306 @@ public class DashboardServiceImpl implements DashboardService {
      * 单月直接返回表名，跨月返回 UNION ALL 子查询（无 AS xxx，包含 id 用于 COUNT DISTINCT）
      */
     private String warningSourceForJoin(String start, String end) {
-        String m1 = LocalDate.parse(start).format(MONTH_FMT);
-        String m2 = LocalDate.parse(end).format(MONTH_FMT);
-        if (m1.equals(m2)) return "warning_record_" + m1;
-        return "(SELECT id,user_code,create_time,warning_type,indicator_name,indicator_value,warning_level,is_handled FROM warning_record_" + m1 +
-               " UNION ALL SELECT id,user_code,create_time,warning_type,indicator_name,indicator_value,warning_level,is_handled FROM warning_record_" + m2 + ")";
+        return TableSourceUtil.warningRecordSource(
+                LocalDate.parse(start),
+                LocalDate.parse(end),
+                "id,user_code,create_time,warning_type,indicator_name,indicator_value,warning_level,is_handled"
+        );
     }
 
     /** 根据日期范围构建预警记录分区表源（单月直接用表名，跨月用 UNION ALL 子查询） */
     private String warningSource(String start, String end) {
-        String m1 = LocalDate.parse(start).format(MONTH_FMT);
-        String m2 = LocalDate.parse(end).format(MONTH_FMT);
-        if (m1.equals(m2)) return "warning_record_" + m1;
-        return "(SELECT id,user_code,create_time,warning_type,indicator_name,warning_level,is_handled FROM warning_record_" + m1 +
-               " UNION ALL SELECT id,user_code,create_time,warning_type,indicator_name,warning_level,is_handled FROM warning_record_" + m2 + ") AS wr_combined";
+        return TableSourceUtil.warningRecordSource(
+                LocalDate.parse(start),
+                LocalDate.parse(end),
+                "id,user_code,create_time,warning_type,indicator_name,warning_level,is_handled"
+        );
     }
 
     @Override
     @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
-    public Map<String, Object> getCurrentMonthCounts(String startTime, String endTime) {
-        String s = resolve(startTime, monthStart());
-        String e = resolve(endTime,   monthEnd());
-        // 优化：路由到分区表，避免 v_health_record UNION ALL 全扫描
-        Map<String, Object> data = dashboardMapper.getCountsByRangeDirect(healthSource(s, e), s, e);
-
-        Map<String, Object> result = new HashMap<>();
-        MapValueUtil.copyIntFields(data, result,
-                "heartRate", "bloodOxygen", "sleep", "steps", "temperature", "pressure");
-        return result;
-    }
-
-    @Override
-    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
-    public Map<String, Object> getCurrentMonthAverage(String startTime, String endTime) {
-        String s = resolve(startTime, monthStart());
-        String e = resolve(endTime,   monthEnd());
-        Map<String, Object> data = dashboardMapper.getAverageByRangeDirect(healthSource(s, e), s, e);
-
-        Map<String, Object> result = new HashMap<>();
-        MapValueUtil.copyIntFields(data, result,
-                "avgPressure", "avgBloodOxygen", "avgHeartRate", "avgSteps",
-                "avgBloodPressureHigh", "avgBloodPressureLow", "avgCalories");
-        result.put("avgSleep",       round(MapValueUtil.getDouble(data, "avgSleep"), 1));
-        result.put("avgTemperature", round(MapValueUtil.getDouble(data, "avgTemperature"), 1));
-        return result;
-    }
-
-    @Override
-    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
-    public List<Map<String, Object>> getDeptTop5(String startTime, String endTime) {
-        String s = resolve(startTime, monthStart());
-        String e = resolve(endTime,   monthEnd());
-        // 使用 warningSourceForJoin (无内嵌别名)，因为 mapper SQL 末尾会追加 "w" 作为别名
-        List<Map<String, Object>> list = dashboardMapper.getTop5ByRangeDirect(warningSourceForJoin(s, e), s, e);
-
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> item : list) {
-            Map<String, Object> row = new HashMap<>();
-            row.put("userName", item.get("userName"));
-            row.put("userCode", item.get("userCode"));
-            row.put("count",    MapValueUtil.getInt(item, "count"));
-            result.add(row);
+    public DashboardOverviewView getCurrentMonthCounts(String startTime, String endTime) {
+        String cacheKey = HealthCacheKeys.key(startTime, endTime);
+        DashboardOverviewView hit = currentMonthCountsCache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
         }
+        String s = resolve(startTime, monthStart());
+        String e = resolve(endTime,   monthEnd());
+        DashboardMetricCountRow data = dashboardOverviewMapper.getCountsByRangeDirect(healthSource(s, e), s, e);
+        if (data == null) {
+            data = new DashboardMetricCountRow();
+        }
+
+        DashboardOverviewView result = new DashboardOverviewView(
+                intValue(data.getHeartRate()),
+                intValue(data.getBloodOxygen()),
+                intValue(data.getSleep()),
+                intValue(data.getSteps()),
+                intValue(data.getTemperature()),
+                intValue(data.getPressure())
+        );
+        currentMonthCountsCache.put(cacheKey, result, OVERVIEW_TTL);
         return result;
     }
 
     @Override
-    public Map<String, Object> getDeviceStats(String startTime, String endTime) {
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public DashboardBodyIndicatorsView getCurrentMonthAverage(String startTime, String endTime) {
+        String cacheKey = HealthCacheKeys.key(startTime, endTime);
+        DashboardBodyIndicatorsView hit = currentMonthAverageCache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
+        }
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
-        // 优化：路由到分区表，避免 v_health_record / v_warning_record UNION ALL 全扫描
-        // 使用 ForJoin 版本（无内嵌别名），mapper 中以 hr/wr 做别名
+        DashboardBodyAverageRow data = dashboardOverviewMapper.getAverageByRangeDirect(healthSource(s, e), s, e);
+        if (data == null) {
+            data = new DashboardBodyAverageRow();
+        }
+
+        DashboardBodyIndicatorsView result = new DashboardBodyIndicatorsView(
+                intValue(data.getAvgPressure()),
+                intValue(data.getAvgBloodOxygen()),
+                intValue(data.getAvgHeartRate()),
+                intValue(data.getAvgSteps()),
+                intValue(data.getAvgBloodPressureHigh()),
+                intValue(data.getAvgBloodPressureLow()),
+                intValue(data.getAvgCalories()),
+                round(doubleValue(data.getAvgSleep()), 1),
+                round(doubleValue(data.getAvgTemperature()), 1)
+        );
+        currentMonthAverageCache.put(cacheKey, result, BODY_INDICATORS_TTL);
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public List<Top5UserView> getDeptTop5(String startTime, String endTime) {
+        String cacheKey = HealthCacheKeys.key(startTime, endTime);
+        List<Top5UserView> hit = top5Cache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
+        }
+        String s = resolve(startTime, monthStart());
+        String e = resolve(endTime,   monthEnd());
+        List<DashboardTopUserRow> list = dashboardOverviewMapper.getTop5ByRangeDirect(warningSourceForJoin(s, e), s, e);
+
+        List<Top5UserView> result = new ArrayList<>();
+        for (DashboardTopUserRow item : list) {
+            result.add(new Top5UserView(
+                    stringValue(item.getUserName()),
+                    stringValue(item.getUserCode()),
+                    intValue(item.getCount())
+            ));
+        }
+        top5Cache.put(cacheKey, result, TOP5_TTL);
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public DeviceActivationView getDeviceActivation(String startTime, String endTime) {
+        String cacheKey = HealthCacheKeys.key(startTime, endTime);
+        DeviceActivationView hit = deviceActivationCache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
+        }
+        DeviceStatsView stats = getDeviceStatsView(startTime, endTime);
+        List<WarningRateView> warningRates = getWarningRateViews(startTime, endTime);
+        DeviceActivationView result = new DeviceActivationView(stats, warningRates);
+        deviceActivationCache.put(cacheKey, result, DEVICE_ACTIVATION_TTL);
+        return result;
+    }
+
+    private DeviceStatsView getDeviceStatsView(String startTime, String endTime) {
+        String s = resolve(startTime, monthStart());
+        String e = resolve(endTime,   monthEnd());
         String hSrc = healthSourceForJoin(s, e);
         String wSrc = warningSourceForJoin(s, e);
-        Map<String, Object> data = dashboardMapper.getDeviceStatsByRangeDirect(hSrc, wSrc, s, e);
-
-        Map<String, Object> result = new HashMap<>();
-        MapValueUtil.copyIntFields(data, result,
-                "total", "boundDevices", "activeRate", "usageRate", "warningRate", "lowBattery");
-        return result;
+        DashboardDeviceStatsRow data = dashboardOverviewMapper.getDeviceStatsByRangeDirect(hSrc, wSrc, s, e);
+        return toDeviceStatsView(data);
     }
 
-    @Override
-    public Map<String, Object> getWarningRates(String startTime, String endTime) {
+    private List<WarningRateView> getWarningRateViews(String startTime, String endTime) {
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
         // 优化：路由到分区表，避免 v_warning_record UNION ALL 全扫描
-        List<Map<String, Object>> rates = dashboardMapper.getWarningRatesByRangeDirect(warningSource(s, e), s, e);
-
-        List<Map<String, Object>> warningList = new ArrayList<>();
-        for (Map<String, Object> rate : rates) {
-            Map<String, Object> item = new HashMap<>();
-            item.put("name", rate.get("name"));
-            item.put("rate", MapValueUtil.getInt(rate, "rate"));
-            item.put("icon", rate.get("icon"));
-            warningList.add(item);
-        }
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("warningRates", warningList);
-        return result;
-    }
-
-    @Override
-    public List<Map<String, Object>> getRecentWarnings(int limit, String startTime, String endTime) {
-        String s = resolve(startTime, monthStart());
-        String e = resolve(endTime,   monthEnd());
-        // 优化：路由到分区表，避免 v_warning_record UNION ALL 全扫描
-        List<Map<String, Object>> list = dashboardMapper.getWarningsByRangeDirect(warningSourceForJoin(s, e), limit, s, e);
-
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> item : list) {
-            Map<String, Object> warning = new HashMap<>();
-            warning.put("id",       item.get("id"));          // 用于前端"确认处理"接口传参
-            warning.put("type",     item.get("warning_type"));
-            warning.put("userName", item.get("real_name"));
-            warning.put("empCode",  item.get("emp_code"));  // 员工编码，用于前端去重统计异常人员数
-            warning.put("indicator",item.get("indicator_name"));
-            warning.put("value",    item.get("indicator_value"));
-            warning.put("time",     item.get("create_time"));
-            warning.put("level",    item.get("warning_level"));
-            warning.put("handled",  item.get("is_handled"));
-            result.add(warning);
+        List<DashboardWarningRateRow> rates = dashboardOverviewMapper.getWarningRatesByRangeDirect(warningSource(s, e), s, e);
+        List<WarningRateView> result = new ArrayList<>();
+        for (DashboardWarningRateRow rate : rates) {
+            result.add(new WarningRateView(
+                    stringValue(rate.getName()),
+                    intValue(rate.getRate()),
+                    stringValue(rate.getIcon())
+            ));
         }
         return result;
     }
 
     @Override
-    public Map<String, Object> getWarningDistribution(String startTime, String endTime, String groupBy) {
+    public List<WarningEventView> getRecentWarnings(int limit, String startTime, String endTime) {
+        String cacheKey = HealthCacheKeys.key(limit, startTime, endTime);
+        List<WarningEventView> hit = warningEventsCache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
+        }
         String s = resolve(startTime, monthStart());
         String e = resolve(endTime,   monthEnd());
-        Map<String, Object> result = new HashMap<>();
+        List<DashboardWarningEventRow> list = dashboardOverviewMapper.getWarningsByRangeDirect(warningSourceForJoin(s, e), limit, s, e);
+
+        List<WarningEventView> result = new ArrayList<>();
+        for (DashboardWarningEventRow item : list) {
+            result.add(new WarningEventView(
+                    item.getId(),
+                    stringValue(item.getWarningType()),
+                    stringValue(item.getRealName()),
+                    stringValue(item.getEmpCode()),
+                    stringValue(item.getIndicatorName()),
+                    stringValue(item.getIndicatorValue()),
+                    stringValue(item.getCreateTime()),
+                    stringValue(item.getWarningLevel()),
+                    intValue(item.getHandled())
+            ));
+        }
+        long ttl = limit >= 100 ? WARNING_EVENTS_TTL : Math.min(WARNING_EVENTS_TTL, 10 * 1000L);
+        warningEventsCache.put(cacheKey, result, ttl);
+        return result;
+    }
+
+    @Override
+    public WarningDistributionView getWarningDistribution(String startTime, String endTime, String groupBy) {
+        String cacheKey = HealthCacheKeys.key(startTime, endTime, groupBy);
+        WarningDistributionView hit = warningCountsCache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
+        }
+        String s = resolve(startTime, monthStart());
+        String e = resolve(endTime,   monthEnd());
+        WarningDistributionView result;
         if ("hour".equals(groupBy)) {
-            List<Map<String, Object>> rows = dashboardMapper.getWarningCountsByHour(s);
-            int[] counts = new int[24];
-            for (Map<String, Object> row : rows) {
-                int h = MapValueUtil.getInt(row, "hour_num");
-                if (h >= 0 && h < 24) counts[h] = MapValueUtil.getInt(row, "cnt");
+            List<DashboardHourCountRow> rows = dashboardOverviewMapper.getWarningCountsByHour(s);
+            int[] hourCounts = new int[24];
+            for (DashboardHourCountRow row : rows) {
+                int h = intValue(row.getHourNum());
+                if (h >= 0 && h < 24) hourCounts[h] = intValue(row.getCount());
             }
-            result.put("labels", java.util.stream.IntStream.range(0, 24).mapToObj(String::valueOf).collect(java.util.stream.Collectors.toList()));
-            result.put("counts", java.util.Arrays.stream(counts).boxed().collect(java.util.stream.Collectors.toList()));
+            List<String> labels = java.util.stream.IntStream.range(0, 24).mapToObj(String::valueOf).collect(java.util.stream.Collectors.toList());
+            List<Integer> counts = java.util.Arrays.stream(hourCounts).boxed().collect(java.util.stream.Collectors.toList());
+            result = new WarningDistributionView(labels, counts);
         } else {
-            List<Map<String, Object>> rows = dashboardMapper.getWarningCountsByDateDirect(warningSource(s, e), s, e);
-            List<String> labels = new java.util.ArrayList<>();
-            List<Integer> counts = new java.util.ArrayList<>();
-            for (Map<String, Object> row : rows) {
-                labels.add(String.valueOf(row.get("stat_date")));
-                counts.add(MapValueUtil.getInt(row, "cnt"));
-            }
-            result.put("labels", labels);
-            result.put("counts", counts);
+            result = dashboardCalendarQueryService.getWarningDistributionByDate(s, e);
         }
+        warningCountsCache.put(cacheKey, result, WARNING_COUNTS_TTL);
         return result;
     }
 
     @Override
-    public List<Map<String, Object>> getDailyAnomalyRates(int days) {
+    public List<DailyAnomalyRateView> getDailyAnomalyRates(int days) {
+        String cacheKey = HealthCacheKeys.key(days);
+        List<DailyAnomalyRateView> hit = dailyTrendCache.getIfFresh(cacheKey);
+        if (hit != null) {
+            return hit;
+        }
         LocalDate start = LocalDate.now().minusDays(days - 1);
         LocalDate end   = LocalDate.now();
         String startDate = start.format(DATE_FMT);
         String endDate   = end.format(DATE_FMT);
-        // 全部从预聚合汇总表读（30行，极快）；今天的汇总由定时任务每5分钟刷新
-        return dashboardMapper.getDailyStatsFromSummary(startDate, endDate);
+        List<DailyAnomalyRateView> result = toDailyAnomalyRateViews(
+                dashboardOverviewMapper.getDailyStatsFromSummary(startDate, endDate)
+        );
+        dailyTrendCache.put(cacheKey, result, DAILY_TREND_TTL);
+        return result;
     }
 
     @Override
     @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
-    public List<Map<String, Object>> getDeptHealthCounts(String startTime, String endTime) {
-        String s = resolve(startTime, monthStart());
-        String e = resolve(endTime,   monthEnd());
-        int days = 30;
-        try {
-            long diff = java.time.temporal.ChronoUnit.DAYS.between(
-                    java.time.LocalDate.parse(s), java.time.LocalDate.parse(e)) + 1;
-            days = (int) diff;
-        } catch (Exception ex) {
-            log.debug("日期范围解析失败，使用默认30天: {}", ex.getMessage());
-        }
-        // 使用 warningSourceForJoin (无内嵌别名)，因为 mapper SQL 中 LEFT JOIN ${warningSource} w 会追加 "w" 别名
-        List<Map<String, Object>> list = dashboardMapper.getDeptWarningWithTrendDirect(warningSourceForJoin(s, e), s, e, days);
-
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> item : list) {
-            Map<String, Object> row = new HashMap<>();
-            row.put("name",      item.get("name"));
-            row.put("count",     MapValueUtil.getInt(item, "count"));
-            row.put("prevCount", MapValueUtil.getInt(item, "prevCount"));
-            result.add(row);
-        }
-        return result;
+    public List<DeptHealthCountView> getDeptHealthCounts(String startTime, String endTime) {
+        return dashboardDepartmentQueryService.getDeptHealthCounts(startTime, endTime);
     }
 
     @Override
-    public Map<String, Object> getDailyHealthTrend(int days) {
-        String startDate = LocalDate.now().minusDays(days - 1).format(DATE_FMT);
-        String endDate   = LocalDate.now().format(DATE_FMT);
-        // 优化：路由到分区表，避免 v_health_record UNION ALL 全扫描
-        List<Map<String, Object>> rows = dashboardMapper.getDailyHealthTrendDirect(healthSource(startDate, endDate), startDate, endDate);
-
-        // 按日期建索引
-        Map<String, Map<String, Object>> byDate = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String d = String.valueOf(row.get("date"));
-            byDate.put(d, row);
-        }
-
-        // 生成完整日期序列（避免缺天）
-        DateTimeFormatter shortFmt = DateTimeFormatter.ofPattern("MM-dd");
-        List<String> dates        = new ArrayList<>();
-        List<Object> heartRates   = new ArrayList<>();
-        List<Object> bloodOxygens = new ArrayList<>();
-        List<Object> stepsList    = new ArrayList<>();
-
-        for (int i = days - 1; i >= 0; i--) {
-            LocalDate d   = LocalDate.now().minusDays(i);
-            String fullKey = d.format(DATE_FMT);
-            dates.add(d.format(shortFmt));
-            Map<String, Object> row = byDate.get(fullKey);
-            if (row != null) {
-                heartRates.add(MapValueUtil.getInt(row, "avgHeartRate"));
-                bloodOxygens.add(MapValueUtil.getInt(row, "avgBloodOxygen"));
-                stepsList.add(MapValueUtil.getInt(row, "avgSteps"));
-            } else {
-                heartRates.add(null);
-                bloodOxygens.add(null);
-                stepsList.add(null);
-            }
-        }
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("dates",       dates);
-        result.put("heartRate",   heartRates);
-        result.put("bloodOxygen", bloodOxygens);
-        result.put("steps",       stepsList);
-        return result;
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public PersonCountsView getPersonCounts(String startTime, String endTime) {
+        return dashboardDepartmentQueryService.getPersonCounts(startTime, endTime);
     }
 
     @Override
-    public List<Map<String, Object>> getDeptRanking(String startTime, String endTime) {
-        String s = resolve(startTime, monthStart());
-        String e = resolve(endTime,   monthEnd());
-        List<Map<String, Object>> rows = dashboardMapper.getDeptRanking(s, e);
-
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (int i = 0; i < rows.size(); i++) {
-            Map<String, Object> row = rows.get(i);
-            Map<String, Object> item = new HashMap<>();
-            item.put("rank",        i + 1);
-            item.put("department",  row.get("department"));
-            item.put("memberCount", MapValueUtil.getInt(row, "memberCount"));
-            item.put("healthScore", MapValueUtil.getInt(row, "healthScore"));
-            result.add(item);
-        }
-        return result;
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public List<DeptPersonStatView> getDeptPersonStats(String startTime, String endTime) {
+        return dashboardDepartmentQueryService.getDeptPersonStats(startTime, endTime);
     }
 
     @Override
-    public List<Map<String, Object>> getDailyHealthTrendByRange(String startDate, String endDate) {
-        return dashboardMapper.getDailyHealthTrendDirect(healthSource(startDate, endDate), startDate, endDate);
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public List<DailyAbnormalStatView> getMetricDailyDetail(String metricType, String startTime, String endTime) {
+        return dashboardDepartmentQueryService.getMetricDailyDetail(metricType, startTime, endTime);
     }
 
     @Override
-    public List<Map<String, Object>> getWarningCountsByDate(String startDate, String endDate) {
-        return dashboardMapper.getWarningCountsByDateDirect(warningSource(startDate, endDate), startDate, endDate);
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public List<DailyAbnormalStatView> getDeptDailyDetail(String deptName, String startTime, String endTime) {
+        return dashboardDepartmentQueryService.getDeptDailyDetail(deptName, startTime, endTime);
     }
 
     @Override
-    public List<Map<String, Object>> getDayHeartRateRank(String date) {
-        return dashboardMapper.getDayHeartRateRank(date);
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public List<DeptDailyPersonView> getDeptDailyPersons(String startTime, String endTime) {
+        return dashboardDepartmentQueryService.getDeptDailyPersons(startTime, endTime);
     }
 
     @Override
-    public List<Map<String, Object>> getDayBloodOxygenRank(String date) {
-        return dashboardMapper.getDayBloodOxygenRank(date);
+    public HealthTrendView getDailyHealthTrend(int days) {
+        return dashboardCalendarQueryService.getDailyHealthTrend(days);
     }
 
     @Override
-    public List<Map<String, Object>> getDayStepsRank(String date) {
-        return dashboardMapper.getDayStepsRank(date);
+    public List<DeptRankingView> getDeptRanking(String startTime, String endTime) {
+        return dashboardDepartmentQueryService.getDeptRanking(startTime, endTime);
     }
 
     @Override
-    public List<Map<String, Object>> getDayWarnings(String date) {
-        return dashboardMapper.getDayWarnings(date);
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public List<CalendarDayView> getCalendarData(Integer year, Integer month) {
+        return dashboardCalendarQueryService.getCalendarData(year, month);
+    }
+
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public PreShiftComplianceView getPreShiftCompliance() {
+        return dashboardEntryQueryService.getPreShiftCompliance();
+    }
+
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public List<MineEntryView> getMineEntryList(int size) {
+        return dashboardEntryQueryService.getMineEntryList(size);
+    }
+
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public List<DeptHealthComparisonView> getDeptHealthComparison(int days) {
+        return dashboardDepartmentQueryService.getDeptHealthComparison(days);
+    }
+
+    @Override
+    public List<DayHeartRateRankView> getDayHeartRateRank(String date) {
+        return dashboardCalendarQueryService.getDayHeartRateRank(date);
+    }
+
+    @Override
+    public List<DayBloodOxygenRankView> getDayBloodOxygenRank(String date) {
+        return dashboardCalendarQueryService.getDayBloodOxygenRank(date);
+    }
+
+    @Override
+    public List<DayStepsRankView> getDayStepsRank(String date) {
+        return dashboardCalendarQueryService.getDayStepsRank(date);
+    }
+
+    @Override
+    public List<DayWarningView> getDayWarnings(String date) {
+        return dashboardCalendarQueryService.getDayWarnings(date);
     }
 
     // ─── 工具方法 ───────────────────────────────────────────────────
@@ -364,5 +438,45 @@ public class DashboardServiceImpl implements DashboardService {
     private double round(double value, int places) {
         if (places < 0) throw new IllegalArgumentException();
         return BigDecimal.valueOf(value).setScale(places, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private DeviceStatsView toDeviceStatsView(DashboardDeviceStatsRow data) {
+        if (data == null) {
+            data = new DashboardDeviceStatsRow();
+        }
+        return new DeviceStatsView(
+                intValue(data.getTotal()),
+                intValue(data.getBoundDevices()),
+                intValue(data.getActiveRate()),
+                intValue(data.getUsageRate()),
+                intValue(data.getWarningRate()),
+                intValue(data.getLowBattery())
+        );
+    }
+
+    private List<DailyAnomalyRateView> toDailyAnomalyRateViews(List<DashboardDailyAnomalyRateRow> rows) {
+        List<DailyAnomalyRateView> result = new ArrayList<>();
+        for (DashboardDailyAnomalyRateRow row : rows) {
+            result.add(new DailyAnomalyRateView(
+                    stringValue(row.getDate()),
+                    doubleValue(row.getHeartRateRate()),
+                    doubleValue(row.getBloodOxygenRate()),
+                    doubleValue(row.getTemperatureRate()),
+                    doubleValue(row.getPressureRate())
+            ));
+        }
+        return result;
+    }
+
+    private int intValue(Number value) {
+        return value == null ? 0 : value.intValue();
+    }
+
+    private double doubleValue(Number value) {
+        return value == null ? 0.0 : value.doubleValue();
     }
 }

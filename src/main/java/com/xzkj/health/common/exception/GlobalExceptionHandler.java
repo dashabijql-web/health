@@ -3,11 +3,16 @@ package com.xzkj.health.common.exception;
 import cn.dev33.satoken.exception.NotLoginException;
 import com.xzkj.health.common.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
@@ -143,6 +148,32 @@ public class GlobalExceptionHandler {
         String msg = "缺少必填参数: " + e.getParameterName();
         log.warn(msg);
         return Result.error(400, msg);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Result<String> handleIllegalArgument(IllegalArgumentException e) {
+        String message = (e.getMessage() == null || e.getMessage().isBlank()) ? "请求参数不合法" : e.getMessage();
+        log.warn("非法参数异常: {}", message);
+        return Result.error(400, message);
+    }
+
+    @ExceptionHandler({TaskRejectedException.class, RejectedExecutionException.class})
+    public Result<String> handleTaskRejected(Exception e) {
+        log.warn("异步任务被拒绝: {}", e.getMessage());
+        return Result.error(503, "服务繁忙，请稍后重试");
+    }
+
+    @ExceptionHandler({CompletionException.class, ExecutionException.class})
+    public Result<String> handleAsyncWrapper(Exception e) {
+        Throwable cause = e.getCause();
+        if (cause instanceof BusinessException businessException) {
+            return handleBusiness(businessException);
+        }
+        if (cause instanceof IllegalArgumentException illegalArgumentException) {
+            return handleIllegalArgument(illegalArgumentException);
+        }
+        log.error("异步任务异常: ", e);
+        return Result.error("服务器内部错误，请稍后重试");
     }
 
     /**

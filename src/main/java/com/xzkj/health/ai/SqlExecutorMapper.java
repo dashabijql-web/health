@@ -1,6 +1,7 @@
 package com.xzkj.health.ai;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -45,5 +46,6 @@ public interface SqlExecutorMapper {
      * @param sql 要执行的 SELECT 语句（由 LLM 生成，经过安全校验）
      */
     @Select("${sql}")
+    @Options(timeout = 15)
     List<Map<String, Object>> executeQuery(String sql);
 }

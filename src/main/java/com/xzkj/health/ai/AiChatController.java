@@ -1,5 +1,6 @@
 package com.xzkj.health.ai;
 
+import com.xzkj.health.common.exception.BusinessException;
 import com.xzkj.health.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +10,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * AI 对话 Controller
@@ -35,33 +37,14 @@ public class AiChatController {
      */
     @PostMapping
     public Result<Map<String, String>> chat(@RequestBody Map<String, String> body) {
-        String question  = body.get("question");
-        String sessionId = body.get("sessionId");
+        String question = normalizeQuestion(body.get("question"));
+        String sessionId = normalizeSessionId(body.get("sessionId"));
 
-        if (question == null || question.isBlank()) {
-            return Result.error(400, "问题不能为空");
-        }
-        if (question.length() > 500) {
-            return Result.error(400, "问题太长，请控制在500字以内");
-        }
-        // 没传 sessionId 时自动生成（兼容旧调用）
-        if (sessionId == null || sessionId.isBlank()) {
-            sessionId = java.util.UUID.randomUUID().toString();
-        }
-
-        try {
-            String answer = aiChatService.chat(question.trim(), sessionId);
-            Map<String, String> data = new java.util.LinkedHashMap<>();
-            data.put("answer", answer);
-            data.put("sessionId", sessionId);
-            return Result.ok(data);
-        } catch (IllegalArgumentException e) {
-            log.warn("安全校验失败: {}", e.getMessage());
-            return Result.error("抱歉，该问题无法安全处理：" + e.getMessage());
-        } catch (Exception e) {
-            log.error("AI对话失败", e);
-            return Result.error("AI服务暂时不可用，请稍后重试");
-        }
+        String answer = aiChatService.chat(question, sessionId);
+        Map<String, String> data = new java.util.LinkedHashMap<>();
+        data.put("answer", answer);
+        data.put("sessionId", sessionId);
+        return Result.ok(data);
     }
 
     /**
@@ -82,37 +65,22 @@ public class AiChatController {
      */
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chatStream(@RequestBody Map<String, String> body) {
-        String question  = body.get("question");
-        String sessionId = body.get("sessionId");
-
         SseEmitter emitter = new SseEmitter(120_000L); // 2分钟超时
-
-        if (question == null || question.isBlank()) {
-            try {
-                emitter.send(SseEmitter.event().data("{\"error\":\"问题不能为空\"}"));
-                emitter.complete();
-            } catch (IOException e) { emitter.completeWithError(e); }
+        String question;
+        try {
+            question = normalizeQuestion(body.get("question"));
+        } catch (BusinessException e) {
+            sendStreamError(emitter, e.getMessage());
             return emitter;
         }
-        if (sessionId == null || sessionId.isBlank()) {
-            sessionId = java.util.UUID.randomUUID().toString();
+
+        String sessionId = normalizeSessionId(body.get("sessionId"));
+        try {
+            aiChatService.chatStreamAsync(question, sessionId, emitter);
+        } catch (RejectedExecutionException e) {
+            log.warn("AI流式请求被线程池拒绝: sessionId={}", sessionId);
+            sendStreamError(emitter, "AI服务繁忙，请稍后重试");
         }
-        final String finalSessionId = sessionId;
-
-        // 在新线程中执行，避免阻塞 HTTP 线程
-        new Thread(() -> {
-            try {
-                aiChatService.chatStream(question.trim(), finalSessionId, emitter);
-            } catch (Exception e) {
-                log.error("流式对话失败", e);
-                try {
-                    emitter.send(SseEmitter.event().data("[ERROR]" + e.getMessage()));
-                    emitter.send(SseEmitter.event().data("[DONE]"));
-                    emitter.complete();
-                } catch (IOException ex) { emitter.completeWithError(ex); }
-            }
-        }).start();
-
         return emitter;
     }
 
@@ -123,5 +91,33 @@ public class AiChatController {
     public Result<Void> clearSession(@PathVariable String sessionId) {
         aiChatService.clearSession(sessionId);
         return Result.ok(null);
+    }
+
+    private String normalizeQuestion(String question) {
+        if (question == null || question.isBlank()) {
+            throw new BusinessException(400, "问题不能为空");
+        }
+        String normalized = question.trim();
+        if (normalized.length() > 500) {
+            throw new BusinessException(400, "问题太长，请控制在500字以内");
+        }
+        return normalized;
+    }
+
+    private String normalizeSessionId(String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            return java.util.UUID.randomUUID().toString();
+        }
+        return sessionId.trim();
+    }
+
+    private void sendStreamError(SseEmitter emitter, String message) {
+        try {
+            emitter.send(SseEmitter.event().data("[ERROR]" + message));
+            emitter.send(SseEmitter.event().data("[DONE]"));
+            emitter.complete();
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+        }
     }
 }

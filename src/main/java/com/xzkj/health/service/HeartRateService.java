@@ -1,28 +1,37 @@
 package com.xzkj.health.service;
 
+import com.xzkj.health.dto.heartrate.HeartRateAgeStatView;
+import com.xzkj.health.dto.heartrate.HeartRateDailyAnomalyView;
+import com.xzkj.health.dto.heartrate.HeartRateDepartmentStatView;
+import com.xzkj.health.dto.heartrate.HeartRateDistributionItemView;
+import com.xzkj.health.dto.heartrate.HeartRateHourlyView;
+import com.xzkj.health.dto.heartrate.HeartRateOverviewView;
+import com.xzkj.health.dto.heartrate.HeartRateRealtimeView;
+import com.xzkj.health.dto.heartrate.HeartRateTopUserView;
+import com.xzkj.health.dto.heartrate.HeartRateTrendView;
+
 import java.util.List;
-import java.util.Map;
 
 /**
  * 心率监测服务接口
  */
 public interface HeartRateService {
 
-    Map<String, Object> getHeartRateOverview(String startDate, String endDate);
+    HeartRateOverviewView getHeartRateOverview(String startDate, String endDate);
 
-    List<Map<String, Object>> getTopUsers(int limit, String startDate, String endDate);
+    List<HeartRateTopUserView> getTopUsers(int limit, String startDate, String endDate);
 
-    List<Map<String, Object>> getAgeDistribution(String startDate, String endDate);
+    List<HeartRateAgeStatView> getAgeDistribution(String startDate, String endDate);
 
-    List<Map<String, Object>> getHeartRateDistribution(String startDate, String endDate);
+    List<HeartRateDistributionItemView> getHeartRateDistribution(String startDate, String endDate);
 
-    Map<String, Object> getHeartRateTrend(int days);
+    HeartRateTrendView getHeartRateTrend(int days);
 
-    List<Map<String, Object>> getDepartmentStats(String startDate, String endDate);
+    List<HeartRateDepartmentStatView> getDepartmentStats(String startDate, String endDate);
 
-    List<Map<String, Object>> getHourlyStats(String startDate, String endDate);
+    List<HeartRateHourlyView> getHourlyStats(String startDate, String endDate);
 
-    List<Map<String, Object>> getRealtime(int limit);
+    List<HeartRateRealtimeView> getRealtime(int limit);
 
-    List<Map<String, Object>> getDailyAnomalyCount(String startDate, String endDate);
+    List<HeartRateDailyAnomalyView> getDailyAnomalyCount(String startDate, String endDate);
 }

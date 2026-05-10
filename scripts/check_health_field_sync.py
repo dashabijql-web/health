@@ -115,7 +115,6 @@ def sql_text(query: str) -> str:
             "0",
             "-Y",
             "0",
-            "-h-1",
             "-Q",
             batch,
         ],
@@ -142,7 +141,13 @@ def sql_columns(object_name: str) -> list[str]:
     )
     if not text:
         return []
-    return [line.strip() for line in text.splitlines() if line.strip()]
+    rows = []
+    for line in text.splitlines():
+        value = line.strip()
+        if not value or value.lower() == "name" or set(value) <= {"-"}:
+            continue
+        rows.append(value)
+    return rows
 
 
 def sql_object_exists(object_name: str, object_type: str) -> bool:
@@ -152,7 +157,7 @@ def sql_object_exists(object_name: str, object_type: str) -> bool:
             otype=object_type,
         )
     )
-    return text == "1"
+    return bool(re.search(r"(?m)^\s*1\s*$", text))
 
 
 def sql_object_definition(object_name: str) -> str:

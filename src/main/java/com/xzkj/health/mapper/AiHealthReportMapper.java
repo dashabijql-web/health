@@ -1,13 +1,13 @@
 package com.xzkj.health.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.xzkj.health.dto.ai.AiHealthStatsRow;
+import com.xzkj.health.dto.ai.AiWarningStatsRow;
 import com.xzkj.health.model.AiHealthReport;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
-
-import java.util.Map;
 
 @Mapper
 public interface AiHealthReportMapper extends BaseMapper<AiHealthReport> {
@@ -39,7 +39,7 @@ public interface AiHealthReportMapper extends BaseMapper<AiHealthReport> {
             "ROUND(AVG(CAST(sleep_minutes AS FLOAT)) / 60.0, 1) AS avgSleepHours " +
             "FROM v_health_record " +
             "WHERE record_time >= DATEADD(DAY, -30, GETDATE())")
-    Map<String, Object> getMineHealthStats();
+    AiHealthStatsRow getMineHealthStats();
 
     /** 全矿30天预警统计 */
     @Select("SELECT COUNT(*) AS totalWarnings, " +
@@ -48,7 +48,7 @@ public interface AiHealthReportMapper extends BaseMapper<AiHealthReport> {
             "COUNT(DISTINCT user_code) AS affectedEmp " +
             "FROM v_warning_record " +
             "WHERE create_time >= DATEADD(DAY, -30, GETDATE())")
-    Map<String, Object> getMineWarningStats();
+    AiWarningStatsRow getMineWarningStats();
 
     /** 部门30天健康聚合 */
     @Select("SELECT COUNT(*) AS recordCount, " +
@@ -64,7 +64,7 @@ public interface AiHealthReportMapper extends BaseMapper<AiHealthReport> {
             "INNER JOIN department d ON e.dept_id = d.id " +
             "WHERE d.dept_name = #{deptName} " +
             "AND r.record_time >= DATEADD(DAY, -30, GETDATE())")
-    Map<String, Object> getDeptHealthStats(@Param("deptName") String deptName);
+    AiHealthStatsRow getDeptHealthStats(@Param("deptName") String deptName);
 
     /** 部门30天预警统计 */
     @Select("SELECT COUNT(*) AS totalWarnings, " +
@@ -75,7 +75,7 @@ public interface AiHealthReportMapper extends BaseMapper<AiHealthReport> {
             "INNER JOIN department d ON e.dept_id = d.id " +
             "WHERE d.dept_name = #{deptName} " +
             "AND w.create_time >= DATEADD(DAY, -30, GETDATE())")
-    Map<String, Object> getDeptWarningStats(@Param("deptName") String deptName);
+    AiWarningStatsRow getDeptWarningStats(@Param("deptName") String deptName);
 
     /** 30天健康数据聚合（用于拼装AI prompt） */
     @Select("SELECT " +
@@ -90,7 +90,7 @@ public interface AiHealthReportMapper extends BaseMapper<AiHealthReport> {
             "FROM v_health_record " +
             "WHERE user_code = #{empCode} " +
             "AND record_time >= DATEADD(DAY, -30, GETDATE())")
-    Map<String, Object> get30DayHealthStats(@Param("empCode") String empCode);
+    AiHealthStatsRow get30DayHealthStats(@Param("empCode") String empCode);
 
     /** 30天预警统计 */
     @Select("SELECT " +
@@ -99,5 +99,5 @@ public interface AiHealthReportMapper extends BaseMapper<AiHealthReport> {
             "FROM v_warning_record " +
             "WHERE user_code = #{empCode} " +
             "AND create_time >= DATEADD(DAY, -30, GETDATE())")
-    Map<String, Object> get30DayWarningStats(@Param("empCode") String empCode);
+    AiWarningStatsRow get30DayWarningStats(@Param("empCode") String empCode);
 }

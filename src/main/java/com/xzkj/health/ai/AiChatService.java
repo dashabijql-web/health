@@ -2,9 +2,12 @@ package com.xzkj.health.ai;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
+import com.xzkj.health.common.exception.BusinessException;
+import com.xzkj.health.observability.HealthMetricsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -12,8 +15,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,12 +56,6 @@ public class AiChatService {
         "```sql\\s*([\\s\\S]+?)```", Pattern.CASE_INSENSITIVE
     );
 
-    // 危险关键字黑名单（用于安全校验）
-    private static final List<String> DANGEROUS_KEYWORDS = List.of(
-        "INSERT", "UPDATE", "DELETE", "DROP", "TRUNCATE",
-        "ALTER", "CREATE", "EXEC", "EXECUTE", "MERGE", "GRANT", "REVOKE"
-    );
-
     // 解释查询结果的系统 Prompt（P0：要求 Markdown 格式输出）
     private static final String INTERPRETER_SYSTEM_PROMPT = """
             你是一个煤矿工人健康管理系统的智能助手，拥有完整的对话记忆。
@@ -80,6 +79,7 @@ public class AiChatService {
 
     // 每个 session 最多保留最近 N 轮对话，防止 token 超限
     private static final int MAX_HISTORY_TURNS = 5;
+    private static final int MAX_SQL_RETRY = 2;
     // Redis key 前缀，TTL 24小时
     private static final String SESSION_KEY_PREFIX = "ai:session:";
     private static final long SESSION_TTL_HOURS = 24;
@@ -95,6 +95,9 @@ public class AiChatService {
 
     @Autowired
     private SqlExecutorMapper sqlExecutorMapper;
+
+    @Autowired
+    private HealthMetricsService healthMetricsService;
 
     /**
      * 处理用户问题（多轮对话版）
@@ -132,10 +135,10 @@ public class AiChatService {
             log.info("LLM 未生成 SQL，直接返回解释");
             finalAnswer = llmResponse;
         } else {
+            sql = validateSql(sql);
             log.info("提取到 SQL: {}", sql);
-            validateSql(sql);
 
-            List<Map<String, Object>> queryResult = executeWithRetry(sql, schema, userQuestion);
+            AiSqlResultSet queryResult = executeWithRetry(sql, schema, userQuestion);
 
             // ─── Step 4: 第二次调用 DeepSeek → 解释查询结果（带历史）──────
             log.info("Step 4: 调用 DeepSeek 解释查询结果（history={} 轮）...", history.size() / 2);
@@ -174,6 +177,16 @@ public class AiChatService {
      *   data: [DONE]\n\n
      *   data: [SESSION]:sessionId\n\n
      */
+    @Async("aiChatTaskExecutor")
+    public void chatStreamAsync(String userQuestion, String sessionId, SseEmitter emitter) {
+        try {
+            chatStream(userQuestion, sessionId, emitter);
+        } catch (Exception e) {
+            log.error("流式对话失败", e);
+            sendStreamFailure(emitter, e);
+        }
+    }
+
     public void chatStream(String userQuestion, String sessionId, SseEmitter emitter) throws IOException {
         log.info("流式对话开始: {} | session: {}", userQuestion, sessionId);
 
@@ -200,15 +213,12 @@ public class AiChatService {
 
         // Step 2: 安全校验 + 执行 SQL（含自动修复）
         // validateSql 在 try-catch 内，确保校验失败时也能发 [DONE] 关闭前端 loading
-        List<Map<String, Object>> queryResult;
+        AiSqlResultSet queryResult;
         try {
-            validateSql(sql);
+            sql = validateSql(sql);
             queryResult = executeWithRetry(sql, schema, userQuestion);
         } catch (Exception e) {
-            String errMsg = "抱歉，查询执行失败：" + e.getMessage();
-            emitter.send(SseEmitter.event().data(errMsg));
-            emitter.send(SseEmitter.event().data("[DONE]"));
-            emitter.complete();
+            sendStreamFailure(emitter, e);
             return;
         }
 
@@ -221,7 +231,7 @@ public class AiChatService {
         final String finalSessionId = sessionId;
         final String finalQuestion = userQuestion;
         final String finalSql = sql;
-        final List<Map<String, Object>> finalQueryResult = queryResult;
+        final AiSqlResultSet finalQueryResult = queryResult;
 
         deepSeekClient.chatStream(
             INTERPRETER_SYSTEM_PROMPT, history, interpreterUserMessage,
@@ -331,38 +341,23 @@ public class AiChatService {
         return null;
     }
 
-    /**
-     * SQL 安全校验
-     *
-     * 确保 LLM 生成的 SQL 只包含 SELECT，防止误操作数据库。
-     *
-     * @throws IllegalArgumentException 如果 SQL 不安全
-     */
-    /**
-     * 执行 SQL，失败时自动让 LLM 修正重试（最多 2 次）
-     *
-     * 自修复流程：
-     *   1. 执行 SQL → 成功返回结果
-     *   2. 失败 → 把原 SQL + 错误信息发给 LLM，让它生成修正后的 SQL
-     *   3. 再次执行 → 成功返回；仍失败 → 抛出异常（不再重试）
-     */
-    private List<Map<String, Object>> executeWithRetry(String sql, String schema, String userQuestion) {
-        int maxRetry = 2;
+    private AiSqlResultSet executeWithRetry(String sql, String schema, String userQuestion) {
+        long startedAt = System.nanoTime();
         String currentSql = sql;
         Exception lastError = null;
+        boolean autoRepaired = false;
 
-        for (int attempt = 1; attempt <= maxRetry; attempt++) {
+        for (int attempt = 1; attempt <= MAX_SQL_RETRY; attempt++) {
             try {
-                List<Map<String, Object>> result = sqlExecutorMapper.executeQuery(currentSql);
-                if (attempt > 1) log.info("SQL 自修复成功（第{}次）", attempt);
-                else log.info("SQL 执行成功，返回 {} 行数据", result.size());
-                return result;
+                List<Map<String, Object>> rows = sqlExecutorMapper.executeQuery(currentSql);
+                AiSqlResultSet resultSet = AiSqlResultSet.fromRows(rows);
+                logAiQueryAudit(userQuestion, currentSql, resultSet.rowCount(), elapsedMs(startedAt), autoRepaired, null);
+                return resultSet;
             } catch (Exception e) {
                 lastError = e;
-                log.warn("SQL 执行失败（第{}/{}次）: {} | 错误: {}", attempt, maxRetry, currentSql, e.getMessage());
+                log.warn("AI SQL 执行失败: attempt={}, sql={}, error={}", attempt, currentSql, e.getMessage());
 
-                if (attempt < maxRetry) {
-                    // 让 LLM 修正 SQL
+                if (attempt < MAX_SQL_RETRY) {
                     String fixPrompt = String.format(
                         "以下 SQL 执行时出错，请修正后重新生成一条正确的 SQL。\n\n" +
                         "原始问题：%s\n\n" +
@@ -375,36 +370,86 @@ public class AiChatService {
                         String fixResponse = deepSeekClient.chat(schema, fixPrompt);
                         String fixedSql = extractSql(fixResponse);
                         if (fixedSql != null) {
-                            validateSql(fixedSql);
-                            currentSql = fixedSql;
+                            currentSql = validateSql(fixedSql);
+                            autoRepaired = true;
+                            healthMetricsService.recordAiAutoRepair("success");
                             log.info("LLM 修正后的 SQL: {}", currentSql);
                         } else {
-                            break; // LLM 没返回 SQL，放弃重试
+                            healthMetricsService.recordAiAutoRepair("empty");
+                            break;
                         }
+                    } catch (BusinessException fixEx) {
+                        healthMetricsService.recordAiAutoRepair("rejected");
+                        log.warn("SQL 自修复失败: {}", fixEx.getMessage());
+                        break;
                     } catch (Exception fixEx) {
+                        healthMetricsService.recordAiAutoRepair("failure");
                         log.warn("SQL 自修复失败: {}", fixEx.getMessage());
                         break;
                     }
                 }
             }
         }
-        throw new RuntimeException("查询执行失败（已尝试自动修复）：" + lastError.getMessage());
+        logAiQueryAudit(
+                userQuestion,
+                currentSql,
+                -1,
+                elapsedMs(startedAt),
+                autoRepaired,
+                lastError == null ? "unknown" : lastError.getClass().getSimpleName()
+        );
+        throw new BusinessException(503, "AI查询执行失败，请缩小时间范围或稍后重试");
     }
 
-    private void validateSql(String sql) {
-        String upperSql = sql.toUpperCase().trim();
-
-        // 必须以 SELECT 或 WITH（CTE）开头
-        if (!upperSql.startsWith("SELECT") && !upperSql.startsWith("WITH")) {
-            throw new IllegalArgumentException("安全校验失败：只允许 SELECT 查询，当前SQL不是SELECT语句");
+    private String validateSql(String sql) {
+        try {
+            return AiSqlGuard.sanitizeAndValidate(sql);
+        } catch (IllegalArgumentException e) {
+            healthMetricsService.recordAiReject("sql-guard", "unsafe-sql");
+            throw new BusinessException(400, "AI查询超出安全边界，请补充时间范围或筛选条件后重试");
         }
+    }
 
-        // 检查危险关键字
-        for (String keyword : DANGEROUS_KEYWORDS) {
-            // 用单词边界匹配，避免误判（如 SELECTION 不应该被匹配到 SELECT）
-            if (Pattern.compile("\\b" + keyword + "\\b").matcher(upperSql).find()) {
-                throw new IllegalArgumentException("安全校验失败：SQL 包含禁止的关键字: " + keyword);
+    private void logAiQueryAudit(String question, String sql, int rowCount, long elapsedMs,
+                                 boolean autoRepaired, String failureReason) {
+        if (failureReason == null) {
+            log.info("AI SQL 审计: question={}, sql={}, rows={}, elapsedMs={}, autoRepaired={}",
+                    question, sql, rowCount, elapsedMs, autoRepaired);
+            return;
+        }
+        log.warn("AI SQL 审计失败: question={}, sql={}, elapsedMs={}, autoRepaired={}, reason={}",
+                question, sql, elapsedMs, autoRepaired, failureReason);
+    }
+
+    private long elapsedMs(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000L;
+    }
+
+    private void sendStreamFailure(SseEmitter emitter, Throwable throwable) {
+        String safeMessage = resolveClientMessage(throwable);
+        try {
+            if (!safeMessage.toUpperCase(Locale.ROOT).startsWith("[ERROR]")) {
+                safeMessage = "[ERROR]" + safeMessage;
             }
+            emitter.send(SseEmitter.event().data(safeMessage));
+            emitter.send(SseEmitter.event().data("[DONE]"));
+            emitter.complete();
+        } catch (IOException ioException) {
+            emitter.completeWithError(ioException);
         }
+    }
+
+    private String resolveClientMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof BusinessException businessException) {
+                return businessException.getMessage();
+            }
+            if (current instanceof TimeoutException) {
+                return "AI服务响应超时，请稍后重试";
+            }
+            current = current.getCause();
+        }
+        return "AI服务暂时不可用，请稍后重试";
     }
 }

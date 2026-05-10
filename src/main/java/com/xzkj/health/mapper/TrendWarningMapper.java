@@ -1,11 +1,11 @@
 package com.xzkj.health.mapper;
 
+import com.xzkj.health.dto.trendwarning.TrendWarningDailyAverageRow;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 健康趋势预警数据访问
@@ -19,7 +19,7 @@ public interface TrendWarningMapper {
      * 结果按 emp_code + record_date 排序，供 Service 层分组计算趋势
      */
     @Select("SELECT e.emp_code, e.emp_name, d.dept_name, " +
-            "  CAST(r.record_time AS DATE) AS record_date, " +
+            "  CONVERT(varchar(10), CAST(r.record_time AS DATE), 23) AS record_date, " +
             "  AVG(CAST(r.heart_rate         AS FLOAT)) AS avg_heart_rate, " +
             "  AVG(CAST(r.blood_oxygen       AS FLOAT)) AS avg_blood_oxygen, " +
             "  AVG(CAST(r.temperature        AS FLOAT)) AS avg_temperature, " +
@@ -32,6 +32,6 @@ public interface TrendWarningMapper {
             "  AND (e.status IS NULL OR e.status = 0) " +
             "GROUP BY e.emp_code, e.emp_name, d.dept_name, CAST(r.record_time AS DATE) " +
             "ORDER BY e.emp_code, record_date")
-    List<Map<String, Object>> getDailyAverages(@Param("tableSource") String tableSource,
-                                               @Param("days") int days);
+    List<TrendWarningDailyAverageRow> getDailyAverages(@Param("tableSource") String tableSource,
+                                                       @Param("days") int days);
 }

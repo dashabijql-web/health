@@ -103,7 +103,7 @@ public class MetricDailySqlProvider {
                "  SELECT CONVERT(VARCHAR(10), record_time, 120) AS day, " +
                "  COUNT(DISTINCT user_code) AS personCount, " +
                "  COUNT(DISTINCT CASE WHEN " + anomaly + " THEN user_code END) AS abnormalPersonCount " +
-               "  FROM " + tableSource + " " +
+               "  FROM " + tableSource + " AS src " +
                "  WHERE " + col + " IS NOT NULL " +
                "  AND record_time >= CONVERT(date, '" + params.get("startTime") + "') " +
                "  AND record_time <  DATEADD(DAY, 1, CONVERT(date, '" + params.get("endTime") + "')) " +

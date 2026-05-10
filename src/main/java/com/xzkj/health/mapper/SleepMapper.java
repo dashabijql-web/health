@@ -17,6 +17,39 @@ import java.util.Map;
 public interface SleepMapper {
 
     /**
+     * 获取昨夜上传率、绿线达标率、平均睡眠时长和平均得分。
+     * 直查近31天分表，避免在 v_health_record 上重复全扫。
+     */
+    @Select("WITH LastSleepDate AS ( " +
+            "  SELECT TOP 1 CAST(record_time AS DATE) AS last_date " +
+            "  FROM ${tableSource} latest_src " +
+            "  WHERE sleep_minutes > 0 AND sleep_minutes < 1440 " +
+            "  ORDER BY record_time DESC " +
+            "), DailyUsers AS ( " +
+            "  SELECT hr.user_code, " +
+            "         MAX(CASE WHEN hr.sleep_minutes > 0 AND hr.sleep_minutes < 1440 THEN 1 ELSE 0 END) AS hasSleep, " +
+            "         MAX(CASE WHEN hr.sleep_minutes > 0 AND hr.sleep_minutes < 1440 THEN CAST(hr.sleep_minutes AS FLOAT) / 60.0 END) AS sleepHours " +
+            "  FROM ${tableSource} hr " +
+            "  JOIN LastSleepDate ld ON hr.record_time >= ld.last_date AND hr.record_time < DATEADD(DAY, 1, ld.last_date) " +
+            "  GROUP BY hr.user_code " +
+            ") " +
+            "SELECT " +
+            "  CASE WHEN COUNT(*) > 0 " +
+            "       THEN CAST(SUM(CASE WHEN hasSleep = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS INT) " +
+            "       ELSE 0 END AS uploadRate, " +
+            "  CASE WHEN SUM(CASE WHEN hasSleep = 1 THEN 1 ELSE 0 END) > 0 " +
+            "       THEN CAST(SUM(CASE WHEN sleepHours >= 7 THEN 1 ELSE 0 END) * 100.0 / SUM(CASE WHEN hasSleep = 1 THEN 1 ELSE 0 END) AS INT) " +
+            "       ELSE 0 END AS greenLineRate, " +
+            "  ISNULL(AVG(CASE WHEN hasSleep = 1 THEN sleepHours END), 0) AS avgSleepTime, " +
+            "  ISNULL(AVG(CASE WHEN hasSleep = 1 THEN CASE " +
+            "      WHEN sleepHours >= 8 THEN 90 " +
+            "      WHEN sleepHours >= 7 THEN 75 " +
+            "      WHEN sleepHours >= 6 THEN 60 " +
+            "      ELSE 40 END END), 0) AS avgScore " +
+            "FROM DailyUsers")
+    Map<String, Object> getLastNightOverviewDirect(@Param("tableSource") String tableSource);
+
+    /**
      * 获取睡眠统计数据（最近30天）
      */
     @Select("SELECT " +

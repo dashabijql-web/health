@@ -2,6 +2,9 @@ package com.xzkj.health.service;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.xzkj.health.dto.ai.AiHealthStatsRow;
+import com.xzkj.health.dto.ai.AiWarningStatsRow;
+import com.xzkj.health.dto.portrait.PortraitEmployeeRow;
 import com.xzkj.health.mapper.AiHealthReportMapper;
 import com.xzkj.health.mapper.HealthPortraitMapper;
 import com.xzkj.health.model.AiHealthReport;
@@ -80,19 +83,19 @@ public class AiHealthReportService {
         }
 
         // 查员工基本信息
-        Map<String, Object> employee = healthPortraitMapper.getEmployeeDetail(empCode);
+        PortraitEmployeeRow employee = healthPortraitMapper.getEmployeeDetail(empCode);
         if (employee == null) {
             throw new IllegalArgumentException("员工不存在: " + empCode);
         }
 
         // 查健康数据和预警统计
-        Map<String, Object> healthStats  = aiReportMapper.get30DayHealthStats(empCode);
-        Map<String, Object> warningStats = aiReportMapper.get30DayWarningStats(empCode);
-        if (healthStats == null) healthStats = new LinkedHashMap<>();
-        if (warningStats == null) warningStats = new LinkedHashMap<>();
+        AiHealthStatsRow healthStats = aiReportMapper.get30DayHealthStats(empCode);
+        AiWarningStatsRow warningStats = aiReportMapper.get30DayWarningStats(empCode);
+        if (healthStats == null) healthStats = new AiHealthStatsRow();
+        if (warningStats == null) warningStats = new AiWarningStatsRow();
 
         // 检查是否有足够数据
-        int recordCount = getInt(healthStats, "recordCount");
+        int recordCount = intValue(healthStats.getRecordCount());
         if (recordCount == 0) {
             throw new IllegalArgumentException("该员工近30天暂无健康数据，无法生成分析报告");
         }
@@ -105,7 +108,7 @@ public class AiHealthReportService {
         aiReportMapper.deleteByEmpCode(empCode);
         AiHealthReport report = new AiHealthReport();
         report.setEmpCode(empCode);
-        report.setEmpName(str(employee, "empName"));
+        report.setEmpName(defaultText(employee.getEmpName()));
         report.setReportContent(reportContent);
         report.setGenerateTime(LocalDateTime.now());
         report.setExpiresAt(LocalDateTime.now().plusHours(24));
@@ -123,11 +126,11 @@ public class AiHealthReportService {
             AiHealthReport cached = aiReportMapper.findValidCachedReportByKey(KEY);
             if (cached != null) { log.info("全矿AI报告命中缓存"); return toResponse(cached); }
         }
-        Map<String, Object> hs = aiReportMapper.getMineHealthStats();
-        Map<String, Object> ws = aiReportMapper.getMineWarningStats();
-        if (hs == null) hs = new LinkedHashMap<>();
-        if (ws == null) ws = new LinkedHashMap<>();
-        if (getInt(hs, "recordCount") == 0) throw new IllegalArgumentException("暂无全矿健康数据");
+        AiHealthStatsRow hs = aiReportMapper.getMineHealthStats();
+        AiWarningStatsRow ws = aiReportMapper.getMineWarningStats();
+        if (hs == null) hs = new AiHealthStatsRow();
+        if (ws == null) ws = new AiWarningStatsRow();
+        if (intValue(hs.getRecordCount()) == 0) throw new IllegalArgumentException("暂无全矿健康数据");
         String prompt = buildMinePrompt(hs, ws);
         String content = callDeepSeek(prompt);
         aiReportMapper.deleteByEmpCode(KEY);
@@ -147,11 +150,11 @@ public class AiHealthReportService {
             AiHealthReport cached = aiReportMapper.findValidCachedReportByKey(KEY);
             if (cached != null) { log.info("部门AI报告命中缓存: {}", deptName); return toResponse(cached); }
         }
-        Map<String, Object> hs = aiReportMapper.getDeptHealthStats(deptName);
-        Map<String, Object> ws = aiReportMapper.getDeptWarningStats(deptName);
-        if (hs == null) hs = new LinkedHashMap<>();
-        if (ws == null) ws = new LinkedHashMap<>();
-        if (getInt(hs, "recordCount") == 0) throw new IllegalArgumentException("该部门暂无健康数据");
+        AiHealthStatsRow hs = aiReportMapper.getDeptHealthStats(deptName);
+        AiWarningStatsRow ws = aiReportMapper.getDeptWarningStats(deptName);
+        if (hs == null) hs = new AiHealthStatsRow();
+        if (ws == null) ws = new AiWarningStatsRow();
+        if (intValue(hs.getRecordCount()) == 0) throw new IllegalArgumentException("该部门暂无健康数据");
         String prompt = buildDeptPrompt(deptName, hs, ws);
         String content = callDeepSeek(prompt);
         aiReportMapper.deleteByEmpCode(KEY);
@@ -165,25 +168,24 @@ public class AiHealthReportService {
 
     // ─── 构建 Prompt ────────────────────────────────────────────────────
 
-    private String buildPrompt(Map<String, Object> emp, Map<String, Object> hs, Map<String, Object> ws) {
-        String empName    = str(emp, "empName");
-        String deptName   = str(emp, "deptName");
-        String jobType    = str(emp, "jobTypeName");
-        Object genderObj  = emp.get("gender");
-        String gender     = genderObj == null ? "未知"
-                          : "1".equals(genderObj.toString()) || Integer.valueOf(1).equals(genderObj) ? "男" : "女";
+    private String buildPrompt(PortraitEmployeeRow emp, AiHealthStatsRow hs, AiWarningStatsRow ws) {
+        String empName    = defaultText(emp.getEmpName());
+        String deptName   = defaultText(emp.getDeptName());
+        String jobType    = defaultText(emp.getJobTypeName());
+        Number genderObj  = emp.getGender();
+        String gender     = genderObj == null ? "未知" : genderObj.intValue() == 1 ? "男" : "女";
 
-        int    recordCount   = getInt(hs, "recordCount");
-        double avgHr         = getDbl(hs, "avgHeartRate");
-        int    maxHr         = getInt(hs, "maxHeartRate");
-        int    minHr         = getInt(hs, "minHeartRate");
-        double avgSpo2       = getDbl(hs, "avgBloodOxygen");
-        int    minSpo2       = getInt(hs, "minBloodOxygen");
-        double avgTemp       = getDbl(hs, "avgTemperature");
-        double avgSleep      = getDbl(hs, "avgSleepHours");
+        int    recordCount   = intValue(hs.getRecordCount());
+        double avgHr         = doubleValue(hs.getAvgHeartRate());
+        int    maxHr         = intValue(hs.getMaxHeartRate());
+        int    minHr         = intValue(hs.getMinHeartRate());
+        double avgSpo2       = doubleValue(hs.getAvgBloodOxygen());
+        int    minSpo2       = intValue(hs.getMinBloodOxygen());
+        double avgTemp       = doubleValue(hs.getAvgTemperature());
+        double avgSleep      = doubleValue(hs.getAvgSleepHours());
 
-        int    totalWarnings = getInt(ws, "totalWarnings");
-        int    highRisk      = getInt(ws, "highRiskCount");
+        int    totalWarnings = intValue(ws.getTotalWarnings());
+        int    highRisk      = intValue(ws.getHighRiskCount());
 
         return String.format(
             "你是一名专业的职业健康管理医生，专注于矿山工人的职业健康。\n" +
@@ -214,7 +216,7 @@ public class AiHealthReportService {
         );
     }
 
-    private String buildMinePrompt(Map<String, Object> hs, Map<String, Object> ws) {
+    private String buildMinePrompt(AiHealthStatsRow hs, AiWarningStatsRow ws) {
         return String.format(
             "你是一名职业健康管理专家，专注于矿山企业群体健康管理。\n" +
             "请根据以下全矿近30天的整体健康监测数据，生成一份企业级健康分析报告。\n\n" +
@@ -229,15 +231,15 @@ public class AiHealthReportService {
             "- 预警总次数：%d（高危/危急：%d，中危：%d），涉及人员：%d 人\n\n" +
             "请按以下结构生成报告（中文，总字数400-600字）：\n" +
             "## 整体健康状况评估\n## 重点风险分析\n## 群体健康趋势\n## 管理建议",
-            getInt(hs,"empCount"), getInt(hs,"recordCount"),
-            getDbl(hs,"avgHeartRate"), getInt(hs,"maxHeartRate"), getInt(hs,"minHeartRate"),
-            getDbl(hs,"avgBloodOxygen"), getInt(hs,"minBloodOxygen"),
-            getDbl(hs,"avgTemperature"), getDbl(hs,"avgSleepHours"),
-            getInt(ws,"totalWarnings"), getInt(ws,"highRiskCount"), getInt(ws,"midRiskCount"), getInt(ws,"affectedEmp")
+            intValue(hs.getEmpCount()), intValue(hs.getRecordCount()),
+            doubleValue(hs.getAvgHeartRate()), intValue(hs.getMaxHeartRate()), intValue(hs.getMinHeartRate()),
+            doubleValue(hs.getAvgBloodOxygen()), intValue(hs.getMinBloodOxygen()),
+            doubleValue(hs.getAvgTemperature()), doubleValue(hs.getAvgSleepHours()),
+            intValue(ws.getTotalWarnings()), intValue(ws.getHighRiskCount()), intValue(ws.getMidRiskCount()), intValue(ws.getAffectedEmp())
         );
     }
 
-    private String buildDeptPrompt(String deptName, Map<String, Object> hs, Map<String, Object> ws) {
+    private String buildDeptPrompt(String deptName, AiHealthStatsRow hs, AiWarningStatsRow ws) {
         return String.format(
             "你是一名职业健康管理专家，专注于矿山企业群体健康管理。\n" +
             "请根据以下【%s】部门近30天的健康监测数据，生成一份部门健康分析报告。\n\n" +
@@ -250,11 +252,11 @@ public class AiHealthReportService {
             "请按以下结构生成报告（中文，350-500字）：\n" +
             "## 部门健康评估\n## 主要风险指标\n## 重点关注人员特征\n## 改善建议",
             deptName,
-            getInt(hs,"empCount"), getInt(hs,"recordCount"),
-            getDbl(hs,"avgHeartRate"), getInt(hs,"maxHeartRate"), getInt(hs,"minHeartRate"),
-            getDbl(hs,"avgBloodOxygen"), getInt(hs,"minBloodOxygen"),
-            getDbl(hs,"avgTemperature"), getDbl(hs,"avgSleepHours"),
-            getInt(ws,"totalWarnings"), getInt(ws,"highRiskCount"), getInt(ws,"midRiskCount")
+            intValue(hs.getEmpCount()), intValue(hs.getRecordCount()),
+            doubleValue(hs.getAvgHeartRate()), intValue(hs.getMaxHeartRate()), intValue(hs.getMinHeartRate()),
+            doubleValue(hs.getAvgBloodOxygen()), intValue(hs.getMinBloodOxygen()),
+            doubleValue(hs.getAvgTemperature()), doubleValue(hs.getAvgSleepHours()),
+            intValue(ws.getTotalWarnings()), intValue(ws.getHighRiskCount()), intValue(ws.getMidRiskCount())
         );
     }
 
@@ -314,23 +316,16 @@ public class AiHealthReportService {
         return m;
     }
 
-    private String str(Map<String, Object> m, String key) {
-        Object v = m.get(key);
-        return v != null ? v.toString() : "--";
+    private String defaultText(String value) {
+        return value != null && !value.isBlank() ? value : "--";
     }
 
-    private int getInt(Map<String, Object> m, String key) {
-        if (m == null) return 0;
-        Object v = m.get(key);
-        if (v instanceof Number) return ((Number) v).intValue();
-        return 0;
+    private int intValue(Number value) {
+        return value == null ? 0 : value.intValue();
     }
 
-    private double getDbl(Map<String, Object> m, String key) {
-        if (m == null) return 0.0;
-        Object v = m.get(key);
-        if (v instanceof Number) return ((Number) v).doubleValue();
-        return 0.0;
+    private double doubleValue(Number value) {
+        return value == null ? 0.0 : value.doubleValue();
     }
 
     private String resolveApiKey() {

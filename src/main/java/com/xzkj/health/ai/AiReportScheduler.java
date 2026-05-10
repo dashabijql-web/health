@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
 
 /**
  * AI 健康报告定时推送调度器
@@ -21,7 +20,7 @@ import java.util.Map;
 public class AiReportScheduler {
 
     @Autowired
-    private SqlExecutorMapper sqlExecutorMapper;
+    private AiReportMapper aiReportMapper;
 
     @Autowired
     private AiReportService aiReportService;
@@ -36,10 +35,7 @@ public class AiReportScheduler {
         String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
         try {
-            // 查询所有部门名称
-            List<Map<String, Object>> depts = sqlExecutorMapper.executeQuery(
-                "SELECT dept_name FROM department WHERE dept_name IS NOT NULL ORDER BY dept_name"
-            );
+            List<String> depts = aiReportMapper.selectDepartmentNames();
 
             if (depts.isEmpty()) {
                 log.warn("[AI报告定时任务] 未查询到任何部门，跳过");
@@ -48,8 +44,7 @@ public class AiReportScheduler {
 
             log.info("[AI报告定时任务] 共 {} 个部门，开始逐一生成...", depts.size());
 
-            for (Map<String, Object> dept : depts) {
-                String deptName = String.valueOf(dept.get("dept_name"));
+            for (String deptName : depts) {
                 try {
                     log.info("[AI报告定时任务] 正在生成部门「{}」的健康报告...", deptName);
                     String report = aiReportService.generateDepartmentReport(deptName);
@@ -58,11 +53,7 @@ public class AiReportScheduler {
                     log.info("[AI报告定时任务] 部门「{}」报告生成成功（{}字）\n摘要: {}",
                         deptName, report.length(), summary);
 
-                    // TODO: 如果需要持久化报告，可在此写入数据库：
-                    // sqlExecutorMapper.executeQuery(
-                    //   "INSERT INTO ai_report_log (dept_name, report_date, content) VALUES ('" +
-                    //   deptName + "', '" + today + "', '" + report.replace("'","''") + "')"
-                    // );
+                    // TODO: 如果需要持久化报告，可通过参数化 mapper 写入 ai_report_log。
 
                     // TODO: 如果需要推送到企业微信/钉钉，在此调用 HTTP 接口
                     // sendWeComMessage(deptName, summary);
@@ -87,18 +78,7 @@ public class AiReportScheduler {
     public void generateDailyHighRiskSummary() {
         log.info("==== [AI报告定时任务] 生成今日高风险预警摘要 ====");
         try {
-            List<Map<String, Object>> highRisk = sqlExecutorMapper.executeQuery(
-                "SELECT TOP 10 e.emp_name, d.dept_name, w.warning_type, w.warning_level, " +
-                "  COUNT(*) AS cnt " +
-                "FROM v_warning_record w " +
-                "JOIN employee e ON w.user_code = e.emp_code " +
-                "JOIN department d ON e.dept_id = d.id " +
-                "WHERE w.create_time >= DATEADD(DAY, -1, GETDATE()) " +
-                "  AND w.is_handled = 0 " +
-                "  AND (w.warning_level = 'HIGH' OR w.warning_level = '高') " +
-                "GROUP BY e.emp_name, d.dept_name, w.warning_type, w.warning_level " +
-                "ORDER BY cnt DESC"
-            );
+            List<AiReportHighRiskSummaryRow> highRisk = aiReportMapper.selectDailyHighRiskSummaries();
 
             if (highRisk.isEmpty()) {
                 log.info("[AI报告定时任务] 今日无高风险未处理预警 ✅");

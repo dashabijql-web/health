@@ -233,8 +233,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      *   "user:list"         → 是否显示"用户管理"菜单
      *   "role:list"         → 是否显示"角色管理"菜单
      *
-     * 前端 store/modules/user.js 中的 filterRoutes() 函数
-     * 会根据这个列表过滤 constantRoutes，决定显示哪些菜单。
+     * 前端 store/modules/user.js 中的 getPermittedAppRoutes()
+     * 会根据这个列表过滤业务路由元数据，决定显示哪些菜单。
      *
      * @param userId 用户 ID
      * @return 路由权限码列表，如 ["health:dashboard", "health:realtime", "user:list"]

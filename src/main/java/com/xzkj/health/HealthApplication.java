@@ -59,9 +59,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * - 9000：TCP 协议端口，智能手表设备连接此端口上报健康数据
  *
  * 【Druid 监控控制台】
- * 启动后访问: http://localhost:8080/health/druid
- * 账号: admin  密码: admin123
- * 可以查看 SQL 执行情况、连接池状态
+ * 默认关闭；如需启用，请通过 HEALTH_DRUID_ENABLED、DRUID_USERNAME、DRUID_PASSWORD 显式配置
+ * 访问地址: http://localhost:8080/health/druid
  *
  * 【Actuator 健康检查】
  * 启动后访问: http://localhost:8080/health/actuator/health

@@ -4,11 +4,11 @@ import com.xzkj.health.service.DeviceManagerService;
 import com.xzkj.health.service.VoiceMessageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 
 /**
  * 语音广播服务实现（BP28 协议）
@@ -24,8 +24,10 @@ public class VoiceMessageServiceImpl implements VoiceMessageService {
     @Autowired
     private DeviceManagerService deviceManager;
 
-    /** 异步发包线程池（最多 4 路并发语音推送） */
-    private final ExecutorService executor = Executors.newFixedThreadPool(4);
+    /** Spring 托管的异步发包执行器 */
+    @Autowired
+    @Qualifier("voicePushTaskExecutor")
+    private Executor voicePushTaskExecutor;
 
     /** 语音模板：id → 显示名称 */
     private static final LinkedHashMap<String, String> TEMPLATE_NAMES = new LinkedHashMap<>();
@@ -60,7 +62,7 @@ public class VoiceMessageServiceImpl implements VoiceMessageService {
         String watermark = String.format("%06d", System.currentTimeMillis() % 1000000);
 
         // 异步发包，不阻塞 HTTP 线程
-        executor.submit(() -> streamPackets(imei, watermark, pcm));
+        voicePushTaskExecutor.execute(() -> streamPackets(imei, watermark, pcm));
         log.info("语音推送已触发: imei={}, template={}, watermark={}", imei, templateId, watermark);
         return true;
     }
