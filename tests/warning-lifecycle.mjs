@@ -41,6 +41,17 @@ test('alert management pages use shared pending handled wording', () => {
   }
 })
 
+test('alert records page exposes shared SLA clock fields in table, mobile card, and detail drawer', () => {
+  const source = readFileSync('src/views/alert-management/records/index.vue', 'utf8')
+
+  assert.match(source, /label="SLA"/)
+  assert.match(source, /row\.slaClockLabel/)
+  assert.match(source, /row\.slaClockText/)
+  assert.match(source, /detailRow\.slaClockLabel/)
+  assert.match(source, /detailRow\.slaClockText/)
+  assert.match(source, /records-sla-clock/)
+})
+
 test('buildWarningLifecycleView derives deadline and overdue seconds from createTime', () => {
   const createTime = '2026-05-08T10:00:00+08:00'
   const now = Date.parse('2026-05-08T10:35:00+08:00')

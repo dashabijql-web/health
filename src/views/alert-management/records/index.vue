@@ -110,6 +110,10 @@
           </div>
           <div class="mob-card-bot">
             <span class="mob-card-time">{{ formatDate(row.createTime) }}</span>
+            <span class="records-sla-clock mob-sla-clock" :class="`is-${row.slaStatus || 'unknown'}`">
+              <span>{{ row.slaClockLabel || '未知' }}</span>
+              <strong>{{ row.slaClockText || '--' }}</strong>
+            </span>
             <el-button v-if="!row.handled" type="warning" size="small" @click.stop="openHandle(row)">处理</el-button>
           </div>
         </div>
@@ -144,6 +148,14 @@
           </el-table-column>
           <el-table-column label="处理状态" width="100" align="center">
             <template #default="{row}"><el-tag :type="row.handled?'success':'danger'" size="small" effect="dark">{{ warningHandledStatusLabel(row) }}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="SLA" width="118" align="center">
+            <template #default="{row}">
+              <span class="records-sla-clock" :class="`is-${row.slaStatus || 'unknown'}`">
+                <span>{{ row.slaClockLabel || '未知' }}</span>
+                <strong>{{ row.slaClockText || '--' }}</strong>
+              </span>
+            </template>
           </el-table-column>
           <el-table-column prop="handleBy" label="处理人" min-width="110">
             <template #default="{row}">{{ row.handleBy||'-' }}</template>
@@ -194,6 +206,13 @@
           <div class="detail-row">
             <span class="detail-label">处理状态</span>
             <el-tag :type="detailRow.handled?'success':'danger'" size="small" effect="dark">{{ warningHandledStatusLabel(detailRow) }}</el-tag>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">SLA计时</span>
+            <span class="records-sla-clock detail-sla-clock" :class="`is-${detailRow.slaStatus || 'unknown'}`">
+              <span>{{ detailRow.slaClockLabel || '未知' }}</span>
+              <strong>{{ detailRow.slaClockText || '--' }}</strong>
+            </span>
           </div>
         </div>
 
