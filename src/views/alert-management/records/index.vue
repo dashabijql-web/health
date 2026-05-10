@@ -129,27 +129,27 @@
           @selection-change="rows => selectedRows = rows">
           <el-table-column type="selection" width="46" align="center" @click.stop />
           <el-table-column type="index" label="#" width="50" align="center" />
-          <el-table-column prop="createTime" label="预警时间" width="170">
+          <el-table-column prop="createTime" label="预警时间" width="150">
             <template #default="{row}">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column prop="userName" label="姓名" width="100" />
-          <el-table-column label="性别" width="65" align="center">
+          <el-table-column prop="userName" label="姓名" width="88" />
+          <el-table-column label="性别" width="56" align="center">
             <template #default="{row}">{{ row.gender === 1 ? '男' : row.gender === 2 ? '女' : '-' }}</template>
           </el-table-column>
-          <el-table-column label="年龄" width="65" align="center">
+          <el-table-column label="年龄" width="56" align="center">
             <template #default="{row}">{{ row.age != null ? row.age : '-' }}</template>
           </el-table-column>
-          <el-table-column label="预警类型" width="120" align="center">
+          <el-table-column label="预警类型" width="104" align="center">
             <template #default="{row}"><el-tag :type="typeTag(row.warningType)" size="small" effect="dark">{{ typeLabel(row.warningType) }}</el-tag></template>
           </el-table-column>
-          <el-table-column prop="warningValue" label="预警值" width="100" align="center" />
-          <el-table-column label="预警级别" width="100" align="center">
+          <el-table-column prop="warningValue" label="预警值" width="88" align="center" />
+          <el-table-column label="预警级别" width="88" align="center">
             <template #default="{row}"><el-tag :type="levelTag(row.warningLevel)" size="small" effect="dark">{{ levelLabel(row.warningLevel) }}</el-tag></template>
           </el-table-column>
-          <el-table-column label="处理状态" width="100" align="center">
+          <el-table-column label="处理状态" width="88" align="center">
             <template #default="{row}"><el-tag :type="row.handled?'success':'danger'" size="small" effect="dark">{{ warningHandledStatusLabel(row) }}</el-tag></template>
           </el-table-column>
-          <el-table-column label="SLA" width="118" align="center">
+          <el-table-column label="SLA" width="96" align="center">
             <template #default="{row}">
               <span class="records-sla-clock" :class="`is-${row.slaStatus || 'unknown'}`">
                 <span>{{ row.slaClockLabel || '未知' }}</span>
@@ -157,10 +157,10 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="handleBy" label="处理人" min-width="110">
+          <el-table-column prop="handleBy" label="处理人" min-width="90">
             <template #default="{row}">{{ row.handleBy||'-' }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="120" fixed="right" align="center">
+          <el-table-column label="操作" width="104" fixed="right" align="center">
             <template #default="{row}">
               <el-button v-if="!row.handled" type="warning" link size="small" @click.stop="openHandle(row)"><el-icon><Edit /></el-icon> 处理</el-button>
               <span v-else class="handled-text">{{ warningHandledStatusLabel(row) }}</span>

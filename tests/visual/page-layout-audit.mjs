@@ -21,6 +21,7 @@ const DEFAULT_ROUTES = [
   { slug: 'real-time', path: '/health-monitor/real-time' },
   { slug: 'risk-warning', path: '/health-monitor/risk-warning' },
   { slug: 'alert-notifications', path: '/alert-management/notifications' },
+  { slug: 'alert-records', path: '/alert-management/records' },
   { slug: 'report-center', path: '/health-monitor/report-center' },
   { slug: 'ai-chat', path: '/ai-chat/index' }
 ];

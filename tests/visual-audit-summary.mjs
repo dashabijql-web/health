@@ -7,6 +7,12 @@ const ROOT = process.cwd()
 const auditPath = path.join(ROOT, 'tests', 'visual', 'page-layout-audit.mjs')
 const auditSource = fs.readFileSync(auditPath, 'utf8')
 
+test('visual audit default route inventory includes warning lifecycle records route', () => {
+  assert.match(auditSource, /slug:\s*'alert-notifications'/)
+  assert.match(auditSource, /slug:\s*'alert-records'/)
+  assert.match(auditSource, /path:\s*'\/alert-management\/records'/)
+})
+
 test('visual audit writes route-level artifact summaries', () => {
   assert.match(auditSource, /summary\.routeSummaries\s*=/)
   assert.match(auditSource, /passedViewports/)
