@@ -6,6 +6,7 @@ import {
   buildWarningLifecycleItem,
   buildWarningLifecycleView,
   formatDateTime,
+  levelLabel,
   markWarningHandled,
   normalizeWarningLevel,
   warningLevelFilterLabel,
@@ -51,6 +52,13 @@ test('alert management pages use shared pending handled wording', () => {
     const source = readFileSync(file, 'utf8')
     assert.doesNotMatch(source, /label="未处理"|['`]未处理['`]/, file)
   }
+})
+
+test('alert management records reuse shared display level labels', () => {
+  const recordsSource = readFileSync('src/views/alert-management/records/index.vue', 'utf8')
+
+  assert.match(recordsSource, /import \{[^}]*levelLabel[^}]*\} from '\.\.\/common\/warning-lifecycle'/)
+  assert.doesNotMatch(recordsSource, /const levelLabel\s*=/)
 })
 
 test('alert records page exposes shared SLA clock fields in table, mobile card, and detail drawer', () => {
@@ -138,6 +146,9 @@ test('buildWarningLifecycleItem normalizes isHandled and level display fields', 
   assert.equal(item.handled, true)
   assert.equal(item.warningLevelClass, 'badge-danger')
   assert.equal(item.warningLevelLabel, '危险')
+  assert.equal(levelLabel('高危'), '危险')
+  assert.equal(levelLabel('中危'), '预警')
+  assert.equal(levelLabel('低危'), '提示')
   assert.equal(item.slaStatus, 'handled')
   assert.equal(item.slaStatusText, '已处理')
 })

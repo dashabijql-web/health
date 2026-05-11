@@ -277,7 +277,7 @@ import { formatDate } from '@/utils'
 import { useClock } from '@/composables/useClock'
 import { getRiskWarningList, getRiskWarningOverview, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
 import { exportToExcel } from '@/utils/export-excel'
-import { buildWarningLifecycleItem, warningHandledStatusLabel, warningLevelFilterLabel } from '../common/warning-lifecycle'
+import { buildWarningLifecycleItem, levelLabel, warningHandledStatusLabel, warningLevelFilterLabel } from '../common/warning-lifecycle'
 
 const route = useRoute()
 
@@ -358,8 +358,7 @@ const filterByCard = (type) => {
 const typeMap = { SOS:{l:'SOS求助',t:'danger'}, fall:{l:'跌倒',t:'warning'}, heartRate:{l:'心率异常',t:'primary'}, bloodOxygen:{l:'血氧异常',t:'info'}, temperature:{l:'体温异常',t:'warning'}, bloodPressure:{l:'血压偏高',t:'danger'}, pressure:{l:'压力偏高',t:'warning'}, staticAlert:{l:'静态预警',t:'info'} }
 const typeLabel = t => typeMap[t]?.l||t||'-'
 const typeTag = t => typeMap[t]?.t||'primary'
-const levelMap = { 高危:{l:'高危',t:'danger'}, 中危:{l:'中危',t:'warning'}, 低危:{l:'低危',t:'info'} }
-const levelLabel = l => levelMap[l]?.l||l||'-'
+const levelMap = { 高危:{t:'danger'}, 中危:{t:'warning'}, 低危:{t:'info'}, 危险:{t:'danger'}, 预警:{t:'warning'}, 提示:{t:'info'} }
 const levelTag = l => levelMap[l]?.t||'primary'
 
 // Detail drawer
