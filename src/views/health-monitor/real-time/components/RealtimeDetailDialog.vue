@@ -5,7 +5,7 @@
     class="rt-dialog"
     width="420px"
     :append-to-body="true"
-    :close-on-click-modal="true"
+    :close-on-click-modal="false"
     @update:model-value="$emit('update:visible', $event)"
   >
     <div v-if="user" class="rt-detail-grid">
@@ -19,7 +19,7 @@
       </div>
     </div>
     <template #footer>
-      <el-button @click="$emit('update:visible', false)">关闭</el-button>
+      <el-button type="primary" autofocus aria-label="关闭实时体征详情" @click="$emit('update:visible', false)">关闭</el-button>
     </template>
   </el-dialog>
 </template>

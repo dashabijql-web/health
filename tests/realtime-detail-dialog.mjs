@@ -31,6 +31,8 @@ test('real-time detail items include watch identity and latest update for operat
 
 test('real-time detail dialog exposes close footer and keeps mobile card keyboard entry', () => {
   assert.match(detailDialogSource, /#footer/, 'detail dialog should expose an explicit footer action')
+  assert.match(detailDialogSource, /type="primary" autofocus aria-label="关闭实时体征详情"/, 'detail dialog close action should be primary and receive initial focus')
+  assert.match(detailDialogSource, /:close-on-click-modal="false"/, 'detail dialog should not close on accidental backdrop taps while reviewing live vitals')
   assert.match(detailDialogSource, /关闭/, 'detail dialog should have a visible close button')
   assert.match(tableSource, /@keydown\.enter\.prevent="\$emit\('showUserDetail', row\)"/, 'mobile cards keep Enter detail access')
   assert.match(tableSource, /@keydown\.space\.prevent="\$emit\('showUserDetail', row\)"/, 'mobile cards keep Space detail access')
