@@ -27,6 +27,7 @@
     "test:ai-chat-layout": "node --test tests/ai-chat-layout.mjs",
     "test:visual-audit-summary": "node --test tests/visual-audit-summary.mjs",
     "test:performance-triage-summary": "node --test tests/performance-triage-summary.mjs",
+    "test:openclaw-supervisor-contract": "node --test tests/openclaw-supervisor-contract.mjs",
     "test:warning-semantics": "node --test tests/auth-backend-start-hidden.mjs tests/health-write-source-semantics.mjs tests/dashboard-dialogs-level.mjs tests/dashboard-runtime-imports.mjs tests/dashboard-runtime-handled.mjs tests/dashboard-summary.mjs tests/dashboard-warning-level.mjs tests/dashboard-warn-curve.mjs tests/warning-lifecycle.mjs",
     "test:fast": "node scripts/health-test-runner.mjs fast",
     "test:frontend": "node scripts/health-test-runner.mjs frontend",

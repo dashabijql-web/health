@@ -26,7 +26,8 @@ const PROFILES = {
       command('npm', ['run', 'test:report-center-export']),
       command('npm', ['run', 'test:ai-chat-layout']),
       command('npm', ['run', 'test:visual-audit-summary']),
-      command('npm', ['run', 'test:performance-triage-summary'])
+      command('npm', ['run', 'test:performance-triage-summary']),
+      command('npm', ['run', 'test:openclaw-supervisor-contract'])
     ]
   },
   frontend: {
