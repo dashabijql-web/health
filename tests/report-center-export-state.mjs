@@ -94,6 +94,14 @@ test('buildReportExportState explains per-format exporting state', () => {
   )
 })
 
+test('report center export methods guard disabled state before starting export work', () => {
+  assert.match(reportCenterSource, /ensureExportReady\(format\)/)
+  assert.match(reportCenterSource, /state\.canExportPdf\s*:\s*state\.canExportExcel/)
+  assert.match(reportCenterSource, /this\.\$message\.warning\(reason \|\| '当前报表暂不可导出'\)/)
+  assert.match(reportCenterSource, /if \(!this\.ensureExportReady\('excel'\)\) return[\s\S]*this\.exporting = true/)
+  assert.match(reportCenterSource, /if \(!this\.ensureExportReady\('pdf'\)\) return[\s\S]*this\.exportingPdf = true/)
+})
+
 test('report center export buttons bind disabled state and disabled reason', () => {
   assert.match(reportCenterSource, /:disabled="!reportExportState\.canExportExcel"/)
   assert.match(reportCenterSource, /:disabled="!reportExportState\.canExportPdf"/)

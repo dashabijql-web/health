@@ -287,7 +287,16 @@ export default {
       queueReportCenterChartInit(this)
     },
     // ── 导出 ──
+    ensureExportReady(format) {
+      const state = this.reportExportState
+      const canExport = format === 'pdf' ? state.canExportPdf : state.canExportExcel
+      if (canExport) return true
+      const reason = format === 'pdf' ? state.pdfDisabledReason : state.excelDisabledReason
+      this.$message.warning(reason || '当前报表暂不可导出')
+      return false
+    },
     async exportExcel() {
+      if (!this.ensureExportReady('excel')) return
       this.exporting = true
       try {
         await exportReportCenterExcel({
@@ -305,6 +314,7 @@ export default {
       }
     },
     async exportPdf() {
+      if (!this.ensureExportReady('pdf')) return
       this.exportingPdf = true
       try {
         await exportReportCenterPdf({
