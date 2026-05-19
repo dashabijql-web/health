@@ -283,6 +283,10 @@ export default {
     padding-right: 12px;
   }
 
+  :deep(.app-breadcrumb.breadcrumb-container) {
+    display: none !important;
+  }
+
   .breadcrumb-container,
   .warn-label,
   .source-switch__label,

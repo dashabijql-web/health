@@ -1,15 +1,31 @@
 export const riskWarningPageViewModel = {
   computed: {
+    activePeriodLabel() {
+      return { day: '今日', week: '近7日', month: '近30日' }[this.activePeriod] || '当前时段'
+    },
+    heroDescription() {
+      const total = this.warningStats.reduce((sum, item) => sum + item.value, 0)
+      return `${this.activePeriodLabel}累计 ${total} 条风险波动，优先核查待处理记录并联动预警中心完成处置。`
+    },
     // FIX ②: 5个KPI含压力
     headerKpis() {
       const total = this.warningStats.reduce((s, x) => s + x.value, 0)
       return [
-        { label: '今日总预警', val: total,                       cls: 'kpi-red'    },
-        { label: '心率预警',   val: this.warningStats[0].value, cls: 'kpi-red'    },
-        { label: '血氧预警',   val: this.warningStats[1].value, cls: 'kpi-orange' },
-        { label: '体温预警',   val: this.warningStats[2].value, cls: 'kpi-cyan'   },
-        { label: '压力预警',   val: this.warningStats[3].value, cls: 'kpi-purple' }
+        { key: 'total', label: '总预警', val: total, tone: 'danger', note: `${this.activePeriodLabel}总量` },
+        { key: 'heart-rate', label: '心率', val: this.warningStats[0].value, tone: 'danger', note: '优先级最高' },
+        { key: 'blood-oxygen', label: '血氧', val: this.warningStats[1].value, tone: 'warning', note: '异常波动' },
+        { key: 'temperature', label: '体温', val: this.warningStats[2].value, tone: 'success', note: '趋势跟踪' },
+        { key: 'pressure', label: '压力', val: this.warningStats[3].value, tone: 'primary', note: '班前复核' }
       ]
+    },
+    warningMetricStripItems() {
+      return this.headerKpis.map((item) => ({
+        key: item.key,
+        label: item.label,
+        value: String(item.val ?? '--'),
+        note: item.note || '',
+        tone: item.tone || 'primary'
+      }))
     },
     statTitle()  { return { day:'今日预警统计', week:'近7日预警统计', month:'近30日预警统计' }[this.activePeriod] },
     trendTitle() { return { day:'今日预警分布', week:'近7天预警趋势', month:'近30天预警趋势' }[this.activePeriod] },

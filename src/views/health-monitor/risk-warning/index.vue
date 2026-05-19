@@ -3,25 +3,37 @@
 
     <!-- ══ Header ══ -->
     <header class="rw-hd">
-      <div class="rw-hd-left">
-        <span class="rw-live-dot"></span>
-        <h1 class="rw-hd-title">健康风险预警</h1>
-      </div>
+      <PageHeroHeader
+        class="rw-hd-hero"
+        variant="cockpit"
+        eyebrow="Warning Overview"
+        title="健康风险预警"
+        :description="heroDescription"
+      >
+        <template #meta>
+          <div class="rw-hd-meta">
+            <span class="rw-live-dot"></span>
+            <span class="rw-hd-meta-label">持续监测</span>
+            <span class="rw-hd-time">{{ currentTime }}</span>
+          </div>
+        </template>
+        <template #actions>
+          <div class="rw-period-tabs">
+            <span
+              v-for="p in periodOptions"
+              :key="p.value"
+              :class="['rw-period-tab', activePeriod === p.value ? 'is-active' : '']"
+              @click="switchPeriod(p.value)"
+            >{{ p.label }}</span>
+          </div>
+        </template>
+      </PageHeroHeader>
 
-      <!-- FIX ②: 5个KPI 含压力预警 -->
-      <div class="rw-hd-kpis">
-        <div class="rw-kpi" v-for="k in headerKpis" :key="k.label">
-          <span class="rw-kpi-n" :class="k.cls">{{ k.val }}</span>
-          <span class="rw-kpi-l">{{ k.label }}</span>
-        </div>
-      </div>
-
-      <div class="rw-period-tabs">
-        <span v-for="p in periodOptions" :key="p.value"
-          :class="['rw-period-tab', activePeriod === p.value ? 'is-active' : '']"
-          @click="switchPeriod(p.value)">{{ p.label }}</span>
-      </div>
-      <div class="rw-hd-time">{{ currentTime }}</div>
+      <MetricStrip
+        class="rw-hd-kpis"
+        :items="warningMetricStripItems"
+        dense
+      />
     </header>
 
     <div class="rw-center-nav">
@@ -253,6 +265,8 @@
 
 <script>
 import WarningCenterNav from '@/components/WarningCenterNav.vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
+import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 import chartPageMixin from '@/mixins/chartPage'
 import riskWarningPageState from './risk-warning-page-state'
 import { riskWarningPageViewModel } from './risk-warning-view-model'
@@ -260,7 +274,7 @@ import { riskWarningPageRuntime } from './risk-warning-runtime'
 
 export default {
   name: 'RiskWarning',
-  components: { WarningCenterNav },
+  components: { WarningCenterNav, PageHeroHeader, MetricStrip },
   mixins: [chartPageMixin, riskWarningPageState, riskWarningPageViewModel, riskWarningPageRuntime]
 }
 </script>
@@ -277,4 +291,3 @@ export default {
   .el-drawer__body { padding:0!important; background:#0d1228!important; }
 }
 </style>
-

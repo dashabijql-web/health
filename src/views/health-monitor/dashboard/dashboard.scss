@@ -131,8 +131,8 @@ $white:  var(--text-strong);
 .dm-main-dispatch { flex:0 0 auto; overflow:hidden; }
 .dm-main-model   { flex:1; min-height:0; overflow:hidden; }
 .dm-main-device  { flex:0 0 100px; overflow:hidden; }
-.dm-main-env     { flex:0 0 205px; overflow:hidden; }
-.dm-env-chart    { height:160px; width:100%; }
+.dm-main-env     { flex:0 0 228px; overflow:hidden; }
+.dm-env-chart    { height:182px; width:100%; }
 
 // 当月检测概览指标行
 .dm-metrics-row { display:flex; gap:8px; padding:5px 14px 6px; align-items:stretch; }
@@ -991,7 +991,7 @@ $white:  var(--text-strong);
     overflow: hidden;
   }
   .dm-main-model { height: auto; flex: none; }
-  .dm-main-env   { height: 160px; flex: none; }
+  .dm-main-env   { height: 194px; flex: none; }
   .dm-left-assess, .dm-left-dept,
   .dm-main-metrics, .dm-main-device,
   .dm-right-rank, .dm-right-warnrate, .dm-right-preshift {
