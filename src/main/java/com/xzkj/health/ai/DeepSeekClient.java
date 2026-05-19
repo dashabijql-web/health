@@ -21,6 +21,8 @@ import java.net.http.HttpTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -292,20 +294,50 @@ public class DeepSeekClient {
         String cached = trimToNull(resolvedApiKey);
         if (cached != null) return cached;
 
-        String file = trimToNull(apiKeyFile);
-        if (file != null) {
+        for (Path candidate : candidateApiKeyFiles()) {
             try {
-                String fileKey = trimToNull(Files.readString(Path.of(file)));
+                if (!Files.isRegularFile(candidate)) {
+                    continue;
+                }
+                String fileKey = trimToNull(Files.readString(candidate));
                 if (fileKey != null) {
                     resolvedApiKey = fileKey;
+                    log.info("从 API Key 文件加载 DeepSeek 配置: {}", candidate);
                     return fileKey;
                 }
             } catch (Exception e) {
-                log.warn("读取 DeepSeek API Key 文件失败: {}", e.getMessage());
+                log.warn("读取 DeepSeek API Key 文件失败: path={}, error={}", candidate, e.getMessage());
             }
         }
 
         throw new BusinessException(503, "AI服务未完成配置，请联系管理员");
+    }
+
+    private List<Path> candidateApiKeyFiles() {
+        LinkedHashSet<Path> candidates = new LinkedHashSet<>();
+
+        String configured = trimToNull(apiKeyFile);
+        if (configured != null) {
+            candidates.add(Path.of(configured));
+        }
+
+        String userHome = trimToNull(System.getProperty("user.home"));
+        if (userHome != null) {
+            candidates.add(Path.of(userHome, "Desktop", "deepseek-key.txt"));
+        }
+
+        String[] userNames = {
+                trimToNull(System.getProperty("user.name")),
+                trimToNull(System.getenv("USER")),
+                trimToNull(System.getenv("USERNAME"))
+        };
+        for (String userName : userNames) {
+            if (userName != null) {
+                candidates.add(Path.of("/mnt/c/Users", userName, "Desktop", "deepseek-key.txt"));
+            }
+        }
+
+        return new ArrayList<>(candidates);
     }
 
     private HttpClient getHttpClient() {

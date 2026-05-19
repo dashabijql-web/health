@@ -21,7 +21,42 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MAVEN_BIN = os.getenv("MAVEN_BIN") or shutil.which("mvn.cmd") or shutil.which("mvn")
+IS_WINDOWS = os.name == "nt"
+
+
+def resolve_java_home() -> str | None:
+    preferred = os.getenv("HEALTH_JAVA_HOME") or os.getenv("JAVA_HOME") or str(Path.home() / ".local" / "opt" / "jdk-17.0.19+10")
+    preferred_java = Path(preferred) / "bin" / "java"
+    if preferred_java.is_file():
+        return preferred
+
+    java_bin = shutil.which("java")
+    if not java_bin:
+        return None
+    return str(Path(java_bin).resolve().parents[1])
+
+
+def resolve_maven_bin() -> str | None:
+    candidates = [
+        os.getenv("HEALTH_MAVEN_CMD"),
+        os.getenv("MAVEN_BIN"),
+        str(Path(os.getenv("HEALTH_MAVEN_HOME", os.getenv("MAVEN_HOME", str(Path.home() / ".local" / "opt" / "apache-maven-3.9.16")))) / "bin" / "mvn"),
+        shutil.which("mvn"),
+        shutil.which("mvn.cmd"),
+    ]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        if not Path(candidate).is_file():
+            continue
+        if not IS_WINDOWS and candidate.lower().endswith(".cmd"):
+            continue
+        return candidate
+    return None
+
+
+JAVA_HOME = resolve_java_home()
+MAVEN_BIN = resolve_maven_bin()
 CI_MODE = os.getenv("CI", "").lower() in {"1", "true", "yes"} or os.getenv("GITHUB_ACTIONS", "").lower() in {"1", "true", "yes"}
 SKIP_REDIS_PROBE = os.getenv("HEALTH_SKIP_REDIS_PROBE", "").lower() in {"1", "true", "yes"} or CI_MODE
 
@@ -29,6 +64,11 @@ SKIP_REDIS_PROBE = os.getenv("HEALTH_SKIP_REDIS_PROBE", "").lower() in {"1", "tr
 def run_step(label: str, command: list[str], extra_env: dict[str, str] | None = None) -> int:
     print(f"== {label} ==", flush=True)
     env = os.environ.copy()
+    if JAVA_HOME:
+        env.setdefault("JAVA_HOME", JAVA_HOME)
+        env["PATH"] = f"{Path(JAVA_HOME) / 'bin'}:{env.get('PATH', '')}"
+    if MAVEN_BIN:
+        env.setdefault("HEALTH_MAVEN_CMD", MAVEN_BIN)
     if extra_env:
         env.update(extra_env)
     completed = subprocess.run(command, cwd=ROOT, env=env)
