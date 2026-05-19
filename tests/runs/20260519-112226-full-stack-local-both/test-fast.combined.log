@@ -1,0 +1,495 @@
+### STDOUT
+
+> health-show-vue3@3.0.0 test:fast
+> node scripts/health-test-runner.mjs fast
+
+[health-test-runner] profile=fast
+[health-test-runner] dataSource=old expectNonEmpty=1
+[health-test-runner] artifacts=/home/j/code/health/HealthShow/tests/runs/2026-05-19T03-22-45-372Z
+OK      node: v22.22.3
+OK      cwd: /home/j/code/health/HealthShow
+OK      data-source: old
+OK      expect-non-empty: 1
+[health-test-runner] RUN npm run test:warning-semantics
+
+> health-show-vue3@3.0.0 test:warning-semantics
+> node --test tests/auth-backend-start-hidden.mjs tests/health-write-source-semantics.mjs tests/dashboard-dialogs-level.mjs tests/dashboard-runtime-imports.mjs tests/dashboard-runtime-handled.mjs tests/dashboard-summary.mjs tests/dashboard-warning-level.mjs tests/dashboard-warn-curve.mjs tests/warning-lifecycle.mjs tests/wsl-runner-contract.mjs
+
+TAP version 13
+# Subtest: auth audit restarts backend through the WSL stack manager
+ok 1 - auth audit restarts backend through the WSL stack manager
+  ---
+  duration_ms: 2.593793
+  type: 'test'
+  ...
+# Subtest: full stack runner manages backend and simulator through the WSL stack
+ok 2 - full stack runner manages backend and simulator through the WSL stack
+  ---
+  duration_ms: 0.360421
+  type: 'test'
+  ...
+# Subtest: detached runner wrapper uses the WSL tmux entry point
+ok 3 - detached runner wrapper uses the WSL tmux entry point
+  ---
+  duration_ms: 0.269223
+  type: 'test'
+  ...
+# Subtest: detached runner wrapper dry-run reports runner arguments without starting a run
+ok 4 - detached runner wrapper dry-run reports runner arguments without starting a run
+  ---
+  duration_ms: 37.530108
+  type: 'test'
+  ...
+# Subtest: full stack runner treats one existing simulator process as already running
+ok 5 - full stack runner treats one existing simulator process as already running
+  ---
+  duration_ms: 0.29594
+  type: 'test'
+  ...
+# Subtest: full stack runner stops simulator before old full pipeline probes
+ok 6 - full stack runner stops simulator before old full pipeline probes
+  ---
+  duration_ms: 1.386558
+  type: 'test'
+  ...
+# Subtest: full stack runner records data-source database facts and simulator contamination
+ok 7 - full stack runner records data-source database facts and simulator contamination
+  ---
+  duration_ms: 0.211933
+  type: 'test'
+  ...
+# Subtest: full stack runner writes a Hermes archive for automation triage
+ok 8 - full stack runner writes a Hermes archive for automation triage
+  ---
+  duration_ms: 0.149802
+  type: 'test'
+  ...
+# Subtest: full stack runner logs allowed skipped results distinctly from passed runs
+ok 9 - full stack runner logs allowed skipped results distinctly from passed runs
+  ---
+  duration_ms: 0.322849
+  type: 'test'
+  ...
+# Subtest: dashboard employee drawer warning list uses normalized level helpers
+ok 10 - dashboard employee drawer warning list uses normalized level helpers
+  ---
+  duration_ms: 1.220065
+  type: 'test'
+  ...
+# Subtest: dashboard warning curve dialog uses shared tag type helper
+ok 11 - dashboard warning curve dialog uses shared tag type helper
+  ---
+  duration_ms: 0.322261
+  type: 'test'
+  ...
+# Subtest: dashboard warning runtime reuses shared handled normalizer
+ok 12 - dashboard warning runtime reuses shared handled normalizer
+  ---
+  duration_ms: 1.157474
+  type: 'test'
+  ...
+# Subtest: dashboard runtime imports warning lifecycle helper from existing relative path
+ok 13 - dashboard runtime imports warning lifecycle helper from existing relative path
+  ---
+  duration_ms: 0.962799
+  type: 'test'
+  ...
+# (node:475631) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/j/code/health/HealthShow/src/views/health-monitor/dashboard/dashboard-summary.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/j/code/health/HealthShow/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: getLatestDangerEvent returns only unhandled danger events
+ok 14 - getLatestDangerEvent returns only unhandled danger events
+  ---
+  duration_ms: 1.002998
+  type: 'test'
+  ...
+# Subtest: warn curve chart marker uses event warning level semantics
+ok 15 - warn curve chart marker uses event warning level semantics
+  ---
+  duration_ms: 1.592737
+  type: 'test'
+  ...
+# Subtest: warn curve chart receives event level from detail methods
+ok 16 - warn curve chart receives event level from detail methods
+  ---
+  duration_ms: 1.277575
+  type: 'test'
+  ...
+# (node:475643) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/j/code/health/HealthShow/src/views/health-monitor/dashboard/dashboard-warning-level.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/j/code/health/HealthShow/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: dashboard warning level helpers distinguish danger, warn and info
+ok 17 - dashboard warning level helpers distinguish danger, warn and info
+  ---
+  duration_ms: 1.033939
+  type: 'test'
+  ...
+# Subtest: write regression treats new empty data source as partial coverage instead of failure
+ok 18 - write regression treats new empty data source as partial coverage instead of failure
+  ---
+  duration_ms: 1.325241
+  type: 'test'
+  ...
+# (node:475650) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/j/code/health/HealthShow/src/views/alert-management/common/warning-lifecycle.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/j/code/health/HealthShow/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: normalizeWarningLevel maps Chinese labels and numeric levels
+ok 19 - normalizeWarningLevel maps Chinese labels and numeric levels
+  ---
+  duration_ms: 1.90356
+  type: 'test'
+  ...
+# Subtest: warningLevelFilterLabel maps notification route levels to records filter labels
+ok 20 - warningLevelFilterLabel maps notification route levels to records filter labels
+  ---
+  duration_ms: 0.342916
+  type: 'test'
+  ...
+# Subtest: warningHandledStatusLabel keeps notifications and records pending wording aligned
+ok 21 - warningHandledStatusLabel keeps notifications and records pending wording aligned
+  ---
+  duration_ms: 0.20724
+  type: 'test'
+  ...
+# Subtest: alert management pages use shared pending handled wording
+ok 22 - alert management pages use shared pending handled wording
+  ---
+  duration_ms: 0.405295
+  type: 'test'
+  ...
+# Subtest: alert management records reuse shared display level labels
+ok 23 - alert management records reuse shared display level labels
+  ---
+  duration_ms: 0.341594
+  type: 'test'
+  ...
+# Subtest: alert records page exposes shared SLA clock fields in table, mobile card, and detail drawer
+ok 24 - alert records page exposes shared SLA clock fields in table, mobile card, and detail drawer
+  ---
+  duration_ms: 0.364004
+  type: 'test'
+  ...
+# Subtest: notification records jump preserves lifecycle filters as route query
+ok 25 - notification records jump preserves lifecycle filters as route query
+  ---
+  duration_ms: 0.684814
+  type: 'test'
+  ...
+# Subtest: buildWarningLifecycleView derives deadline and overdue seconds from createTime
+ok 26 - buildWarningLifecycleView derives deadline and overdue seconds from createTime
+  ---
+  duration_ms: 0.591558
+  type: 'test'
+  ...
+# Subtest: buildWarningLifecycleView marks handled warnings as handled instead of overdue
+ok 27 - buildWarningLifecycleView marks handled warnings as handled instead of overdue
+  ---
+  duration_ms: 1.327463
+  type: 'test'
+  ...
+# Subtest: buildWarningLifecycleView marks near-deadline warnings as warning
+ok 28 - buildWarningLifecycleView marks near-deadline warnings as warning
+  ---
+  duration_ms: 0.367401
+  type: 'test'
+  ...
+# Subtest: buildWarningLifecycleView exposes operator-facing SLA clock text
+ok 29 - buildWarningLifecycleView exposes operator-facing SLA clock text
+  ---
+  duration_ms: 0.192324
+  type: 'test'
+  ...
+# Subtest: buildWarningLifecycleItem normalizes isHandled and level display fields
+ok 30 - buildWarningLifecycleItem normalizes isHandled and level display fields
+  ---
+  duration_ms: 0.199635
+  type: 'test'
+  ...
+# Subtest: markWarningHandled refreshes stale overdue SLA fields after local handling
+ok 31 - markWarningHandled refreshes stale overdue SLA fields after local handling
+  ---
+  duration_ms: 0.104001
+  type: 'test'
+  ...
+# Subtest: WSL full stack runner uses the WSL stack manager and preserves summary contracts
+ok 32 - WSL full stack runner uses the WSL stack manager and preserves summary contracts
+  ---
+  duration_ms: 0.863647
+  type: 'test'
+  ...
+# Subtest: WSL detached runner wrapper exposes dry-run and single-session contracts
+ok 33 - WSL detached runner wrapper exposes dry-run and single-session contracts
+  ---
+  duration_ms: 1.421922
+  type: 'test'
+  ...
+# Subtest: WSL detached runner wrapper dry-run reports python entrypoint
+ok 34 - WSL detached runner wrapper dry-run reports python entrypoint
+  ---
+  duration_ms: 34.532014
+  type: 'test'
+  ...
+# Subtest: WSL audit-write wrapper resolves SQL password and runs the existing npm gate
+ok 35 - WSL audit-write wrapper resolves SQL password and runs the existing npm gate
+  ---
+  duration_ms: 0.197891
+  type: 'test'
+  ...
+# Subtest: WSL health loop runner delegates full profiles to the Python full-stack runner
+ok 36 - WSL health loop runner delegates full profiles to the Python full-stack runner
+  ---
+  duration_ms: 0.223835
+  type: 'test'
+  ...
+# Subtest: WSL watch capture scripts manage backend lifecycle through WSL runners
+ok 37 - WSL watch capture scripts manage backend lifecycle through WSL runners
+  ---
+  duration_ms: 0.277471
+  type: 'test'
+  ...
+1..37
+# tests 37
+# suites 0
+# pass 37
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 115.993831
+[health-test-runner] RUN npm run test:realtime-detail
+
+> health-show-vue3@3.0.0 test:realtime-detail
+> node --test tests/realtime-detail-dialog.mjs
+
+TAP version 13
+# (node:475707) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/j/code/health/HealthShow/src/views/health-monitor/real-time/realtime-helpers.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/j/code/health/HealthShow/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: real-time detail items include watch identity and latest update for operator context
+ok 1 - real-time detail items include watch identity and latest update for operator context
+  ---
+  duration_ms: 1.676781
+  type: 'test'
+  ...
+# Subtest: real-time detail dialog exposes close footer and keeps mobile card keyboard entry
+ok 2 - real-time detail dialog exposes close footer and keeps mobile card keyboard entry
+  ---
+  duration_ms: 0.241019
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 62.298936
+[health-test-runner] RUN npm run test:report-center-export
+
+> health-show-vue3@3.0.0 test:report-center-export
+> node --test tests/report-center-export-state.mjs
+
+TAP version 13
+# (node:475732) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/j/code/health/HealthShow/src/views/health-monitor/report-center/report-center-view-model.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/j/code/health/HealthShow/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: hasReportExportData detects whether any report export source has rows
+ok 1 - hasReportExportData detects whether any report export source has rows
+  ---
+  duration_ms: 1.344886
+  type: 'test'
+  ...
+# Subtest: buildReportExportState explains disabled export state and loading state
+ok 2 - buildReportExportState explains disabled export state and loading state
+  ---
+  duration_ms: 0.653156
+  type: 'test'
+  ...
+# Subtest: buildReportExportState explains per-format exporting state
+ok 3 - buildReportExportState explains per-format exporting state
+  ---
+  duration_ms: 0.210729
+  type: 'test'
+  ...
+# Subtest: report center export methods guard disabled state before starting export work
+ok 4 - report center export methods guard disabled state before starting export work
+  ---
+  duration_ms: 0.27951
+  type: 'test'
+  ...
+# Subtest: report center export buttons bind disabled state and disabled reason
+ok 5 - report center export buttons bind disabled state and disabled reason
+  ---
+  duration_ms: 0.165718
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 56.784792
+[health-test-runner] RUN npm run test:ai-chat-layout
+
+> health-show-vue3@3.0.0 test:ai-chat-layout
+> node --test tests/ai-chat-layout.mjs
+
+TAP version 13
+# Subtest: AI chat query result table has horizontal overflow protection
+ok 1 - AI chat query result table has horizontal overflow protection
+  ---
+  duration_ms: 0.923133
+  type: 'test'
+  ...
+# Subtest: AI chat mobile layout lets result bubbles use available viewport width
+ok 2 - AI chat mobile layout lets result bubbles use available viewport width
+  ---
+  duration_ms: 0.251406
+  type: 'test'
+  ...
+# Subtest: AI chat result template keeps table inside the scroll wrapper
+ok 3 - AI chat result template keeps table inside the scroll wrapper
+  ---
+  duration_ms: 0.973654
+  type: 'test'
+  ...
+# Subtest: fast runner includes AI chat layout guard
+ok 4 - fast runner includes AI chat layout guard
+  ---
+  duration_ms: 0.160814
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 54.955773
+[health-test-runner] RUN npm run test:visual-audit-summary
+
+> health-show-vue3@3.0.0 test:visual-audit-summary
+> node --test tests/visual-audit-summary.mjs
+
+TAP version 13
+# Subtest: visual audit default route inventory includes warning lifecycle records route
+ok 1 - visual audit default route inventory includes warning lifecycle records route
+  ---
+  duration_ms: 0.815926
+  type: 'test'
+  ...
+# Subtest: visual audit writes route-level artifact summaries
+ok 2 - visual audit writes route-level artifact summaries
+  ---
+  duration_ms: 0.214385
+  type: 'test'
+  ...
+# Subtest: visual audit markdown includes triage table and rerun hints
+ok 3 - visual audit markdown includes triage table and rerun hints
+  ---
+  duration_ms: 0.129698
+  type: 'test'
+  ...
+# Subtest: visual audit groups issues by type for faster failure triage
+ok 4 - visual audit groups issues by type for faster failure triage
+  ---
+  duration_ms: 0.996872
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 51.527724
+[health-test-runner] RUN npm run test:performance-triage-summary
+
+> health-show-vue3@3.0.0 test:performance-triage-summary
+> node --test tests/performance-triage-summary.mjs
+
+TAP version 13
+# Subtest: api latency report builds threshold-utilization triage
+ok 1 - api latency report builds threshold-utilization triage
+  ---
+  duration_ms: 0.761134
+  type: 'test'
+  ...
+# Subtest: api latency markdown explains slow endpoints and no-outlier state
+ok 2 - api latency markdown explains slow endpoints and no-outlier state
+  ---
+  duration_ms: 0.124316
+  type: 'test'
+  ...
+# Subtest: api latency json includes performance triage block before report write
+ok 3 - api latency json includes performance triage block before report write
+  ---
+  duration_ms: 0.18225
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 49.293311
+[health-test-runner] RUN npm run test:openclaw-supervisor-contract
+
+> health-show-vue3@3.0.0 test:openclaw-supervisor-contract
+> node --test tests/openclaw-supervisor-contract.mjs
+
+TAP version 13
+# Subtest: OpenClaw supervisor supports a stop-after-current request gate
+ok 1 - OpenClaw supervisor supports a stop-after-current request gate
+  ---
+  duration_ms: 0.972998
+  type: 'test'
+  ...
+# Subtest: OpenClaw supervisor prompts for structured process retrospectives
+ok 2 - OpenClaw supervisor prompts for structured process retrospectives
+  ---
+  duration_ms: 0.185868
+  type: 'test'
+  ...
+# Subtest: OpenClaw supervisor final report records explicit stop reason
+ok 3 - OpenClaw supervisor final report records explicit stop reason
+  ---
+  duration_ms: 0.841532
+  type: 'test'
+  ...
+# Subtest: OpenClaw graceful stop request script writes the shared stop file
+ok 4 - OpenClaw graceful stop request script writes the shared stop file
+  ---
+  duration_ms: 27.38841
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 80.164316
+[health-test-runner] PASS fast
+[health-test-runner] summary=/home/j/code/health/HealthShow/tests/runs/2026-05-19T03-22-45-372Z/health-test-runner-summary.json
+
+### STDERR

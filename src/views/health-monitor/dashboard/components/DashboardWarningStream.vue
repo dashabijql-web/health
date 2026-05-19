@@ -37,7 +37,12 @@
             </span>
           </div>
         </div>
-        <div v-if="!warningEvents.length" class="dm-empty">暂无预警事件</div>
+        <PageEmptyState
+          v-if="!warningEvents.length"
+          compact
+          title="暂无预警事件"
+          description="当前时段未发现新的风险预警。"
+        />
       </div>
     </div>
 
@@ -60,6 +65,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useScrollLoop } from '@/composables/useScrollLoop'
+import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
 import {
   dashboardWarningLevelBadgeClass,
   dashboardWarningLevelEventClass,

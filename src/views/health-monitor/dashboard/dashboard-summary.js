@@ -87,7 +87,7 @@ export function getLatestDangerEvent(warningEvents) {
 }
 
 export function buildWarningTypeData({ warningTypesData, warningEvents }) {
-  const colors = ['#ff5252', '#00d4ff', '#a78bfa', '#ffd200', '#38ef7d', '#FFB84D']
+  const colors = ['#ff5252', '#00d4ff', '#3eb7ff', '#ffd200', '#38ef7d', '#FFB84D']
   const source = (warningTypesData || []).length
     ? warningTypesData
     : (() => {
@@ -112,7 +112,7 @@ export function buildRiskDeptList(deptDataList) {
   if (!(deptDataList || []).length) return []
   const sorted = [...deptDataList].sort((a, b) => b.count - a.count)
   const max = sorted[0].count || 1
-  const colors = ['#ff5252', '#ffd200', '#FFB84D', '#00d4ff', '#38ef7d', '#00c8c8', '#a78bfa', '#67C23A', '#E6A23C', '#F56C6C']
+  const colors = ['#ff5252', '#ffd200', '#FFB84D', '#00d4ff', '#38ef7d', '#00c8c8', '#3eb7ff', '#67C23A', '#E6A23C', '#F56C6C']
 
   return sorted.map((item, index) => {
     const pct = Math.round(item.count / max * 100)

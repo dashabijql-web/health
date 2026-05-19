@@ -57,7 +57,7 @@ export function buildDashboardWarnCurveSeries(records, type) {
     '心率': { key: 'heartRate', label: '心率(bpm)', color: '#00d4ff' },
     '血氧': { key: 'bloodOxygen', label: '血氧(%)', color: '#38ef7d' },
     '体温': { key: 'temperature', label: '体温(°C)', color: '#ffd200', divisor: 10 },
-    '压力': { key: 'pressure', label: '压力指数', color: '#a78bfa' },
+    '压力': { key: 'pressure', label: '压力指数', color: '#3eb7ff' },
     '血压': { key: 'bloodPressureHigh', label: '收缩压(mmHg)', color: '#ff7043' }
   }
   const typeKey = Object.keys(indicatorMap).find((key) => type?.includes(key)) || '心率'

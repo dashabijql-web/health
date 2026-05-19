@@ -51,7 +51,7 @@ export const dashboardChartMethods = {
     const onlineRate = totalDevices > 0 ? Math.round((this.deviceOnline / totalDevices) * 100) : 0
     this.initGauge('onlineRateChart', onlineRate, '#00d4ff', '#F56C6C')
     this.initGauge('activeRateChart', this.deviceStats.activeRate || 0, '#67C23A', '#F56C6C')
-    this.initGauge('usageRateChart', this.deviceStats.usageRate || 0, '#a78bfa', '#E6A23C')
+    this.initGauge('usageRateChart', this.deviceStats.usageRate || 0, '#3eb7ff', '#E6A23C')
     this.initGauge('warningRateChart', this.deviceStats.warningRate || 0, '#F56C6C', '#67C23A')
   },
 

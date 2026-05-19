@@ -1,0 +1,11 @@
+{
+  "runId": "20260519-112226-full-stack-local-both",
+  "status": "skipped",
+  "statusReason": "allowed skipped steps: 1",
+  "dataSource": "both",
+  "outDir": "/home/j/code/health/HealthShow/tests/runs/20260519-112226-full-stack-local-both",
+  "summaryJson": "/home/j/code/health/HealthShow/tests/runs/20260519-112226-full-stack-local-both/full-stack-local-summary.json",
+  "summaryMd": "/home/j/code/health/HealthShow/tests/runs/20260519-112226-full-stack-local-both/summary.md",
+  "hermesArchive": "/home/j/code/health/HealthShow/tests/runs/20260519-112226-full-stack-local-both/hermes-archive.md",
+  "finishedAt": "2026-05-19T11:34:01.421808+08:00"
+}

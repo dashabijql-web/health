@@ -1,0 +1,21 @@
+
+> health-show-vue3@3.0.0 test:full:new
+> node scripts/health-test-runner.mjs full --source new
+
+[health-test-runner] profile=full
+[health-test-runner] dataSource=new expectNonEmpty=0
+[health-test-runner] artifacts=/home/j/code/health/HealthShow/tests/runs/2026-05-19T02-31-23-702Z
+OK      node: v22.22.3
+OK      cwd: /home/j/code/health/HealthShow
+OK      data-source: new
+OK      expect-non-empty: 0
+OK      package-lock: /home/j/code/health/HealthShow/package-lock.json
+OK      backend-8080: 127.0.0.1:8080
+OK      frontend-http: HTTP 200 http://127.0.0.1:9528/
+BLOCKED playwright-browser: ENOENT: no such file or directory, access '/home/j/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome'
+        hint: 先执行 `npm run audit:e2e:install`
+OK      SQL_PASSWORD: set
+OK      sqlcmd: sqlcmd -?
+OK      sql-server: 127.0.0.1:58135
+OK      tcp-9000: 127.0.0.1:9000
+OK      redis-6379: 127.0.0.1:6379

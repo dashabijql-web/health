@@ -1,0 +1,78 @@
+{
+  "runId": "2026-05-19T02-36-34-179Z",
+  "profile": "fast",
+  "description": "Pure Node tests and source-guard tests; no backend/browser/database required.",
+  "dataSource": "old",
+  "expectNonEmpty": true,
+  "startedAt": "2026-05-19T02:36:34.181Z",
+  "status": "passed",
+  "preflight": [
+    {
+      "name": "node",
+      "ok": true,
+      "required": true,
+      "detail": "v22.22.3",
+      "hint": ""
+    },
+    {
+      "name": "cwd",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/code/health/HealthShow",
+      "hint": ""
+    },
+    {
+      "name": "data-source",
+      "ok": true,
+      "required": true,
+      "detail": "old",
+      "hint": ""
+    },
+    {
+      "name": "expect-non-empty",
+      "ok": true,
+      "required": true,
+      "detail": "1",
+      "hint": ""
+    }
+  ],
+  "commands": [
+    {
+      "name": "npm run test:warning-semantics",
+      "exitCode": 0,
+      "durationMs": 240
+    },
+    {
+      "name": "npm run test:realtime-detail",
+      "exitCode": 0,
+      "durationMs": 180
+    },
+    {
+      "name": "npm run test:report-center-export",
+      "exitCode": 0,
+      "durationMs": 174
+    },
+    {
+      "name": "npm run test:ai-chat-layout",
+      "exitCode": 0,
+      "durationMs": 176
+    },
+    {
+      "name": "npm run test:visual-audit-summary",
+      "exitCode": 0,
+      "durationMs": 172
+    },
+    {
+      "name": "npm run test:performance-triage-summary",
+      "exitCode": 0,
+      "durationMs": 173
+    },
+    {
+      "name": "npm run test:openclaw-supervisor-contract",
+      "exitCode": 0,
+      "durationMs": 229
+    }
+  ],
+  "artifactDir": "/home/j/code/health/HealthShow/tests/runs/2026-05-19T02-36-34-179Z",
+  "finishedAt": "2026-05-19T02:36:35.525Z"
+}

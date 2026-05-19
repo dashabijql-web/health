@@ -1,9 +1,9 @@
 // Health Monitor 共享颜色变量
 // 使用 !default 允许各页面在 @import 前覆盖特定值
-$bg:     #080d1e !default;
-$panel:  rgba(8, 16, 42, 0.88) !default;
-$border: rgba(0, 212, 255, 0.14) !default;
-$accent: #00d4ff !default;
-$text:   #a8c5e6 !default;
-$dim:    #6a88ab !default;
-$white:  #e8f4ff !default;
+$bg:     var(--bg-root) !default;
+$panel:  var(--bg-surface) !default;
+$border: var(--border-soft) !default;
+$accent: var(--accent-primary) !default;
+$text:   var(--text-primary) !default;
+$dim:    var(--text-secondary) !default;
+$white:  var(--text-strong) !default;

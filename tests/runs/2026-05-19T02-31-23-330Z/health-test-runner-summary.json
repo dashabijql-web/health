@@ -1,0 +1,70 @@
+{
+  "runId": "2026-05-19T02-31-23-330Z",
+  "profile": "perf",
+  "description": "Performance gate: API latency and browser page-load budgets; requires running frontend/backend services.",
+  "dataSource": "new",
+  "expectNonEmpty": false,
+  "startedAt": "2026-05-19T02:31:23.331Z",
+  "status": "blocked",
+  "preflight": [
+    {
+      "name": "node",
+      "ok": true,
+      "required": true,
+      "detail": "v22.22.3",
+      "hint": ""
+    },
+    {
+      "name": "cwd",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/code/health/HealthShow",
+      "hint": ""
+    },
+    {
+      "name": "data-source",
+      "ok": true,
+      "required": true,
+      "detail": "new",
+      "hint": ""
+    },
+    {
+      "name": "expect-non-empty",
+      "ok": true,
+      "required": true,
+      "detail": "0",
+      "hint": ""
+    },
+    {
+      "name": "package-lock",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/code/health/HealthShow/package-lock.json",
+      "hint": ""
+    },
+    {
+      "name": "backend-8080",
+      "ok": true,
+      "required": true,
+      "detail": "127.0.0.1:8080",
+      "hint": "启动后端：mvn spring-boot:run -f D:/Health/HealthData/pom.xml"
+    },
+    {
+      "name": "frontend-http",
+      "ok": true,
+      "required": true,
+      "detail": "HTTP 200 http://127.0.0.1:9528/",
+      "hint": "启动前端：cd D:/Health/HealthShow && npm run dev"
+    },
+    {
+      "name": "playwright-browser",
+      "ok": false,
+      "required": true,
+      "detail": "ENOENT: no such file or directory, access '/home/j/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome'",
+      "hint": "先执行 `npm run audit:e2e:install`"
+    }
+  ],
+  "commands": [],
+  "artifactDir": "/home/j/code/health/HealthShow/tests/runs/2026-05-19T02-31-23-330Z",
+  "finishedAt": "2026-05-19T02:31:23.360Z"
+}

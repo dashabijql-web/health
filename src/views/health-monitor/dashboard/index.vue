@@ -4,42 +4,45 @@
 
     <!-- ══════════ HEADER ══════════ -->
     <header class="dm-hd">
-      <div class="dm-hd-left">
-        <span class="dm-live-dot"></span>
-        <h1 class="dm-hd-title">信智科技职业健康监测管理系统</h1>
-      </div>
+      <PageHeroHeader
+        class="dm-hd-hero"
+        variant="cockpit"
+        eyebrow="Cockpit Dashboard"
+        title="信智科技职业健康监测管理系统"
+        :description="dashboardHeroDescription"
+      >
+        <template #meta>
+          <div class="dm-hd-meta">
+            <span class="dm-live-dot"></span>
+            <span class="dm-hd-meta-label">实时运行</span>
+            <span class="dm-hd-time">{{ currentTime }}</span>
+            <div class="dm-refresh-info" @click="fetchData(true)" title="点击立即刷新">
+              <span class="dm-refresh-icon" :class="{ 'is-spinning': isRefreshing }">↻</span>
+              <span class="dm-refresh-time">{{ lastRefreshText }}</span>
+            </div>
+          </div>
+        </template>
+        <template #actions>
+          <div class="dm-period-tabs">
+            <span
+              v-for="p in periodOptions"
+              :key="p.value"
+              :class="['dm-period-tab', activePeriod === p.value ? 'is-active' : '']"
+              @click="switchPeriod(p.value)"
+            >{{ p.label }}</span>
+          </div>
+          <div class="dm-fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏展示'">
+            <span>{{ isFullscreen ? '⊡' : '⛶' }}</span>
+          </div>
+        </template>
+      </PageHeroHeader>
 
-      <div class="dm-hd-kpis">
-        <div class="dm-hd-kpi" v-for="k in headerKpis" :key="k.label"
-             :style="k.clickable ? 'cursor:pointer' : ''"
-             :title="k.clickable ? '点击查看详情' : ''"
-             @click="k.clickable && onKpiClick(k)">
-          <span v-if="k.valHtml" class="dm-hd-kpi-val" :class="k.cls" v-html="k.valHtml"></span>
-          <span v-else class="dm-hd-kpi-val" :class="k.cls">{{ k.val }}</span>
-          <span class="dm-hd-kpi-label">{{ k.label }}</span>
-          <span v-if="k.sub" class="dm-hd-kpi-sub" :class="k.subCls">{{ k.sub }}</span>
-        </div>
-      </div>
-
-      <div class="dm-hd-right">
-        <!-- 时间维度切换 -->
-        <div class="dm-period-tabs">
-          <span
-            v-for="p in periodOptions"
-            :key="p.value"
-            :class="['dm-period-tab', activePeriod === p.value ? 'is-active' : '']"
-            @click="switchPeriod(p.value)"
-          >{{ p.label }}</span>
-        </div>
-        <span class="dm-hd-time">{{ currentTime }}</span>
-        <div class="dm-refresh-info" @click="fetchData(true)" title="点击立即刷新">
-          <span class="dm-refresh-icon" :class="{ 'is-spinning': isRefreshing }">↻</span>
-          <span class="dm-refresh-time">{{ lastRefreshText }}</span>
-        </div>
-        <div class="dm-fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏展示'">
-          <span>{{ isFullscreen ? '⊡' : '⛶' }}</span>
-        </div>
-      </div>
+      <MetricStrip
+        class="dm-hd-kpis"
+        :items="headerMetricStripItems"
+        dense
+        @select="onHeaderMetricSelect"
+      />
     </header>
 
     <!-- ══════════ BODY ══════════ -->
@@ -262,15 +265,35 @@ import DashboardRightSidebar from './components/DashboardRightSidebar.vue'
 import DashboardDevicePanel from './components/DashboardDevicePanel.vue'
 import DashboardDialogs from './components/DashboardDialogs.vue'
 import DashboardWarningStream from './components/DashboardWarningStream.vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
+import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 
 export default {
   name: 'HealthDashboard',
-  components: { DashboardDispatchPanel, DashboardRightSidebar, DashboardDevicePanel, DashboardDialogs, DashboardWarningStream },
+  components: { DashboardDispatchPanel, DashboardRightSidebar, DashboardDevicePanel, DashboardDialogs, DashboardWarningStream, PageHeroHeader, MetricStrip },
   data() {
     return createDashboardPageState()
   },
 
-  computed: dashboardComputed,
+  computed: {
+    ...dashboardComputed,
+    dashboardHeroDescription() {
+      const total = this.totalPersons !== null ? this.totalPersons.toLocaleString() : '--'
+      const pending = (this.warningEvents || []).filter((item) => !item.handled).length
+      return `${this.periodLabel}覆盖 ${total} 人次，当前待处理 ${pending} 条，${this.lastRefreshText}`
+    },
+    headerMetricStripItems() {
+      return (this.headerKpis || []).map((item, index) => ({
+        key: `${item.label}-${index}`,
+        label: item.label,
+        value: item.valHtml ? String(item.valHtml).replace(/<[^>]+>/g, ' ') : String(item.val ?? '--'),
+        note: item.sub || '',
+        tone: this.resolveHeaderMetricTone(item.cls),
+        clickable: Boolean(item.clickable),
+        route: item.route
+      }))
+    }
+  },
 
   mounted() {
     mountDashboardPage(this)
@@ -286,7 +309,18 @@ export default {
     ...dashboardRuntimeMethods,
     ...dashboardViewActions,
     ...dashboardChartMethods,
-    ...dashboardDetailMethods
+    ...dashboardDetailMethods,
+    resolveHeaderMetricTone(cls) {
+      if (cls === 'kpi-red') return 'danger'
+      if (cls === 'kpi-orange') return 'warning'
+      if (cls === 'kpi-green' || cls === 'kpi-teal') return 'success'
+      return 'primary'
+    },
+    onHeaderMetricSelect(item) {
+      if (item?.route) {
+        this.$router.push(item.route)
+      }
+    }
   }
 }
 </script>

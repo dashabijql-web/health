@@ -63,7 +63,7 @@ export function createDashboardPageState() {
       { key: 'bloodOxygen', label: '血氧', color: '#67C23A', icon: 'FirstAidKit' },
       { key: 'steps', label: '步数', color: '#F56C6C', icon: 'Promotion' },
       { key: 'temperature', label: '体温', color: '#00c8c8', icon: 'Sunny' },
-      { key: 'pressure', label: '压力', color: '#a78bfa', icon: 'MagicStick' }
+      { key: 'pressure', label: '压力', color: '#3eb7ff', icon: 'MagicStick' }
     ],
     activePeriod: 'month',
     periodOptions: [

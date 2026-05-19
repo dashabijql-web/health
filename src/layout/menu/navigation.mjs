@@ -10,35 +10,35 @@ export const NAV_GROUPS = [
 export const MOBILE_NAV_SLOTS = [
   {
     key: 'command',
-    icon: '📊',
+    icon: 'DataAnalysis',
     label: '指挥',
     groups: ['command'],
     preferredPaths: ['/health-monitor/dashboard', '/safety-command/index']
   },
   {
     key: 'monitor',
-    icon: '❤️',
+    icon: 'Monitor',
     label: '监测',
     groups: ['monitor'],
     preferredPaths: ['/health-monitor/real-time']
   },
   {
     key: 'entry',
-    icon: '🪪',
+    icon: 'Stamp',
     label: '准入',
     includePaths: ['/health-monitor/mine-entry'],
     preferredPaths: ['/health-monitor/mine-entry']
   },
   {
     key: 'warning',
-    icon: '🔔',
+    icon: 'Bell',
     label: '预警',
     groups: ['warning'],
     preferredPaths: ['/alert-management/notifications', '/health-monitor/risk-warning']
   },
   {
     key: 'people',
-    icon: '👤',
+    icon: 'UserFilled',
     label: '人员',
     groups: ['people'],
     excludePaths: ['/health-monitor/mine-entry'],

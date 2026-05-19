@@ -21,7 +21,12 @@
           </div>
           <span class="dm-top5-val">{{ item.count }}</span>
         </div>
-        <div v-if="!top5DisplayData.length" class="dm-empty">暂无数据</div>
+        <PageEmptyState
+          v-if="!top5DisplayData.length"
+          compact
+          title="暂无排行数据"
+          description="当前没有可展示的异常人员排行。"
+        />
       </div>
     </div>
 
@@ -34,9 +39,12 @@
         <span class="dm-ph-sub">{{ periodLabel }}触发预警人员占比</span>
       </div>
       <div class="dm-warn-stats">
-        <div v-if="!warningRateList.length" class="dm-empty" style="padding:40px 20px;text-align:center;color:#4a6080;font-size:12px">
-          暂无数据
-        </div>
+        <PageEmptyState
+          v-if="!warningRateList.length"
+          compact
+          title="暂无预警率数据"
+          description="当前时段还没有形成可展示的指标预警率。"
+        />
         <div
           v-for="item in warningRateList"
           :key="item.name"
@@ -115,12 +123,17 @@
           {{ mineAiLoading ? '分析中…' : (mineAiReport ? '刷新' : '生成分析') }}
         </button>
       </div>
-      <div v-if="mineAiLoading" class="dm-ai-loading">🤖 DeepSeek 分析中，请稍候…</div>
+      <div v-if="mineAiLoading" class="dm-ai-loading">DeepSeek 分析中，请稍候…</div>
       <div v-else-if="mineAiReport" class="dm-ai-preview" @click="$emit('show-ai')">
         {{ mineAiReport.replace(/#+\s*/g, '').slice(0, 120) }}…
         <span class="dm-ai-more">展开全文 ›</span>
       </div>
-      <div v-else class="dm-ai-empty">点击「生成分析」获取全矿 AI 健康报告</div>
+      <PageEmptyState
+        v-else
+        compact
+        title="尚未生成 AI 报告"
+        description="点击“生成分析”获取全矿健康摘要。"
+      />
     </div>
   </aside>
 </template>
@@ -129,10 +142,11 @@
 import { defineComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import HealthTips from '@/components/HealthTips.vue'
+import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
 
 export default defineComponent({
   name: 'DashboardRightSidebar',
-  components: { HealthTips },
+  components: { HealthTips, PageEmptyState },
   props: {
     periodLabel: { type: String, required: true },
     top5DisplayData: { type: Array, default: () => [] },
@@ -183,4 +197,3 @@ export default defineComponent({
 <style scoped lang="scss">
 @import '../dashboard.scss';
 </style>
-

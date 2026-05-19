@@ -25,10 +25,10 @@ export default {
 
 @media (max-width: 768px) {
   .app-main {
-    /* 54px 底部导航 + iPhone 安全区域 */
-    padding-bottom: calc(54px + env(safe-area-inset-bottom, 8px));
+    padding-bottom: calc(var(--layout-mobile-nav-height) + env(safe-area-inset-bottom, 8px));
   }
 }
+
 .fixed-header + .app-main {
   padding-top: 50px;
 }
@@ -36,11 +36,13 @@ export default {
 .fade-page-enter-active {
   transition: opacity 0.2s ease;
 }
+
 .fade-page-leave-active {
   transition: opacity 0.15s ease;
   position: absolute;
   width: 100%;
 }
+
 .fade-page-enter-from,
 .fade-page-leave-to {
   opacity: 0;

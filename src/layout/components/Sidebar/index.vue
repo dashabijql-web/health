@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div :class="{'has-logo':showLogo}">
     <logo v-if="showLogo" :collapse="isCollapse" />
     <el-scrollbar wrap-class="scrollbar-wrapper">
@@ -31,9 +31,9 @@ import SidebarItem from './SidebarItem.vue'
 import { buildGroupedMenuRoutes } from '@/layout/menu/navigation.mjs'
 
 const menuVariables = {
-  menuBg: '#304156',
-  menuText: '#bfcbd9',
-  menuActiveText: '#409EFF'
+  menuBg: '#07111d',
+  menuText: '#8fa7c3',
+  menuActiveText: '#eef7ff'
 }
 
 export default {
@@ -63,11 +63,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-:deep(.el-menu--vertical) {
-  /* overflow: hidden removed — allow el-scrollbar to scroll */
-}
-
-/* 收缩时：只隐藏文字标签，保留图标 */
 :deep(.el-menu--collapse) {
   .menu-title {
     display: none !important;
@@ -87,7 +82,9 @@ export default {
     padding: 0 !important;
     width: 36px !important;
 
-    .sub-el-icon, .svg-icon, svg {
+    .sub-el-icon,
+    .svg-icon,
+    svg {
       margin: 0 !important;
       font-size: 18px;
     }

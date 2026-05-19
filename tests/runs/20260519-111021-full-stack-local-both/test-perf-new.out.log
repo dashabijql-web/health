@@ -1,0 +1,46 @@
+
+> health-show-vue3@3.0.0 test:perf:new
+> node scripts/health-test-runner.mjs perf --source new
+
+[health-test-runner] profile=perf
+[health-test-runner] dataSource=new expectNonEmpty=0
+[health-test-runner] artifacts=/home/j/code/health/HealthShow/tests/runs/2026-05-19T03-18-20-455Z
+OK      node: v22.22.3
+OK      cwd: /home/j/code/health/HealthShow
+OK      data-source: new
+OK      expect-non-empty: 0
+OK      package-lock: /home/j/code/health/HealthShow/package-lock.json
+OK      backend-8080: 127.0.0.1:8080
+OK      frontend-http: HTTP 200 http://127.0.0.1:9528/
+OK      playwright-browser: /home/j/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome
+[health-test-runner] RUN npm run audit:perf:new
+
+> health-show-vue3@3.0.0 audit:perf:new
+> node scripts/with-env.mjs API_DATA_SOURCE=new API_EXPECT_NON_EMPTY=0 -- npm run audit:perf
+
+
+> health-show-vue3@3.0.0 audit:perf
+> npm run audit:perf:api && npm run audit:perf:page
+
+
+> health-show-vue3@3.0.0 audit:perf:api
+> node tests/performance/api-latency.mjs
+
+{
+  "artifactDir": "/home/j/code/health/HealthShow/tests/performance/artifacts/2026-05-19T03-18-20-821Z",
+  "reportFile": "/home/j/code/health/HealthShow/tests/performance/artifacts/2026-05-19T03-18-20-821Z/api-latency.md",
+  "endpointCount": 12,
+  "failedCount": 0
+}
+
+> health-show-vue3@3.0.0 audit:perf:page
+> node tests/performance/page-load.mjs
+
+{
+  "artifactDir": "/home/j/code/health/HealthShow/tests/performance/artifacts/2026-05-19T03-18-22-500Z",
+  "reportFile": "/home/j/code/health/HealthShow/tests/performance/artifacts/2026-05-19T03-18-22-500Z/page-load.md",
+  "routeCount": 6,
+  "failedCount": 0
+}
+[health-test-runner] PASS perf
+[health-test-runner] summary=/home/j/code/health/HealthShow/tests/runs/2026-05-19T03-18-20-455Z/health-test-runner-summary.json

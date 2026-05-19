@@ -1,8 +1,9 @@
-﻿<template>
+<template>
   <div class="navbar">
-    <hamburger :is-active="sidebar.opened" class="hamburger-container" @toggleClick="toggleSideBar" />
-
-    <breadcrumb class="breadcrumb-container" />
+    <div class="navbar__left">
+      <hamburger :is-active="sidebar.opened" class="hamburger-container" @toggleClick="toggleSideBar" />
+      <breadcrumb class="breadcrumb-container" />
+    </div>
 
     <div class="right-menu">
       <div v-if="canSwitchDataSource" class="source-switch">
@@ -13,10 +14,11 @@
         </el-select>
       </div>
 
-      <!-- 未处理预警角标 -->
       <div class="warning-badge-btn" @click="$router.push('/alert-management/notifications')" title="点击查看消息通知中心">
         <el-badge :value="pendingWarnings" :hidden="pendingWarnings === 0" :max="99" type="danger">
-          <span class="warn-icon">🔔</span>
+          <span class="warn-icon">
+            <el-icon><Bell /></el-icon>
+          </span>
         </el-badge>
         <span v-if="pendingWarnings > 0" class="warn-label">{{ pendingWarnings }} 条待处理</span>
       </div>
@@ -29,7 +31,7 @@
             class="user-avatar"
             @error="handleAvatarError"
           >
-          <i class="el-icon-caret-bottom" />
+          <el-icon class="avatar-arrow"><ArrowDown /></el-icon>
         </div>
         <template #dropdown>
           <el-dropdown-menu class="user-dropdown">
@@ -48,6 +50,7 @@
 
 <script>
 import { mapGetters } from 'vuex'
+import { ArrowDown, Bell } from '@element-plus/icons-vue'
 import Breadcrumb from '@/components/Breadcrumb/index.vue'
 import Hamburger from '@/components/Hamburger/index.vue'
 import request from '@/utils/request'
@@ -56,6 +59,8 @@ import { createIntervalTask } from '@/utils/task-timer'
 
 export default {
   components: {
+    ArrowDown,
+    Bell,
     Breadcrumb,
     Hamburger
   },
@@ -83,20 +88,15 @@ export default {
       'canSwitchDataSource'
     ]),
     avatarUrl() {
-      // 如果头像加载失败，使用默认头像
       if (this.avatarError) {
         return this.defaultAvatar
       }
-      // 如果有用户头像，使用用户头像
       if (this.avatar) {
-        // 如果是完整URL，直接使用
         if (this.avatar.startsWith('http')) {
           return this.avatar
         }
-        // 如果是相对路径，添加基础路径
         return `${import.meta.env.VITE_BASE_API || ''}${this.avatar}`
       }
-      // 否则使用默认头像
       return this.defaultAvatar
     }
   },
@@ -120,7 +120,6 @@ export default {
       await this.$store.dispatch('user/logout')
       this.$router.push(`/login?redirect=${this.$route.fullPath}`)
     },
-    // 头像加载失败时的处理
     handleAvatarError() {
       this.avatarError = true
     }
@@ -130,154 +129,176 @@ export default {
 
 <style lang="scss" scoped>
 .navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   height: 50px;
+  padding: 0 18px 0 6px;
   overflow: hidden;
   position: relative;
-  background: #0d2847;
-  border-bottom: 1px solid #1a4d8f;
-  box-shadow: 0 2px 8px rgba(0, 212, 255, 0.1);
+  background: rgba(8, 18, 32, 0.86);
+  border-bottom: 1px solid rgba(133, 175, 220, 0.12);
+  box-shadow: 0 10px 34px rgba(2, 8, 20, 0.24);
+  backdrop-filter: blur(18px);
+}
 
-  .hamburger-container {
-    line-height: 46px;
-    height: 100%;
-    float: left;
-    cursor: pointer;
-    transition: background .3s;
-    -webkit-tap-highlight-color:transparent;
+.navbar__left {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
 
-    &:hover {
-      background: rgba(0, 212, 255, 0.1);
-    }
+.hamburger-container {
+  line-height: 46px;
+  height: 100%;
+  cursor: pointer;
+  transition: background .3s;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    background: rgba(62, 183, 255, 0.08);
+  }
+}
+
+.breadcrumb-container {
+  min-width: 0;
+}
+
+.right-menu {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.warning-badge-btn,
+.source-switch,
+.avatar-wrapper {
+  border: 1px solid rgba(133, 175, 220, 0.12);
+  background: rgba(13, 28, 47, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.warning-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 0 12px;
+  height: 36px;
+  border-radius: 999px;
+  transition: background .3s, border-color .3s;
+
+  &:hover {
+    background: rgba(248, 113, 113, 0.12);
+    border-color: rgba(248, 113, 113, 0.24);
+  }
+}
+
+.warn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff9c9c;
+  font-size: 18px;
+}
+
+.warn-label {
+  color: #ffb4b4;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.source-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px 0 12px;
+  border-radius: 999px;
+
+  &__label {
+    color: var(--text-secondary);
+    font-size: 12px;
+    white-space: nowrap;
   }
 
-  .breadcrumb-container {
-    float: left;
+  &__select {
+    width: 96px;
+  }
+}
+
+.avatar-container {
+  height: 100%;
+}
+
+.avatar-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin-top: 7px;
+  padding: 0 12px 0 10px;
+  border-radius: 999px;
+}
+
+.user-name {
+  color: #dff2ff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.user-avatar {
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(95, 189, 255, 0.22);
+  transition: all 0.3s ease;
+  object-fit: cover;
+  background-color: #1a4d8f;
+
+  &:hover {
+    border-color: rgba(95, 189, 255, 0.5);
+  }
+}
+
+.avatar-arrow {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding-right: 12px;
+  }
+
+  .breadcrumb-container,
+  .warn-label,
+  .source-switch__label,
+  .user-name {
+    display: none;
   }
 
   .right-menu {
-    float: right;
-    height: 100%;
-    line-height: 50px;
-
-    &:focus {
-      outline: none;
-    }
-
-    .warning-badge-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin-right: 16px;
-      cursor: pointer;
-      padding: 0 10px;
-      height: 100%;
-      transition: background .3s;
-
-      &:hover { background: rgba(255, 80, 80, 0.12); }
-
-      .warn-icon { font-size: 20px; line-height: 50px; }
-
-      .warn-label {
-        color: #ff6b6b; font-size: 12px; font-weight: 600;
-        white-space: nowrap; animation: warn-pulse 1.5s infinite;
-      }
-    }
-
-    .source-switch {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-right: 16px;
-
-      &__label {
-        color: #8ba6c8;
-        font-size: 12px;
-        white-space: nowrap;
-      }
-
-      &__select {
-        width: 96px;
-      }
-    }
-
-    .right-menu-item {
-      display: inline-block;
-      padding: 0 8px;
-      height: 100%;
-      font-size: 18px;
-      color: #8ba6c8;
-      vertical-align: text-bottom;
-
-      &.hover-effect {
-        cursor: pointer;
-        transition: background .3s;
-
-        &:hover {
-          background: rgba(0, 212, 255, 0.1);
-        }
-      }
-    }
-
-    .avatar-container {
-      margin-right: 30px;
-
-      .avatar-wrapper {
-        margin-top: 5px;
-        position: relative;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-
-        .user-name {
-          color: #00d4ff;
-          font-size: 14px;
-          font-weight: 500;
-          letter-spacing: 0.5px;
-          white-space: nowrap;
-        }
-
-        .user-avatar {
-          cursor: pointer;
-          width: 40px;
-          height: 40px;
-          border-radius: 10px;
-          border: 2px solid #1a4d8f;
-          transition: all 0.3s ease;
-          /* 🔧 确保图片正确显示 */
-          object-fit: cover;
-          background-color: #1a4d8f;
-
-          &:hover {
-            border-color: #00d4ff;
-            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
-          }
-        }
-
-        .el-icon-caret-bottom {
-          cursor: pointer;
-          position: absolute;
-          right: -20px;
-          top: 25px;
-          font-size: 12px;
-          color: #8ba6c8;
-        }
-      }
-    }
+    gap: 8px;
   }
-}
 
-
-.navbar {
-  @media (max-width: 768px) {
-    .breadcrumb-container { display: none; }
-    .right-menu .avatar-container { margin-right: 12px; }
-    .right-menu .source-switch__label { display: none; }
-    .user-name { display: none; }
+  .warning-badge-btn,
+  .source-switch,
+  .avatar-wrapper {
+    padding-left: 10px;
+    padding-right: 10px;
   }
-}
-
-@keyframes warn-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
 }
 </style>

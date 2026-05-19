@@ -123,7 +123,7 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
       tagCls: !b.avgBloodOxygen ? '' : b.avgBloodOxygen < 90 ? 'vtag-danger' : b.avgBloodOxygen < 95 ? 'vtag-warn' : 'vtag-ok'
     },
     {
-      label: '压力均值', val: b.avgPressure || '--', unit: '', color: '#a78bfa', icon: 'MagicStick',
+      label: '压力均值', val: b.avgPressure || '--', unit: '', color: '#3eb7ff', icon: 'MagicStick',
       route: '/health-monitor/pressure',
       tag: !b.avgPressure ? '-' : b.avgPressure > 80 ? '过高' : b.avgPressure > 60 ? '偏高' : '适中',
       tagCls: !b.avgPressure ? '' : b.avgPressure > 80 ? 'vtag-danger' : b.avgPressure > 60 ? 'vtag-warn' : 'vtag-ok'
@@ -142,7 +142,7 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
       label: '收缩压(高压)',
       val: b.avgBloodPressureHigh ? Math.round(b.avgBloodPressureHigh) : '--',
       unit: 'mmHg',
-      color: '#ff6b9d',
+      color: '#f87171',
       icon: 'Top',
       route: '/health-monitor/blood-pressure',
       tag: !b.avgBloodPressureHigh ? '-'
@@ -157,7 +157,7 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
       label: '舒张压(低压)',
       val: b.avgBloodPressureLow ? Math.round(b.avgBloodPressureLow) : '--',
       unit: 'mmHg',
-      color: '#a78bfa',
+      color: '#36d399',
       icon: 'Bottom',
       route: '/health-monitor/blood-pressure',
       tag: !b.avgBloodPressureLow ? '-'

@@ -13,7 +13,9 @@
         :to="item.path"
         :class="['wcn-tab', isActive(item) ? 'is-active' : '']"
       >
-        <span class="wcn-icon">{{ item.icon }}</span>
+        <span class="wcn-icon">
+          <el-icon><component :is="item.icon" /></el-icon>
+        </span>
         <span>{{ item.label }}</span>
       </router-link>
     </div>
@@ -22,15 +24,16 @@
 
 <script setup>
 import { useRoute } from 'vue-router'
+import { Bell, Document, Setting, TrendCharts, WarningFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
 
 const items = [
-  { path: '/health-monitor/risk-warning', label: '总览', icon: '📈', matches: ['/health-monitor/risk-warning'] },
-  { path: '/alert-management/notifications', label: '待处理', icon: '🔔', matches: ['/alert-management/notifications'] },
-  { path: '/alert-management/records', label: '处置记录', icon: '🧾', matches: ['/alert-management/records'] },
-  { path: '/alert-management/config', label: '阈值配置', icon: '⚙️', matches: ['/alert-management/config'] },
-  { path: '/alert-management/sos', label: '紧急事件', icon: '🚨', matches: ['/alert-management/sos'] }
+  { path: '/health-monitor/risk-warning', label: '总览', icon: TrendCharts, matches: ['/health-monitor/risk-warning'] },
+  { path: '/alert-management/notifications', label: '待处理', icon: Bell, matches: ['/alert-management/notifications'] },
+  { path: '/alert-management/records', label: '处置记录', icon: Document, matches: ['/alert-management/records'] },
+  { path: '/alert-management/config', label: '阈值配置', icon: Setting, matches: ['/alert-management/config'] },
+  { path: '/alert-management/sos', label: '紧急事件', icon: WarningFilled, matches: ['/alert-management/sos'] }
 ]
 
 function isActive(item) {
@@ -41,26 +44,31 @@ function isActive(item) {
 <style scoped lang="scss">
 .wcn-wrap {
   margin-bottom: 12px;
+  padding: 14px 16px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-soft), var(--shadow-inner);
 }
 
 .wcn-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .wcn-title {
   font-size: 16px;
   font-weight: 700;
-  color: #dfefff;
-  letter-spacing: 1px;
+  color: var(--text-strong);
+  letter-spacing: 0.06em;
 }
 
 .wcn-sub {
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: 12px;
-  color: #7c94b2;
+  color: var(--text-secondary);
 }
 
 .wcn-tabs {
@@ -72,32 +80,57 @@ function isActive(item) {
 .wcn-tab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
+  gap: 8px;
+  padding: 9px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 212, 255, 0.18);
-  background: rgba(10, 22, 40, 0.72);
-  color: #8fb5d3;
+  border: 1px solid rgba(95, 189, 255, 0.16);
+  background: rgba(12, 24, 42, 0.72);
+  color: #98b2cc;
   text-decoration: none;
   font-size: 13px;
   transition: all 0.2s ease;
-}
 
-.wcn-tab:hover {
-  color: #dfefff;
-  border-color: rgba(0, 212, 255, 0.38);
-  background: rgba(0, 212, 255, 0.08);
+  &:hover {
+    color: #eaf5ff;
+    border-color: rgba(95, 189, 255, 0.28);
+    background: rgba(62, 183, 255, 0.08);
+    transform: translateY(-1px);
+  }
 }
 
 .wcn-tab.is-active {
-  color: #08131f;
-  background: linear-gradient(135deg, #00d4ff, #7cf2ff);
+  color: #06111f;
+  background: linear-gradient(135deg, #3eb7ff, #7dcfff);
   border-color: transparent;
-  box-shadow: 0 8px 24px rgba(0, 212, 255, 0.18);
+  box-shadow: 0 10px 24px rgba(62, 183, 255, 0.16);
 }
 
 .wcn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 14px;
   line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .wcn-wrap {
+    padding: 12px;
+  }
+
+  .wcn-sub {
+    display: none;
+  }
+
+  .wcn-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .wcn-tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
 }
 </style>

@@ -230,7 +230,7 @@ export const dashboardComputed = {
     const base = [
       { key: 'heartRate', label: '心率', color: '#00d4ff' },
       { key: 'bloodOxygen', label: '血氧', color: '#67C23A' },
-      { key: 'pressure', label: '压力', color: '#a78bfa' }
+      { key: 'pressure', label: '压力', color: '#3eb7ff' }
     ]
     return base.map((item) => {
       const found = this.warningRates.find((rateItem) => rateItem.name && rateItem.name.includes(item.label))

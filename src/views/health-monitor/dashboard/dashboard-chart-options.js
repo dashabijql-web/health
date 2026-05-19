@@ -302,7 +302,7 @@ export function buildUnifiedTrendChartOption({ rawData, vitalRanges }) {
     { name: '体温', key: getFieldKey(['temperatureRate', 'tempRate', 'temperatureAbnormalRate']), color: '#ffd200', threshold: vitalRanges.temperature.max }
   ]
   const seriesRight = [
-    { name: '压力', key: getFieldKey(['pressureRate', 'stressRate', 'pressureAbnormalRate']), color: '#a78bfa', threshold: vitalRanges.pressure.max, yAxisIndex: 1 }
+    { name: '压力', key: getFieldKey(['pressureRate', 'stressRate', 'pressureAbnormalRate']), color: '#3eb7ff', threshold: vitalRanges.pressure.max, yAxisIndex: 1 }
   ]
   const allSeries = [...seriesLeft, ...seriesRight]
 
@@ -349,7 +349,7 @@ export function buildUnifiedTrendChartOption({ rawData, vitalRanges }) {
         type: 'value',
         min: 0,
         position: 'right',
-        axisLabel: { color: '#a78bfa', fontSize: 10, formatter: (v) => `${v}%` },
+        axisLabel: { color: '#3eb7ff', fontSize: 10, formatter: (v) => `${v}%` },
         splitLine: { show: false }
       }
     ],
