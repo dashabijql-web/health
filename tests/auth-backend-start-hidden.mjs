@@ -5,31 +5,18 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 
 const authAuditPath = path.resolve('tests', 'e2e', 'auth-session-regression.mjs');
-const fullStackRunnerPath = path.resolve('tests', 'run-full-stack-local.ps1');
-const openClawRunnerScriptPath = path.resolve('..', 'tools', 'start-health-runner-hidden.ps1');
+const fullStackRunnerPath = path.resolve('tests', 'run-full-stack-local.py');
+const openClawRunnerScriptPath = path.resolve('..', 'tools', 'start-health-runner.py');
 
-test('auth audit restarts backend through a no-window detached process', () => {
+test('auth audit restarts backend through the WSL stack manager', () => {
   const source = fs.readFileSync(authAuditPath, 'utf8');
 
-  assert.match(source, /Win32_ProcessStartup/, 'backend restart must use WMI startup options so Maven is detached from the parent PowerShell pipes');
-  assert.match(source, /ShowWindow\s*=\s*0/, 'backend restart must request a hidden WMI process window');
-  assert.match(source, /Win32_Process['"]\)\.Create\(\$command,\s*['"]D:\\\\Health\\\\HealthData['"]/, 'backend restart must create Maven from WMI in the HealthData working directory');
-  assert.match(source, /set JAVA_HOME=C:\\\\Program Files\\\\Java\\\\jdk-17/, 'backend restart must set JAVA_HOME inside the detached command');
-  assert.match(source, /D:\\\\apache-maven-3\.8\.1\\\\bin\\\\mvn\.cmd spring-boot:run/, 'backend restart must call the Maven command script without cmd quote escaping');
-  assert.doesNotMatch(source, /['"]\\"D:\\\\apache-maven-3\.8\.1\\\\bin\\\\mvn\.cmd\\"/, 'backend restart command must not include backslash-escaped quotes');
-  assert.match(source, /1>>\s*\$\{BACKEND_LOG\}\s*2>>\s*\$\{BACKEND_ERR_LOG\}/, 'backend restart must append Maven output to backend log files');
-  assert.match(source, /assertNoVisibleBackendWindows/, 'auth audit must verify no visible backend Java or Maven window remains after restart');
-  assert.match(source, /IsWindowVisible/, 'auth audit must use a real Win32 visible-window probe, not just source inspection');
-  assert.doesNotMatch(source, /spawn\(\s*['"]cmd\.exe['"]/, 'backend restart must not use Node spawn(cmd.exe), which can leave Maven java.exe visible');
-  assert.doesNotMatch(source, /stdio:\s*\[\s*['"]ignore['"]\s*,\s*stdoutFd\s*,\s*stderrFd\s*\]/, 'backend restart must not depend on inherited Node file descriptors');
-  assert.doesNotMatch(source, />>\s*["'`]/, 'backend restart must not rely on shell redirection outside the no-window ProcessStartInfo path');
-  assert.match(source, /windowsHide:\s*true/, 'backend restart must suppress child process windows');
-  assert.match(source, /D:\\\\Health\\\\HealthData\\\\pom\.xml/, 'backend restart must target the HealthData Maven project');
-  assert.doesNotMatch(
-    source,
-    /Start-Process[\s\S]+D:\\\\Health\\\\HealthData\\\\pom\.xml/,
-    'backend restart must not use PowerShell Start-Process because execFile can wait on inherited redirected streams'
-  );
+  assert.match(source, /health-wsl-stack\.sh/, 'auth audit must control backend lifecycle through the WSL stack script');
+  assert.match(source, /async function execBash/, 'auth audit must shell out through bash instead of PowerShell');
+  assert.match(source, /stackAction\('backend', 'stop'\)/, 'auth audit must stop backend through the stack script before stale-token restart');
+  assert.match(source, /stackAction\('backend', 'start'\)/, 'auth audit must start backend through the stack script');
+  assert.doesNotMatch(source, /powershell/i, 'auth audit backend restart must no longer depend on PowerShell');
+  assert.doesNotMatch(source, /Win32_Process/, 'auth audit backend restart must no longer depend on Windows WMI process creation');
   assert.match(
     source,
     /try\s*{\s*await ensureBackendReady\(5000\);[\s\S]+catch\s*{\s*await startBackend\(\);/,
@@ -37,98 +24,65 @@ test('auth audit restarts backend through a no-window detached process', () => {
   );
 });
 
-test('full stack runner starts backend through a no-window process helper', () => {
+test('full stack runner manages backend and simulator through the WSL stack', () => {
   const source = fs.readFileSync(fullStackRunnerPath, 'utf8');
 
   assert.match(
     source,
-    /function Start-NoWindowProcess[\s\S]+UseShellExecute\s*=\s*\$false[\s\S]+CreateNoWindow\s*=\s*\$true/,
-    'runner must use a no-window process helper for Windows child processes'
-  );
-  assert.doesNotMatch(
-    source,
-    /Start-Process\s+-FilePath\s+\$filePath/,
-    'runner helper must not use Start-Process for service startup because child consoles can become visible'
+    /health-wsl-stack\.sh/,
+    'runner must use the WSL stack script for long-lived services'
   );
   assert.match(
     source,
-    /function Start-IfPortClosed[\s\S]+Start-NoWindowProcess/,
-    'runner port-gated service startup must route through Start-NoWindowProcess'
+    /self\.stack_action\("backend", "start"\)/,
+    'runner must start backend through the stack script'
   );
   assert.match(
     source,
-    /function Stop-VisibleBackendProcesses[\s\S]+Test-ProcessHasVisibleWindow[\s\S]+visible-window-restart/,
-    'runner must stop visible HealthData backend windows instead of reusing them just because port 8080 is open'
-  );
-  assert.match(
-    source,
-    /if\s*\(Stop-VisibleBackendProcesses\)\s*{[\s\S]+Wait-PortClosed\s+['"]backend-http['"][\s\S]+Start-IfPortClosed\s+['"]backend['"]\s+8080/,
-    'runner must perform visible-backend cleanup before deciding whether to start or reuse the backend'
-  );
-  assert.match(
-    source,
-    /IsWindowVisible\(IntPtr hWnd\)/,
-    'runner must use a real Win32 visible-window probe before stopping a backend process'
-  );
-  assert.match(
-    source,
-    /function Start-SimulatorForOld[\s\S]+Start-NoWindowProcess\s+['"]python['"]\s+@\(['"]watch_tcp_simulator_1000\.py['"]\)/,
-    'runner simulator startup must also route through Start-NoWindowProcess'
-  );
-  assert.doesNotMatch(
-    source,
-    /Start-Process\s+-FilePath\s+['"]python['"][\s\S]+watch_tcp_simulator_1000\.py/,
-    'runner must not start the simulator through Start-Process because old-source rounds should not pop a console window'
+    /self\.stack_action\("simulator", "start"\)/,
+    'runner must start the simulator through the stack script'
   );
 });
 
-test('OpenClaw runner wrapper uses a stable hidden PowerShell entry point', () => {
+test('detached runner wrapper uses the WSL tmux entry point', () => {
   const source = fs.readFileSync(openClawRunnerScriptPath, 'utf8');
 
   assert.match(
     source,
-    /ValidateSet\('old', 'new', 'both'\)/,
-    'OpenClaw wrapper must expose the same old/new/both data-source contract as the full stack runner'
+    /choices=\["old", "new", "both"\]/,
+    'detached runner wrapper must expose the same old/new/both data-source contract as the full stack runner'
   );
   assert.match(
     source,
-    /Start-Process[\s\S]+-WindowStyle\s+Hidden[\s\S]+-PassThru/,
-    'OpenClaw wrapper must start the runner hidden and return the process id'
+    /tmux/,
+    'detached runner wrapper must use tmux to keep the runner alive in WSL'
   );
   assert.doesNotMatch(
     source,
-    /\$_\.Id/,
-    'OpenClaw wrapper must not rely on $_.Id because nested PowerShell command text can expand it before execution'
+    /powershell/i,
+    'detached runner wrapper must not depend on PowerShell once the project is WSL-only'
   );
   assert.match(
     source,
-    /RUN_STARTED pid=\$\(\$process\.Id\) dataSource=\$DataSource/,
+    /RUN_STARTED pid=/,
     'OpenClaw wrapper must print a stable RUN_STARTED line for agent monitoring'
   );
   assert.match(
     source,
-    /RUN_ALREADY_ACTIVE pid=\$\(\$activeRunner\.ProcessId\) dataSource=\$DataSource/,
+    /RUN_ALREADY_ACTIVE pid=/,
     'OpenClaw wrapper must report an existing full-stack runner instead of starting a duplicate'
   );
-  assert.ok(
-    source.indexOf('if ($DryRun)') >= 0 &&
-      source.indexOf('$activeRunner = Get-ActiveRunnerProcess') > source.indexOf('if ($DryRun)'),
-    'OpenClaw wrapper must let -DryRun return JSON even when another full-stack runner is active'
-  );
+  assert.match(source, /"status": "DRY_RUN"/, 'detached runner wrapper must expose a DRY_RUN payload');
 });
 
-test('OpenClaw runner wrapper dry-run reports runner arguments without starting a run', () => {
+test('detached runner wrapper dry-run reports runner arguments without starting a run', () => {
   const result = spawnSync(
-    'powershell.exe',
+    'python3',
     [
-      '-NoProfile',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-File',
       openClawRunnerScriptPath,
-      '-DataSource',
+      '--data-source',
       'both',
-      '-DryRun'
+      '--dry-run'
     ],
     {
       cwd: path.resolve('..'),
@@ -139,16 +93,18 @@ test('OpenClaw runner wrapper dry-run reports runner arguments without starting 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const payload = JSON.parse(result.stdout);
   assert.equal(payload.status, 'DRY_RUN');
-  assert.equal(payload.workingDirectory, 'D:\\Health\\HealthShow');
-  assert.deepEqual(payload.arguments, [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    'D:\\Health\\HealthShow\\tests\\run-full-stack-local.ps1',
-    '-DataSource',
-    'both'
-  ]);
+  assert.match(
+    payload.workingDirectory,
+    /(HealthShow)$/i,
+    'dry-run workingDirectory must point at the HealthShow workspace in either Windows or WSL path form'
+  );
+  assert.deepEqual(payload.arguments.slice(0, 2), [payload.arguments[0], '--data-source']);
+  assert.match(
+    payload.arguments[0],
+    /run-full-stack-local\.py$/i,
+    'dry-run runner path must target the Python full-stack runner'
+  );
+  assert.equal(payload.arguments[2], 'both');
 });
 
 test('full stack runner treats one existing simulator process as already running', () => {
@@ -156,8 +112,8 @@ test('full stack runner treats one existing simulator process as already running
 
   assert.match(
     source,
-    /function Start-SimulatorForOld[\s\S]+\$running\s*=\s*@\(\s*Get-SimulatorProcesses\s*\)/,
-    'runner must array-wrap simulator process detection before checking Count so a single existing simulator is not missed'
+    /before\.get\("state"\) != "running" and after\.get\("state"\) == "running"/,
+    'runner must only record a simulator start when the WSL stack transitions from stopped to running'
   );
 });
 
@@ -166,12 +122,12 @@ test('full stack runner stops simulator before old full pipeline probes', () => 
 
   assert.match(
     source,
-    /function Stop-SimulatorForOldPipeline[\s\S]+old-full-pipeline-exclusive-tcp/,
+    /old-full-pipeline-exclusive-tcp/,
     'runner must have a dedicated simulator stop before old full TCP pipeline probes'
   );
   assert.match(
-    source,
-    /Invoke-Step\s+['"]test-perf-old['"][\s\S]+Stop-SimulatorForOldPipeline[\s\S]+Invoke-Step\s+['"]test-full-old['"]/,
+    source.replace(/\s+/g, ' '),
+    /test-perf-old[\s\S]+stack_action\("simulator", "stop", stop_reason="old-full-pipeline-exclusive-tcp"\)[\s\S]+test-full-old/,
     'runner must stop the old-source simulator after perf coverage and before test-full-old runs audit:pipeline'
   );
 });
@@ -181,7 +137,7 @@ test('full stack runner records data-source database facts and simulator contami
 
   assert.match(
     source,
-    /function Get-DataSourceFacts/,
+    /def get_data_source_facts/,
     'runner must collect source-specific database facts for each full-stack run'
   );
   assert.match(
@@ -196,7 +152,7 @@ test('full stack runner records data-source database facts and simulator contami
   );
   assert.match(
     source,
-    /dataSourceFacts\s*=\s*\$dataSourceFacts/,
+    /"dataSourceFacts": self\.data_source_facts/,
     'runner JSON summary must include the collected data-source facts'
   );
   assert.match(
@@ -211,27 +167,27 @@ test('full stack runner writes a Hermes archive for automation triage', () => {
 
   assert.match(
     source,
-    /\$hermesArchiveFile\s*=\s*Join-Path\s+\$outDir\s+['"]hermes-archive\.md['"]/,
+    /hermes-archive\.md/,
     'runner must define a stable hermes-archive.md path in each run directory'
   );
   assert.match(
     source,
-    /function Write-HermesArchive/,
+    /def write_hermes_archive/,
     'runner must have an explicit Hermes archive writer instead of relying on a manual post-run note'
   );
   assert.match(
     source,
-    /hermesArchive\s*=\s*\$hermesArchiveFile/,
+    /"hermesArchive": str\(self\.hermes_archive_file\)/,
     'runner latest/JSON metadata must expose the Hermes archive path'
   );
   assert.match(
     source,
-    /hermes_archive:\s*\$hermesArchiveFile/,
+    /- hermes_archive: \{self\.hermes_archive_file\}/,
     'runner markdown summary must expose the Hermes archive path'
   );
   assert.match(
     source,
-    /Write-HermesArchive\s+\$summary\s+\$skippedSteps/,
+    /self\.write_hermes_archive\(summary, skipped_steps\)/,
     'runner must write the Hermes archive from the same summary object used for JSON and Markdown'
   );
 });
@@ -241,7 +197,7 @@ test('full stack runner logs allowed skipped results distinctly from passed runs
 
   assert.match(
     source,
-    /if\s*\(\$skipped\.Count\s+-gt\s+0\)\s*{\s*Log\s+"RESULT SKIPPED \$reason"\s*exit\s+0\s*}/,
+    /if skipped:[\s\S]+self\.log\(f"RESULT SKIPPED \{reason\}"\)[\s\S]+return 0/,
     'runner must log allowed skipped runs as RESULT SKIPPED so automation does not misread them as full passes'
   );
 });

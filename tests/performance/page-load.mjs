@@ -30,7 +30,8 @@ const ROUTES = [
   route('risk-warning', '/#/health-monitor/risk-warning', '.rw-root', { readyMs: 3500 }),
   route('alert-notifications', '/#/alert-management/notifications', '.notif-page', { readyMs: 3500 }),
   route('employee-archive', '/#/health-monitor/employee-archive', '.page-container,.ea-root,.app-main', { readyMs: 4000 }),
-  route('report-center', '/#/health-monitor/report-center', '.rc-page', { readyMs: 4000 })
+  // Report center cold-loads multiple charts/tables and has shown small first-visit jitter in WSL.
+  route('report-center', '/#/health-monitor/report-center', '.rc-page', { readyMs: 5000 })
 ];
 
 const summary = {

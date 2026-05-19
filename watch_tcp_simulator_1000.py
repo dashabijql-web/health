@@ -17,17 +17,28 @@ import threading
 from datetime import datetime, date
 import sys
 import signal
+import os
+
+
+def env_int(name, default):
+    value = os.getenv(name)
+    return int(value) if value not in (None, '') else default
+
+
+def env_float(name, default):
+    value = os.getenv(name)
+    return float(value) if value not in (None, '') else default
 
 # ─── 全局配置 ─────────────────────────────────────────────────────────────────
-SERVER_HOST    = '127.0.0.1'
-SERVER_PORT    = 9000
-START_ID       = 1        # 起始设备ID
-TOTAL_WATCHES  = 1000     # 手表总数（对应 EMP0001~EMP1000）
-MAX_CONCURRENT = 100      # 最大并发连接数（每批）
-DURATION       = 0        # 运行时长(秒)，0=无限运行直到 Ctrl+C
-INTERVAL_MIN   = 300      # 每轮发送后最短等待(秒)
-INTERVAL_MAX   = 600      # 每轮发送后最长等待(秒)
-ANOMALY_RATE   = 0.05     # 各健康指标异常概率 5%
+SERVER_HOST    = os.getenv('HEALTH_SIM_SERVER_HOST', '127.0.0.1')
+SERVER_PORT    = env_int('HEALTH_SIM_SERVER_PORT', 9000)
+START_ID       = env_int('HEALTH_SIM_START_ID', 1)        # 起始设备ID
+TOTAL_WATCHES  = env_int('HEALTH_SIM_TOTAL_WATCHES', 1000)     # 手表总数（对应 EMP0001~EMP1000）
+MAX_CONCURRENT = env_int('HEALTH_SIM_MAX_CONCURRENT', 100)      # 最大并发连接数（每批）
+DURATION       = env_int('HEALTH_SIM_DURATION', 0)        # 运行时长(秒)，0=无限运行直到 Ctrl+C
+INTERVAL_MIN   = env_float('HEALTH_SIM_INTERVAL_MIN', 300)      # 每轮发送后最短等待(秒)
+INTERVAL_MAX   = env_float('HEALTH_SIM_INTERVAL_MAX', 600)      # 每轮发送后最长等待(秒)
+ANOMALY_RATE   = env_float('HEALTH_SIM_ANOMALY_RATE', 0.05)     # 各健康指标异常概率 5%
 
 # ─── 全局控制 ─────────────────────────────────────────────────────────────────
 stop_event   = threading.Event()

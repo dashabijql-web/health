@@ -56,7 +56,7 @@
 
 新增完整服务栈本地 runner：
 
-`tests/run-full-stack-local.ps1`
+`tests/run-full-stack-local.py`
 
 它负责检查/启动并验证：
 
@@ -223,5 +223,4 @@
 未完成/最后待闭环：
 
 - `test-full-new` 的 `audit:pipeline-warning` 对 new 数据源无 warning 探针目标的语义修正。
-- 修正后需要再跑一轮 `tests/run-full-stack-local.ps1` 或至少 `npm run test:full:new` 验证。
-
+- 修正后需要再跑一轮 `tests/run-full-stack-local.py` 或至少 `npm run test:full:new` 验证。

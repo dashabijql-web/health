@@ -14,8 +14,8 @@ const RUN_ID = new Date().toISOString().replace(/[:.]/g, '-');
 const ARTIFACT_DIR = path.resolve(process.cwd(), 'tests', 'e2e', 'artifacts', RUN_ID);
 const REPORT_JSON = path.join(ARTIFACT_DIR, 'auth-summary.json');
 const REPORT_MD = path.join(ARTIFACT_DIR, 'auth-summary.md');
-const BACKEND_LOG = 'D:\\Health\\HealthData\\backend-start.log';
-const BACKEND_ERR_LOG = 'D:\\Health\\HealthData\\backend-start.err.log';
+const HEALTH_ROOT = path.resolve(process.cwd(), '..');
+const STACK_SCRIPT = path.join(HEALTH_ROOT, 'tools', 'health-wsl-stack.sh');
 
 const summary = {
   runId: RUN_ID,
@@ -107,47 +107,27 @@ async function ensureBackendStopped(timeoutMs = 30000) {
   throw new Error('backend did not stop within timeout');
 }
 
-async function execPowerShell(command) {
-  const { stdout, stderr } = await execFile('powershell', ['-NoProfile', '-Command', command], {
-    windowsHide: true,
+async function execBash(command) {
+  const { stdout, stderr } = await execFile('bash', ['-lc', command], {
     maxBuffer: 1024 * 1024
   });
   return { stdout, stderr };
 }
 
-async function assertNoVisibleBackendWindows() {
-  const command = [
-    "Add-Type @'\nusing System;\nusing System.Runtime.InteropServices;\npublic static class Win32WindowProbe {\n  [DllImport(\"user32.dll\")] public static extern bool IsWindowVisible(IntPtr hWnd);\n}\n'@",
-    "$backend = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and ($_.CommandLine.Contains('D:\\Health\\HealthData\\pom.xml') -or $_.CommandLine.Contains('com.xzkj.health.HealthApplication')) }",
-    "$visible = foreach ($item in $backend) { $p = Get-Process -Id $item.ProcessId -ErrorAction SilentlyContinue; if ($p -and $p.MainWindowHandle -ne 0 -and [Win32WindowProbe]::IsWindowVisible($p.MainWindowHandle)) { [pscustomobject]@{ processId = $item.ProcessId; name = $item.Name; title = $p.MainWindowTitle } } }",
-    "if ($visible) { $visible | ConvertTo-Json -Compress; exit 1 }"
-  ].join('; ');
-  await execPowerShell(command);
+async function stackAction(service, action) {
+  await execBash(`bash ${JSON.stringify(STACK_SCRIPT)} ${service} ${action}`);
 }
 
 async function startBackend() {
   console.log('[auth-audit] starting backend process');
-  const startCommand = [
-    "$startup = ([wmiclass]'Win32_ProcessStartup').CreateInstance()",
-    "$startup.ShowWindow = 0",
-    `$command = 'cmd.exe /d /s /c "set JAVA_HOME=C:\\Program Files\\Java\\jdk-17&& set Path=C:\\Program Files\\Java\\jdk-17\\bin;D:\\apache-maven-3.8.1\\bin;%Path%&& D:\\apache-maven-3.8.1\\bin\\mvn.cmd spring-boot:run -f D:\\Health\\HealthData\\pom.xml 1>> ${BACKEND_LOG} 2>> ${BACKEND_ERR_LOG}"'`,
-    "$result = ([wmiclass]'Win32_Process').Create($command, 'D:\\Health\\HealthData', $startup)",
-    "if ($result.ReturnValue -ne 0) { throw \"Win32_Process.Create failed: $($result.ReturnValue)\" }",
-    "Write-Output $result.ProcessId"
-  ].join('; ');
-  await execPowerShell(startCommand);
+  await stackAction('backend', 'start');
   await ensureBackendReady();
-  await assertNoVisibleBackendWindows();
   console.log('[auth-audit] backend is ready');
 }
 
 async function restartBackend() {
   console.log('[auth-audit] stopping backend process');
-  const stopCommand = [
-    "$pids = foreach ($port in 8080,9000) { Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess }",
-    "if ($pids) { foreach ($pidValue in $pids) { Stop-Process -Id $pidValue -Force -ErrorAction SilentlyContinue } }"
-  ].join('; ');
-  await execPowerShell(stopCommand);
+  await stackAction('backend', 'stop');
   await ensureBackendStopped();
   await startBackend();
 }

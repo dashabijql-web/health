@@ -26,7 +26,7 @@ Windows PowerShell runner 负责真实执行
 Hermes 已经做对的部分：
 
 - 已建立 `test:fast`、`test:frontend`、`test:quality`、`test:integration:*`、`test:perf:*`、`test:full:*` 分层入口。
-- 已有 `tests/run-full-stack-local.ps1`，能启动/检查 SQL、Redis、后端、前端和模拟器。
+- 已有 `tests/run-full-stack-local.py`，能启动/检查 SQL、Redis、后端、前端和模拟器。
 - 已把 `old/new` 数据源、数据密度、性能、pipeline 和 warning pipeline 纳入前端脚本。
 - 最新 run 有真实产物，不是纯文档。
 
@@ -224,16 +224,12 @@ npm run test:full:old
 
 推荐顺序：
 
-```powershell
-Get-CimInstance Win32_Process |
-  Where-Object { $_.CommandLine -match 'watch_tcp_simulator_1000\.py' } |
-  ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
-
-$env:JAVA_HOME='C:/Program Files/Java/jdk-17'
-D:/apache-maven-3.8.1/bin/mvn.cmd -q test -f D:/Health/HealthData/pom.xml
-python D:/Health/HealthData/scripts/run_backend_regression.py
-
-cd D:/Health/HealthShow
+```bash
+bash /home/j/code/health/tools/health-wsl-stack.sh simulator stop
+source /home/j/code/health/tools/health-wsl-env.sh
+"$HEALTH_MAVEN_CMD" -q test -f /home/j/code/health/HealthData/pom.xml
+python3 /home/j/code/health/HealthData/scripts/run_backend_regression.py
+cd /home/j/code/health/HealthShow
 npm run test:full:new
 ```
 
@@ -249,7 +245,7 @@ npm run test:full:new
 现有脚本：
 
 ```text
-D:/Health/HealthShow/tests/run-full-stack-local.ps1
+/home/j/code/health/HealthShow/tests/run-full-stack-local.py
 ```
 
 可继续保留，但建议改造为两个互斥阶段：
@@ -266,15 +262,11 @@ phase new:
 
 建议新增或调整参数：
 
-```powershell
-param(
-  [ValidateSet('old','new','both')]
-  [string]$DataSource = 'old',
-
-  [switch]$IncludeBackendTests,
-  [switch]$StartSimulatorForOld,
-  [switch]$StopSimulatorForNew
-)
+```bash
+--data-source old|new|both
+--skip-backend-tests
+--no-start-simulator-for-old
+--no-stop-simulator-for-new
 ```
 
 runner 必须满足：
@@ -288,13 +280,13 @@ runner 必须满足：
 - 不输出真实密码、token、SQL 连接串。
 - 记录启动或复用的进程 PID。
 - 如果已有 `HealthData` 后端进程带可见窗口，必须先停止并静默重启；不能只因为 `8080` 已监听就复用手工启动的 Java/Maven 控制台。
-- `audit:auth` 的后端重启必须 detached：使用 `Win32_ProcessStartup(ShowWindow=0)` + `Win32_Process.Create`，避免 Maven 子进程继承父 PowerShell stdout/stderr 管道导致 auth 审计卡住。
+- `audit:auth` 的后端重启必须通过 WSL stack detached 执行，避免回退到旧 Windows 后端重启流程。
 - 对自己启动的进程负责清理；不要无差别杀掉用户长期服务。
 
 可复制的一键命令必须写成：
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\Health\HealthShow\tests\run-full-stack-local.ps1"
+```bash
+python3 /home/j/code/health/HealthShow/tests/run-full-stack-local.py
 ```
 
 ## 7. 报告标准
@@ -464,7 +456,7 @@ Hermes 适合当测试秘书和报告员；Codex 适合当测试负责人和修�
 
 2026-05-10 已落地：
 
-- `tests/run-full-stack-local.ps1` 已改为 OpenClaw 可触发的参数化入口：`-DataSource old/new/both`。
+- `tests/run-full-stack-local.py` 已改为 WSL 可触发的参数化入口：`--data-source old/new/both`。
 - runner 默认数据源已设为 `old`；新库和双库必须显式传 `-DataSource new/both`。
 - runner 已输出结构化 `full-stack-local-summary.json` 和人读 `summary.md`。
 - runner 已拆分 old/new 阶段：old 阶段按需启动模拟器，new 阶段默认停止模拟器。
