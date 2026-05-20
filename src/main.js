@@ -51,7 +51,50 @@ import './heartbeat'
 // 1. 创建 Vue 3 应用实例，以 App.vue 根组件为起点
 const app = createApp(App)
 
+if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+  window.history.scrollRestoration = 'manual'
+}
+
+async function cleanupLocalDevServiceWorkers() {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+
+  const pendingCleanup = window.__HEALTH_DEV_SW_CLEANUP__
+  if (pendingCleanup && typeof pendingCleanup.then === 'function') {
+    await pendingCleanup
+    return
+  }
+
+  const isDev = import.meta.env.DEV
+  const hostname = window.location.hostname
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1'
+
+  if (!isDev && !isLocalHost) return
+
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations()
+    if (!registrations.length) return
+
+    await Promise.all(registrations.map((registration) => registration.unregister().catch(() => false)))
+
+    if ('caches' in window) {
+      const cacheKeys = await caches.keys()
+      await Promise.all(cacheKeys.map((key) => caches.delete(key).catch(() => false)))
+    }
+
+    // Reload once so the page detaches from an old SW-controlled client.
+    if (navigator.serviceWorker.controller && !window.sessionStorage.getItem('__health_dev_sw_reset__')) {
+      window.sessionStorage.setItem('__health_dev_sw_reset__', '1')
+      window.location.reload()
+      return
+    }
+  } catch (error) {
+    console.warn('[health-dev-sw-cleanup] failed to clear local service worker state', error)
+  }
+}
+
 async function bootstrap() {
+  await cleanupLocalDevServiceWorkers()
+
   // 2. 挂载 Element Plus 全局消息服务
   app.config.globalProperties.$message = ElMessage
 

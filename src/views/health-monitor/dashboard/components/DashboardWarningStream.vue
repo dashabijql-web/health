@@ -2,10 +2,13 @@
   <div class="dm-model-video-col">
     <div class="dm-event-list-wrap">
       <div class="dm-event-header">
-        <span class="dm-event-title">实时预警</span>
-        <span class="dm-event-page-info">
-          共 <b style="color:#00d4ff">{{ warningEvents.length }}</b> 条
-        </span>
+        <div class="dm-event-copy">
+          <span class="dm-event-title">实时预警流</span>
+        </div>
+        <div class="dm-event-summary">
+          <span class="dm-event-chip is-pending">待处理 {{ pendingCount }}</span>
+          <span class="dm-event-chip">已处理 {{ handledCount }}</span>
+        </div>
       </div>
       <div
         class="dm-event-list dm-event-list--scroll"
@@ -17,7 +20,6 @@
           v-for="(ev, i) in warningEvents"
           :key="ev.id || ev.createTime || i"
           :class="['dm-event', dashboardWarningLevelEventClass(ev.level), ev.level === 'danger' ? 'alert-item--critical' : '', ev.handled ? 'ev-handled' : '']"
-          style="cursor:pointer"
           @click="openWarnCurve(ev)"
         >
           <div class="dm-ev-row1">
@@ -30,10 +32,10 @@
           <div class="dm-ev-row2">
             <span class="dm-ev-user">{{ ev.userName }}</span>
             <span class="dm-ev-val">{{ ev.indicator }}: <em>{{ ev.value }}</em></span>
-            <span v-if="ev.handled" class="dm-ev-done">✓处理</span>
+            <span v-if="ev.handled" class="dm-ev-done">已处理</span>
             <span v-else>
               <span class="dm-ev-pending">待处理</span>
-              <span class="dm-ev-handle-btn" @click.stop="openHandleDialog(ev)">处理</span>
+              <button type="button" class="dm-ev-handle-btn" @click.stop="openHandleDialog(ev)">处理</button>
             </span>
           </div>
         </div>
@@ -56,14 +58,14 @@
       <span class="dm-lw-pending">待处理</span>
     </div>
     <div class="dm-latest-warn dm-lw-empty" v-else>
-      <span class="dm-lw-dot" style="background:#38ef7d;box-shadow:0 0 6px #38ef7d"></span>
-      <span style="color:#38ef7d;font-size:12px">当前无危险预警</span>
+      <span class="dm-lw-dot dm-lw-dot--safe"></span>
+      <span class="dm-lw-safe-text">当前无危险预警</span>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useScrollLoop } from '@/composables/useScrollLoop'
 import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
 import {
@@ -82,6 +84,8 @@ const props = defineProps({
 
 const warningListMid = ref(null)
 const warnHovered = ref(false)
+const handledCount = computed(() => props.warningEvents.filter((event) => event.handled).length)
+const pendingCount = computed(() => Math.max(0, props.warningEvents.length - handledCount.value))
 
 const warningScroll = useScrollLoop({
   getElement: () => warningListMid.value,

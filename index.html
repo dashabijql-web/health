@@ -17,6 +17,38 @@
 </head>
 <body>
   <div id="app"></div>
+  <script>
+    (function () {
+      var isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      if (!isLocalHost || !('serviceWorker' in navigator)) return
+
+      window.__HEALTH_DEV_SW_CLEANUP__ = (async function () {
+        try {
+          var registrations = await navigator.serviceWorker.getRegistrations()
+          if (registrations.length) {
+            await Promise.all(registrations.map(function (registration) {
+              return registration.unregister().catch(function () { return false })
+            }))
+          }
+
+          if ('caches' in window) {
+            var cacheKeys = await caches.keys()
+            await Promise.all(cacheKeys.map(function (key) {
+              return caches.delete(key).catch(function () { return false })
+            }))
+          }
+
+          if (navigator.serviceWorker.controller && !window.sessionStorage.getItem('__health_dev_sw_reset__')) {
+            window.sessionStorage.setItem('__health_dev_sw_reset__', '1')
+            window.location.reload()
+            await new Promise(function () {})
+          }
+        } catch (error) {
+          console.warn('[health-dev-sw-cleanup:index] failed to clear local service worker state', error)
+        }
+      })()
+    })()
+  </script>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
