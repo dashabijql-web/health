@@ -16,24 +16,30 @@
             <span class="dm-live-dot"></span>
             <span class="dm-hd-meta-label">实时运行</span>
             <span class="dm-hd-time">{{ currentTime }}</span>
-            <div class="dm-refresh-info" @click="fetchData(true)" title="点击立即刷新">
+            <button type="button" class="dm-refresh-info" @click="fetchData(true)" title="点击立即刷新">
               <span class="dm-refresh-icon" :class="{ 'is-spinning': isRefreshing }">↻</span>
               <span class="dm-refresh-time">{{ lastRefreshText }}</span>
-            </div>
+            </button>
           </div>
         </template>
         <template #actions>
           <div class="dm-period-tabs">
-            <span
+            <button
               v-for="p in periodOptions"
+              type="button"
               :key="p.value"
               :class="['dm-period-tab', activePeriod === p.value ? 'is-active' : '']"
               @click="switchPeriod(p.value)"
-            >{{ p.label }}</span>
+            >{{ p.label }}</button>
           </div>
-          <div class="dm-fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏展示'">
+          <button
+            type="button"
+            class="dm-fullscreen-btn"
+            @click="toggleFullscreen"
+            :title="isFullscreen ? '退出全屏' : '全屏展示'"
+          >
             <span>{{ isFullscreen ? '⊡' : '⛶' }}</span>
-          </div>
+          </button>
         </template>
       </PageHeroHeader>
 
@@ -46,84 +52,82 @@
     </header>
 
     <!-- ══════════ BODY ══════════ -->
-    <div class="dm-bd">
+    <div class="dm-bd" ref="dmBody">
+      <div class="dm-panel dm-main-metrics dm-panel--interactive" @click="openDeptPersonModal">
+        <div class="dm-ph">
+          <span class="dm-ph-bar"></span>
+          <span class="dm-ph-title">{{ periodLabel }}检测人数</span>
+          <span class="dm-ph-sub">
+            <span class="dm-main-metrics-total">共 {{ totalPersons !== null ? totalPersons.toLocaleString() : '--' }} 人次</span>
+            <span class="dm-inline-action">查看部门详情</span>
+          </span>
+        </div>
+        <div class="dm-metrics-row">
+          <div
+            v-for="m in metricCards"
+            :key="m.label"
+            class="dm-metric-card"
+            :style="{ '--metric-tone': m.color, '--metric-tone-soft': `${m.color}66` }"
+            @click.stop="onMetricCardClick(m)"
+          >
+            <div class="dm-metric-val">
+              {{ m.val.toLocaleString() }}
+            </div>
+            <div class="dm-metric-label">{{ m.label }}</div>
+            <div class="dm-metric-bar-wrap">
+              <div class="dm-metric-bar" :style="{ width: `${m.pct}%` }"></div>
+            </div>
+            <div class="dm-metric-records" :title="m.records.toLocaleString()+'条记录'">
+              {{ m.records >= 10000 ? (m.records/10000).toFixed(1)+'万次' : m.records.toLocaleString()+'次' }}
+            </div>
+            <div class="dm-metric-rec-bar-wrap">
+              <div class="dm-metric-rec-bar" :style="{ width: `${m.recPct}%` }"></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <!-- ─── 左栏 ─── -->
-      <aside class="dm-left">
-
-        <!-- 体征健康评估 -->
-        <div class="dm-panel dm-left-assess">
+      <section class="dm-command-band">
+        <div class="dm-panel dm-command-overview">
           <div class="dm-ph">
             <span class="dm-ph-bar"></span>
-            <span class="dm-ph-title">体征健康评估</span>
-            <span class="dm-ph-sub">实时均值分析</span>
+            <span class="dm-ph-title">态势概览</span>
+            <span class="dm-ph-sub">{{ periodLabel }}体征均值与部门对比</span>
           </div>
-          <!-- 6个体征指标卡 -->
-          <div class="dm-vitals-grid">
-            <div class="dm-vital-card" v-for="v in vitalCards" :key="v.label"
-                 :style="v.route ? 'cursor:pointer' : ''"
-                 @click="v.route && $router.push(v.route)">
-              <div class="dm-vital-icon" :style="{color: v.color, borderColor: v.color + '33', background: v.color + '12'}">
-                <el-icon :size="16"><component :is="v.icon" /></el-icon>
+          <div class="dm-command-overview-body">
+            <div class="dm-command-section dm-command-section--vitals">
+              <div class="dm-command-section-hd">体征健康评估</div>
+              <div class="dm-vitals-grid">
+                <div
+                  v-for="v in vitalCards"
+                  :key="v.label"
+                  :class="['dm-vital-card', v.route ? 'is-clickable' : '']"
+                  :style="{ '--vital-tone': v.color, '--vital-tone-soft': `${v.color}12`, '--vital-tone-border': `${v.color}33` }"
+                  @click="v.route && $router.push(v.route)"
+                >
+                  <div class="dm-vital-icon">
+                    <el-icon :size="16"><component :is="v.icon" /></el-icon>
+                  </div>
+                  <div class="dm-vital-body">
+                    <div class="dm-vital-val">{{ v.val }}<span class="dm-vital-unit">{{ v.unit }}</span></div>
+                    <div class="dm-vital-label">{{ v.label }}</div>
+                  </div>
+                  <div class="dm-vital-tag" :class="v.tagCls">{{ v.tag }}</div>
+                </div>
               </div>
-              <div class="dm-vital-body">
-                <div class="dm-vital-val" :style="{color: v.color}">{{ v.val }}<span class="dm-vital-unit">{{ v.unit }}</span></div>
-                <div class="dm-vital-label">{{ v.label }}</div>
-              </div>
-              <div class="dm-vital-tag" :class="v.tagCls">{{ v.tag }}</div>
+            </div>
+            <div class="dm-command-section dm-command-section--dept">
+              <div class="dm-command-section-hd">部门综合看板</div>
+              <div id="deptDataChart" class="dm-chart-fill"></div>
             </div>
           </div>
         </div>
 
-        <!-- 部门综合看板（数据量 + 预警量双柱对比） -->
-        <div class="dm-panel dm-left-dept">
+        <div class="dm-panel dm-main-dispatch dm-command-dispatch-shell">
           <div class="dm-ph">
-            <span class="dm-ph-bar"></span>
-            <span class="dm-ph-title">部门综合看板</span>
-            <span class="dm-ph-sub">检测人数 vs 异常人数</span>
-          </div>
-          <div class="dm-pc">
-            <div id="deptDataChart" style="width:100%;height:100%"></div>
-          </div>
-        </div>
-
-      </aside>
-
-      <!-- ─── 中栏 ─── -->
-      <main class="dm-main">
-
-        <!-- 6指标概况卡片行 -->
-        <div class="dm-panel dm-main-metrics" style="cursor:pointer" @click="openDeptPersonModal">
-          <div class="dm-ph">
-            <span class="dm-ph-bar"></span>
-            <span class="dm-ph-title">{{ periodLabel }}检测人数</span>
-            <span class="dm-ph-sub">共 {{ totalPersons !== null ? totalPersons.toLocaleString() : '--' }} 人次 <span style="font-size:10px;color:#00b4ff;margin-left:6px">▶ 点击查看部门详情</span></span>
-          </div>
-          <div class="dm-metrics-row">
-            <div class="dm-metric-card" v-for="m in metricCards" :key="m.label"
-                 @click.stop="onMetricCardClick(m)">
-              <div class="dm-metric-val" :style="{color: m.color}">
-                {{ m.val.toLocaleString() }}
-              </div>
-              <div class="dm-metric-label">{{ m.label }}</div>
-              <div class="dm-metric-bar-wrap">
-                <div class="dm-metric-bar" :style="{width: m.pct+'%', background: m.color}"></div>
-              </div>
-              <div class="dm-metric-records" :title="m.records.toLocaleString()+'条记录'">
-                {{ m.records >= 10000 ? (m.records/10000).toFixed(1)+'万次' : m.records.toLocaleString()+'次' }}
-              </div>
-              <div class="dm-metric-rec-bar-wrap">
-                <div class="dm-metric-rec-bar" :style="{width: m.recPct+'%', background: m.color+'66'}"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="dm-panel dm-main-dispatch">
-          <div class="dm-ph">
-            <span class="dm-ph-bar" style="background:#ffd200"></span>
+            <span class="dm-ph-bar dm-ph-bar--warning"></span>
             <span class="dm-ph-title">值班决策面板</span>
-            <span class="dm-ph-sub">先处理异常，再看趋势</span>
+            <span class="dm-ph-sub">先看高危闭环，再看趋势变化</span>
           </div>
           <DashboardDispatchPanel
             :dispatch-priority="dispatchPriority"
@@ -142,6 +146,26 @@
           />
         </div>
 
+        <DashboardRightSidebar
+          class="dm-command-sidebar"
+          mode="primary"
+          :period-label="periodLabel"
+          :top5-display-data="top5DisplayData"
+          :top5-max="top5Max"
+          :warning-rate-list="warningRateList"
+          :pre-shift-data="preShiftData"
+          :mine-ai-report="mineAiReport"
+          :mine-ai-loading="mineAiLoading"
+          :latest-danger-event="latestDangerEvent"
+          :kpi-unhandled-high="kpiUnhandledHigh"
+          :focus-warning-count="focusWarningEvents.length"
+          @open-employee="openEmployeeDrawer"
+          @toggle-ai="toggleMineAiPanel"
+          @show-ai="mineAiDialogVisible = true"
+        />
+      </section>
+
+      <section class="dm-monitor-band">
         <div class="dm-panel dm-main-model">
           <div class="dm-ph">
             <span class="dm-ph-bar"></span>
@@ -149,7 +173,6 @@
             <span class="dm-ph-sub">实时体征综合分析</span>
           </div>
           <div class="dm-model-body">
-
             <DashboardWarningStream
               :warning-events="warningEvents"
               :latest-danger-event="latestDangerEvent"
@@ -158,51 +181,69 @@
               :open-handle-dialog="openHandleDialog"
             />
 
-            <!-- ── 右：两区数据 ── -->
             <div class="dm-model-data-col">
-
-              <!-- 区1：各指标每日异常率趋势折线图 -->
               <div class="dm-data-block dm-data-block-trend">
                 <div class="dm-block-hd">
                   <span class="dm-ph-bar"></span>
                   <span class="dm-block-title">{{ trendBlockTitle }}</span>
                   <span class="dm-block-sub">异常率变化</span>
                 </div>
-                <div ref="unifiedTrendChart" style="width:100%;flex:1;min-height:0;"></div>
+                <div ref="unifiedTrendChart" class="dm-chart-flex"></div>
               </div>
 
-              <!-- 区3：预警时段分布（已删除部门风险排行，已合并到左侧栏） -->
               <div class="dm-data-block">
                 <div class="dm-block-hd">
                   <span class="dm-ph-bar"></span>
                   <span class="dm-block-title">{{ hourDistTitle }}</span>
                 </div>
-                <div id="hourDistChart" style="width:100%;height:100%;flex:1;"></div>
+                <div id="hourDistChart" class="dm-chart-flex"></div>
               </div>
+            </div>
+          </div>
 
-            </div><!-- /dm-model-data-col -->
-          </div><!-- /dm-model-body -->
-
-          <!-- 底部信息条（业务统计） -->
           <div class="dm-model-footer">
-            <div class="dm-mf-dot" style="background:#ffd200"></div>
-            <span class="dm-mf-label">{{ periodLabel }}已处理</span>
-            <span class="dm-mf-val" style="color:#ffd200">{{ warningEvents.filter(e=>e.handled).length }}</span>
-            <span style="color:#8ba6c8;font-size:12px">件</span>
+            <div class="dm-mf-group is-handled">
+              <div class="dm-mf-dot"></div>
+              <span class="dm-mf-label">{{ periodLabel }}已处理</span>
+              <span class="dm-mf-val">{{ warningEvents.filter(e=>e.handled).length }}</span>
+              <span class="dm-mf-unit">件</span>
+            </div>
             <div class="dm-mf-sep"></div>
-            <div class="dm-mf-dot" style="background:#ff5252"></div>
-            <span class="dm-mf-label">待处理</span>
-            <span class="dm-mf-val" style="color:#ff5252">{{ warningEvents.filter(e=>!e.handled).length }}</span>
-            <span style="color:#8ba6c8;font-size:12px">件</span>
+            <div class="dm-mf-group is-pending">
+              <div class="dm-mf-dot"></div>
+              <span class="dm-mf-label">待处理</span>
+              <span class="dm-mf-val">{{ warningEvents.filter(e=>!e.handled).length }}</span>
+              <span class="dm-mf-unit">件</span>
+            </div>
           </div>
         </div>
 
+        <DashboardRightSidebar
+          class="dm-monitor-sidebar"
+          mode="secondary"
+          :period-label="periodLabel"
+          :top5-display-data="top5DisplayData"
+          :top5-max="top5Max"
+          :warning-rate-list="warningRateList"
+          :pre-shift-data="preShiftData"
+          :mine-ai-report="mineAiReport"
+          :mine-ai-loading="mineAiLoading"
+          :latest-danger-event="latestDangerEvent"
+          :kpi-unhandled-high="kpiUnhandledHigh"
+          :focus-warning-count="focusWarningEvents.length"
+          @open-employee="openEmployeeDrawer"
+          @toggle-ai="toggleMineAiPanel"
+          @show-ai="mineAiDialogVisible = true"
+        />
+      </section>
+
+      <section class="dm-support-band">
         <DashboardDevicePanel
+          class="dm-support-device"
           :device-cards="deviceCards"
           @go-device="goToDeviceList"
         />
 
-        <!-- 环境健康关联 -->
         <div class="dm-panel dm-main-env">
           <div class="dm-ph">
             <span class="dm-ph-bar"></span>
@@ -211,22 +252,7 @@
           </div>
           <div ref="envChartRef" class="dm-env-chart"></div>
         </div>
-
-      </main>
-
-      <!-- ─── 右栏 ─── -->
-      <DashboardRightSidebar
-        :period-label="periodLabel"
-        :top5-display-data="top5DisplayData"
-        :top5-max="top5Max"
-        :warning-rate-list="warningRateList"
-        :pre-shift-data="preShiftData"
-        :mine-ai-report="mineAiReport"
-        :mine-ai-loading="mineAiLoading"
-        @open-employee="openEmployeeDrawer"
-        @toggle-ai="toggleMineAiPanel"
-        @show-ai="mineAiDialogVisible = true"
-      />
+      </section>
 
     </div><!-- /dm-bd -->
   </div><!-- /dm-root -->
@@ -278,16 +304,15 @@ export default {
   computed: {
     ...dashboardComputed,
     dashboardHeroDescription() {
-      const total = this.totalPersons !== null ? this.totalPersons.toLocaleString() : '--'
       const pending = (this.warningEvents || []).filter((item) => !item.handled).length
-      return `${this.periodLabel}覆盖 ${total} 人次，当前待处理 ${pending} 条，${this.lastRefreshText}`
+      return `${this.periodLabel}重点关注 ${pending} 条待处理预警、班前准入和趋势变化。`
     },
     headerMetricStripItems() {
       return (this.headerKpis || []).map((item, index) => ({
         key: `${item.label}-${index}`,
         label: item.label,
         value: item.valHtml ? String(item.valHtml).replace(/<[^>]+>/g, ' ') : String(item.val ?? '--'),
-        note: item.sub || '',
+        note: this.normalizeHeaderMetricNote(item.sub),
         tone: this.resolveHeaderMetricTone(item.cls),
         clickable: Boolean(item.clickable),
         route: item.route
@@ -316,6 +341,12 @@ export default {
       if (cls === 'kpi-green' || cls === 'kpi-teal') return 'success'
       return 'primary'
     },
+    normalizeHeaderMetricNote(note) {
+      if (!note) return ''
+      const normalized = String(note).replace(/\s+/g, ' ').trim()
+      if (normalized === '数据加载中...') return '等待刷新'
+      return normalized.length > 18 ? `${normalized.slice(0, 18)}…` : normalized
+    },
     onHeaderMetricSelect(item) {
       if (item?.route) {
         this.$router.push(item.route)
@@ -325,7 +356,7 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
 @import './dashboard.scss';
 </style>
 
