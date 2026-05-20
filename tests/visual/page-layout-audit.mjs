@@ -28,6 +28,8 @@ const DEFAULT_ROUTES = [
 
 const VIEWPORTS = [
   { slug: 'desktop-1440', width: 1440, height: 900, deviceScaleFactor: 1 },
+  // 2560x1600 @ 150% Windows scaling roughly maps to a 1707x1067 CSS viewport.
+  { slug: 'desktop-1707', width: 1707, height: 1067, deviceScaleFactor: 1 },
   { slug: 'desktop-1920', width: 1920, height: 1080, deviceScaleFactor: 1 },
   { slug: 'mobile-390', width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   { slug: 'mobile-414', width: 414, height: 896, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
@@ -100,10 +102,40 @@ async function collectLayoutIssues(page, route, viewport) {
       issues.push({ type: 'horizontal_overflow', message: `scrollWidth ${bodyWidth}px exceeds viewport ${vw}px` });
     }
 
+    const isClippedByOverflowAncestor = (element, rect) => {
+      let current = element.parentElement;
+      while (current && current !== document.body) {
+        const style = window.getComputedStyle(current);
+        const clipsX = ['hidden', 'clip', 'auto', 'scroll'].includes(style.overflowX);
+        const clipsY = ['hidden', 'clip', 'auto', 'scroll'].includes(style.overflowY);
+        if (clipsX || clipsY) {
+          const clipRect = current.getBoundingClientRect();
+          const visibleLeft = clipsX ? Math.max(rect.left, clipRect.left) : rect.left;
+          const visibleRight = clipsX ? Math.min(rect.right, clipRect.right) : rect.right;
+          const visibleTop = clipsY ? Math.max(rect.top, clipRect.top) : rect.top;
+          const visibleBottom = clipsY ? Math.min(rect.bottom, clipRect.bottom) : rect.bottom;
+          const visibleWidth = Math.max(0, visibleRight - visibleLeft);
+          const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+          const visibleArea = visibleWidth * visibleHeight;
+          const totalArea = Math.max(1, rect.width * rect.height);
+          if (visibleArea <= 1 || visibleArea / totalArea < 0.2) {
+            return true;
+          }
+        }
+        current = current.parentElement;
+      }
+      return false;
+    };
+
     const isVisible = (element) => {
       const style = window.getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return style.visibility !== 'hidden' && style.display !== 'none' && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
+      return style.visibility !== 'hidden'
+        && style.display !== 'none'
+        && Number(style.opacity) !== 0
+        && rect.width > 0
+        && rect.height > 0
+        && !isClippedByOverflowAncestor(element, rect);
     };
 
     const textNodes = Array.from(document.body.querySelectorAll('h1,h2,h3,h4,h5,h6,p,span,a,button,label,td,th,.el-button,.el-tag'))
