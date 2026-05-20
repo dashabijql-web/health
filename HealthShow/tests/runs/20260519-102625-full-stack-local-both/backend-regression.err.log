@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/j/code/health/HealthData/scripts/run_backend_regression.py", line 78, in <module>
+    raise SystemExit(main())
+  File "/home/j/code/health/HealthData/scripts/run_backend_regression.py", line 63, in main
+    code = run_step(label, command, extra_env=extra_env)
+  File "/home/j/code/health/HealthData/scripts/run_backend_regression.py", line 34, in run_step
+    completed = subprocess.run(command, cwd=ROOT, env=env)
+  File "/usr/lib/python3.10/subprocess.py", line 503, in run
+    with Popen(*popenargs, **kwargs) as process:
+  File "/usr/lib/python3.10/subprocess.py", line 971, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.10/subprocess.py", line 1863, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+OSError: [Errno 8] Exec format error: '/mnt/d/apache-maven-3.8.1/bin/mvn.cmd'

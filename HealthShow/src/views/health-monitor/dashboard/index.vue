@@ -1,0 +1,362 @@
+<template>
+  <div class="dm-outer" @transitionend.stop @animationend.stop>
+  <div class="dm-root" ref="dmScale">
+
+    <!-- ══════════ HEADER ══════════ -->
+    <header class="dm-hd">
+      <PageHeroHeader
+        class="dm-hd-hero"
+        variant="cockpit"
+        eyebrow="Cockpit Dashboard"
+        title="信智科技职业健康监测管理系统"
+        :description="dashboardHeroDescription"
+      >
+        <template #meta>
+          <div class="dm-hd-meta">
+            <span class="dm-live-dot"></span>
+            <span class="dm-hd-meta-label">实时运行</span>
+            <span class="dm-hd-time">{{ currentTime }}</span>
+            <button type="button" class="dm-refresh-info" @click="fetchData(true)" title="点击立即刷新">
+              <span class="dm-refresh-icon" :class="{ 'is-spinning': isRefreshing }">↻</span>
+              <span class="dm-refresh-time">{{ lastRefreshText }}</span>
+            </button>
+          </div>
+        </template>
+        <template #actions>
+          <div class="dm-period-tabs">
+            <button
+              v-for="p in periodOptions"
+              type="button"
+              :key="p.value"
+              :class="['dm-period-tab', activePeriod === p.value ? 'is-active' : '']"
+              @click="switchPeriod(p.value)"
+            >{{ p.label }}</button>
+          </div>
+          <button
+            type="button"
+            class="dm-fullscreen-btn"
+            @click="toggleFullscreen"
+            :title="isFullscreen ? '退出全屏' : '全屏展示'"
+          >
+            <span>{{ isFullscreen ? '⊡' : '⛶' }}</span>
+          </button>
+        </template>
+      </PageHeroHeader>
+
+      <MetricStrip
+        class="dm-hd-kpis"
+        :items="headerMetricStripItems"
+        dense
+        @select="onHeaderMetricSelect"
+      />
+    </header>
+
+    <!-- ══════════ BODY ══════════ -->
+    <div class="dm-bd" ref="dmBody">
+      <div class="dm-panel dm-main-metrics dm-panel--interactive" @click="openDeptPersonModal">
+        <div class="dm-ph">
+          <span class="dm-ph-bar"></span>
+          <span class="dm-ph-title">{{ periodLabel }}检测人数</span>
+          <span class="dm-ph-sub">
+            <span class="dm-main-metrics-total">共 {{ totalPersons !== null ? totalPersons.toLocaleString() : '--' }} 人次</span>
+            <span class="dm-inline-action">查看部门详情</span>
+          </span>
+        </div>
+        <div class="dm-metrics-row">
+          <div
+            v-for="m in metricCards"
+            :key="m.label"
+            class="dm-metric-card"
+            :style="{ '--metric-tone': m.color, '--metric-tone-soft': `${m.color}66` }"
+            @click.stop="onMetricCardClick(m)"
+          >
+            <div class="dm-metric-val">
+              {{ m.val.toLocaleString() }}
+            </div>
+            <div class="dm-metric-label">{{ m.label }}</div>
+            <div class="dm-metric-bar-wrap">
+              <div class="dm-metric-bar" :style="{ width: `${m.pct}%` }"></div>
+            </div>
+            <div class="dm-metric-records" :title="m.records.toLocaleString()+'条记录'">
+              {{ m.records >= 10000 ? (m.records/10000).toFixed(1)+'万次' : m.records.toLocaleString()+'次' }}
+            </div>
+            <div class="dm-metric-rec-bar-wrap">
+              <div class="dm-metric-rec-bar" :style="{ width: `${m.recPct}%` }"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="dm-command-band">
+        <div class="dm-panel dm-command-overview">
+          <div class="dm-ph">
+            <span class="dm-ph-bar"></span>
+            <span class="dm-ph-title">态势概览</span>
+            <span class="dm-ph-sub">{{ periodLabel }}体征均值与部门对比</span>
+          </div>
+          <div class="dm-command-overview-body">
+            <div class="dm-command-section dm-command-section--vitals">
+              <div class="dm-command-section-hd">体征健康评估</div>
+              <div class="dm-vitals-grid">
+                <div
+                  v-for="v in vitalCards"
+                  :key="v.label"
+                  :class="['dm-vital-card', v.route ? 'is-clickable' : '']"
+                  :style="{ '--vital-tone': v.color, '--vital-tone-soft': `${v.color}12`, '--vital-tone-border': `${v.color}33` }"
+                  @click="v.route && $router.push(v.route)"
+                >
+                  <div class="dm-vital-icon">
+                    <el-icon :size="16"><component :is="v.icon" /></el-icon>
+                  </div>
+                  <div class="dm-vital-body">
+                    <div class="dm-vital-val">{{ v.val }}<span class="dm-vital-unit">{{ v.unit }}</span></div>
+                    <div class="dm-vital-label">{{ v.label }}</div>
+                  </div>
+                  <div class="dm-vital-tag" :class="v.tagCls">{{ v.tag }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="dm-command-section dm-command-section--dept">
+              <div class="dm-command-section-hd">部门综合看板</div>
+              <div id="deptDataChart" class="dm-chart-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dm-panel dm-main-dispatch dm-command-dispatch-shell">
+          <div class="dm-ph">
+            <span class="dm-ph-bar dm-ph-bar--warning"></span>
+            <span class="dm-ph-title">值班决策面板</span>
+            <span class="dm-ph-sub">先看高危闭环，再看趋势变化</span>
+          </div>
+          <DashboardDispatchPanel
+            :dispatch-priority="dispatchPriority"
+            :dispatch-action-items="dispatchActionItems"
+            :kpi-unhandled-high="kpiUnhandledHigh"
+            :pre-shift-data="preShiftData"
+            :focus-warning-events="focusWarningEvents"
+            :mine-ai-report="mineAiReport"
+            :mine-ai-loading="mineAiLoading"
+            :dashboard-ai-summary="dashboardAiSummary"
+            :risk-dept-list="riskDeptList"
+            :latest-danger-event="latestDangerEvent"
+            @navigate="$router.push($event)"
+            @person-click="goToEmployeeProfile"
+            @toggle-ai="toggleMineAiPanel"
+          />
+        </div>
+
+        <DashboardRightSidebar
+          class="dm-command-sidebar"
+          mode="primary"
+          :period-label="periodLabel"
+          :top5-display-data="top5DisplayData"
+          :top5-max="top5Max"
+          :warning-rate-list="warningRateList"
+          :pre-shift-data="preShiftData"
+          :mine-ai-report="mineAiReport"
+          :mine-ai-loading="mineAiLoading"
+          :latest-danger-event="latestDangerEvent"
+          :kpi-unhandled-high="kpiUnhandledHigh"
+          :focus-warning-count="focusWarningEvents.length"
+          @open-employee="openEmployeeDrawer"
+          @toggle-ai="toggleMineAiPanel"
+          @show-ai="mineAiDialogVisible = true"
+        />
+      </section>
+
+      <section class="dm-monitor-band">
+        <div class="dm-panel dm-main-model">
+          <div class="dm-ph">
+            <span class="dm-ph-bar"></span>
+            <span class="dm-ph-title">健康监测中心</span>
+            <span class="dm-ph-sub">实时体征综合分析</span>
+          </div>
+          <div class="dm-model-body">
+            <DashboardWarningStream
+              :warning-events="warningEvents"
+              :latest-danger-event="latestDangerEvent"
+              :format-time-ago="formatTimeAgo"
+              :open-warn-curve="openWarnCurve"
+              :open-handle-dialog="openHandleDialog"
+            />
+
+            <div class="dm-model-data-col">
+              <div class="dm-data-block dm-data-block-trend">
+                <div class="dm-block-hd">
+                  <span class="dm-ph-bar"></span>
+                  <span class="dm-block-title">{{ trendBlockTitle }}</span>
+                  <span class="dm-block-sub">异常率变化</span>
+                </div>
+                <div ref="unifiedTrendChart" class="dm-chart-flex"></div>
+              </div>
+
+              <div class="dm-data-block">
+                <div class="dm-block-hd">
+                  <span class="dm-ph-bar"></span>
+                  <span class="dm-block-title">{{ hourDistTitle }}</span>
+                </div>
+                <div id="hourDistChart" class="dm-chart-flex"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dm-model-footer">
+            <div class="dm-mf-group is-handled">
+              <div class="dm-mf-dot"></div>
+              <span class="dm-mf-label">{{ periodLabel }}已处理</span>
+              <span class="dm-mf-val">{{ warningEvents.filter(e=>e.handled).length }}</span>
+              <span class="dm-mf-unit">件</span>
+            </div>
+            <div class="dm-mf-sep"></div>
+            <div class="dm-mf-group is-pending">
+              <div class="dm-mf-dot"></div>
+              <span class="dm-mf-label">待处理</span>
+              <span class="dm-mf-val">{{ warningEvents.filter(e=>!e.handled).length }}</span>
+              <span class="dm-mf-unit">件</span>
+            </div>
+          </div>
+        </div>
+
+        <DashboardRightSidebar
+          class="dm-monitor-sidebar"
+          mode="secondary"
+          :period-label="periodLabel"
+          :top5-display-data="top5DisplayData"
+          :top5-max="top5Max"
+          :warning-rate-list="warningRateList"
+          :pre-shift-data="preShiftData"
+          :mine-ai-report="mineAiReport"
+          :mine-ai-loading="mineAiLoading"
+          :latest-danger-event="latestDangerEvent"
+          :kpi-unhandled-high="kpiUnhandledHigh"
+          :focus-warning-count="focusWarningEvents.length"
+          @open-employee="openEmployeeDrawer"
+          @toggle-ai="toggleMineAiPanel"
+          @show-ai="mineAiDialogVisible = true"
+        />
+      </section>
+
+      <section class="dm-support-band">
+        <DashboardDevicePanel
+          class="dm-support-device"
+          :device-cards="deviceCards"
+          @go-device="goToDeviceList"
+        />
+
+        <div class="dm-panel dm-main-env">
+          <div class="dm-ph">
+            <span class="dm-ph-bar"></span>
+            <span class="dm-ph-title">环境健康关联</span>
+            <span class="dm-ph-sub">CO浓度/粉尘 vs 血氧趋势（模拟）</span>
+          </div>
+          <div ref="envChartRef" class="dm-env-chart"></div>
+        </div>
+      </section>
+
+    </div><!-- /dm-bd -->
+  </div><!-- /dm-root -->
+
+  <DashboardDialogs
+    :emp-drawer="empDrawer"
+    :handle-dialog="handleDialog"
+    :dept-person-modal="deptPersonModal"
+    :dept-detail-modal="deptDetailModal"
+    :metric-detail-modal="metricDetailModal"
+    :warn-curve-modal="warnCurveModal"
+    :trend-block-title="trendBlockTitle"
+    :alert-type-label="alertTypeLabel"
+    :format-warn-time="formatWarnTime"
+    :load-dept-person-chart="loadDeptPersonChart"
+    :load-dept-detail-chart="loadDeptDetailChart"
+    :load-metric-detail-chart="loadMetricDetailChart"
+    :init-warn-curve-chart="initWarnCurveChart"
+    :submit-handle="submitHandle"
+  />
+
+  </div><!-- /dm-outer -->
+
+</template>
+
+<script>
+import { dashboardComputed } from './dashboard-computed'
+import { createDashboardPageState } from './dashboard-page-state'
+import { dashboardViewActions } from './dashboard-view-actions'
+import { dashboardChartMethods } from './dashboard-chart-methods'
+import { dashboardDetailMethods } from './dashboard-detail-methods'
+import { activateDashboardPage, mountDashboardPage, unmountDashboardPage } from './dashboard-lifecycle'
+import { dashboardRuntimeMethods } from './dashboard-runtime'
+import DashboardDispatchPanel from './components/DashboardDispatchPanel.vue'
+import DashboardRightSidebar from './components/DashboardRightSidebar.vue'
+import DashboardDevicePanel from './components/DashboardDevicePanel.vue'
+import DashboardDialogs from './components/DashboardDialogs.vue'
+import DashboardWarningStream from './components/DashboardWarningStream.vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
+import MetricStrip from '@/components/health-shell/MetricStrip.vue'
+
+export default {
+  name: 'HealthDashboard',
+  components: { DashboardDispatchPanel, DashboardRightSidebar, DashboardDevicePanel, DashboardDialogs, DashboardWarningStream, PageHeroHeader, MetricStrip },
+  data() {
+    return createDashboardPageState()
+  },
+
+  computed: {
+    ...dashboardComputed,
+    dashboardHeroDescription() {
+      const pending = (this.warningEvents || []).filter((item) => !item.handled).length
+      return `${this.periodLabel}重点关注 ${pending} 条待处理预警、班前准入和趋势变化。`
+    },
+    headerMetricStripItems() {
+      return (this.headerKpis || []).map((item, index) => ({
+        key: `${item.label}-${index}`,
+        label: item.label,
+        value: item.valHtml ? String(item.valHtml).replace(/<[^>]+>/g, ' ') : String(item.val ?? '--'),
+        note: this.normalizeHeaderMetricNote(item.sub),
+        tone: this.resolveHeaderMetricTone(item.cls),
+        clickable: Boolean(item.clickable),
+        route: item.route
+      }))
+    }
+  },
+
+  mounted() {
+    mountDashboardPage(this)
+  },
+  activated() {
+    activateDashboardPage(this)
+  },
+  beforeUnmount() {
+    unmountDashboardPage(this)
+  },
+
+  methods: {
+    ...dashboardRuntimeMethods,
+    ...dashboardViewActions,
+    ...dashboardChartMethods,
+    ...dashboardDetailMethods,
+    resolveHeaderMetricTone(cls) {
+      if (cls === 'kpi-red') return 'danger'
+      if (cls === 'kpi-orange') return 'warning'
+      if (cls === 'kpi-green' || cls === 'kpi-teal') return 'success'
+      return 'primary'
+    },
+    normalizeHeaderMetricNote(note) {
+      if (!note) return ''
+      const normalized = String(note).replace(/\s+/g, ' ').trim()
+      if (normalized === '数据加载中...') return '等待刷新'
+      return normalized.length > 18 ? `${normalized.slice(0, 18)}…` : normalized
+    },
+    onHeaderMetricSelect(item) {
+      if (item?.route) {
+        this.$router.push(item.route)
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+@import './dashboard.scss';
+</style>
+

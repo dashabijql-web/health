@@ -1,0 +1,156 @@
+{
+  "runId": "2026-05-19T02-56-23-930Z",
+  "profile": "full",
+  "description": "Full HealthShow gate; requires frontend, backend, browser and pipeline services.",
+  "dataSource": "old",
+  "expectNonEmpty": true,
+  "startedAt": "2026-05-19T02:56:23.931Z",
+  "status": "failed",
+  "preflight": [
+    {
+      "name": "node",
+      "ok": true,
+      "required": true,
+      "detail": "v22.22.3",
+      "hint": ""
+    },
+    {
+      "name": "cwd",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/code/health/HealthShow",
+      "hint": ""
+    },
+    {
+      "name": "data-source",
+      "ok": true,
+      "required": true,
+      "detail": "old",
+      "hint": ""
+    },
+    {
+      "name": "expect-non-empty",
+      "ok": true,
+      "required": true,
+      "detail": "1",
+      "hint": ""
+    },
+    {
+      "name": "package-lock",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/code/health/HealthShow/package-lock.json",
+      "hint": ""
+    },
+    {
+      "name": "backend-8080",
+      "ok": true,
+      "required": true,
+      "detail": "127.0.0.1:8080",
+      "hint": "启动后端：mvn spring-boot:run -f D:/Health/HealthData/pom.xml"
+    },
+    {
+      "name": "frontend-http",
+      "ok": true,
+      "required": true,
+      "detail": "HTTP 200 http://127.0.0.1:9528/",
+      "hint": "启动前端：cd D:/Health/HealthShow && npm run dev"
+    },
+    {
+      "name": "playwright-browser",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome",
+      "hint": "先执行 `npm run audit:e2e:install`"
+    },
+    {
+      "name": "SQL_PASSWORD",
+      "ok": true,
+      "required": true,
+      "detail": "set",
+      "hint": "pipeline 写入/回归测试需要 SQL_PASSWORD"
+    },
+    {
+      "name": "sqlcmd",
+      "ok": true,
+      "required": true,
+      "detail": "sqlcmd -?",
+      "hint": "先安装 sqlcmd 或设置 SQLCMD_BIN"
+    },
+    {
+      "name": "sql-server",
+      "ok": true,
+      "required": true,
+      "detail": "127.0.0.1:58135",
+      "hint": "启动 SQL Server"
+    },
+    {
+      "name": "tcp-9000",
+      "ok": true,
+      "required": true,
+      "detail": "127.0.0.1:9000",
+      "hint": "启动 HealthData 后端 TCP 监听"
+    },
+    {
+      "name": "redis-6379",
+      "ok": true,
+      "required": true,
+      "detail": "127.0.0.1:6379",
+      "hint": "启动 Redis 后再跑 pipeline/full"
+    }
+  ],
+  "commands": [
+    {
+      "name": "npm run test:frontend",
+      "exitCode": 0,
+      "durationMs": 17296
+    },
+    {
+      "name": "npm run test:quality",
+      "exitCode": 0,
+      "durationMs": 818
+    },
+    {
+      "name": "npm run audit:api",
+      "exitCode": 0,
+      "durationMs": 15189
+    },
+    {
+      "name": "npm run audit:data:old",
+      "exitCode": 0,
+      "durationMs": 6341
+    },
+    {
+      "name": "npm run audit:auth",
+      "exitCode": 0,
+      "durationMs": 23622
+    },
+    {
+      "name": "npm run audit:e2e",
+      "exitCode": 0,
+      "durationMs": 129301
+    },
+    {
+      "name": "npm run audit:perf:old",
+      "exitCode": 0,
+      "durationMs": 58455
+    },
+    {
+      "name": "npm run audit:pipeline",
+      "exitCode": 0,
+      "durationMs": 8999
+    },
+    {
+      "name": "npm run audit:pipeline-warning",
+      "exitCode": 0,
+      "durationMs": 6187
+    },
+    {
+      "name": "npm run audit:write",
+      "exitCode": 1,
+      "durationMs": 8492
+    }
+  ],
+  "artifactDir": "/home/j/code/health/HealthShow/tests/runs/2026-05-19T02-56-23-930Z",
+  "finishedAt": "2026-05-19T03:00:58.685Z"
+}

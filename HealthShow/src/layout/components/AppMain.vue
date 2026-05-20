@@ -1,0 +1,63 @@
+<template>
+  <section class="app-main">
+    <router-view :key="$route.matched[0]?.path" v-slot="{ Component, route }">
+      <transition name="fade-page">
+        <component :is="Component" :key="route.path" />
+      </transition>
+    </router-view>
+  </section>
+</template>
+
+<script>
+export default {
+  name: 'AppMain'
+}
+</script>
+
+<style scoped>
+.app-main {
+  min-height: calc(100vh - 50px);
+  width: 100%;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .app-main {
+    padding-bottom: calc(var(--layout-mobile-nav-height) + env(safe-area-inset-bottom, 8px));
+  }
+}
+
+.fixed-header + .app-main {
+  padding-top: 50px;
+}
+
+.fade-page-enter-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-page-leave-active {
+  transition: opacity 0.15s ease;
+  position: absolute;
+  width: 100%;
+}
+
+.fade-page-enter-from,
+.fade-page-leave-to {
+  opacity: 0;
+}
+
+.fade-page-enter-to,
+.fade-page-leave-from {
+  opacity: 1;
+}
+</style>
+
+<style lang="scss">
+.el-popup-parent--hidden {
+  .fixed-header {
+    padding-right: 15px;
+  }
+}
+</style>

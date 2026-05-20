@@ -1,0 +1,86 @@
+{
+  "runId": "2026-05-19T02-35-35-585Z",
+  "profile": "integration",
+  "description": "Frontend/backend integration gate; requires running frontend and backend services.",
+  "dataSource": "old",
+  "expectNonEmpty": true,
+  "startedAt": "2026-05-19T02:35:35.587Z",
+  "status": "passed",
+  "preflight": [
+    {
+      "name": "node",
+      "ok": true,
+      "required": true,
+      "detail": "v22.22.3",
+      "hint": ""
+    },
+    {
+      "name": "cwd",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/code/health/HealthShow",
+      "hint": ""
+    },
+    {
+      "name": "data-source",
+      "ok": true,
+      "required": true,
+      "detail": "old",
+      "hint": ""
+    },
+    {
+      "name": "expect-non-empty",
+      "ok": true,
+      "required": true,
+      "detail": "1",
+      "hint": ""
+    },
+    {
+      "name": "package-lock",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/code/health/HealthShow/package-lock.json",
+      "hint": ""
+    },
+    {
+      "name": "backend-8080",
+      "ok": true,
+      "required": true,
+      "detail": "127.0.0.1:8080",
+      "hint": "启动后端：mvn spring-boot:run -f D:/Health/HealthData/pom.xml"
+    },
+    {
+      "name": "frontend-http",
+      "ok": true,
+      "required": true,
+      "detail": "HTTP 200 http://127.0.0.1:9528/",
+      "hint": "启动前端：cd D:/Health/HealthShow && npm run dev"
+    },
+    {
+      "name": "playwright-browser",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome",
+      "hint": "先执行 `npm run audit:e2e:install`"
+    }
+  ],
+  "commands": [
+    {
+      "name": "npm run audit:api",
+      "exitCode": 0,
+      "durationMs": 7021
+    },
+    {
+      "name": "npm run audit:data:old",
+      "exitCode": 0,
+      "durationMs": 6406
+    },
+    {
+      "name": "npm run audit:auth",
+      "exitCode": 0,
+      "durationMs": 20836
+    }
+  ],
+  "artifactDir": "/home/j/code/health/HealthShow/tests/runs/2026-05-19T02-35-35-585Z",
+  "finishedAt": "2026-05-19T02:36:09.881Z"
+}

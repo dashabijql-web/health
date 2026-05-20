@@ -1,0 +1,36 @@
+# Hermes Archive
+
+- run_id: `20260519-102625-full-stack-local-both`
+- status: `failed`
+- status_reason: `nonzero steps: 7`
+- data_source: `both`
+- phase statuses:
+  - backend: `failed`
+  - frontend-common: `passed`
+  - old-data-source: `failed`
+  - new-data-source: `failed`
+- old dataSourceFacts:
+  - database: `health`
+  - departmentRows: `20`
+  - employeeRows: `1000`
+  - deviceRows: `1000`
+  - deviceUserRows: `1000`
+  - realtimeRows: `0`
+  - userOnlineRows: `0`
+  - simulatorDeviceRows: `1000`
+- new dataSourceFacts:
+  - database: `health_new`
+  - departmentRows: `0`
+  - employeeRows: `0`
+  - deviceRows: `0`
+  - deviceUserRows: `0`
+  - realtimeRows: `0`
+  - userOnlineRows: `0`
+  - simulatorDeviceRows: `0`
+- simulator evidence:
+  - stopped: `watch-simulator`, pid `80769`, `2026-05-19T10:28:54+08:00`, reason `old-full-pipeline-exclusive-tcp`
+- skipped_steps: `none`
+- issue triage:
+  - failed steps: `7`
+  - allowed skipped steps: `0`
+  - action: hand failed steps to Codex for root-cause analysis

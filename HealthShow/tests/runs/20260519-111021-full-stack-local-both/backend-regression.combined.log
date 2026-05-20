@@ -1,0 +1,41 @@
+### STDOUT
+== compile ==
+
+== field_sync ==
+Health field sync report
+
+Tracked HealthRecord metric columns:
+  heart_rate, blood_oxygen, sleep_minutes, steps, calories, pressure, blood_pressure_high, blood_pressure_low, temperature
+
+Auto-checked source files:
+  - mapper_insert: OK
+  - dashboard_health_source: OK
+  - heart_rate_table_source: OK
+
+Auto-checked SQL runtime objects:
+  - sql.current_health_table: OK
+  - sql.v_health_record: OK
+  - sql.sp_update_monthly_views: OK
+  - sql.sp_create_monthly_tables: OK
+  - sql.current_warning_table: OK
+  - sql.v_warning_record: OK
+
+Manual checks still required before merging a new health field:
+  - Service 返回值与前端 API / 页面绑定
+  - 设备/模拟器 -> 日志 -> 数据库 -> API -> 页面 的端到端验证
+
+== redis_buffer_probe ==
+Redis buffer flush probe
+  - redis: 127.0.0.1:6379
+  - source: old
+  - redis_key: health:buffer:old
+  - sql_db: health
+  - sql_table: health_record_202605
+  - inserted_id: 5504569
+  - user_code: GOAL_PROBE_20260519111037
+  - redis_buffer_cleanup: OK
+  - cleanup_rows: 1
+
+Backend regression summary: PASSED
+
+### STDERR

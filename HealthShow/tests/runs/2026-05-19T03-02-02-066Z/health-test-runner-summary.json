@@ -1,0 +1,60 @@
+{
+  "runId": "2026-05-19T03-02-02-066Z",
+  "profile": "quality",
+  "description": "Maintainability and product-quality gate: code-health + UX/competitor benchmark; no backend required.",
+  "dataSource": "new",
+  "expectNonEmpty": false,
+  "startedAt": "2026-05-19T03:02:02.067Z",
+  "status": "passed",
+  "preflight": [
+    {
+      "name": "node",
+      "ok": true,
+      "required": true,
+      "detail": "v22.22.3",
+      "hint": ""
+    },
+    {
+      "name": "cwd",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/code/health/HealthShow",
+      "hint": ""
+    },
+    {
+      "name": "data-source",
+      "ok": true,
+      "required": true,
+      "detail": "new",
+      "hint": ""
+    },
+    {
+      "name": "expect-non-empty",
+      "ok": true,
+      "required": true,
+      "detail": "0",
+      "hint": ""
+    },
+    {
+      "name": "package-lock",
+      "ok": true,
+      "required": true,
+      "detail": "/home/j/code/health/HealthShow/package-lock.json",
+      "hint": ""
+    }
+  ],
+  "commands": [
+    {
+      "name": "npm run audit:quality:code",
+      "exitCode": 0,
+      "durationMs": 264
+    },
+    {
+      "name": "npm run audit:product",
+      "exitCode": 0,
+      "durationMs": 250
+    }
+  ],
+  "artifactDir": "/home/j/code/health/HealthShow/tests/runs/2026-05-19T03-02-02-066Z",
+  "finishedAt": "2026-05-19T03:02:02.584Z"
+}

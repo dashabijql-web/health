@@ -1,0 +1,268 @@
+{
+  "runId": "20260519-102625-full-stack-local-both",
+  "profile": "full-stack-local",
+  "dataSource": "both",
+  "status": "failed",
+  "statusReason": "nonzero steps: 7",
+  "startedAt": "2026-05-19T10:26:25.949770+08:00",
+  "finishedAt": "2026-05-19T10:28:57.536187+08:00",
+  "durationMs": 151586,
+  "outDir": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both",
+  "logFile": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/full-stack-local.log",
+  "hermesArchive": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/hermes-archive.md",
+  "parameters": {
+    "dataSource": "both",
+    "skipBackendTests": false,
+    "noStartSimulatorForOld": false,
+    "noStopSimulatorForNew": false
+  },
+  "environment": {
+    "root": "/home/j/code/health",
+    "HealthShow": "/home/j/code/health/HealthShow",
+    "HealthData": "/home/j/code/health/HealthData",
+    "frontendUrl": "http://127.0.0.1:9528/",
+    "backendUrl": "http://127.0.0.1:8080/health",
+    "sqlServer": "127.0.0.1:58135",
+    "redis": "127.0.0.1:6379",
+    "tcp": "127.0.0.1:9000"
+  },
+  "readiness": {
+    "sql58135": true,
+    "redis6379": true,
+    "backend8080": true,
+    "backendTcp9000": true,
+    "frontend9528": true,
+    "sqlPasswordSet": true,
+    "simulatorRunning": false
+  },
+  "dataSourceFacts": {
+    "old": {
+      "database": "health",
+      "ok": true,
+      "error": null,
+      "departmentRows": 20,
+      "employeeRows": 1000,
+      "deviceRows": 1000,
+      "deviceUserRows": 1000,
+      "realtimeRows": 0,
+      "userOnlineRows": 0,
+      "simulatorDeviceRows": 1000
+    },
+    "new": {
+      "database": "health_new",
+      "ok": true,
+      "error": null,
+      "departmentRows": 0,
+      "employeeRows": 0,
+      "deviceRows": 0,
+      "deviceUserRows": 0,
+      "realtimeRows": 0,
+      "userOnlineRows": 0,
+      "simulatorDeviceRows": 0
+    }
+  },
+  "gitStatus": {
+    "HealthShow": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/git-healthshow-status.log",
+    "HealthData": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/git-healthdata-status.log"
+  },
+  "startedProcesses": [],
+  "stoppedProcesses": [
+    {
+      "name": "watch-simulator",
+      "id": 80769,
+      "stoppedAt": "2026-05-19T10:28:54+08:00",
+      "reason": "old-full-pipeline-exclusive-tcp"
+    }
+  ],
+  "phases": [
+    {
+      "name": "backend",
+      "status": "failed",
+      "startedAt": "2026-05-19T10:26:26.443592+08:00",
+      "finishedAt": "2026-05-19T10:28:28.970117+08:00",
+      "durationMs": 122526,
+      "stepCount": 2
+    },
+    {
+      "name": "frontend-common",
+      "status": "passed",
+      "startedAt": "2026-05-19T10:28:28.970256+08:00",
+      "finishedAt": "2026-05-19T10:28:53.769584+08:00",
+      "durationMs": 24799,
+      "stepCount": 3
+    },
+    {
+      "name": "old-data-source",
+      "status": "failed",
+      "startedAt": "2026-05-19T10:28:53.769673+08:00",
+      "finishedAt": "2026-05-19T10:28:55.461777+08:00",
+      "durationMs": 1692,
+      "stepCount": 3
+    },
+    {
+      "name": "new-data-source",
+      "status": "failed",
+      "startedAt": "2026-05-19T10:28:55.461904+08:00",
+      "finishedAt": "2026-05-19T10:28:56.856795+08:00",
+      "durationMs": 1394,
+      "stepCount": 3
+    }
+  ],
+  "steps": [
+    {
+      "name": "backend-maven-test",
+      "command": "source /home/j/code/health/tools/health-wsl-env.sh && \"$HEALTH_MAVEN_CMD\" -q test -f /home/j/code/health/HealthData/pom.xml",
+      "workingDirectory": "/home/j/code/health/HealthData",
+      "exitCode": 0,
+      "status": "passed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:26:26.443739+08:00",
+      "finishedAt": "2026-05-19T10:28:28.766919+08:00",
+      "durationMs": 122323,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/backend-maven-test.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/backend-maven-test.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/backend-maven-test.combined.log"
+    },
+    {
+      "name": "backend-regression",
+      "command": "python3 /home/j/code/health/HealthData/scripts/run_backend_regression.py",
+      "workingDirectory": "/home/j/code/health/HealthData",
+      "exitCode": 1,
+      "status": "failed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:28:28.768293+08:00",
+      "finishedAt": "2026-05-19T10:28:28.969937+08:00",
+      "durationMs": 201,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/backend-regression.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/backend-regression.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/backend-regression.combined.log"
+    },
+    {
+      "name": "test-fast",
+      "command": "npm run test:fast",
+      "workingDirectory": "/home/j/code/health/HealthShow",
+      "exitCode": 0,
+      "status": "passed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:28:28.970350+08:00",
+      "finishedAt": "2026-05-19T10:28:30.841891+08:00",
+      "durationMs": 1871,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-fast.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-fast.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-fast.combined.log"
+    },
+    {
+      "name": "test-frontend",
+      "command": "npm run test:frontend",
+      "workingDirectory": "/home/j/code/health/HealthShow",
+      "exitCode": 0,
+      "status": "passed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:28:30.842131+08:00",
+      "finishedAt": "2026-05-19T10:28:52.880652+08:00",
+      "durationMs": 22038,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-frontend.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-frontend.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-frontend.combined.log"
+    },
+    {
+      "name": "test-quality",
+      "command": "npm run test:quality",
+      "workingDirectory": "/home/j/code/health/HealthShow",
+      "exitCode": 0,
+      "status": "passed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:28:52.880914+08:00",
+      "finishedAt": "2026-05-19T10:28:53.769416+08:00",
+      "durationMs": 888,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-quality.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-quality.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-quality.combined.log"
+    },
+    {
+      "name": "test-integration-old",
+      "command": "npm run test:integration:old",
+      "workingDirectory": "/home/j/code/health/HealthShow",
+      "exitCode": 3,
+      "status": "failed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:28:53.913170+08:00",
+      "finishedAt": "2026-05-19T10:28:54.320283+08:00",
+      "durationMs": 407,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-integration-old.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-integration-old.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-integration-old.combined.log"
+    },
+    {
+      "name": "test-perf-old",
+      "command": "npm run test:perf:old",
+      "workingDirectory": "/home/j/code/health/HealthShow",
+      "exitCode": 3,
+      "status": "failed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:28:54.320503+08:00",
+      "finishedAt": "2026-05-19T10:28:54.732920+08:00",
+      "durationMs": 412,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-perf-old.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-perf-old.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-perf-old.combined.log"
+    },
+    {
+      "name": "test-full-old",
+      "command": "npm run test:full:old",
+      "workingDirectory": "/home/j/code/health/HealthShow",
+      "exitCode": 3,
+      "status": "failed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:28:54.904135+08:00",
+      "finishedAt": "2026-05-19T10:28:55.461551+08:00",
+      "durationMs": 557,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-full-old.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-full-old.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-full-old.combined.log"
+    },
+    {
+      "name": "test-integration-new",
+      "command": "npm run test:integration:new",
+      "workingDirectory": "/home/j/code/health/HealthShow",
+      "exitCode": 3,
+      "status": "failed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:28:55.585350+08:00",
+      "finishedAt": "2026-05-19T10:28:56.000650+08:00",
+      "durationMs": 415,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-integration-new.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-integration-new.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-integration-new.combined.log"
+    },
+    {
+      "name": "test-perf-new",
+      "command": "npm run test:perf:new",
+      "workingDirectory": "/home/j/code/health/HealthShow",
+      "exitCode": 3,
+      "status": "failed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:28:56.000841+08:00",
+      "finishedAt": "2026-05-19T10:28:56.416197+08:00",
+      "durationMs": 415,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-perf-new.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-perf-new.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-perf-new.combined.log"
+    },
+    {
+      "name": "test-full-new",
+      "command": "npm run test:full:new",
+      "workingDirectory": "/home/j/code/health/HealthShow",
+      "exitCode": 3,
+      "status": "failed",
+      "containsSkipped": false,
+      "startedAt": "2026-05-19T10:28:56.416378+08:00",
+      "finishedAt": "2026-05-19T10:28:56.856585+08:00",
+      "durationMs": 440,
+      "stdout": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-full-new.out.log",
+      "stderr": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-full-new.err.log",
+      "combined": "/home/j/code/health/HealthShow/tests/runs/20260519-102625-full-stack-local-both/test-full-new.combined.log"
+    }
+  ],
+  "skippedSteps": []
+}

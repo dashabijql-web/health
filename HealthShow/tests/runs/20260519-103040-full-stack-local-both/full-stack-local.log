@@ -1,0 +1,43 @@
+[2026-05-19T10:30:40+08:00] full stack local run start: 20260519-103040-full-stack-local-both
+[2026-05-19T10:30:40+08:00] outDir=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both
+[2026-05-19T10:30:40+08:00] dataSource=both skipBackendTests=False
+[2026-05-19T10:30:40+08:00] stack[backend:start] backend already running pid=80573
+[2026-05-19T10:30:40+08:00] stack[frontend:start] frontend already running pid=80703
+[2026-05-19T10:30:40+08:00] READINESS {"sql58135": true, "redis6379": true, "backend8080": true, "backendTcp9000": true, "frontend9528": true, "sqlPasswordSet": true, "simulatorRunning": false}
+[2026-05-19T10:30:40+08:00] PHASE backend start
+[2026-05-19T10:30:40+08:00] RUN backend-maven-test :: source /home/j/code/health/tools/health-wsl-env.sh && "$HEALTH_MAVEN_CMD" -q test -f /home/j/code/health/HealthData/pom.xml
+[2026-05-19T10:30:48+08:00] DONE backend-maven-test exit=0 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/backend-maven-test.combined.log
+[2026-05-19T10:30:48+08:00] RUN backend-regression :: python3 /home/j/code/health/HealthData/scripts/run_backend_regression.py
+[2026-05-19T10:30:55+08:00] DONE backend-regression exit=0 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/backend-regression.combined.log
+[2026-05-19T10:30:55+08:00] PHASE backend passed
+[2026-05-19T10:30:55+08:00] PHASE frontend-common start
+[2026-05-19T10:30:55+08:00] RUN test-fast :: npm run test:fast
+[2026-05-19T10:30:59+08:00] DONE test-fast exit=0 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/test-fast.combined.log
+[2026-05-19T10:30:59+08:00] RUN test-frontend :: npm run test:frontend
+[2026-05-19T10:31:17+08:00] DONE test-frontend exit=0 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/test-frontend.combined.log
+[2026-05-19T10:31:17+08:00] RUN test-quality :: npm run test:quality
+[2026-05-19T10:31:18+08:00] DONE test-quality exit=0 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/test-quality.combined.log
+[2026-05-19T10:31:18+08:00] PHASE frontend-common passed
+[2026-05-19T10:31:18+08:00] PHASE old-data-source start
+[2026-05-19T10:31:21+08:00] stack[simulator:start] simulator started pid=444684 host=127.0.0.1 port=9000 watches=1000
+[2026-05-19T10:31:21+08:00] RUN test-integration-old :: npm run test:integration:old
+[2026-05-19T10:31:21+08:00] DONE test-integration-old exit=3 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/test-integration-old.combined.log
+[2026-05-19T10:31:21+08:00] RUN test-perf-old :: npm run test:perf:old
+[2026-05-19T10:31:22+08:00] DONE test-perf-old exit=3 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/test-perf-old.combined.log
+[2026-05-19T10:31:22+08:00] stack[simulator:stop] simulator stopped
+[2026-05-19T10:31:22+08:00] RUN test-full-old :: npm run test:full:old
+[2026-05-19T10:31:22+08:00] DONE test-full-old exit=3 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/test-full-old.combined.log
+[2026-05-19T10:31:22+08:00] PHASE old-data-source failed
+[2026-05-19T10:31:22+08:00] PHASE new-data-source start
+[2026-05-19T10:31:22+08:00] stack[simulator:stop] simulator not running
+[2026-05-19T10:31:22+08:00] RUN test-integration-new :: npm run test:integration:new
+[2026-05-19T10:31:23+08:00] DONE test-integration-new exit=3 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/test-integration-new.combined.log
+[2026-05-19T10:31:23+08:00] RUN test-perf-new :: npm run test:perf:new
+[2026-05-19T10:31:23+08:00] DONE test-perf-new exit=3 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/test-perf-new.combined.log
+[2026-05-19T10:31:23+08:00] RUN test-full-new :: npm run test:full:new
+[2026-05-19T10:31:23+08:00] DONE test-full-new exit=3 combined=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/test-full-new.combined.log
+[2026-05-19T10:31:23+08:00] PHASE new-data-source failed
+[2026-05-19T10:31:24+08:00] summary=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/full-stack-local-summary.json
+[2026-05-19T10:31:24+08:00] summary_md=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/summary.md
+[2026-05-19T10:31:24+08:00] hermes_archive=/home/j/code/health/HealthShow/tests/runs/20260519-103040-full-stack-local-both/hermes-archive.md
+[2026-05-19T10:31:24+08:00] RESULT failed steps: 6

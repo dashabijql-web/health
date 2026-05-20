@@ -1,0 +1,79 @@
+
+> health-show-vue3@3.0.0 test:integration:old
+> node scripts/health-test-runner.mjs integration --source old
+
+[health-test-runner] profile=integration
+[health-test-runner] dataSource=old expectNonEmpty=1
+[health-test-runner] artifacts=/home/j/code/health/HealthShow/tests/runs/2026-05-19T02-36-59-306Z
+OK      node: v22.22.3
+OK      cwd: /home/j/code/health/HealthShow
+OK      data-source: old
+OK      expect-non-empty: 1
+OK      package-lock: /home/j/code/health/HealthShow/package-lock.json
+OK      backend-8080: 127.0.0.1:8080
+OK      frontend-http: HTTP 200 http://127.0.0.1:9528/
+OK      playwright-browser: /home/j/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome
+[health-test-runner] RUN npm run audit:api
+
+> health-show-vue3@3.0.0 audit:api
+> node tests/api/health-smoke.mjs
+
+{
+  "artifactDir": "/home/j/code/health/HealthShow/tests/api/artifacts/2026-05-19T02-36-59-455Z",
+  "target": {
+    "label": "vite-127",
+    "origin": "http://127.0.0.1:9528",
+    "apiPrefix": "/dev-api"
+  },
+  "reportFile": "/home/j/code/health/HealthShow/tests/api/artifacts/2026-05-19T02-36-59-455Z/summary.md",
+  "checkCount": 53,
+  "failedCount": 0,
+  "warningCount": 0
+}
+[health-test-runner] RUN npm run audit:data:old
+
+> health-show-vue3@3.0.0 audit:data:old
+> node scripts/with-env.mjs API_DATA_SOURCE=old API_EXPECT_NON_EMPTY=1 -- npm run audit:data
+
+
+> health-show-vue3@3.0.0 audit:data
+> node tests/api/data-density.mjs
+
+{
+  "artifactDir": "/home/j/code/health/HealthShow/tests/api/artifacts/2026-05-19T02-37-14-459Z",
+  "reportFile": "/home/j/code/health/HealthShow/tests/api/artifacts/2026-05-19T02-37-14-459Z/data-density.md",
+  "checkCount": 21,
+  "failedCount": 0,
+  "warningCount": 0
+}
+[health-test-runner] RUN npm run audit:auth
+
+> health-show-vue3@3.0.0 audit:auth
+> node tests/e2e/auth-session-regression.mjs
+
+[auth-audit] start login.ui.prefilled-admin
+[auth-audit] pass login.ui.prefilled-admin :: login form is prefilled with admin/<configured-password>
+[auth-audit] start login.ui.submit
+[auth-audit] pass login.ui.submit :: #/health-monitor/dashboard
+[auth-audit] start auth.refresh.restore
+[auth-audit] pass auth.refresh.restore :: #/health-monitor/dashboard
+[auth-audit] start auth.logout.ui
+[auth-audit] pass auth.logout.ui :: logout cleared cookie and returned to login
+[auth-audit] start auth.bootstrap.after-logout
+[auth-audit] pass auth.bootstrap.after-logout :: #/health-monitor/dashboard
+[auth-audit] start auth.backend-restart.redirects-stale-token
+[auth-audit] stopping backend process
+[auth-audit] starting backend process
+[auth-audit] backend is ready
+[auth-audit] stale token confirmed as 401 after backend restart
+[auth-audit] pass auth.backend-restart.redirects-stale-token :: stale cookie redirected to login after backend restart
+[auth-audit] start auth.concurrent-401-redirects-to-login
+[auth-audit] pass auth.concurrent-401-redirects-to-login :: hash=#/login, cookieCleared=true
+{
+  "artifactDir": "/home/j/code/health/HealthShow/tests/e2e/artifacts/2026-05-19T02-37-21-843Z",
+  "reportFile": "/home/j/code/health/HealthShow/tests/e2e/artifacts/2026-05-19T02-37-21-843Z/auth-summary.md",
+  "checkCount": 7,
+  "failedCount": 0
+}
+[health-test-runner] PASS integration
+[health-test-runner] summary=/home/j/code/health/HealthShow/tests/runs/2026-05-19T02-36-59-306Z/health-test-runner-summary.json
