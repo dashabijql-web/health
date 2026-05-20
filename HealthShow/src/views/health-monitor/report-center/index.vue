@@ -1,12 +1,20 @@
 <template>
   <div class="rc-page">
-    <!-- ══ 头部 ══ -->
-    <div class="rc-header">
-      <div class="rc-header-left">
-        <span class="rc-title">报表中心</span>
-        <span class="rc-sub">月度统计 · 部门对比 · 健康趋势</span>
-      </div>
-      <div class="rc-header-right">
+    <PageHeroHeader
+      class="rc-hero"
+      variant="cockpit"
+      eyebrow="Report Center"
+      title="报表中心"
+      description="月度统计 · 部门对比 · 健康趋势"
+    >
+      <template #meta>
+        <div class="rc-hero-meta">
+          <span class="rc-hero-chip">{{ selectedMonth }}</span>
+          <span class="rc-hero-sub">当前查看 {{ activeTab === 'monthly' ? '月度报表' : activeTab === 'dept' ? '部门对比' : '健康趋势' }}</span>
+        </div>
+      </template>
+      <template #actions>
+        <div class="rc-header-right">
         <!-- 月份选择 -->
         <el-date-picker
           v-model="selectedMonth"
@@ -32,8 +40,9 @@
             </el-button>
           </span>
         </el-tooltip>
-      </div>
-    </div>
+        </div>
+      </template>
+    </PageHeroHeader>
 
     <!-- ══ Tab ══ -->
     <el-tabs v-model="activeTab" class="rc-tabs" @tab-change="onTabChange">
@@ -174,6 +183,7 @@
 </template>
 
 <script>
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { getHtml2Canvas, getJsPDF, getXLSX } from '@/utils/lazy-vendors'
 import {
   mountReportCenterPage,
@@ -202,6 +212,7 @@ import {
 
 export default {
   name: 'ReportCenter',
+  components: { PageHeroHeader },
   data() {
     return createReportCenterState()
   },

@@ -2,16 +2,11 @@
   <div class="page-container">
     <WarningCenterNav />
 
-    <div class="page-header">
-      <div class="page-header-left">
-        <el-icon class="header-icon"><Bell /></el-icon>
-        <div>
-          <h1 class="main-title">预警记录</h1>
-          <p class="sub-title">查看和处理所有健康预警事件</p>
-        </div>
-      </div>
-      <div class="header-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-    </div>
+    <PageHeroHeader class="records-hero" variant="cockpit" eyebrow="Alert History" title="预警记录" description="查看和处理所有健康预警事件">
+      <template #meta>
+        <div class="records-hero-meta"><span class="records-live-dot"></span><span class="records-hero-meta-label">当前时间</span><span class="records-hero-time"><el-icon><Timer /></el-icon>{{ currentTime }}</span></div>
+      </template>
+    </PageHeroHeader>
 
     <!-- Stat Cards -->
     <el-row :gutter="12" class="mb-16">
@@ -269,6 +264,7 @@
 
 <script setup>
 import WarningCenterNav from '@/components/WarningCenterNav.vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Timer, Search, Refresh, Edit, Bell, WarningFilled, WarnTriangleFilled, CircleCheck, Download } from '@element-plus/icons-vue'

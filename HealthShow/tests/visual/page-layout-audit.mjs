@@ -18,6 +18,7 @@ const ARTIFACT_RETENTION = Number.parseInt(process.env.VISUAL_ARTIFACT_RETENTION
 const DEFAULT_ROUTES = [
   { slug: 'safety-command', path: '/safety-command/index' },
   { slug: 'dashboard', path: '/health-monitor/dashboard' },
+  { slug: 'workbench', path: '/health-monitor/workbench' },
   { slug: 'real-time', path: '/health-monitor/real-time' },
   { slug: 'risk-warning', path: '/health-monitor/risk-warning' },
   { slug: 'alert-notifications', path: '/alert-management/notifications' },

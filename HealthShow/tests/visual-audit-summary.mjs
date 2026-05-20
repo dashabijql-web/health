@@ -11,6 +11,8 @@ test('visual audit default route inventory includes warning lifecycle records ro
   assert.match(auditSource, /slug:\s*'alert-notifications'/)
   assert.match(auditSource, /slug:\s*'alert-records'/)
   assert.match(auditSource, /path:\s*'\/alert-management\/records'/)
+  assert.match(auditSource, /slug:\s*'workbench'/)
+  assert.match(auditSource, /path:\s*'\/health-monitor\/workbench'/)
 })
 
 test('visual audit writes route-level artifact summaries', () => {

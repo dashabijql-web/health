@@ -307,12 +307,63 @@ $mono: 'JetBrains Mono','Courier New',monospace;
     height: auto;
     min-height: calc(100vh - 50px);
     overflow-y: auto;
-    overflow-x: auto;
+    overflow-x: hidden;
     padding-bottom: 64px;
   }
 
+  .tb {
+    height: auto;
+    min-height: 0;
+    padding: 10px 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .tb-sep {
+    display: none;
+  }
+
+  .tb-r {
+    margin-left: 0;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .emer-btns {
+    display: none;
+  }
+
   .body {
-    grid-template-rows: minmax(116px, auto) 1fr 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    grid-template-columns: none;
+    grid-template-rows: none;
+    padding: 14px 10px 10px;
+  }
+
+  .dept-panel,
+  .handle-panel,
+  .top5-panel,
+  .vitals-panel,
+  .area-panel,
+  .dist-panel,
+  .trend-panel,
+  .rcol {
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+  }
+
+  .panel {
+    border-radius: 14px;
+  }
+
+  .rcol {
+    min-height: 0;
+  }
+
+  .body {
+    grid-template-rows: none;
   }
 }
-

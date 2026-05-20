@@ -10,33 +10,49 @@
   padding: 16px 20px;
   background: #0a1628;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  gap: 12px;
 }
 
-/* ─── 页头 ─────────────────────────────────────────── */
-.chat-header {
-  display: flex;
+.chat-hero {
+  flex-shrink: 0;
+}
+
+.chat-hero-meta {
+  display: inline-flex;
   align-items: center;
-  margin-bottom: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+  gap: 8px;
+  flex-wrap: wrap;
 }
-.chat-header .title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #00d4ff;
-  letter-spacing: 1px;
-  margin-right: 12px;
-  text-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+
+.chat-live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #00d4ff;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.7);
+  animation: chatPulse 2s ease-in-out infinite;
 }
-.chat-header .subtitle {
+
+.chat-hero-meta-label,
+.chat-hero-meta-count {
   font-size: 12px;
-  color: #4a7098;
-  flex: 1;
+  color: #8ba6c8;
 }
+
+.chat-hero-meta-count {
+  color: #eaf5ff;
+  font-family: var(--font-mono);
+}
+
+@keyframes chatPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.7); }
+}
+
 .header-btns {
-  margin-left: auto;
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .new-chat-btn {
   background: rgba(0, 212, 255, 0.08) !important;
@@ -328,24 +344,23 @@
 
 @media (max-width: 768px) {
   .ai-chat-page {
-    padding: 12px;
+    height: auto;
+    min-height: calc(100vh - 50px);
+    padding: 12px 12px 84px;
   }
 
-  .chat-header {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .chat-header .subtitle {
-    flex-basis: 100%;
-    order: 3;
+  .chat-hero {
+    width: 100%;
   }
 
   .header-btns {
-    margin-left: auto;
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .message-list {
+    flex: 0 0 auto;
+    min-height: 320px;
     padding: 10px;
     gap: 14px;
   }

@@ -2,15 +2,31 @@
   <div class="notif-page">
     <WarningCenterNav />
 
-    <!-- ── 头部 ── -->
-    <div class="notif-header">
-      <div class="notif-header-left">
-        <span class="notif-title">消息通知中心</span>
-        <el-badge :value="unhandledCount" :hidden="unhandledCount === 0" :max="99" type="danger" class="notif-badge">
-          <span class="notif-sub">待处理预警</span>
-        </el-badge>
-      </div>
-      <div class="notif-header-right">
+    <PageHeroHeader
+      class="notif-hero"
+      variant="cockpit"
+      eyebrow="Alert Management"
+      title="消息通知中心"
+      :description="boardSubline"
+    >
+      <template #meta>
+        <div class="notif-hero-meta">
+          <span class="notif-live-dot"></span>
+          <span class="notif-hero-meta-label">待处理队列</span>
+          <el-badge
+            :value="unhandledCount"
+            :hidden="unhandledCount === 0"
+            :max="99"
+            type="danger"
+            class="notif-badge"
+          >
+            <span class="notif-hero-meta-count">待处理预警</span>
+          </el-badge>
+          <span class="notif-hero-meta-time">最近刷新 {{ lastFetchedAt || '--' }}</span>
+        </div>
+      </template>
+      <template #actions>
+        <div class="notif-header-right">
         <!-- 筛选 -->
         <el-select v-model="filter.level" placeholder="全部级别" size="small" clearable style="width:110px" @change="fetchList">
           <el-option label="全部级别" value="" />
@@ -28,8 +44,9 @@
           全部标记已读
         </el-button>
         <el-button size="small" @click="fetchList" :loading="loading">刷新</el-button>
-      </div>
-    </div>
+        </div>
+      </template>
+    </PageHeroHeader>
 
     <div class="notif-focus-board">
       <div class="notif-focus-main">
@@ -135,6 +152,7 @@
 
 <script>
 import WarningCenterNav from '@/components/WarningCenterNav.vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { getRiskWarningList, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
 import dayjs from 'dayjs'
 import { createIntervalTask } from '@/utils/task-timer'
@@ -142,7 +160,7 @@ import { buildWarningLifecycleItem, levelLabel, markWarningHandled, warningHandl
 
 export default {
   name: 'NotificationCenter',
-  components: { WarningCenterNav },
+  components: { WarningCenterNav, PageHeroHeader },
   data() {
     return {
       loading: false,

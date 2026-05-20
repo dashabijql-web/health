@@ -1,17 +1,29 @@
 <template>
   <div class="ai-chat-page">
-    <div class="chat-header">
-      <span class="title">AI 健康助手</span>
-      <span class="subtitle">你可以问我关于员工健康数据的任何问题</span>
-      <div class="header-btns">
+    <PageHeroHeader
+      class="chat-hero"
+      eyebrow="AI Assistant"
+      title="AI 健康助手"
+      description="你可以问我关于员工健康数据的任何问题"
+    >
+      <template #meta>
+        <div class="chat-hero-meta">
+          <span class="chat-live-dot"></span>
+          <span class="chat-hero-meta-label">会话中</span>
+          <span class="chat-hero-meta-count">{{ messages.length }} 条消息</span>
+        </div>
+      </template>
+      <template #actions>
+        <div class="header-btns">
         <el-button size="small" @click="exportChat" :disabled="messages.length === 0" class="new-chat-btn">
           导出对话
         </el-button>
         <el-button size="small" @click="newChat" :disabled="loading" class="new-chat-btn">
           新对话
         </el-button>
-      </div>
-    </div>
+        </div>
+      </template>
+    </PageHeroHeader>
 
     <!-- 消息列表 -->
     <div class="message-list" ref="messageListRef">
@@ -113,6 +125,7 @@
 
 <script setup>
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { clearAiSession } from '@/api/ai'
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'

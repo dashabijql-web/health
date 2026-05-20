@@ -10,6 +10,46 @@
   background: $da-bg;
   color: $da-text;
 }
+
+.records-hero {
+  flex-shrink: 0;
+}
+
+.records-hero-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.records-live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: $da-accent;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.7);
+  animation: recordsPulse 2s ease-in-out infinite;
+}
+
+.records-hero-meta-label,
+.records-hero-time {
+  font-size: 12px;
+  color: $da-text-dim;
+}
+
+.records-hero-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  color: $da-text-bright;
+}
+
+@keyframes recordsPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.7); }
+}
+
 .page-header { @include da-page-header; flex-shrink: 0; }
 .page-header-left { display: flex; align-items: center; gap: 14px; }
 .header-icon { font-size: 36px; color: $da-accent; background: rgba(0,212,255,.1); border-radius: 10px; padding: 8px; }
@@ -123,6 +163,7 @@
     padding: 10px;
     padding-bottom: 70px;
   }
+  .records-hero { width: 100%; }
   .page-header { flex-wrap: wrap; gap: 8px; padding: 10px 0; }
   .header-time { font-size: 11px; padding: 4px 10px; }
   .mb-16 { margin-bottom: 10px; }

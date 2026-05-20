@@ -129,4 +129,14 @@ $dim:rgba(255,255,255,.45);
 .ab-o { background:rgba($orange,.2); color:#ffaa66; }
 
 .treemap-body { flex:1; min-height:0; }
+
+@media (max-width: 1500px) {
+  .ag {
+    grid-template-columns: 1fr;
+  }
+
+  .ac {
+    min-height: 58px;
+  }
+}
 </style>

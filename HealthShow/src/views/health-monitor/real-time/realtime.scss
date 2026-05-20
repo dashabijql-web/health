@@ -11,23 +11,24 @@
 }
 
 .rt-hd {
-  min-height: 54px;
   flex-shrink: 0;
-  display: grid;
-  grid-template-columns: auto minmax(280px, 1fr) auto;
-  align-items: center;
-  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 14px;
   background: rgba(0, 8, 28, 0.7);
   border-bottom: 1px solid rgba(0, 212, 255, 0.2);
-  column-gap: 16px;
-  row-gap: 6px;
 }
 
-.rt-hd-left {
-  display: flex;
+.rt-hd-hero {
+  width: 100%;
+}
+
+.rt-hd-meta {
+  display: inline-flex;
   align-items: center;
   gap: 10px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .rt-live-dot {
@@ -39,23 +40,20 @@
   animation: blink 1.5s infinite;
 }
 
-.rt-hd-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
-  margin: 0;
-  white-space: nowrap;
-  text-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
-}
+.rt-hd-meta-label { font-size: 12px; color: #8ba6c8; }
 
 .rt-ticker-wrap {
-  flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
   overflow: hidden;
   min-width: 0;
   contain: layout paint;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  background: rgba(10, 23, 41, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .rt-ticker-label {
@@ -798,23 +796,19 @@
 
   .rt-hd {
     height: auto;
-    min-height: 104px;
-    grid-template-columns: minmax(0, 1fr) auto;
-    padding: 8px 10px;
-    gap: 6px 10px;
+    padding: 12px;
+    gap: 10px;
   }
 
-  .rt-hd-left {
-    width: auto;
-    min-width: 0;
+  .rt-hd-hero {
+    width: 100%;
   }
 
   .rt-ticker-wrap {
-    grid-column: 1 / -1;
     width: 100%;
     min-height: 34px;
     order: initial;
-    padding: 4px 0 0;
+    padding: 8px 10px;
   }
 
   .rt-ticker-inner {
@@ -830,6 +824,7 @@
   .rt-hd-right {
     margin-left: 0;
     gap: 8px;
+    flex-wrap: wrap;
   }
 
   .rt-filter-bar {

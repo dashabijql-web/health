@@ -1,9 +1,33 @@
 <template>
   <header class="rt-hd">
-    <div class="rt-hd-left">
-      <span class="rt-live-dot"></span>
-      <h1 class="rt-hd-title">实时健康监控</h1>
-    </div>
+    <PageHeroHeader
+      class="rt-hd-hero"
+      variant="cockpit"
+      eyebrow="Realtime Watch"
+      title="实时健康监控"
+      description="在线人员状态、预警聚焦与消息广播统一在一处。"
+    >
+      <template #meta>
+        <div class="rt-hd-meta">
+          <span class="rt-live-dot"></span>
+          <span class="rt-hd-meta-label">在线监测</span>
+          <span class="rt-hd-time">{{ currentTime }}</span>
+        </div>
+      </template>
+      <template #actions>
+        <div class="rt-hd-right">
+          <div class="rt-hd-stat">
+            <span class="rt-hd-stat-val st-ok">{{ normalCount }}</span>
+            <span class="rt-hd-stat-lbl">正常</span>
+          </div>
+          <div class="rt-hd-sep"></div>
+          <div class="rt-hd-stat">
+            <span class="rt-hd-stat-val st-warn" :class="{ 'val-blink': warningCount > 0 }">{{ warningCount }}</span>
+            <span class="rt-hd-stat-lbl">预警中</span>
+          </div>
+        </div>
+      </template>
+    </PageHeroHeader>
 
     <div class="rt-ticker-wrap">
       <span class="rt-ticker-label">实时预警</span>
@@ -22,25 +46,12 @@
         <span v-else class="rt-ticker-empty">暂无预警人员</span>
       </div>
     </div>
-
-    <div class="rt-hd-right">
-      <div class="rt-hd-stat">
-        <span class="rt-hd-stat-val st-ok">{{ normalCount }}</span>
-        <span class="rt-hd-stat-lbl">正常</span>
-      </div>
-      <div class="rt-hd-sep"></div>
-      <div class="rt-hd-stat">
-        <span class="rt-hd-stat-val st-warn" :class="{ 'val-blink': warningCount > 0 }">{{ warningCount }}</span>
-        <span class="rt-hd-stat-lbl">预警中</span>
-      </div>
-      <div class="rt-hd-sep"></div>
-      <div class="rt-hd-time">{{ currentTime }}</div>
-    </div>
   </header>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { getRealtimeIndicator } from '../realtime-helpers'
 
 const props = defineProps({

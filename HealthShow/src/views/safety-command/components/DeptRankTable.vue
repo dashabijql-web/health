@@ -136,4 +136,47 @@ tbody tr { cursor:pointer; transition:background .1s; &:hover { background:rgba(
   .rank-scroll { width:100%; }
   table { min-width:460px; }
 }
+
+@media (max-width: 1500px) and (min-width: 769px) {
+  .rank-scroll {
+    overflow-x: hidden;
+  }
+
+  table {
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  th:nth-child(4),
+  th:nth-child(5),
+  th:nth-child(6),
+  td:nth-child(4),
+  td:nth-child(5),
+  td:nth-child(6) {
+    display: none;
+  }
+
+  th,
+  td {
+    padding: 5px 4px;
+    font-size: 9px;
+  }
+
+  .td-name {
+    font-size: 9px;
+  }
+
+  .hb {
+    gap: 3px;
+  }
+
+  .hb-v {
+    min-width: 20px;
+    font-size: 8px;
+  }
+
+  .rank-ctrl .lg {
+    display: none;
+  }
+}
 </style>

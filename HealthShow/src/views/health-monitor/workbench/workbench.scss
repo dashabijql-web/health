@@ -1,6 +1,36 @@
 .wb-page {
   padding: 20px;
   color: #e0e6f0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wb-hero {
+  flex-shrink: 0;
+}
+
+.wb-hero-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wb-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.08);
+  color: #9fe2ff;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.wb-hero-sub {
+  font-size: 12px;
+  color: #8ba6c8;
 }
 
 /* 头部 */
@@ -8,13 +38,8 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 16px;
   flex-wrap: wrap;
-}
-.wb-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #fff;
+  justify-content: flex-end;
 }
 .wb-nav {
   display: flex;
@@ -43,10 +68,8 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  margin-left: auto;
 }
 .wb-pdf-btn {
-  margin-left: 12px;
   background: rgba(0,212,255,.1) !important;
   border-color: rgba(0,212,255,.3) !important;
   color: #00d4ff !important;
@@ -398,10 +421,99 @@
 .wt-red    { color: #ef4444 !important; }
 
 @media (max-width: 768px) {
-  .wb-page { padding: 10px 10px 64px; }
-  .wb-title { font-size: 16px; }
+  .wb-page { padding: 10px 10px 64px; gap: 12px; }
+  .wb-hero { width: 100%; }
+  .wb-header { justify-content: flex-start; }
   .wb-stats { gap: 8px; }
   .stat-card { min-width: 80px; padding: 8px 10px; }
   .sc-val { font-size: 18px; }
   .wb-dept-compare { padding: 10px; }
+}
+
+@media (max-width: 390px) {
+  .wb-page {
+    padding-bottom: 74px;
+    gap: 10px;
+  }
+
+  .wb-hero :deep(.hm-page-hero__main) {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .wb-hero :deep(.hm-page-hero__title) {
+    font-size: 18px;
+  }
+
+  .wb-hero :deep(.hm-page-hero__description) {
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .wb-header {
+    gap: 10px;
+  }
+
+  .wb-nav {
+    gap: 6px;
+  }
+
+  .wb-month-label {
+    min-width: 96px;
+    font-size: 14px;
+  }
+
+  .wb-legend {
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  .wb-stats {
+    margin-bottom: 12px;
+  }
+
+  .stat-card {
+    min-width: 72px;
+    padding: 7px 8px;
+  }
+
+  .sc-val {
+    font-size: 16px;
+  }
+
+  .sc-lbl {
+    font-size: 11px;
+  }
+
+  .cal-week-cell {
+    padding: 6px 0;
+    font-size: 12px;
+  }
+
+  .cal-cell {
+    min-height: 74px;
+    padding: 5px 4px;
+  }
+
+  .cell-day {
+    font-size: 12px;
+    margin-bottom: 3px;
+  }
+
+  .cm-item {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .cell-no-data {
+    margin-top: 6px;
+    font-size: 10px;
+  }
+
+  .warn-badge-custom {
+    font-size: 9px;
+    min-width: 18px;
+    line-height: 14px;
+    padding: 1px 4px;
+  }
 }

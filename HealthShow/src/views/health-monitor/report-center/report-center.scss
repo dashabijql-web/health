@@ -8,49 +8,60 @@
   overflow: hidden;
 }
 
+.rc-hero {
+  flex-shrink: 0;
+}
+
+.rc-hero-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rc-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.08);
+  color: #9fe2ff;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.rc-hero-sub {
+  font-size: 12px;
+  color: #8ba6c8;
+}
+
 .rc-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 10px;
+}
 
-  .rc-header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+.rc-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 
-    .rc-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: #00d4ff;
-      letter-spacing: 1px;
-    }
+.rc-export-wrap {
+  display: inline-flex;
+}
 
-    .rc-sub {
-      font-size: 12px;
-      color: #4a6080;
-    }
-  }
+.rc-header-right :deep(.el-input__wrapper) {
+  background: #0d2847;
+  border-color: #1a4d8f;
+}
 
-  .rc-header-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .rc-export-wrap {
-    display: inline-flex;
-  }
-
-  :deep(.el-input__wrapper) {
-    background: #0d2847;
-    border-color: #1a4d8f;
-  }
-
-  :deep(.el-input__inner) {
-    color: #c8d8e8;
-  }
+.rc-header-right :deep(.el-input__inner) {
+  color: #c8d8e8;
 }
 
 .rc-tabs {
@@ -361,20 +372,34 @@
     height: auto;
     min-height: calc(100vh - 50px);
     overflow: visible;
-    padding: 12px;
+    padding: 12px 12px 84px;
   }
 
-  .rc-header,
-  .rc-header .rc-header-right,
+  .rc-hero {
+    width: 100%;
+  }
+
+  .rc-header-right,
   .rc-kpi-row,
-  .rc-charts-row,
-  .rc-overview-row {
+  .rc-charts-row {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .rc-header .rc-header-right {
+  .rc-header-right {
+    display: flex;
+    flex-wrap: wrap;
     width: 100%;
+    justify-content: flex-start;
+  }
+
+  .rc-overview-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rc-header-right :deep(.el-date-editor.el-input),
+  .rc-header-right :deep(.el-date-editor.el-input__wrapper) {
+    width: 100% !important;
   }
 
   .rc-content {

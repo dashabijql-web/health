@@ -4,7 +4,7 @@
       <div class="kc-glow"></div>
       <div class="kc-head"><span class="kc-lbl">井下人数</span><span class="kc-ico">⛏️</span></div>
       <div class="kc-num" style="color:#00d4ff;text-shadow:0 0 20px rgba(0,212,255,.5)">
-        <AnimatedNumber :value="stats.underground" fontSize="40px" color="#00d4ff" :duration="1500" :separator="false"/>
+        <AnimatedNumber :value="stats.underground" fontSize="34px" color="#00d4ff" :duration="1500" :separator="false"/>
       </div>
       <div class="kc-foot"><span class="ft ft-g">正常 {{ stats.normal }}</span><span class="dim">/ {{ stats.total }}</span></div>
     </div>
@@ -13,7 +13,7 @@
       <div class="kc-glow"></div>
       <div class="kc-head"><span class="kc-lbl">SOS 求救</span><span class="kc-ico">🆘</span></div>
       <div class="kc-num" style="color:#ff4757;text-shadow:0 0 20px rgba(255,71,87,.5)">
-        <AnimatedNumber :value="stats.sos" fontSize="40px" color="#ff4757" :duration="1500" :separator="false"/>
+        <AnimatedNumber :value="stats.sos" fontSize="34px" color="#ff4757" :duration="1500" :separator="false"/>
       </div>
       <div v-if="stats.sos > 0" class="kc-foot"><span class="ft ft-r">已持续 {{ maxSosDuration }}分钟</span></div>
       <div v-else class="kc-foot dim">无紧急求救</div>
@@ -23,7 +23,7 @@
       <div class="kc-glow"></div>
       <div class="kc-head"><span class="kc-lbl">跌倒检测</span><span class="kc-ico">🫂</span></div>
       <div class="kc-num" style="color:#ff6b35;text-shadow:0 0 20px rgba(255,107,53,.4)">
-        <AnimatedNumber :value="stats.fall" fontSize="40px" color="#ff6b35" :duration="1500" :separator="false"/>
+        <AnimatedNumber :value="stats.fall" fontSize="34px" color="#ff6b35" :duration="1500" :separator="false"/>
       </div>
       <div v-if="stats.fall > 0" class="kc-foot"><span class="ft ft-o">已持续 {{ maxFallDuration }}分钟</span></div>
       <div v-else class="kc-foot dim">无跌倒事件</div>
@@ -33,7 +33,7 @@
       <div class="kc-glow"></div>
       <div class="kc-head"><span class="kc-lbl">其他预警</span><span class="kc-ico">⚠️</span></div>
       <div class="kc-num" style="color:#ffd32a;text-shadow:0 0 20px rgba(255,211,42,.4)">
-        <AnimatedNumber :value="stats.static + stats.abnormal" fontSize="40px" color="#ffd32a" :duration="1500" :separator="false"/>
+        <AnimatedNumber :value="stats.static + stats.abnormal" fontSize="34px" color="#ffd32a" :duration="1500" :separator="false"/>
       </div>
       <div class="kc-foot dim">静止{{ stats.static }} · 异常{{ stats.abnormal }}</div>
     </div>
@@ -42,7 +42,7 @@
       <div class="kc-glow"></div>
       <div class="kc-head"><span class="kc-lbl">手表状态</span><span class="kc-ico">⌚</span></div>
       <div class="kc-num" :style="{color: watchStatus.offline>20||watchStatus.lowBattery>30?'#ff6b35':'#26c6da', textShadow:'0 0 20px rgba(38,198,218,.4)'}">
-        <AnimatedNumber :value="watchStatus.online" fontSize="40px" :color="watchStatus.offline>20?'#ff6b35':'#26c6da'" :duration="1500" :separator="false"/>
+        <AnimatedNumber :value="watchStatus.online" fontSize="34px" :color="watchStatus.offline>20?'#ff6b35':'#26c6da'" :duration="1500" :separator="false"/>
         <span class="kc-total">/ {{ watchStatus.total }}</span>
       </div>
       <div class="kc-foot">
@@ -119,6 +119,12 @@ $mono:'JetBrains Mono','Courier New',monospace;
 .dim     { color:rgba(255,255,255,.38); }
 
 @media (max-width: 768px) {
+  .kpi {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .kcard:last-child {
+    grid-column: 1 / -1;
+  }
   .kcard { padding:10px 12px; }
   .kc-foot { line-height:1.25; }
   .kc-foot .dim { flex-basis:100%; margin-top:1px; }

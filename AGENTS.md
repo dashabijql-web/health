@@ -332,6 +332,7 @@ sqlcmd -S localhost,58135 -U sa -P 123abcd. -d health_new -Q "SET NOCOUNT ON; SE
 - `npm run audit:nav` 通过，结果 `6 navGroups / 23 visibleNavLeaves / 5 mobileNavItems`。
 - `npm run audit:page-structure` 通过，已把 `21` 个已迁移页面纳入结构门禁，`legacyTrackedPages = 0`。
 - `npm run audit:structure` 通过，当前会连续执行 `audit:nav` 与 `audit:page-structure`。
+- `npm run audit:visual` 现已把 `safety-command`、`dashboard`、`workbench`、`real-time`、`risk-warning`、`alert-management/notifications`、`alert-management/records`、`report-center`、`ai-chat` 纳入默认路由清单；它会用 Playwright 无头 Chromium 自动登录并按 `desktop-1440`、`desktop-1707`、`desktop-1920`、`mobile-390`、`mobile-414` 五档视口出图，产出 `D:/Health/HealthShow/tests/visual/artifacts/` 下最新一轮 `layout-summary.md` 和对应 PNG。前端美化、布局、响应式、信息密度任务优先使用这条门禁，不要只凭肉眼、单一视口或口头描述判断。
 - `npm run audit:auth` 通过。
 - `npm run test:fast` 现在包含 `tests/auth-backend-start-hidden.mjs`、`tests/health-write-source-semantics.mjs` 和 `tests/openclaw-supervisor-contract.mjs` 等源守护，用于防止 `audit:auth` 后端重启、`run-full-stack-local.py` / `run-health-loop.py` 回退到旧 Windows 流程，防止新库空态 `audit:write` 语义回退成失败，并防止 OpenClaw supervisor 丢失“本轮后停止”、`ROUND_RESULT_JSON`/`process_retrospective`、final `stop_reason` 等流程门禁。
 - `npm run audit:e2e` 通过；查看结果时优先读 `D:/Health/HealthShow/tests/e2e/artifacts/` 下最新一轮 `summary.md` 或 `auth-summary.md`。
@@ -359,7 +360,7 @@ sqlcmd -S localhost,58135 -U sa -P 123abcd. -d health_new -Q "SET NOCOUNT ON; SE
 
 历史 Playwright 路由审计基线显示：
 
-- 桌面和部分移动端已覆盖。
+- 桌面 `1440 / 1707 / 1920` 和移动 `390 / 414` 已由 `audit:visual` 无头截图覆盖；该脚本不会弹出可见浏览器窗口，排查时应直接查看 `layout-summary.md` 和对应 PNG，而不是误以为“没打开浏览器就没截图”。
 - 当前已知轻量警告主要有两个：
   - `blood-oxygen` 页 ECharts 初始化时偶发容器宽高为 `0` 的 warning。
   - `alert-notifications` 页 `el-pagination` 仍在使用即将废弃的 `small` 属性。
@@ -367,6 +368,7 @@ sqlcmd -S localhost,58135 -U sa -P 123abcd. -d health_new -Q "SET NOCOUNT ON; SE
 历史基线产物统一保留在以下目录；排查时只看各目录最新一轮，不要把时间戳文件写死进规则：
 
 - `D:/Health/HealthShow/tests/api/artifacts/`
+- `D:/Health/HealthShow/tests/visual/artifacts/`
 - `D:/Health/HealthShow/tests/e2e/artifacts/`
 - `D:/Health/HealthShow/tests/pipeline/artifacts/`
 
@@ -376,6 +378,11 @@ sqlcmd -S localhost,58135 -U sa -P 123abcd. -d health_new -Q "SET NOCOUNT ON; SE
 - `dashboard`
 - `workbench`
 - `real-time`
+
+优先操作：
+
+- 先跑 `node scripts/with-env.mjs VISUAL_ROUTES=<route-slug> -- npm run audit:visual`，再看 `D:/Health/HealthShow/tests/visual/artifacts/` 下最新一轮 `layout-summary.md` 与对应 PNG。
+- 不要只开可见浏览器手工扫一遍就下结论；前端美观、密度、滚动、重叠、底栏遮挡这类问题，优先以无头自动截图证据为准。
 
 ## 当前易错点
 
@@ -407,6 +414,7 @@ sqlcmd -S localhost,58135 -U sa -P 123abcd. -d health_new -Q "SET NOCOUNT ON; SE
 ## 当前协作建议
 
 - 先看 `router`、`src/api`、对应 `controller/service`，再决定改动点。
+- 涉及前端页面美化、布局、滚动、卡片密度、表格裁切、图表容器、底栏遮挡、响应式适配时，必须优先跑 `npm run audit:visual` 或 `node scripts/with-env.mjs VISUAL_ROUTES=<route-slug> -- npm run audit:visual`；默认先看自动截图产物，再决定是否需要人工打开可见浏览器复核。
 - 前端所有请求都应继续走 `src/utils/request.js`。
 - 后端高频接口优先复用现有“内存 TTL 缓存 + 直查分表”的模式，不要回退到全视图扫描。
 - 后端注解 SQL 返回 typed Row DTO 时，数值字段如果继续使用 `Number`，必须保留 `com.xzkj.health.config.mybatis.NumberTypeHandler` 和 `mybatis-plus.type-handlers-package` 注册；SQL 列别名优先使用 `snake_case` 配合 `map-underscore-to-camel-case`，否则容易出现接口 `200` 但页面组件全 0/空。
