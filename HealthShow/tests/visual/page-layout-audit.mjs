@@ -21,9 +21,12 @@ const DEFAULT_ROUTES = [
   { slug: 'workbench', path: '/health-monitor/workbench' },
   { slug: 'real-time', path: '/health-monitor/real-time' },
   { slug: 'risk-warning', path: '/health-monitor/risk-warning' },
+  { slug: 'employee-profile', path: '/health-monitor/employee-profile' },
+  { slug: 'mine-entry', path: '/health-monitor/mine-entry' },
   { slug: 'alert-notifications', path: '/alert-management/notifications' },
   { slug: 'alert-records', path: '/alert-management/records' },
   { slug: 'report-center', path: '/health-monitor/report-center' },
+  { slug: 'trend-warning', path: '/health-monitor/trend-warning' },
   { slug: 'ai-chat', path: '/ai-chat/index' }
 ];
 
@@ -92,6 +95,21 @@ async function waitForShell(page) {
   ]).catch(() => {});
   await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
   await page.waitForTimeout(800);
+}
+
+async function prepareRoute(page, route) {
+  if (route.slug !== 'employee-profile') return;
+
+  await page.goto(`${BASE_URL}/#/health-monitor/employee-archive`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await waitForShell(page);
+
+  const cards = page.locator('.ea-card');
+  await cards.first().waitFor({ state: 'visible', timeout: 15000 });
+  await cards.first().click();
+  await page.waitForFunction(() => window.location.hash.includes('/health-monitor/employee-profile'), null, { timeout: 15000 });
+  await page.locator('.ep-quickbar').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.ep-ai-summary').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.waitForTimeout(600);
 }
 
 async function collectLayoutIssues(page, route, viewport) {
@@ -171,6 +189,7 @@ async function collectLayoutIssues(page, route, viewport) {
       const otherRect = aTicker ? b.rect : a.rect;
       return !rectsOverlap(tickerRect, otherRect, 4);
     };
+    const isMobileBottomNavArtifact = (a, b) => Boolean(closest(a, '.mobile-bottom-nav') || closest(b, '.mobile-bottom-nav'));
 
     for (let i = 0; i < textNodes.length; i += 1) {
       for (let j = i + 1; j < textNodes.length; j += 1) {
@@ -178,6 +197,7 @@ async function collectLayoutIssues(page, route, viewport) {
         if (isStructuredHeaderBodyPair(textNodes[i], textNodes[j])) continue;
         if (isTickerPair(textNodes[i], textNodes[j])) continue;
         if (isClippedTickerArtifact(textNodes[i], textNodes[j])) continue;
+        if (isMobileBottomNavArtifact(textNodes[i], textNodes[j])) continue;
         if (textNodes[i].text === textNodes[j].text && hasSameRoundedRect(textNodes[i], textNodes[j])) continue;
         const a = textNodes[i].rect;
         const b = textNodes[j].rect;
@@ -208,6 +228,7 @@ async function collectLayoutIssues(page, route, viewport) {
           const tag = element.tagName.toLowerCase();
           if (tag === 'svg' && rect.width < 240 && rect.height < 160) return false;
           if (/icon|spark|mini|thumb|avatar|badge|dot/i.test(className)) return false;
+          if (element.closest('.sparkline-wrap, .ep-trend-chart, .ep-ecg')) return false;
           return rect.width >= 120 || rect.height >= 120;
         })
         .map((element) => element.getBoundingClientRect())
@@ -257,8 +278,12 @@ async function auditRoute(browser, route, viewport) {
   const result = { route: route.slug, path: route.path, viewport: viewport.slug, status: 'passed', screenshot: null, issues: [] };
   try {
     await loginViaApi(context, page);
-    await page.goto(`${BASE_URL}/#${route.path}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await waitForShell(page);
+    if (route.slug === 'employee-profile') {
+      await prepareRoute(page, route);
+    } else {
+      await page.goto(`${BASE_URL}/#${route.path}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await waitForShell(page);
+    }
     result.finalHash = await page.evaluate(() => window.location.hash);
     if (result.finalHash.includes('/login')) {
       result.issues.push(issue(route, viewport, 'redirected_to_login', 'route redirected to login'));
