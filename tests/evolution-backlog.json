@@ -1,0 +1,134 @@
+{
+  "updated_at": "2026-05-08T16:42:08.7930062+08:00",
+  "findings": [
+    {
+      "finding_id": "competitor-20260508-001",
+      "source": {
+        "name": "Blackline Safety 24/7 Live Monitoring",
+        "url": "https://www.blacklinesafety.com/solutions/services/24-7-live-monitoring",
+        "accessed_at": "2026-05-08T16:40:00+08:00"
+      },
+      "capability": "24/7 live monitoring with alert receipt under 2 seconds, response under 60 seconds, and emergency escalation.",
+      "health_gap": "Health notifications and records show status, but the UI does not yet expose an explicit SLA timer, escalation ladder, or live response-time evidence.",
+      "mapped_pages": [
+        "/alert-management/notifications",
+        "/alert-management/records",
+        "/health-monitor/dashboard"
+      ],
+      "value": "high",
+      "risk": "medium",
+      "effort": "medium",
+      "testability": "high",
+      "score": 82,
+      "acceptance": [
+        "待处理预警显示 SLA 倒计时",
+        "超时预警自动升级",
+        "dashboard 显示逾期待办/升级数"
+      ],
+      "status": "candidate"
+    },
+    {
+      "finding_id": "competitor-20260508-002",
+      "source": {
+        "name": "VelocityEHS Action Management",
+        "url": "https://www.ehs.com/solution/safety/action-management/",
+        "accessed_at": "2026-05-08T16:40:00+08:00"
+      },
+      "capability": "Action management supports assigning, tracking, completion reporting, and escalating notifications for overdue items.",
+      "health_gap": "Health 的告警处理更偏列表和状态流转，缺少责任人、到期日、逾期升级和跨部门动作看板的统一呈现。",
+      "mapped_pages": [
+        "/alert-management/notifications",
+        "/alert-management/records",
+        "/health-monitor/workbench"
+      ],
+      "value": "high",
+      "risk": "medium",
+      "effort": "medium",
+      "testability": "high",
+      "score": 78,
+      "acceptance": [
+        "告警项可指派责任人",
+        "告警项可设置到期时间",
+        "逾期动作出现在统一待办列表"
+      ],
+      "status": "candidate"
+    },
+    {
+      "finding_id": "competitor-20260508-003",
+      "source": {
+        "name": "位智物联 智慧矿山",
+        "url": "https://www.locsmart.cn/mine",
+        "accessed_at": "2026-05-08T16:40:00+08:00"
+      },
+      "capability": "Mine operations are shown on one map across 2D/2.5D/3D, with live location, trajectory, geofence, and emergency control.",
+      "health_gap": "Health 的安全指挥中心还没有同等级的统一地图与空间联动能力，现场位置、轨迹和告警的地图关联偏弱。",
+      "mapped_pages": [
+        "/safety-command/index",
+        "/health-monitor/dashboard",
+        "/health-monitor/real-time"
+      ],
+      "value": "high",
+      "risk": "high",
+      "effort": "high",
+      "testability": "medium",
+      "score": 76,
+      "acceptance": [
+        "地图上能看人员/设备实时位置",
+        "告警点能联动地图高亮",
+        "支持轨迹回放或分区态势视图"
+      ],
+      "status": "candidate"
+    },
+    {
+      "finding_id": "competitor-20260508-004",
+      "source": {
+        "name": "Honeywell Dashboard Help",
+        "url": "https://ss.honeywell.com/help_ssrt/Content/Guide/dashboard.html",
+        "accessed_at": "2026-05-08T16:40:00+08:00"
+      },
+      "capability": "Dashboard widgets can switch between real-time, consolidated, and device views, and include worker status, device status, live events, risk, and map widgets.",
+      "health_gap": "Health dashboard already有图表，但缺少更标准化的可配置 widget 组合和 worker/device/risk 的一屏聚合模板。",
+      "mapped_pages": [
+        "/health-monitor/dashboard",
+        "/health-monitor/real-time"
+      ],
+      "value": "medium",
+      "risk": "medium",
+      "effort": "medium",
+      "testability": "high",
+      "score": 74,
+      "acceptance": [
+        "dashboard 支持更清晰的模块化 widget 组合",
+        "worker status 与 event status 同屏",
+        "风险与设备状态的统一摘要卡"
+      ],
+      "status": "candidate"
+    },
+    {
+      "finding_id": "competitor-20260508-005",
+      "source": {
+        "name": "小视科技 智慧矿山",
+        "url": "https://www.minivision.cn/zhks.html",
+        "accessed_at": "2026-05-08T16:40:00+08:00"
+      },
+      "capability": "AI video analysis performs automatic patrol, recognition, warning, push, and assessment with 7x24 unattended monitoring.",
+      "health_gap": "Health 现有告警链路缺少视频/图片证据和巡检式回放能力，事件闭环更多停留在文本和表格。",
+      "mapped_pages": [
+        "/alert-management/notifications",
+        "/alert-management/records",
+        "/risk-warning"
+      ],
+      "value": "medium",
+      "risk": "high",
+      "effort": "high",
+      "testability": "medium",
+      "score": 70,
+      "acceptance": [
+        "告警详情可挂载图片或视频证据",
+        "事件时间线可回放关键截图",
+        "处置记录可附审计备注"
+      ],
+      "status": "candidate"
+    }
+  ]
+}

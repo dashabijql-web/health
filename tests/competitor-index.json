@@ -1,0 +1,56 @@
+{
+  "updated_at": "2026-05-08T16:42:08.7930062+08:00",
+  "latest_run_id": "20260508-164000-competitor",
+  "latest_run": "D:\\Health\\tests\\runs\\20260508-164000-competitor\\summary.json",
+  "findings": [
+    {
+      "finding_id": "competitor-20260508-001",
+      "score": 82,
+      "risk": "medium",
+      "mapped_pages": [
+        "/alert-management/notifications",
+        "/alert-management/records",
+        "/health-monitor/dashboard"
+      ]
+    },
+    {
+      "finding_id": "competitor-20260508-002",
+      "score": 78,
+      "risk": "medium",
+      "mapped_pages": [
+        "/alert-management/notifications",
+        "/alert-management/records",
+        "/health-monitor/workbench"
+      ]
+    },
+    {
+      "finding_id": "competitor-20260508-003",
+      "score": 76,
+      "risk": "high",
+      "mapped_pages": [
+        "/safety-command/index",
+        "/health-monitor/dashboard",
+        "/health-monitor/real-time"
+      ]
+    },
+    {
+      "finding_id": "competitor-20260508-004",
+      "score": 74,
+      "risk": "medium",
+      "mapped_pages": [
+        "/health-monitor/dashboard",
+        "/health-monitor/real-time"
+      ]
+    },
+    {
+      "finding_id": "competitor-20260508-005",
+      "score": 70,
+      "risk": "high",
+      "mapped_pages": [
+        "/alert-management/notifications",
+        "/alert-management/records",
+        "/risk-warning"
+      ]
+    }
+  ]
+}
