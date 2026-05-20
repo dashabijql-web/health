@@ -8,16 +8,16 @@
 
 ## 仓库边界
 
-- `D:/Health` 本身不是 git 仓库。
-- `D:/Health/HealthShow` 和 `D:/Health/HealthData` 是两个独立 git 仓库。
-- 任何 `git status`、`git diff`、提交、回滚，都必须分别在这两个子项目内执行。
-- 每完成一个明确任务后，必须在本次实际修改到的子仓库内分别核对 `git status`，提交本次任务改动，并 `push` 到对应 GitHub 远端。
-- 如果同一任务同时修改了 `HealthShow` 和 `HealthData`，必须分成两个仓库分别提交、分别推送，不能把双仓改动混在一次根级操作里处理。
-- 推送前只允许纳入本次任务已确认的文件；不要把另一个子仓库或尚未确认的用户现有改动混入同一次提交。
+- 当前工作区按单仓库（monorepo）运行；根目录是唯一 git 仓库。
+- `HealthShow` 和 `HealthData` 现在是 monorepo 子目录，不再作为独立 git 仓库处理。
+- 所有 `git status`、`git diff`、提交、回滚、打 tag、推送，都必须在根目录执行。
+- 每完成一个明确任务后，必须先在根目录核对 `git status`，只提交本次任务已确认的文件，再 `push` 到当前 monorepo 远端。
+- 即使任务只改动 `HealthShow` 或只改动 `HealthData`，提交与推送也仍然在根目录完成；不要回退到旧双仓工作流。
+- 旧 `health.git` / `health-backend.git` 只作为历史来源或回退参考，不再作为新开发提交入口。
 - GitHub HTTPS token 固定存放在 `C:\Users\j\Desktop\githubtoken.txt`；WSL 路径为 `/mnt/c/Users/j/Desktop/githubtoken.txt`。
 - 需要执行 `git push` 时，优先从上述本地文件一次性读取 token 完成认证；不要把 token 内容写入仓库文件、终端日志、提交信息、测试产物或 `AGENTS.md`。
 - 如无特殊说明，不修改 `origin` 永久地址；优先使用一次性 header 或一次性凭证方式完成当前 push。
-- 根级 `AGENTS.md` 属于工作区护栏文件；由于 `D:/Health` 根目录不是 git 仓库，更新它时只能本地落盘，不能做根级 git push。
+- 根级 `AGENTS.md` 属于 monorepo 工作区护栏文件，更新后应随 monorepo 一并提交和推送。
 
 ## 信息优先级
 
