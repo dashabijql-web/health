@@ -22,7 +22,7 @@
       </div>
 
       <div class="bp-hd-time">{{ currentTime }}</div>
-      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">⬇ 导出</button>
+      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">导出</button>
     </header>
 
     <!-- ══ 主体 ══ -->
@@ -195,7 +195,7 @@
             </span>
           </div>
           <div v-if="!bpAnomalyList.length" class="bp-anomaly-empty">
-            <span class="bp-anomaly-ok">✓</span> 当前无异常血压人员
+            当前无异常血压人员
           </div>
           <div v-else class="bp-anomaly-body">
             <div class="bp-anomaly-hd">
@@ -384,10 +384,10 @@ export default {
       const normal  = list.filter(x => x.systolic < 120 && x.diastolic < 80).length
       const pct = n => list.length > 0 ? Math.round(n / total * 100) : 0
       return [
-        { key: 'normal', label: '正常',      range: '< 120 / < 80',    count: normal, pct: pct(normal), color: '#52c41a', icon: '✓', cls: 'zone-normal'  },
+        { key: 'normal', label: '正常',      range: '< 120 / < 80',    count: normal, pct: pct(normal), color: '#52c41a', icon: 'OK', cls: 'zone-normal'  },
         { key: 'pre',    label: '偏高',      range: '120~139 / 80~89', count: pre,    pct: pct(pre),    color: '#FFB84D', icon: '↑', cls: 'zone-pre'     },
-        { key: 'stage1', label: '1级高血压', range: '140~159 / 90~99', count: stage1, pct: pct(stage1), color: '#ff7043', icon: '⚠', cls: 'zone-stage1'  },
-        { key: 'danger', label: '2级高血压', range: '≥ 160 / ≥ 100',  count: danger, pct: pct(danger), color: '#ff5252', icon: '🚨', cls: 'zone-danger'  }
+        { key: 'stage1', label: '1级高血压', range: '140~159 / 90~99', count: stage1, pct: pct(stage1), color: '#ff7043', icon: 'WARN', cls: 'zone-stage1'  },
+        { key: 'danger', label: '2级高血压', range: '≥ 160 / ≥ 100',  count: danger, pct: pct(danger), color: '#ff5252', icon: 'ALERT', cls: 'zone-danger'  }
       ]
     }
   },

@@ -9,7 +9,7 @@
         <span class="lg lg-g">● 正常</span>
         <span class="lg lg-y">● 预警</span>
         <span class="lg lg-r">● 危险</span>
-        <button :class="['scroll-btn', autoScroll&&'active']" @click="toggleAutoScroll">{{ autoScroll ? '⏸' : '▶' }}</button>
+        <button :class="['scroll-btn', autoScroll&&'active']" @click="toggleAutoScroll">{{ autoScroll ? '暂停滚动' : '继续滚动' }}</button>
       </div>
     </div>
     <div class="rank-scroll" ref="rankingTableRef">

@@ -21,7 +21,7 @@
       </el-select>
       <button class="ea-reset-btn" @click="keyword = ''; selectedDept = ''">重置</button>
       <button class="ea-dept-report-btn" v-if="selectedDept" @click="openDeptReport" title="生成该部门AI健康报告">
-        🏥 AI部门报告
+        <el-icon><Document /></el-icon> AI部门报告
       </button>
       <button class="ea-add-btn" @click="handleAdd"><el-icon><Plus /></el-icon> 新增职工</button>
     </div>
@@ -62,8 +62,11 @@
       </div>
 
       <div v-if="!loading && filtered.length === 0" class="ea-empty">
-        <el-icon size="48" color="#4a6080"><Search /></el-icon>
-        <p>未找到符合条件的员工</p>
+        <PageEmptyState
+          eyebrow="Archive Search"
+          title="未找到符合条件的员工"
+          description="可以放宽关键词或切换部门筛选，继续检索职工档案和画像入口。"
+        />
       </div>
     </div>
 
@@ -223,6 +226,7 @@
 
 <script setup>
 import { UserFilled, Search, Plus, Edit, Delete, Monitor, Document } from '@element-plus/icons-vue'
+import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
 import { useEmployeeArchivePage } from './use-employee-archive-page'
 
 const {

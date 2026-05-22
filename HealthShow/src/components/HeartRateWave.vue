@@ -7,7 +7,7 @@
 
     <!-- 心率显示 -->
     <div class="heart-rate-display">
-      <div class="heart-icon">❤</div>
+      <div class="heart-icon">ECG</div>
       <div class="heart-value">{{ currentHeartRate }}</div>
       <div class="heart-unit">BPM</div>
     </div>
@@ -291,8 +291,16 @@ onUnmounted(() => {
 }
 
 .heart-icon {
-  font-size: 24px;
-  color: #ff4444;
+  min-width: 44px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 255, 136, 0.14);
+  border: 1px solid rgba(0, 255, 136, 0.28);
+  color: #94ffd1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
   animation: heartBeat 1s ease-in-out infinite;
 }
 

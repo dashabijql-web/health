@@ -39,6 +39,9 @@
 .ep-online.on .ep-dot { box-shadow: 0 0 6px #00e676; }
 .ep-update { font-size: 11px; color: #4a7090; }
 .ep-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 5px 14px; background: rgba(0, 212, 100, 0.12); border: 1px solid rgba(0, 212, 100, 0.35);
   color: #00e676; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;
   transition: all .2s; white-space: nowrap;
@@ -439,7 +442,18 @@
 .ep-risk-card.high { border-color: rgba(255,60,60,0.25); }
 .ep-risk-card.mid  { border-color: rgba(255,170,0,0.2); }
 .ep-risk-card.low  { border-color: rgba(0,200,83,0.15); }
-.ep-risk-icon { font-size: 16px; flex-shrink: 0; }
+.ep-risk-icon {
+  min-width: 42px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  color: #dbeafe;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  flex-shrink: 0;
+}
 .ep-risk-body { flex: 1; overflow: hidden; }
 .ep-risk-name { font-size: 11px; color: #8ab0d0; margin-bottom: 4px; }
 .ep-risk-bar-wrap { display: flex; align-items: center; gap: 6px; }

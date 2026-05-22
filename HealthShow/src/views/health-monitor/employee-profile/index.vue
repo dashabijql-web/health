@@ -13,7 +13,8 @@
         </span>
         <span class="ep-update">更新于：{{ lastUpdate }}</span>
         <button class="ep-ai-btn" @click="openAiReport" :disabled="aiReportLoading">
-          🏥 {{ aiReportLoading ? '生成中...' : 'AI诊断报告' }}
+          <el-icon><Document /></el-icon>
+          {{ aiReportLoading ? '生成中...' : 'AI诊断报告' }}
         </button>
       </div>
     </div>
@@ -165,13 +166,13 @@
             :class="{ active: isHrAbnormal, danger: isHrDanger }"
             title="心率监测区域">
             <span class="ep-hs-pulse"></span>
-            <span class="ep-hs-label">❤ {{ vitals.heartRate || '--' }} bpm</span>
+            <span class="ep-hs-label">心率 {{ vitals.heartRate || '--' }} bpm</span>
           </div>
           <div class="ep-hotspot ep-hs-lung"
             :class="{ active: isSpo2Abnormal, danger: isSpo2Danger }"
             title="血氧监测区域">
             <span class="ep-hs-pulse"></span>
-            <span class="ep-hs-label">🩸 {{ vitals.bloodOxygen || '--' }}%</span>
+            <span class="ep-hs-label">血氧 {{ vitals.bloodOxygen || '--' }}%</span>
           </div>
           <div class="ep-hotspot ep-hs-head"
             :class="{ active: isTempAbnormal || isPressureHigh, danger: isTempDanger }"
@@ -307,7 +308,7 @@
 </template>
 
 <script setup>
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ArrowLeft, Document } from '@element-plus/icons-vue'
 import HeartRateWave from '@/components/HeartRateWave.vue'
 import { useEmployeeProfilePage } from './use-employee-profile-page'
 

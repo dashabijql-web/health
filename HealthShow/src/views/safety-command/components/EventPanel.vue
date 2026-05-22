@@ -14,7 +14,7 @@
     </div>
     <div ref="trendRef" class="ev-trend" v-if="trendData.length > 0"></div>
     <div class="ev-list">
-      <div v-if="filteredEvents.length === 0" class="ev-empty">✅ 暂无事件</div>
+      <div v-if="filteredEvents.length === 0" class="ev-empty">暂无事件</div>
       <div
         v-for="ev in filteredEvents" :key="ev.id"
         :class="['ev', (ev.eventType==='sos'||ev.eventType==='fall') ? 'ev-crit' : 'ev-warn']"

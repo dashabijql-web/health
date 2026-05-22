@@ -4,7 +4,7 @@
 
     <!-- ══ 顶部大警报栏 ══ -->
     <div :class="['sos-alarm-bar', hasCritical ? 'sos-alarm-bar--active' : '']">
-      <span class="sos-alarm-icon">🚨</span>
+      <span class="sos-alarm-icon">SOS</span>
       <span class="sos-alarm-text">
         {{ hasCritical
           ? `当前有 ${criticalCount} 条危险级预警未处理！`
@@ -49,7 +49,7 @@
       >
         <!-- 左：等级指示 -->
         <div class="sos-item-level">
-          <span class="sos-level-icon">{{ item.handled ? '✓' : '⚠' }}</span>
+          <span class="sos-level-icon">{{ item.handled ? 'DONE' : 'ACT' }}</span>
         </div>
 
         <!-- 中：事件信息 -->
@@ -85,7 +85,7 @@
       </div>
 
       <div v-if="!loading && criticalList.length === 0" class="sos-empty">
-        <span class="sos-empty-icon">✓</span>
+        <span class="sos-empty-icon">OK</span>
         <span>当前没有危险级预警，所有人员状态正常</span>
       </div>
     </div>

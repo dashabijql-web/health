@@ -72,7 +72,7 @@ export function buildHeatmapCells(hourlyHrData) {
   return (hourlyHrData || []).map((hr, h) => {
     const label = `${String(h).padStart(2, '0')}:00`
     if (!hr) return { color: '#1a2a4d', label }
-    if (hr > 100 || hr < 55) return { color: '#ff5252', label: `${label} ${hr}bpm ⚠` }
+    if (hr > 100 || hr < 55) return { color: '#ff5252', label: `${label} ${hr}bpm 需关注` }
     if (hr > 90) return { color: '#f97316', label: `${label} ${hr}bpm` }
     return { color: '#1565c0', label: `${label} ${hr}bpm` }
   })
@@ -88,7 +88,7 @@ export function buildFatigueInfo(vitals, warnings) {
   const color = index >= 70 ? '#ff5252' : index >= 45 ? '#ffd200' : '#38ef7d'
   const label = index >= 70 ? '严重疲劳，建议休息' : index >= 45 ? '中度疲劳，适当减负' : '精力状态良好'
   const cls = index >= 70 ? 'fatigue-high' : index >= 45 ? 'fatigue-mid' : 'fatigue-low'
-  const tip = index >= 70 ? '⚠ 建议暂停作业，立即休息' : index >= 45 ? '建议控制连续工时，补充休息' : '当前状态良好，可正常作业'
+  const tip = index >= 70 ? '建议暂停作业，立即休息' : index >= 45 ? '建议控制连续工时，补充休息' : '当前状态良好，可正常作业'
   return {
     index,
     color,

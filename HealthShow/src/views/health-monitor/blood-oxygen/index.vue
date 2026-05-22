@@ -20,7 +20,7 @@
       </div>
 
       <div class="bo-hd-time">{{ currentTime }}</div>
-      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">⬇ 导出</button>
+      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">导出</button>
     </header>
 
     <!-- ══ 主体 ══ -->
@@ -191,7 +191,7 @@
             </span>
           </div>
           <div v-if="!boAnomalyList.length" class="bo-anomaly-empty">
-            <span class="bo-anomaly-ok">✓</span> 当前无异常血氧人员
+            当前无异常血氧人员
           </div>
           <div v-else class="bo-anomaly-body">
             <div class="bo-anomaly-hd">
@@ -391,7 +391,7 @@ export default {
       return [
         { key: 'danger',    label: '危险', range: '< 90%',    count: danger,    pct: pct(danger),    color: '#ff5252', icon: '↓', cls: 'zone-danger'    },
         { key: 'low',       label: '偏低', range: '90–94%',   count: low,       pct: pct(low),       color: '#FFB84D', icon: '↓', cls: 'zone-low'       },
-        { key: 'normal',    label: '正常', range: '95–98%',   count: normal,    pct: pct(normal),    color: '#52c41a', icon: '✓', cls: 'zone-normal'    },
+        { key: 'normal',    label: '正常', range: '95–98%',   count: normal,    pct: pct(normal),    color: '#52c41a', icon: 'OK', cls: 'zone-normal'    },
         { key: 'excellent', label: '优秀', range: '≥ 99%',    count: excellent, pct: pct(excellent), color: '#4FC3F7', icon: '↑', cls: 'zone-excellent' }
       ]
     },

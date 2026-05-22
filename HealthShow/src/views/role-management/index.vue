@@ -1,16 +1,21 @@
 <template>
-  <div class="role-mgmt-container">
-    <!-- 页面标题栏 -->
-    <div class="page-header">
-      <div class="page-header-left">
-        <el-icon class="header-icon"><Key /></el-icon>
-        <div>
-          <h1 class="main-title">角色管理</h1>
-          <p class="sub-title">管理系统角色及权限分配</p>
+  <div class="hm-admin-page role-mgmt-container">
+    <PageHeroHeader
+      variant="admin"
+      eyebrow="Role Governance"
+      title="角色管理"
+      description="维护系统角色、权限边界和角色成员关系。"
+    >
+      <template #meta>
+        <div class="hm-admin-page__hero-meta">
+          <span class="hm-toolbar-chip">角色总数 {{ stats.totalRoles }}</span>
+          <span class="hm-toolbar-chip">启用 {{ stats.activeRoles }}</span>
         </div>
-      </div>
-      <div class="header-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-    </div>
+      </template>
+      <template #actions>
+        <div class="hm-admin-page__clock"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
+      </template>
+    </PageHeroHeader>
 
     <!-- 统计卡片 -->
     <el-row :gutter="16" class="mb-16">
@@ -267,6 +272,7 @@
 </template>
 
 <script>
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import {
   Search,
   Refresh,
@@ -288,6 +294,7 @@ import { useRoleManagementPage } from './use-role-management-page'
 
 export default {
   name: 'RoleManagement',
+  components: { PageHeroHeader },
   setup() {
     return {
       CircleCheck,

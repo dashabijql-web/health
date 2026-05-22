@@ -17,9 +17,9 @@
         <div class="tb-time">{{ currentTime }}</div>
         <div class="tb-sep"></div>
         <div class="emer-btns">
-          <button class="eb eb-o" @click="emergencyCall">📞 呼叫</button>
-          <button class="eb eb-o" @click="emergencyBroadcast">📢 广播</button>
-          <button class="eb eb-r" @click="emergencyEvacuate">🚨 撤离</button>
+          <button class="eb eb-o" @click="emergencyCall">呼叫</button>
+          <button class="eb eb-o" @click="emergencyBroadcast">广播</button>
+          <button class="eb eb-r" @click="emergencyEvacuate">撤离</button>
         </div>
       </div>
     </div>

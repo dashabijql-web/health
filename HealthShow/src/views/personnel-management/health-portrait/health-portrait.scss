@@ -48,7 +48,18 @@
   &.temp { border-left: 3px solid #ffd200; }
   &.bp { border-left: 3px solid #38ef7d; }
 }
-.vcard-icon { font-size: 20px; flex-shrink: 0; }
+.vcard-icon {
+  min-width: 42px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.18);
+  color: #d9f3ff;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  flex-shrink: 0;
+}
 .vcard-info { flex: 1; }
 .vcard-val { font-size: 17px; font-weight: 700; color: #e8f4ff; }
 .vcard-unit { font-size: 10px; font-weight: 400; color: #7eb8d4; margin-left: 2px; }
@@ -166,6 +177,15 @@
   display: flex; align-items: center; gap: 7px;
   padding: 4px 14px 4px; font-size: 11px; color: #7eb8d4; flex-shrink: 0;
   strong { color: #00d4ff; }
+}
+.recheck-tip__label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.12);
+  color: #d6f1ff;
+  font-weight: 700;
 }
 
 /* 通用小节标题 */

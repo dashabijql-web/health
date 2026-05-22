@@ -1,16 +1,21 @@
 <template>
-  <div class="user-list-container">
-    <!-- 页面标题栏 -->
-    <div class="page-header">
-      <div class="page-header-left">
-        <el-icon class="header-icon"><UserFilled /></el-icon>
-        <div>
-          <h1 class="main-title">用户管理</h1>
-          <p class="sub-title">管理平台注册用户及健康数据</p>
+  <div class="hm-admin-page user-list-container">
+    <PageHeroHeader
+      variant="admin"
+      eyebrow="User Directory"
+      title="用户管理"
+      description="管理平台注册用户、账户状态、部门归属和健康数据入口。"
+    >
+      <template #meta>
+        <div class="hm-admin-page__hero-meta">
+          <span class="hm-toolbar-chip">总用户 {{ stats.totalUsers }}</span>
+          <span class="hm-toolbar-chip">活跃 {{ stats.activeUsers }}</span>
         </div>
-      </div>
-      <div class="header-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-    </div>
+      </template>
+      <template #actions>
+        <div class="hm-admin-page__clock"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
+      </template>
+    </PageHeroHeader>
 
     <!-- 统计卡片 -->
     <el-row :gutter="16" class="mb-16">
@@ -304,6 +309,7 @@
 </template>
 
 <script>
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import {
   Search,
   Refresh,
@@ -326,6 +332,7 @@ import { useUserListPage } from './use-user-list-page'
 
 export default {
   name: 'UserList',
+  components: { PageHeroHeader },
   setup() {
     return {
       CircleCheck,

@@ -82,6 +82,18 @@
 .message-list::-webkit-scrollbar-track { background: transparent; }
 .message-list::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
 
+.chat-empty-state {
+  margin-bottom: 4px;
+  padding: 8px 6px 0;
+}
+
+.chat-empty-state :deep(.hm-empty-state) {
+  min-height: 120px;
+  border: 1px dashed rgba(0, 212, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(0, 36, 68, 0.35);
+}
+
 /* ─── 消息行 ──────────────────────────────────────── */
 .message {
   display: flex;

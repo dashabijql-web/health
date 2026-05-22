@@ -20,7 +20,7 @@ export default {
       ],
       bedtimeTips: [
         { time: '21-22时', icon: '★', color: '#52c41a', desc: '最佳入睡时间' },
-        { time: '22-23时', icon: '✓', color: '#4FC3F7', desc: '良好，顺应生物钟' },
+        { time: '22-23时', icon: 'OK', color: '#4FC3F7', desc: '良好，顺应生物钟' },
         { time: '23-24时', icon: '!', color: '#FFB84D', desc: '偏晚，影响深睡' },
         { time: '0时以后', icon: '✕', color: '#ff5252', desc: '过晚，损害健康' }
       ],

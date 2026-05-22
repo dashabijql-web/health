@@ -251,7 +251,7 @@ export default defineComponent({
         items.push({
           label: '重点跟进',
           value: props.latestDangerEvent.userName,
-          detail: `${props.latestDangerEvent.type || '危险预警'}仍待处理，建议查看人员画像。`,
+          detail: `${props.latestDangerEvent.type || '危险预警'}待闭环，优先查看人员画像。`,
           path: '/health-monitor/employee-archive',
           tone: 'primary'
         })

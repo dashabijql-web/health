@@ -2,7 +2,7 @@
   <div class="kpi">
     <div class="kcard kc-cyan" @click="$emit('detail','underground')">
       <div class="kc-glow"></div>
-      <div class="kc-head"><span class="kc-lbl">井下人数</span><span class="kc-ico">⛏️</span></div>
+      <div class="kc-head"><span class="kc-lbl">井下人数</span><span class="kc-ico">UG</span></div>
       <div class="kc-num" style="color:#00d4ff;text-shadow:0 0 20px rgba(0,212,255,.5)">
         <AnimatedNumber :value="stats.underground" fontSize="34px" color="#00d4ff" :duration="1500" :separator="false"/>
       </div>
@@ -11,7 +11,7 @@
 
     <div class="kcard kc-red" @click="$emit('detail','sos')">
       <div class="kc-glow"></div>
-      <div class="kc-head"><span class="kc-lbl">SOS 求救</span><span class="kc-ico">🆘</span></div>
+      <div class="kc-head"><span class="kc-lbl">SOS 求救</span><span class="kc-ico">SOS</span></div>
       <div class="kc-num" style="color:#ff4757;text-shadow:0 0 20px rgba(255,71,87,.5)">
         <AnimatedNumber :value="stats.sos" fontSize="34px" color="#ff4757" :duration="1500" :separator="false"/>
       </div>
@@ -21,7 +21,7 @@
 
     <div class="kcard kc-orange" @click="$emit('detail','fall')">
       <div class="kc-glow"></div>
-      <div class="kc-head"><span class="kc-lbl">跌倒检测</span><span class="kc-ico">🫂</span></div>
+      <div class="kc-head"><span class="kc-lbl">跌倒检测</span><span class="kc-ico">FALL</span></div>
       <div class="kc-num" style="color:#ff6b35;text-shadow:0 0 20px rgba(255,107,53,.4)">
         <AnimatedNumber :value="stats.fall" fontSize="34px" color="#ff6b35" :duration="1500" :separator="false"/>
       </div>
@@ -31,7 +31,7 @@
 
     <div class="kcard kc-yellow" @click="$emit('detail','alerts')">
       <div class="kc-glow"></div>
-      <div class="kc-head"><span class="kc-lbl">其他预警</span><span class="kc-ico">⚠️</span></div>
+      <div class="kc-head"><span class="kc-lbl">其他预警</span><span class="kc-ico">WARN</span></div>
       <div class="kc-num" style="color:#ffd32a;text-shadow:0 0 20px rgba(255,211,42,.4)">
         <AnimatedNumber :value="stats.static + stats.abnormal" fontSize="34px" color="#ffd32a" :duration="1500" :separator="false"/>
       </div>
@@ -40,7 +40,7 @@
 
     <div :class="['kcard', watchStatus.offline > 20 || watchStatus.lowBattery > 30 ? 'kc-orange' : 'kc-teal']" @click="$emit('detail','watch')">
       <div class="kc-glow"></div>
-      <div class="kc-head"><span class="kc-lbl">手表状态</span><span class="kc-ico">⌚</span></div>
+      <div class="kc-head"><span class="kc-lbl">手表状态</span><span class="kc-ico">WATCH</span></div>
       <div class="kc-num" :style="{color: watchStatus.offline>20||watchStatus.lowBattery>30?'#ff6b35':'#26c6da', textShadow:'0 0 20px rgba(38,198,218,.4)'}">
         <AnimatedNumber :value="watchStatus.online" fontSize="34px" :color="watchStatus.offline>20?'#ff6b35':'#26c6da'" :duration="1500" :separator="false"/>
         <span class="kc-total">/ {{ watchStatus.total }}</span>
@@ -111,7 +111,18 @@ $mono:'JetBrains Mono','Courier New',monospace;
   letter-spacing: .4px;
   white-space: nowrap;
 }
-.kc-ico  { flex-shrink: 0; font-size:15px; opacity:.6; }
+.kc-ico  {
+  flex-shrink: 0;
+  min-width: 38px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.72);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-align: center;
+}
 .kc-num  { display:flex; align-items:baseline; gap:3px; line-height:1; font-family:$mono; }
 .kc-total{ font-size:13px; color:rgba(255,255,255,.35); font-family:$mono; }
 .kc-foot { display:flex; align-items:center; gap:4px; flex-wrap:wrap; font-size:10px; position:relative; z-index:1; }

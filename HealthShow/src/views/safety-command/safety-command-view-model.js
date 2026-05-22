@@ -32,32 +32,32 @@ export function mapWarningToEvent(record) {
   const warningType = record.warningType || record.warning_type || record.type || ''
   let eventType = 'abnormal'
   let level = 'medium'
-  let icon = '⚠️'
+  let icon = 'WARN'
 
   if (warningType.includes('SOS') || warningType.includes('sos')) {
     eventType = 'sos'
     level = 'critical'
-    icon = '🆘'
+    icon = 'SOS'
   } else if (warningType.includes('跌倒') || warningType.includes('fall')) {
     eventType = 'fall'
     level = 'high'
-    icon = '🚨'
+    icon = 'FALL'
   } else if (warningType.includes('静止') || warningType.includes('static')) {
     eventType = 'static'
     level = 'medium'
-    icon = '🔇'
+    icon = 'IDLE'
   } else if (warningType.includes('心率')) {
     level = 'high'
-    icon = '💓'
+    icon = 'HR'
   } else if (warningType.includes('血氧')) {
     level = 'high'
-    icon = '🩸'
+    icon = 'SpO2'
   } else if (warningType.includes('体温')) {
     level = 'medium'
-    icon = '🌡️'
+    icon = 'TEMP'
   } else if (warningType.includes('疲劳') || warningType.includes('睡眠')) {
     level = 'low'
-    icon = '😴'
+    icon = 'REST'
   }
 
   const createdAt = record.createTime || record.create_time || record.time || ''

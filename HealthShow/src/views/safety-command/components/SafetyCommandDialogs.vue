@@ -25,7 +25,7 @@
         <div class="dc wn" v-if="currentArea.warning > 0"><div class="dc-l">预警</div><div class="dc-v orange">{{ currentArea.warning }}</div></div>
       </div>
       <div class="dlg-act">
-        <el-button type="danger" @click="$emit('showInfo', '撤离', `确认启动 ${currentArea.name} 紧急撤离？`)">🚨 撤离</el-button>
+        <el-button type="danger" @click="$emit('showInfo', '撤离', `确认启动 ${currentArea.name} 紧急撤离？`)">启动撤离</el-button>
       </div>
     </div>
   </el-dialog>
@@ -39,7 +39,7 @@
       </div>
       <div class="dlg-ai-section">
         <div class="dlg-ai-hd">
-          <span class="dlg-ai-title">🤖 AI 部门健康分析</span>
+          <span class="dlg-ai-title">AI 部门健康分析</span>
           <button class="dlg-ai-btn" :disabled="deptAiLoading" @click="$emit('handleDeptAi', false)">
             {{ deptAiLoading ? '分析中…' : (deptAiReport ? '刷新' : '生成分析') }}
           </button>
@@ -52,7 +52,7 @@
     </div>
   </el-dialog>
 
-  <el-dialog v-model="broadcastDialogVisibleModel" title="📢 紧急广播" width="440px">
+  <el-dialog v-model="broadcastDialogVisibleModel" title="紧急广播" width="440px">
     <el-input v-model="broadcastContentModel" type="textarea" :rows="4" placeholder="请输入广播内容…" maxlength="200" show-word-limit />
     <template #footer>
       <el-button @click="broadcastDialogVisibleModel = false">取消</el-button>

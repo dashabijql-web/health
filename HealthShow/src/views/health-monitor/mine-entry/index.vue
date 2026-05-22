@@ -64,14 +64,17 @@
       <span class="me-criteria-sep">|</span>
       <span class="me-criteria-item ok">体温 36.0~37.5 ℃</span>
       <span class="me-criteria-note">（任一超标即禁止入井）</span>
-      <button class="me-export-btn" @click="exportList" style="margin-left:auto">⬇ 导出名单</button>
+      <button class="me-export-btn" @click="exportList" style="margin-left:auto">导出名单</button>
     </div>
 
     <!-- Table -->
     <div class="me-table-wrap" v-loading="loading">
       <div v-if="!loading && filteredList.length === 0" class="me-empty">
-        <el-icon size="50" color="#2d3561"><UserFilled /></el-icon>
-        <p>今日暂无检测数据</p>
+        <PageEmptyState
+          eyebrow="Access Queue"
+          title="今日暂无检测数据"
+          description="可以等待下一轮班前检测，或切换筛选条件查看其它状态记录。"
+        />
       </div>
 
       <!-- 禁入人员 -->
@@ -95,13 +98,13 @@
               <div class="me-card-dept">{{ item.deptName }} · {{ item.jobTypeName }}</div>
               <div class="me-vitals-row">
                 <span class="me-vital" :class="vClass(item.heartRate, 60, 100, true)">
-                  <span class="me-vital-icon">♥</span>{{ item.heartRate ?? '--' }}bpm
+                  <span class="me-vital-icon">HR</span>{{ item.heartRate ?? '--' }}bpm
                 </span>
                 <span class="me-vital" :class="vClass(item.bloodOxygen, 95, 100, false)">
-                  <span class="me-vital-icon">💨</span>{{ item.bloodOxygen ?? '--' }}%
+                  <span class="me-vital-icon">SpO2</span>{{ item.bloodOxygen ?? '--' }}%
                 </span>
                 <span class="me-vital" :class="bpClass(item.systolic, item.diastolic)">
-                  <span class="me-vital-icon">🫀</span>{{ item.systolic ?? '--' }}/{{ item.diastolic ?? '--' }}mmHg
+                  <span class="me-vital-icon">BP</span>{{ item.systolic ?? '--' }}/{{ item.diastolic ?? '--' }}mmHg
                 </span>
               </div>
               <div class="me-fail-reasons">
@@ -188,11 +191,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Refresh, CircleCheck, CircleClose, UserFilled } from '@element-plus/icons-vue'
+import { Refresh, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import { getMineEntryList, getPreShiftCompliance } from '@/api/health'
 import dayjs from 'dayjs'
 import { exportToExcel } from '@/utils/export-excel'
 import { useIntervalTask } from '@/composables/useIntervalTask'
+import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
 import {
   bloodPressureClass,
   mineEntryFailReasons,

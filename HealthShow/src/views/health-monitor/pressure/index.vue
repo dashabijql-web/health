@@ -22,7 +22,7 @@
       </div>
 
       <div class="ps-hd-time">{{ currentTime }}</div>
-      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">⬇ 导出</button>
+      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">导出</button>
     </header>
 
     <!-- ══ 主体 ══ -->
@@ -177,7 +177,7 @@
             </span>
           </div>
           <div v-if="!psAnomalyList.length" class="ps-anomaly-empty">
-            <span class="ps-anomaly-ok">✓</span> 当前无异常压力人员
+            当前无异常压力人员
           </div>
           <div v-else class="ps-anomaly-body">
             <div class="ps-anomaly-hd">
@@ -195,7 +195,7 @@
                 <span class="pa-name">{{ item.userName }}</span>
                 <span class="pa-dept">{{ item.deptName || '--' }}</span>
                 <span class="pa-val">{{ item.pressure }}</span>
-                <span class="pa-type">{{ item.pressure >= 85 ? '高压⚠' : '偏高!' }}</span>
+                <span class="pa-type">{{ item.pressure >= 85 ? '高压需关注' : '偏高' }}</span>
                 <span class="pa-time">{{ fmtTime(item.recordTime) }}</span>
               </div>
               <div v-if="psAnomalyList.length > 20" class="ps-anomaly-more" @click="anomalyExpanded = !anomalyExpanded">
@@ -360,9 +360,9 @@ export default {
       const pct = n => list.length > 0 ? Math.round(n / total * 100) : 0
       return [
         { key: 'relaxed',  label: '放松', range: '< 50',    count: relaxed,  pct: pct(relaxed),  color: '#4FC3F7', icon: '○', cls: 'zone-relaxed'  },
-        { key: 'normal',   label: '正常', range: '50–69',   count: normal,   pct: pct(normal),   color: '#52c41a', icon: '✓', cls: 'zone-normal'   },
+        { key: 'normal',   label: '正常', range: '50–69',   count: normal,   pct: pct(normal),   color: '#52c41a', icon: 'OK', cls: 'zone-normal'   },
         { key: 'elevated', label: '偏高', range: '70–84',   count: elevated, pct: pct(elevated), color: '#FFB84D', icon: '!', cls: 'zone-elevated' },
-        { key: 'high',     label: '高压', range: '≥ 85',    count: high,     pct: pct(high),     color: '#ff5252', icon: '⚠', cls: 'zone-high'     }
+        { key: 'high',     label: '高压', range: '≥ 85',    count: high,     pct: pct(high),     color: '#ff5252', icon: 'ALERT', cls: 'zone-high'     }
       ]
     }
   },

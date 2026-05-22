@@ -621,7 +621,8 @@ $white:  var(--text-strong);
 }
 
 .dm-command-sidebar .dm-right-action {
-  flex:0.86 1 0;
+  flex:1 1 0;
+  min-height:236px;
   overflow:hidden;
 }
 
@@ -686,7 +687,7 @@ $white:  var(--text-strong);
   display:flex;
   flex-direction:column;
   gap:8px;
-  padding:10px 12px 12px;
+  padding:10px 12px 14px;
   min-height:0;
   overflow:auto;
 }
@@ -694,6 +695,7 @@ $white:  var(--text-strong);
   display:flex;
   flex-direction:column;
   gap:6px;
+  min-height:0;
   padding:10px 12px;
   border-radius:14px;
   border:1px solid rgba(133,175,220,0.12);
@@ -717,8 +719,16 @@ $white:  var(--text-strong);
   gap:12px;
 }
 .dm-action-cue-label { font-size:12px; color:$dim; }
-.dm-action-cue-value { font-size:16px; font-weight:700; color:$white; }
-.dm-action-cue-detail { font-size:11px; line-height:1.7; color:rgba(143,181,211,0.88); }
+.dm-action-cue-value { font-size:15px; font-weight:700; color:$white; }
+.dm-action-cue-detail {
+  font-size:10px;
+  line-height:1.55;
+  color:rgba(143,181,211,0.88);
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+}
 
 // 实时预警动态
 .dm-badge-count {
@@ -1372,7 +1382,14 @@ $white:  var(--text-strong);
   .dm-panel { min-height: 0; }
   .dm-command-sidebar {
     display:flex;
+    flex-direction:column;
     grid-template-columns:none;
+  }
+  .dm-command-sidebar .dm-right-rank,
+  .dm-command-sidebar .dm-right-action {
+    width:100%;
+    height:auto;
+    min-height:0;
   }
 
   // ── 检测人数：2列指标卡（不是5个挤一排）──

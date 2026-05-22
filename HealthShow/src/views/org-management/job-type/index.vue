@@ -1,16 +1,21 @@
 <template>
-  <div class="page-container">
-    <!-- Page Header -->
-    <div class="page-header">
-      <div class="page-header-left">
-        <el-icon class="header-icon"><Suitcase /></el-icon>
-        <div>
-          <h1 class="main-title">工种管理</h1>
-          <p class="sub-title">管理系统工种类型及风险等级</p>
+  <div class="hm-admin-page page-container">
+    <PageHeroHeader
+      variant="admin"
+      eyebrow="Job Types"
+      title="工种管理"
+      description="维护工种类型、风险等级和对应人员清单。"
+    >
+      <template #meta>
+        <div class="hm-admin-page__hero-meta">
+          <span class="hm-toolbar-chip">工种总数 {{ stats.total }}</span>
+          <span class="hm-toolbar-chip">高危 {{ stats.highRisk }}</span>
         </div>
-      </div>
-      <div class="header-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-    </div>
+      </template>
+      <template #actions>
+        <div class="hm-admin-page__clock"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
+      </template>
+    </PageHeroHeader>
 
     <!-- Stat Cards -->
     <el-row :gutter="16" class="mb-16">
@@ -191,6 +196,7 @@
 </template>
 
 <script setup>
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { ref, reactive, onMounted } from 'vue'
 import {
   Timer, Search, Refresh, Plus, Edit, Delete,

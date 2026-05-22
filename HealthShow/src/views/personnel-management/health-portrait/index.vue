@@ -22,7 +22,7 @@
 
       <div class="vitals-strip">
         <div class="vcard heart">
-          <div class="vcard-icon">♥</div>
+          <div class="vcard-icon">HR</div>
           <div class="vcard-info">
             <div class="vcard-val">{{ vitals.heartRate ?? '--' }}<span class="vcard-unit">bpm</span></div>
             <div class="vcard-label">心率</div>
@@ -30,7 +30,7 @@
           <div class="vstatus" :class="vitalStatus(vitals.heartRate, 60, 100)">{{ vitalStatusText(vitals.heartRate, 60, 100) }}</div>
         </div>
         <div class="vcard oxygen">
-          <div class="vcard-icon">💨</div>
+          <div class="vcard-icon">SpO2</div>
           <div class="vcard-info">
             <div class="vcard-val">{{ vitals.bloodOxygen ?? '--' }}<span class="vcard-unit">%</span></div>
             <div class="vcard-label">血氧</div>
@@ -38,7 +38,7 @@
           <div class="vstatus" :class="vitalStatus(vitals.bloodOxygen, 95, 100)">{{ vitalStatusText(vitals.bloodOxygen, 95, 100) }}</div>
         </div>
         <div class="vcard temp">
-          <div class="vcard-icon">🌡</div>
+          <div class="vcard-icon">TEMP</div>
           <div class="vcard-info">
             <div class="vcard-val">{{ vitals.temperature ?? '--' }}<span class="vcard-unit">°C</span></div>
             <div class="vcard-label">体温</div>
@@ -46,7 +46,7 @@
           <div class="vstatus" :class="vitalStatus(vitals.temperature, 36, 37.3)">{{ vitalStatusText(vitals.temperature, 36, 37.3) }}</div>
         </div>
         <div class="vcard bp">
-          <div class="vcard-icon">🫀</div>
+          <div class="vcard-icon">BP</div>
           <div class="vcard-info">
             <div class="vcard-val">{{ vitals.systolic ?? '--' }}/{{ vitals.diastolic ?? '--' }}<span class="vcard-unit">mmHg</span></div>
             <div class="vcard-label">血压</div>
@@ -143,7 +143,8 @@
 
           <!-- ⑤ 建议复查 -->
           <div class="recheck-tip">
-            📅 <span>建议复查：<strong>{{ nextCheckDate }}</strong></span>
+            <span class="recheck-tip__label">建议复查</span>
+            <span><strong>{{ nextCheckDate }}</strong></span>
           </div>
 
           <!-- ⑥ 本周关键统计 2×2 -->

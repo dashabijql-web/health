@@ -113,7 +113,7 @@ export function useSafetyCommandInteractions({ statsRef, watchStatusRef, handled
   function emergencyEvacuate() {
     return ElMessageBox.confirm(
       '确认启动紧急撤离？此操作将向所有井下人员下达撤离指令！',
-      '⚠️ 紧急撤离确认',
+      '紧急撤离确认',
       {
         confirmButtonText: '确认撤离',
         cancelButtonText: '取消',

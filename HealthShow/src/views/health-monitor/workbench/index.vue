@@ -79,12 +79,12 @@
             <div class="cell-day">{{ cell.day }}</div>
             <template v-if="cell.data">
               <div class="cell-metrics">
-                <span class="cm-item cm-hr" title="心率">❤ {{ cell.data.avgHeartRate || '--' }}</span>
-                <span class="cm-item cm-bo" title="血氧">🩸 {{ cell.data.avgBloodOxygen || '--' }}</span>
+                <span class="cm-item cm-hr" title="心率"><span class="cm-key">HR</span>{{ cell.data.avgHeartRate || '--' }}</span>
+                <span class="cm-item cm-bo" title="血氧"><span class="cm-key">SpO2</span>{{ cell.data.avgBloodOxygen || '--' }}</span>
               </div>
               <div class="cell-metrics cell-metrics-2" v-if="cell.data.avgSteps || cell.data.avgPressure">
-                <span class="cm-item cm-steps" v-if="cell.data.avgSteps" title="步数">👟 {{ cell.data.avgSteps >= 1000 ? (cell.data.avgSteps/1000).toFixed(1)+'k' : cell.data.avgSteps }}</span>
-                <span class="cm-item cm-pres" v-if="cell.data.avgPressure" title="压力指数">⚡ {{ Math.round(cell.data.avgPressure) }}</span>
+                <span class="cm-item cm-steps" v-if="cell.data.avgSteps" title="步数"><span class="cm-key">STEP</span>{{ cell.data.avgSteps >= 1000 ? (cell.data.avgSteps/1000).toFixed(1)+'k' : cell.data.avgSteps }}</span>
+                <span class="cm-item cm-pres" v-if="cell.data.avgPressure" title="压力指数"><span class="cm-key">PRS</span>{{ Math.round(cell.data.avgPressure) }}</span>
               </div>
               <div class="cell-warn" v-if="cell.data.warningCount > 0">
                 <span :class="['warn-badge-custom', cell.data.warningCount >= 100 ? 'wbc-high' : cell.data.warningCount >= 30 ? 'wbc-mid' : 'wbc-low']">

@@ -100,6 +100,10 @@
 .me-table-wrap { min-height: 300px; }
 .me-empty { text-align: center; padding: 60px 0; color: #4a6080; }
 .me-empty p { margin-top: 12px; font-size: 13px; }
+.me-empty :deep(.hm-empty-state) {
+  min-height: 180px;
+  padding: 32px 16px;
+}
 
 /* ── Group headers ── */
 .me-group-hd {
@@ -162,7 +166,16 @@
   background: rgba(255,255,255,0.05);
   display: flex; align-items: center; gap: 4px;
 }
-.me-vital-icon { font-size: 12px; }
+.me-vital-icon {
+  min-width: 32px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: #d7f4ff;
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+}
 .vital-bad { color: #ff5252; background: rgba(255,82,82,0.12); border: 1px solid rgba(255,82,82,0.3); }
 .vital-ok  { color: #38ef7d; background: rgba(56,239,125,0.08); }
 

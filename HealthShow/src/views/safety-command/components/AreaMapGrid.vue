@@ -24,7 +24,7 @@
         </div>
         <div class="ac-cnt">人数 <b>{{ a.count }}</b></div>
         <div v-if="a.sos>0||a.fall>0||a.warning>0" class="ac-badges">
-          <span v-if="a.sos>0"  class="ab ab-r">⚠ SOS×{{ a.sos }}</span>
+          <span v-if="a.sos>0"  class="ab ab-r">SOS×{{ a.sos }}</span>
           <span v-else-if="a.fall>0" class="ab ab-r">跌倒×{{ a.fall }}</span>
           <span v-else class="ab ab-o">预警×{{ a.warning }}</span>
         </div>

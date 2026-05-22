@@ -305,7 +305,7 @@ export const riskWarningPageRuntime = {
               lineStyle: { color: '#ff3b3b', width: 2.5, type: 'solid', shadowColor: 'rgba(255,59,59,.6)', shadowBlur: 8 },
               data: [{ xAxis: warnTimeStr, label: {
                 show: true, position: 'insideStartTop',
-                formatter: '⚠ 预警时刻',
+                formatter: '预警时刻',
                 color: '#fff', fontSize: 11, fontWeight: 700,
                 backgroundColor: '#ef4444',
                 padding: [3,7,3,7], borderRadius: 4,

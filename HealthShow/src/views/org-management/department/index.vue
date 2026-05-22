@@ -1,16 +1,21 @@
 <template>
-  <div class="page-container">
-    <!-- Page Header -->
-    <div class="page-header">
-      <div class="page-header-left">
-        <el-icon class="header-icon"><OfficeBuilding /></el-icon>
-        <div>
-          <h1 class="main-title">部门管理</h1>
-          <p class="sub-title">管理组织架构及部门信息</p>
+  <div class="hm-admin-page page-container">
+    <PageHeroHeader
+      variant="admin"
+      eyebrow="Organization"
+      title="部门管理"
+      description="管理组织架构、负责人、联系电话和部门成员入口。"
+    >
+      <template #meta>
+        <div class="hm-admin-page__hero-meta">
+          <span class="hm-toolbar-chip">部门总数 {{ stats.total }}</span>
+          <span class="hm-toolbar-chip">正常 {{ stats.active }}</span>
         </div>
-      </div>
-      <div class="header-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-    </div>
+      </template>
+      <template #actions>
+        <div class="hm-admin-page__clock"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
+      </template>
+    </PageHeroHeader>
 
     <!-- Stat Cards -->
     <el-row :gutter="16" class="mb-16">
@@ -179,6 +184,7 @@
 </template>
 
 <script setup>
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { Timer, Search, Plus, Edit, Delete, OfficeBuilding, CircleCheck, CircleClose, User } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'

@@ -74,7 +74,7 @@ export const dashboardRuntimeMethods = {
     if (!('Notification' in window) || Notification.permission !== 'granted') return
     const typeNames = { heartRate: '心率异常', bloodOxygen: '血氧偏低', temperature: '体温异常', pressure: '压力异常', SOS: 'SOS求助', fall: '跌倒' }
     const typeName = typeNames[event.type] || event.type || '健康预警'
-    const n = new Notification(`⚠️ 高危预警：${event.userName || '未知人员'}`, {
+    const n = new Notification(`高危预警：${event.userName || '未知人员'}`, {
       body: `${typeName}  ${event.value || ''}  —  请立即处理`,
       icon: '/favicon.ico',
       tag: `alert-${event.id}`

@@ -15,7 +15,7 @@
         </div>
       </div>
       <div class="sl-hd-time">{{ currentTime }}</div>
-      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">⬇ 导出</button>
+      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">导出</button>
     </header>
 
     <!-- ══ Body ══ -->

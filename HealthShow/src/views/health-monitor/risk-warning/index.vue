@@ -112,11 +112,11 @@
                   <option v-for="t in warningTypes" :key="t" :value="t">{{ t }}</option>
                 </select>
                 <button class="rw-scroll-btn" @click="toggleAutoScroll">
-                  {{ autoScrollPaused ? '▶ 继续' : '⏸ 暂停' }}
+                  {{ autoScrollPaused ? '继续滚动' : '暂停滚动' }}
                 </button>
-                <button class="rw-export-btn" @click="exportWarnings" title="导出Excel">⬇ 导出</button>
+                <button class="rw-export-btn" @click="exportWarnings" title="导出Excel">导出 Excel</button>
                 <button class="rw-batch-btn" v-if="selectedIds.length > 0" @click="batchHandle" :disabled="batchHandling">
-                  {{ batchHandling ? '处理中...' : `✓ 批量处理 (${selectedIds.length})` }}
+                  {{ batchHandling ? '处理中...' : `批量处理 (${selectedIds.length})` }}
                 </button>
               </div>
             </div>
@@ -223,7 +223,7 @@
           <div class="rw-dw-handle-title">处置记录</div>
           <textarea v-model="handleNote" class="rw-dw-handle-input" placeholder="输入处置备注（可选）..." rows="2"></textarea>
           <button class="rw-dw-handle-btn" :disabled="handling" @click="doHandle">
-            {{ handling ? '处理中...' : '✓ 标记为已处理' }}
+            {{ handling ? '处理中...' : '标记为已处理' }}
           </button>
         </div>
         <div class="rw-dw-handled-tip" v-else>

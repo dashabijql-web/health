@@ -22,7 +22,7 @@
       </div>
 
       <div class="hr-hd-time">{{ currentTime }}</div>
-      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">⬇ 导出</button>
+      <button class="hm-export-btn" @click="exportExcel" title="导出当前数据">导出</button>
     </header>
 
     <!-- ══ 主体 ══ -->
@@ -170,7 +170,7 @@
             </span>
           </div>
           <div v-if="!anomalyList.length" class="hr-anomaly-empty">
-            <span class="hr-anomaly-ok">✓</span> 当前无异常心率人员
+            当前无异常心率人员
           </div>
           <div v-else class="hr-anomaly-body">
             <div class="hr-anomaly-hd">
@@ -209,7 +209,7 @@
             <span class="hr-ph-bar"></span>
             <span class="hr-ph-title">实时心率数据</span>
             <span class="hr-rt-total">{{ realtimeList.length }} 条</span>
-            <button class="hr-export-btn" @click="exportExcel" title="导出Excel">⬇ 导出</button>
+            <button class="hr-export-btn" @click="exportExcel" title="导出Excel">导出</button>
           </div>
 
           <div class="hr-rt-hd">
@@ -385,9 +385,9 @@ export default {
       const pct = n => list.length > 0 ? Math.round(n / total * 100) : 0
       return [
         { key: 'low',      label: '偏低', range: '< 55 bpm',     count: low,      pct: pct(low),      color: '#4FC3F7', icon: '↓', cls: 'zone-low'      },
-        { key: 'normal',   label: '正常', range: '55–120 bpm',   count: normal,   pct: pct(normal),   color: '#52c41a', icon: '✓', cls: 'zone-normal'   },
+        { key: 'normal',   label: '正常', range: '55–120 bpm',   count: normal,   pct: pct(normal),   color: '#52c41a', icon: 'OK', cls: 'zone-normal'   },
         { key: 'elevated', label: '偏高', range: '121–150 bpm',  count: elevated, pct: pct(elevated), color: '#FFB84D', icon: '↑', cls: 'zone-elevated' },
-        { key: 'danger',   label: '危险', range: '> 150 bpm',    count: danger,   pct: pct(danger),   color: '#ff5252', icon: '⚠', cls: 'zone-danger'   }
+        { key: 'danger',   label: '危险', range: '> 150 bpm',    count: danger,   pct: pct(danger),   color: '#ff5252', icon: 'ALERT', cls: 'zone-danger'   }
       ]
     }
   },

@@ -173,6 +173,22 @@
 .cm-item {
   font-size: 11px;
   color: #9ca3af;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cm-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: #dbeafe;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 .cm-hr { color: #f87171; }
 .cm-bo { color: #60a5fa; }

@@ -102,9 +102,9 @@
 
       <!-- 操作按钮 -->
       <div class="pd-actions">
-        <el-button type="primary" @click="$emit('call', userCode)">📞 呼叫</el-button>
-        <el-button type="warning" @click="$emit('notify', userCode)">📢 通知</el-button>
-        <el-button @click="$emit('viewRecord', userCode)">📊 完整档案</el-button>
+        <el-button type="primary" @click="$emit('call', userCode)">呼叫</el-button>
+        <el-button type="warning" @click="$emit('notify', userCode)">通知</el-button>
+        <el-button @click="$emit('viewRecord', userCode)">完整档案</el-button>
       </div>
     </div>
   </el-drawer>

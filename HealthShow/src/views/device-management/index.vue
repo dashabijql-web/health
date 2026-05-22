@@ -1,16 +1,21 @@
 <template>
-  <div class="device-management-container">
-    <!-- 页面标题栏 -->
-    <div class="page-header">
-      <div class="page-header-left">
-        <el-icon class="header-icon"><Monitor /></el-icon>
-        <div>
-          <h1 class="main-title">设备管理</h1>
-          <p class="sub-title">管理智能手表设备及数据绑定</p>
+  <div class="hm-admin-page device-management-container">
+    <PageHeroHeader
+      variant="admin"
+      eyebrow="Device Control"
+      title="设备管理"
+      description="管理智能手表设备、绑定关系、在线状态和数据缓冲。"
+    >
+      <template #meta>
+        <div class="hm-admin-page__hero-meta">
+          <span class="hm-toolbar-chip">设备总数 {{ deviceStats.total }}</span>
+          <span class="hm-toolbar-chip">在线 {{ deviceStats.online }}</span>
         </div>
-      </div>
-      <div class="header-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-    </div>
+      </template>
+      <template #actions>
+        <div class="hm-admin-page__clock"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
+      </template>
+    </PageHeroHeader>
 
     <!-- 统计卡片 -->
     <el-row :gutter="16" class="mb-16" v-loading="loading" element-loading-background="rgba(10,14,39,0.6)">
@@ -359,6 +364,7 @@
 </template>
 
 <script setup>
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { Refresh, Monitor, Timer, CircleCheck, Connection, Document, Link, Unlock, Upload, Delete, ChatDotRound, Search } from '@element-plus/icons-vue'
 import { useDeviceManagementPage } from './use-device-management-page'
 

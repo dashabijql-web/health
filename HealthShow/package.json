@@ -25,6 +25,7 @@
     "test:realtime-detail": "node --test tests/realtime-detail-dialog.mjs",
     "test:report-center-export": "node --test tests/report-center-export-state.mjs",
     "test:ai-chat-layout": "node --test tests/ai-chat-layout.mjs",
+    "test:frontend-beautification": "node --test tests/frontend-beautification.mjs",
     "test:visual-audit-summary": "node --test tests/visual-audit-summary.mjs",
     "test:performance-triage-summary": "node --test tests/performance-triage-summary.mjs",
     "test:openclaw-supervisor-contract": "node --test tests/openclaw-supervisor-contract.mjs",

@@ -224,11 +224,11 @@ export function buildRiskItems({ vitals, warnCount }) {
   const wRisk = Math.min(80, wc * 5)
 
   return [
-    mk('心率健康', '💓', hrRisk, 60, 30, 100),
-    mk('血氧健康', '🩸', spo2Risk, 60, 30, 100),
-    mk('体温健康', '🌡️', tRisk, 60, 30, 100),
-    mk('压力水平', '🧠', pRisk, 60, 30, 100),
-    mk('预警风险', '⚠️', wRisk, 50, 20, 100),
-    mk('综合健康', '❤️', Math.min(100, (hrRisk + spo2Risk + tRisk) / 3), 60, 30, 100)
+    mk('心率健康', 'HR', hrRisk, 60, 30, 100),
+    mk('血氧健康', 'SpO2', spo2Risk, 60, 30, 100),
+    mk('体温健康', 'TEMP', tRisk, 60, 30, 100),
+    mk('压力水平', 'PRS', pRisk, 60, 30, 100),
+    mk('预警风险', 'WARN', wRisk, 50, 20, 100),
+    mk('综合健康', 'ALL', Math.min(100, (hrRisk + spo2Risk + tRisk) / 3), 60, 30, 100)
   ]
 }

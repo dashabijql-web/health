@@ -27,17 +27,12 @@
 
     <!-- 消息列表 -->
     <div class="message-list" ref="messageListRef">
-      <!-- 欢迎消息 -->
-      <div class="message assistant">
-        <div class="avatar">AI</div>
-        <div class="bubble">
-          你好！我是健康管理 AI 助手。<br>
-          你可以问我：<br>
-          • 综采一队本周有几人心率超标？<br>
-          • 张三最近的血氧情况如何？<br>
-          • 哪个部门平均心率最高？<br>
-          • 本月预警次数最多的是谁？
-        </div>
+      <div v-if="messages.length === 0" class="chat-empty-state">
+        <PageEmptyState
+          eyebrow="AI Copilot"
+          title="准备开始新的健康分析会话"
+          description="可以直接提问，或先从下方快捷问题开始，快速查看部门趋势、个体画像和预警统计。"
+        />
       </div>
 
       <!-- 对话记录 -->
@@ -52,7 +47,7 @@
           <!-- SQL 调试块：仅 AI 消息且有 SQL 时显示 -->
           <div v-if="msg.sql" class="sql-debug">
             <div class="sql-toggle" @click="msg.sqlOpen = !msg.sqlOpen">
-              <span>{{ msg.sqlOpen ? '▼' : '▶' }} 查看生成的 SQL</span>
+              <span>{{ msg.sqlOpen ? '收起生成的 SQL' : '查看生成的 SQL' }}</span>
             </div>
             <pre v-if="msg.sqlOpen" class="sql-block">{{ msg.sql }}</pre>
           </div>
@@ -126,6 +121,7 @@
 <script setup>
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
+import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
 import { clearAiSession } from '@/api/ai'
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
