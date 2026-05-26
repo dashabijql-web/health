@@ -32,6 +32,7 @@ Health 项目当前真实状态与其并不完全一致。当前代码和脚本�
 - 明确 Hermes 在本项目中的主线程 / 监督者定位，而不是把它与 OpenClaw 或 Codex 混用。
 - 统一 monorepo、runner、summary、handoff、issue、supervisor 的事实源。
 - 基于现有脚本能力，补出最缺的治理层资产，而不是重复造一套平行 runner。
+- 明确“去 Windows 噪音”规则：不再保留 Windows 专用启动入口、PowerShell 示例、`win-*` 命名脚本或双轨说明作为当前事实。
 - 为后续 `项目自动化映射.md`、接力文档生成器、远端诊断和夜间 supervisor 第二轮收口提供设计依据。
 
 ### 2.2 非目标
@@ -40,6 +41,7 @@ Health 项目当前真实状态与其并不完全一致。当前代码和脚本�
 - 不把 Hermes 改造成直接长期托管服务或直接写业务代码的执行器。
 - 不在本设计中直接落地所有治理脚本，只定义边界、优先级和目标结构。
 - 不回退到旧双仓 / 旧 PowerShell 主执行流。
+- 不为了“兼容历史”继续保留 Windows 专用执行说明作为并行入口；历史内容应归档，而不是留在当前执行文档中。
 
 ## 3. 当前事实
 
@@ -60,6 +62,12 @@ Health 项目当前真实状态与其并不完全一致。当前代码和脚本�
 - `win-test.ps1` -> `run-health-loop.py`
 - PowerShell hidden window / Windows service host -> `tmux` 托管的 WSL2 session
 - `runtime-logs/win-stack` -> `runtime-logs/wsl-stack`
+
+同时应新增一条显式规则：
+
+- 不保留任何 Windows 专用 runner 入口作为“当前仍可使用的备用链路”
+- 不在当前执行文档中继续保留 PowerShell 启动示例
+- 如需保留历史信息，只能放入 archive 文档，而不能与当前 WSL2 主链并列
 
 ### 3.2 仓库事实
 
@@ -172,6 +180,12 @@ Health 项目当前真实状态与其并不完全一致。当前代码和脚本�
 
 任何新治理脚本都不能再创建一个与上述平行的“主测试执行器”。
 
+这也意味着：
+
+- 不新增 `win-*` 脚本来“对齐”方法论文档命名
+- 不保留旧 Windows 命令作为当前推荐 fallback
+- 当前态只允许一条主执行链，避免双轨噪音
+
 ### 5.2 Hermes 是主线程监督者
 
 Hermes 在本项目中的推荐职责固定为：
@@ -279,13 +293,31 @@ OpenClaw 继续保留以下角色：
 
 其输出应进入 `runtime-logs/`，并能被 handoff 读取。
 
-## 7. 文档统一原则
+如果后续确有代理或宿主依赖说明，也应优先写成 WSL2 可执行脚本；Windows 专用脚本不再作为当前治理资产保留。
+
+## 7. 去 Windows 噪音规则
+
+从本设计开始，Health 项目的当前执行文档、治理文档和自动化脚本应遵守以下规则：
+
+- 删除 Windows 专用启动命令、PowerShell 示例和 `win-*` 脚本命名，不再把它们保留为当前入口。
+- 不在同一文档中并列保留“WSL2 方案”和“Windows 方案”两套现行说明。
+- 历史 Windows 流程如确有保留价值，只能进入 archive 文档，并明确标记为历史，不得伪装成当前可选路径。
+- 新增治理脚本统一使用 `bash`、`sh` 或 `python3` 入口，默认从 WSL2 调用。
+- 只有在无法回避宿主依赖时，才允许出现 Windows 相关事实，例如：
+  - `/mnt/c/...` 下的 token 文件路径
+  - SQL Server 运行在宿主环境
+  - 浏览器、代理或桌面通知的宿主事实
+
+换句话说，Windows 在本项目中只允许作为“宿主依赖说明”存在，不再作为“执行链路说明”存在。
+
+## 8. 文档统一原则
 
 后续应把下列旧叙述统一改成当前事实：
 
 - “根目录不是 git 仓库” -> 改为“根目录是唯一 git 仓库”
 - “PowerShell 是默认主 runner” -> 改为“WSL2 runner 是默认主执行链”
 - “Hermes 不适合直接长时间控制 Windows 命令” -> 改写为“Hermes 不适合直接承担主 runner，但适合在 WSL2 里做监督、分诊和归档”
+- “Windows 启动链仍可作为当前备用入口” -> 改为“Windows 专用执行链已退役，不再保留为当前事实”
 
 优先需要同步的文件：
 
@@ -295,7 +327,7 @@ OpenClaw 继续保留以下角色：
 - `HEALTH_LATEST_COMPLETE_TEST_FLOW_20260510.md`
 - `docs/archive/历史归档-HEALTH_HANDOFF.md`
 
-## 8. 分阶段落地顺序
+## 9. 分阶段落地顺序
 
 ### 8.1 Phase 1：统一事实源
 
@@ -304,10 +336,12 @@ OpenClaw 继续保留以下角色：
 - monorepo
 - WSL2 runner
 - Hermes / OpenClaw / Codex 边界
+- 去 Windows 噪音规则
 
 退出条件：
 
 - 不再存在“当前主执行链到底是 PowerShell 还是 WSL2”这种歧义。
+- 当前执行文档中不再保留 Windows 专用入口作为现行方案。
 
 ### 8.2 Phase 2：补治理骨架
 
@@ -343,7 +377,7 @@ OpenClaw 继续保留以下角色：
 - remote-check 读取
 - “停止本轮后停”之外的流程自愈能力
 
-## 9. 成功标准
+## 10. 成功标准
 
 当以下条件同时满足时，才算这套方法论已经真正适配到 Health 项目：
 
@@ -354,7 +388,7 @@ OpenClaw 继续保留以下角色：
 - push / 远端异常有分层证据，不再只能口头复盘。
 - OpenClaw / Hermes / Codex 不再在职责上相互覆盖。
 
-## 10. 推荐下一步
+## 11. 推荐下一步
 
 本设计确认后，第一批实现应只做治理层收口，不碰业务功能：
 
