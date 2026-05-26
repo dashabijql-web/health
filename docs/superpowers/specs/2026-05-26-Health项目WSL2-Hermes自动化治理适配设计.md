@@ -30,6 +30,8 @@ Health 项目当前真实状态与其并不完全一致。当前代码和脚本�
 
 - 把方法论文档中的“Windows 主链”改写为 Health 当前真实的 `WSL2-first` 主链。
 - 明确 Hermes 在本项目中的主线程 / 监督者定位，而不是把它与 OpenClaw 或 Codex 混用。
+- 明确 OpenClaw 在本项目中的外部入口 / 调度 / 通知适配角色，避免只把它写成模糊“可选层”。
+- 明确飞书在本项目中的通知与待发送队列角色，避免通知闭环缺位。
 - 统一 monorepo、runner、summary、handoff、issue、supervisor 的事实源。
 - 基于现有脚本能力，补出最缺的治理层资产，而不是重复造一套平行 runner。
 - 明确“去 Windows 噪音”规则：不再保留 Windows 专用启动入口、PowerShell 示例、`win-*` 命名脚本或双轨说明作为当前事实。
@@ -103,7 +105,8 @@ Health 项目当前真实状态与其并不完全一致。当前代码和脚本�
 | WSL2 runner | 启动服务、跑回归、生成 summary / issue 证据 | 根因仲裁、代码修复、业务结论裁决 |
 | Hermes | 主线程监督、读取 latest run、分诊、归档、单 issue 包、handoff | 长期托管本地服务、直接改业务代码、混多个根因 |
 | Codex | 读取单 issue、最小修改、验证、说明残余风险 | 长期无人值守编排、替代 Hermes 做全局调度 |
-| OpenClaw | 外部入口、通知、触发 runner、必要时多 agent 分发 | 直接承担主 runner、直接修改 Health 业务代码 |
+| OpenClaw | 外部入口、触发 runner、读取 latest 指针、必要时多 agent 分发、通知适配 | 直接承担主 runner、直接修改 Health 业务代码 |
+| 飞书 | 主通知通道、审批 / 提醒承载、待发送队列消费目标 | 直接触发本地长任务、替代 runner / Hermes 做流程判断 |
 
 ## 4. 方案比较
 
@@ -160,13 +163,14 @@ Health 项目当前真实状态与其并不完全一致。当前代码和脚本�
 
 ```text
 用户 / 外部入口
-  -> OpenClaw（可选）
+  -> OpenClaw（外部入口 / 编排适配）
   -> Hermes（主线程监督 / 分诊 / 归档）
   -> WSL2 runner（执行）
   -> summary / issue / backlog / handoff
   -> Codex（单 issue 修复）
   -> runner 复跑
   -> Hermes 更新归档
+  -> 飞书（开始 / 结束 / 阻塞 / 待处理 issue 通知）
 ```
 
 ### 5.1 WSL2 runner 是执行主链
@@ -215,6 +219,43 @@ OpenClaw 继续保留以下角色：
 
 但不应成为 Health 主测试稳定性的唯一依赖。
 
+更准确地说，OpenClaw 在 Health 当前态应是：
+
+- 任务入口适配器：接收“跑 standard / full / dual-db / latest summary / latest issue”这类外部请求
+- 编排适配器：把请求转成稳定的本地 runner 调用，而不是自己长时间手写命令
+- 读取层：优先读取 latest 指针、summary、handoff，而不是扫全量大日志
+- 分发层：只有在 runner 已完成且问题可切开时，才把多个独立问题分发给多个 Codex
+- 通知适配层：把最终状态转发给飞书或其他通知通道
+
+OpenClaw 不应承担：
+
+- 直接替代 `tests/run-health-loop.py` 或 `run-full-stack-local.py`
+- 在没有 runner 证据的情况下直接判断环境或业务正确性
+- 绕开 Hermes 直接混合分发多类根因
+
+### 5.4 飞书是主通知和待发送队列出口
+
+飞书在本项目中的定位不应是“执行入口”，而应是：
+
+- 主通知通道
+- 页面审批 / 人工确认的承载通道
+- 阻塞升级和恢复记录的同步通道
+- 本地待发送队列的首选消费目标
+
+建议飞书承载以下通知类型：
+
+- 开始通知：某轮 runner / supervisor 已开始
+- 结束通知：`passed` / `failed` / `blocked` / `skipped`
+- 阻塞通知：环境、凭据、远端链路、审批门阻塞
+- issue 通知：当前最高优先级单 issue
+- 恢复通知：阻塞恢复、补推成功、下一主线切换
+
+飞书不应承担：
+
+- 直接触发本地长任务
+- 直接读取本地大日志并做技术判断
+- 替代 Hermes / OpenClaw 做流程裁决
+
 ## 6. 需要新增或收口的治理资产
 
 ### 6.1 项目自动化映射
@@ -232,8 +273,10 @@ OpenClaw 继续保留以下角色：
 - latest run 指针位置
 - handoff 文档位置
 - 里程碑 / 阻塞记录目录
-- 通知 / 待发送队列位置
+- OpenClaw 入口、gateway / dashboard 约定与只读边界
+- 飞书通知目标、消息类型、失败降级和待发送队列位置
 - OpenClaw / Hermes / Codex 分工
+- 飞书 / OpenClaw / Hermes 的协作边界
 - 上下文硬切规则
 
 ### 6.2 结构化 handoff
@@ -274,6 +317,12 @@ OpenClaw 继续保留以下角色：
 
 这些目录可以先从 markdown 开始，不要求第一版就引入数据库或复杂索引。
 
+其中 `运行记录/待发送队列/` 的职责应明确为：
+
+- 当飞书主通知失败时，本地保留结构化待发送消息
+- 等网络或通道恢复后再补发
+- 不因为通知失败而丢失 run、blocker、issue 的关键状态
+
 ### 6.4 WSL2 版 remote-check
 
 当前仓库缺少方法论里的远端链路分层诊断脚本。
@@ -303,6 +352,7 @@ OpenClaw 继续保留以下角色：
 - 不在同一文档中并列保留“WSL2 方案”和“Windows 方案”两套现行说明。
 - 历史 Windows 流程如确有保留价值，只能进入 archive 文档，并明确标记为历史，不得伪装成当前可选路径。
 - 新增治理脚本统一使用 `bash`、`sh` 或 `python3` 入口，默认从 WSL2 调用。
+- OpenClaw、飞书、通知通道的接入说明也必须围绕 WSL2 主链来写，不能重新引入 Windows 执行链。
 - 只有在无法回避宿主依赖时，才允许出现 Windows 相关事实，例如：
   - `/mnt/c/...` 下的 token 文件路径
   - SQL Server 运行在宿主环境
@@ -318,6 +368,8 @@ OpenClaw 继续保留以下角色：
 - “PowerShell 是默认主 runner” -> 改为“WSL2 runner 是默认主执行链”
 - “Hermes 不适合直接长时间控制 Windows 命令” -> 改写为“Hermes 不适合直接承担主 runner，但适合在 WSL2 里做监督、分诊和归档”
 - “Windows 启动链仍可作为当前备用入口” -> 改为“Windows 专用执行链已退役，不再保留为当前事实”
+- “OpenClaw 直接跑 Health 长任务” -> 改为“OpenClaw 只触发稳定 runner 并读取 latest 指针”
+- “飞书只是可选备注” -> 改为“飞书是通知闭环与待发送队列出口之一，必须有明确角色”
 
 优先需要同步的文件：
 
@@ -336,6 +388,7 @@ OpenClaw 继续保留以下角色：
 - monorepo
 - WSL2 runner
 - Hermes / OpenClaw / Codex 边界
+- 飞书通知与待发送队列边界
 - 去 Windows 噪音规则
 
 退出条件：
@@ -395,6 +448,7 @@ OpenClaw 继续保留以下角色：
 1. 新增 `项目自动化映射.md`
 2. 新增 handoff 结构与 latest 指针
 3. 新增 WSL2 版 remote-check
-4. 同步修正文档中的 monorepo / WSL2 / Hermes 漂移事实
+4. 补 OpenClaw / 飞书 的映射、通知与待发送队列约定
+5. 同步修正文档中的 monorepo / WSL2 / Hermes / OpenClaw / 飞书 漂移事实
 
 不建议第一步就直接重写 runner 或扩写夜间 supervisor。
