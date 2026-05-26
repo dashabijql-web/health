@@ -1,83 +1,26 @@
 .tw-page {
-  padding: 20px;
-  min-height: 100%;
-  background: #061828;
+  min-height: calc(100vh - 50px);
+  background: transparent;
   color: #e8f4fd;
-  font-family: 'Microsoft YaHei', sans-serif;
-}
-
-// ─── 头部 ───────────────────────────────────────────────────────
-.tw-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-
-  .tw-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 20px;
-    font-weight: 700;
-    color: #00d4ff;
-    .tw-icon { font-size: 24px; }
-    .tw-subtitle {
-      font-size: 13px;
-      color: #6b8fae;
-      font-weight: 400;
-      margin-left: 8px;
-    }
-  }
-
-  .tw-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    .last-update { font-size: 12px; color: #4a7090; }
-    .refresh-btn { background: transparent; border-color: #1a4d8f; color: #00d4ff; }
-  }
+  flex-direction: column;
+  gap: 16px;
+  font-family: var(--font-body);
 }
 
-// ─── 汇总卡片 ────────────────────────────────────────────────────
-.tw-summary {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-bottom: 20px;
+.tw-hero {
+  margin-bottom: 0;
+}
 
-  .sum-card {
-    border-radius: 10px;
-    padding: 18px 20px;
-    border: 1px solid;
-    position: relative;
-    overflow: hidden;
+.tw-hero-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-    }
-
-    &.high   { background: rgba(255, 80, 80, 0.08); border-color: rgba(255, 80, 80, 0.3); &::before { background: #ff5050; } }
-    &.medium { background: rgba(255, 167, 38, 0.08); border-color: rgba(255, 167, 38, 0.3); &::before { background: #ffa726; } }
-    &.low    { background: rgba(255, 236, 64, 0.08); border-color: rgba(255, 236, 64, 0.3); &::before { background: #ffec40; } }
-    &.normal { background: rgba(0, 212, 255, 0.06); border-color: rgba(0, 212, 255, 0.2); &::before { background: #00d4ff; } }
-
-    .sum-num {
-      font-size: 36px;
-      font-weight: 700;
-      line-height: 1;
-      margin-bottom: 6px;
-    }
-    .sum-label { font-size: 14px; color: #c0d8ee; margin-bottom: 4px; }
-    .sum-desc  { font-size: 12px; color: #5a7590; }
-
-    &.high   .sum-num { color: #ff6b6b; }
-    &.medium .sum-num { color: #ffa726; }
-    &.low    .sum-num { color: #ffec40; }
-    &.normal .sum-num { color: #00d4ff; }
-  }
+.tw-summary-strip {
+  margin-top: -2px;
 }
 
 // ─── 筛选栏 ────────────────────────────────────────────────────
@@ -85,16 +28,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 16px;
-  padding: 12px 16px;
-  background: rgba(26, 77, 143, 0.15);
-  border-radius: 8px;
-  border: 1px solid rgba(26, 77, 143, 0.3);
+  flex-wrap: wrap;
 
   .filter-count {
     margin-left: auto;
     font-size: 13px;
     color: #6b8fae;
+    font-family: var(--font-mono);
   }
 
   :deep(.el-select .el-input__wrapper),
@@ -111,10 +51,10 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
 
   .empty-tip {
-    padding: 60px 0;
-    :deep(.el-empty__description) { color: #4a6f8c; }
+    padding: 18px 0 6px;
   }
 }
 
@@ -168,7 +108,7 @@
 
       .emp-name  { font-size: 16px; font-weight: 600; color: #e8f4fd; }
       .emp-dept  { font-size: 13px; color: #8ba6c8; }
-      .emp-code  { font-size: 12px; color: #4a7090; }
+      .emp-code  { font-size: 12px; color: #4a7090; font-family: var(--font-mono); }
     }
   }
 
@@ -204,5 +144,17 @@
       overflow: hidden;
       background: rgba(0,0,0,0.2);
     }
+  }
+}
+
+@media (max-width: 768px) {
+  .tw-filter .filter-count {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .emp-card .metric-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

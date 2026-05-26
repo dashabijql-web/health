@@ -227,7 +227,8 @@
           </button>
         </div>
         <div class="rw-dw-handled-tip" v-else>
-          ✅ 已处理{{ detailRow.handleNote ? '：' + detailRow.handleNote : '' }}
+          <span class="rw-dw-handled-badge">已处理</span>
+          <span v-if="detailRow.handleNote">：{{ detailRow.handleNote }}</span>
         </div>
 
         <!-- 体征曲线 -->
@@ -242,7 +243,7 @@
           </div>
 
           <div v-else-if="vitalEmpty" class="rw-dw-empty">
-            <div>📭</div><p>该时段暂无体征历史记录</p>
+            <div class="rw-dw-empty-mark">LOG</div><p>该时段暂无体征历史记录</p>
           </div>
 
           <template v-else>

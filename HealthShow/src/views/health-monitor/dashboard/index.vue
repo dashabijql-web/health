@@ -92,33 +92,61 @@
           <div class="dm-ph">
             <span class="dm-ph-bar"></span>
             <span class="dm-ph-title">态势概览</span>
-            <span class="dm-ph-sub">{{ periodLabel }}体征均值与部门对比</span>
+            <span class="dm-ph-sub">{{ periodLabel }}核心体征均值与健康状态</span>
           </div>
           <div class="dm-command-overview-body">
             <div class="dm-command-section dm-command-section--vitals">
               <div class="dm-command-section-hd">体征健康评估</div>
               <div class="dm-vitals-grid">
                 <div
-                  v-for="v in vitalCards"
+                  v-for="v in primaryVitalCards"
                   :key="v.label"
                   :class="['dm-vital-card', v.route ? 'is-clickable' : '']"
                   :style="{ '--vital-tone': v.color, '--vital-tone-soft': `${v.color}12`, '--vital-tone-border': `${v.color}33` }"
                   @click="v.route && $router.push(v.route)"
                 >
-                  <div class="dm-vital-icon">
-                    <el-icon :size="16"><component :is="v.icon" /></el-icon>
-                  </div>
-                  <div class="dm-vital-body">
-                    <div class="dm-vital-val">{{ v.val }}<span class="dm-vital-unit">{{ v.unit }}</span></div>
+                  <div class="dm-vital-head">
+                    <div class="dm-vital-icon">
+                      <el-icon :size="15"><component :is="v.icon" /></el-icon>
+                    </div>
                     <div class="dm-vital-label">{{ v.label }}</div>
                   </div>
-                  <div class="dm-vital-tag" :class="v.tagCls">{{ v.tag }}</div>
+                  <div class="dm-vital-reading">
+                    <span class="dm-vital-val">{{ v.val }}</span>
+                    <span v-if="v.unit" class="dm-vital-unit">{{ v.unit }}</span>
+                  </div>
+                  <div class="dm-vital-foot">
+                    <div class="dm-vital-tag" :class="v.tagCls">{{ v.tag }}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="dm-command-section dm-command-section--dept">
-              <div class="dm-command-section-hd">部门综合看板</div>
-              <div id="deptDataChart" class="dm-chart-fill"></div>
+              <div class="dm-vitals-supplemental">
+                <button
+                  v-for="v in supplementalVitalCards"
+                  :key="`${v.label}-supplemental`"
+                  type="button"
+                  :class="['dm-vitals-supplemental__item', v.route ? 'is-clickable' : '']"
+                  :style="{ '--vital-tone': v.color, '--vital-tone-soft': `${v.color}14`, '--vital-tone-border': `${v.color}2b` }"
+                  @click="v.route && $router.push(v.route)"
+                >
+                  <span class="dm-vitals-supplemental__label">{{ v.label }}</span>
+                  <span class="dm-vitals-supplemental__value">{{ v.val }}<em v-if="v.unit">{{ v.unit }}</em></span>
+                  <span :class="['dm-vitals-supplemental__tag', v.tagCls]">{{ v.tag }}</span>
+                </button>
+              </div>
+              <div class="dm-assess-bars">
+                <div
+                  v-for="item in healthAssess"
+                  :key="`health-assess-${item.label}`"
+                  class="dm-assess-row"
+                >
+                  <span class="dm-assess-label">{{ item.label }}</span>
+                  <span class="dm-assess-track">
+                    <span class="dm-assess-fill" :style="{ width: `${item.pct}%`, background: item.color }"></span>
+                  </span>
+                  <span class="dm-assess-tag" :style="{ color: item.color }">{{ item.tag }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -308,17 +336,23 @@ export default {
       return `${this.periodLabel}重点关注 ${pending} 条待处理预警、班前准入和趋势变化。`
     },
     headerMetricStripItems() {
-      return (this.headerKpis || []).map((item, index) => ({
-        key: `${item.label}-${index}`,
-        label: item.label,
-        value: item.valHtml ? String(item.valHtml).replace(/<[^>]+>/g, ' ') : String(item.val ?? '--'),
+        return (this.headerKpis || []).map((item, index) => ({
+          key: `${item.label}-${index}`,
+          label: item.label,
+          value: item.valHtml ? String(item.valHtml).replace(/<[^>]+>/g, ' ') : String(item.val ?? '--'),
         note: this.normalizeHeaderMetricNote(item.sub),
         tone: this.resolveHeaderMetricTone(item.cls),
-        clickable: Boolean(item.clickable),
-        route: item.route
-      }))
-    }
-  },
+          clickable: Boolean(item.clickable),
+          route: item.route
+        }))
+      },
+      primaryVitalCards() {
+        return (this.vitalCards || []).slice(0, 6)
+      },
+      supplementalVitalCards() {
+        return (this.vitalCards || []).slice(6)
+      }
+    },
 
   mounted() {
     mountDashboardPage(this)

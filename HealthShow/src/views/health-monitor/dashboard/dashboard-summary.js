@@ -52,28 +52,39 @@ export function buildDispatchPriority({ kpiUnhandledHigh, preShiftData, focusWar
   }
 }
 
-export function buildDispatchActionItems({ warningEvents, focusWarningEvents, kpiUnhandledHigh, periodLabel }) {
+export function buildDispatchActionItems({ warningEvents, focusWarningEvents, kpiUnhandledHigh, periodLabel, preShiftData }) {
   return [
     {
-      label: '待处理队列',
+      label: '高危待处理',
       value: `${(warningEvents || []).filter((e) => !e.handled).length} 条`,
-      sub: '进入预警中心完成闭环',
+      sub: '优先进入待处理列表，先完成高危预警闭环。',
       path: '/alert-management/notifications',
-      tone: kpiUnhandledHigh > 0 ? 'danger' : 'accent'
+      tone: kpiUnhandledHigh > 0 ? 'danger' : 'accent',
+      cta: '立即处置'
+    },
+    {
+      label: '禁止入井',
+      value: `${preShiftData?.failedCount || 0} 人`,
+      sub: '班前未通过人员需要复核准入原因和复检结果。',
+      path: '/health-monitor/mine-entry',
+      tone: 'warn',
+      cta: '查看准入'
     },
     {
       label: '重点人员',
       value: `${(focusWarningEvents || []).length} 人`,
-      sub: '进入人员画像继续核查',
+      sub: '进入人员画像继续核查持续异常和重点关注人员。',
       path: '/health-monitor/employee-archive',
-      tone: (focusWarningEvents || []).length > 0 ? 'warn' : 'muted'
+      tone: (focusWarningEvents || []).length > 0 ? 'primary' : 'muted',
+      cta: '查看画像'
     },
     {
       label: '趋势复盘',
       value: periodLabel,
-      sub: '去报表中心看趋势与部门对比',
+      sub: '去报表中心看趋势变化、部门对比和日历复盘。',
       path: '/health-monitor/report-center',
-      tone: 'accent'
+      tone: 'accent',
+      cta: '查看报表'
     }
   ]
 }

@@ -146,6 +146,7 @@ textarea {
   padding: clamp(16px, 1.8vw, 24px);
   background: transparent;
   min-height: calc(100vh - 50px);
+  padding-bottom: calc(clamp(16px, 1.8vw, 24px) + env(safe-area-inset-bottom));
 }
 
 .app-main {
@@ -189,4 +190,34 @@ textarea {
 
 .ui-mono {
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-mono='true'] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.el-loading-mask {
+  background: rgba(6, 17, 31, 0.72) !important;
+  backdrop-filter: blur(10px);
+}
+
+.el-loading-spinner .circular {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.el-loading-spinner .path {
+  stroke: var(--accent-primary) !important;
+}
+
+.el-loading-spinner .el-loading-text {
+  color: var(--text-primary) !important;
+  font-size: 12px !important;
+  letter-spacing: 0.04em;
+}
+
+.el-empty__description p {
+  color: var(--text-secondary) !important;
 }

@@ -150,10 +150,22 @@ tbody tr { cursor:pointer; transition:background .1s; &:hover { background:rgba(
   th:nth-child(4),
   th:nth-child(5),
   th:nth-child(6),
+  th:nth-child(7),
   td:nth-child(4),
   td:nth-child(5),
-  td:nth-child(6) {
+  td:nth-child(6),
+  td:nth-child(7) {
     display: none;
+  }
+
+  th:nth-child(1),
+  td:nth-child(1) {
+    width: 28px;
+  }
+
+  th:nth-child(3),
+  td:nth-child(3) {
+    width: 64px;
   }
 
   th,
@@ -171,7 +183,7 @@ tbody tr { cursor:pointer; transition:background .1s; &:hover { background:rgba(
   }
 
   .hb-v {
-    min-width: 20px;
+    min-width: 0;
     font-size: 8px;
   }
 

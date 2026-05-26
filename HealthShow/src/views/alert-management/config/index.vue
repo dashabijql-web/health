@@ -1,17 +1,24 @@
 <template>
-  <div class="page-container">
+  <div class="page-container alert-config-page">
     <WarningCenterNav />
 
-    <div class="page-header">
-      <div class="page-header-left">
-        <el-icon class="header-icon"><Setting /></el-icon>
-        <div>
-          <h1 class="main-title">预警阈值配置</h1>
-          <p class="sub-title">配置各项生理指标的正常、预警、危险范围</p>
+    <PageHeroHeader
+      class="config-hero"
+      variant="admin"
+      eyebrow="Alert Configuration"
+      title="预警阈值配置"
+      description="配置各项生理指标的正常、预警和危险范围，保证岗位风险切换时阈值逻辑可追踪。"
+    >
+      <template #meta>
+        <div class="config-hero-meta">
+          <span class="hm-status-chip">{{ currentRiskLabel }}</span>
+          <span class="hm-status-chip hm-status-chip--success">启用 {{ enabledCount }}</span>
+          <span class="hm-status-chip">当前时间 {{ currentTime }}</span>
         </div>
-      </div>
-      <div class="header-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-    </div>
+      </template>
+    </PageHeroHeader>
+
+    <MetricStrip class="config-summary-strip" :items="summaryStripItems" dense />
 
     <div class="risk-tabs">
       <button v-for="tab in riskTabs" :key="tab.value"
@@ -25,7 +32,7 @@
       <div v-for="item in filteredConfigList" :key="item.id" class="config-card" :class="{ 'is-disabled': !item.enabled }">
         <div class="card-top">
           <div class="card-info">
-            <span class="card-emoji">{{ getEmoji(item.configType) }}</span>
+            <span class="card-symbol">{{ getConfigSymbol(item.configType) }}</span>
             <div>
               <div class="card-name">{{ item.configName }}</div>
               <div class="card-unit">单位: {{ item.unit }}</div>
@@ -71,8 +78,11 @@
         </div>
       </div>
       <div v-if="!loading && filteredConfigList.length === 0" class="config-empty">
-        <el-icon size="36" color="#2d3561"><Setting /></el-icon>
-        <p>该风险等级暂无预警配置</p>
+        <PageEmptyState
+          eyebrow="Alert Config"
+          title="该风险等级暂无预警配置"
+          description="可以切换岗位风险标签，或稍后重试以继续核对阈值范围与启用状态。"
+        />
       </div>
     </div>
 
@@ -117,8 +127,11 @@
 
 <script setup>
 import WarningCenterNav from '@/components/WarningCenterNav.vue'
+import MetricStrip from '@/components/health-shell/MetricStrip.vue'
+import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
-import { Timer, Edit, Setting } from '@element-plus/icons-vue'
+import { Edit } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAlertConfigList, updateAlertConfig, toggleAlertConfig } from '@/api/alert-config'
 import { useClock } from '@/composables/useClock'
@@ -143,6 +156,18 @@ const filteredConfigList = computed(() => {
   })
 })
 
+const enabledCount = computed(() => configList.value.filter(item => item.enabled).length)
+const currentRiskLabel = computed(() => {
+  const currentTab = riskTabs.find(tab => tab.value === activeRisk.value)
+  return currentTab ? currentTab.label : '默认（无工种）'
+})
+const summaryStripItems = computed(() => [
+  { key: 'total', label: '配置总数', value: configList.value.length, note: '所有风险岗位阈值项', tone: 'primary' },
+  { key: 'enabled', label: '已启用', value: enabledCount.value, note: '当前处于生效状态', tone: 'success' },
+  { key: 'disabled', label: '已停用', value: Math.max(configList.value.length - enabledCount.value, 0), note: '已暂停触发告警', tone: 'warning' },
+  { key: 'scope', label: '当前视图', value: filteredConfigList.value.length, note: currentRiskLabel.value, tone: 'primary' }
+])
+
 const loadConfigList = async () => {
   loading.value = true
   try {
@@ -152,8 +177,13 @@ const loadConfigList = async () => {
   finally { loading.value = false }
 }
 
-const emojiMap = { 1: '\u2764\uFE0F', 2: '\uD83D\uDCA8', 3: '\uD83C\uDF21\uFE0F', 4: '\uD83E\uDEC0', 5: '\uD83E\uDE78' }
-const getEmoji = (type) => emojiMap[type] || '\u2764\uFE0F'
+const getConfigSymbol = (type) => ({
+  1: 'HR',
+  2: 'PRS',
+  3: 'TMP',
+  4: 'FAT',
+  5: 'O2'
+}[type] || 'CFG')
 
 const calcWidth = (item, from, to) => {
   const total = item.criticalHigh - item.criticalLow
@@ -219,19 +249,28 @@ onMounted(() => loadConfigList())
 
 .page-container {
   @include da-container;
-  height: calc(100vh - 50px);
-  min-height: unset;
+  min-height: calc(100vh - 50px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  gap: 16px;
   box-sizing: border-box;
 }
-.page-header { @include da-page-header; flex-shrink: 0; }
-.page-header-left { display: flex; align-items: center; gap: 14px; }
-.header-icon { font-size: 36px; color: $da-accent; background: rgba(0,212,255,.1); border-radius: 10px; padding: 8px; }
-.main-title { font-size: 22px; font-weight: 700; color: #fff; margin: 0 0 2px; letter-spacing: 1px; }
-.sub-title { font-size: 12px; color: $da-text-dim; margin: 0; }
-.header-time { display: flex; align-items: center; gap: 6px; font-size: 13px; color: $da-text-dim; background: $da-accent-dim; padding: 6px 14px; border-radius: 20px; border: 1px solid $da-accent-hover; }
+
+.config-hero {
+  margin-bottom: 0;
+}
+
+.config-hero-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.config-summary-strip {
+  margin-top: -2px;
+}
 
 .risk-tabs { display: flex; gap: 8px; margin-top: 16px; flex-shrink: 0; }
 .risk-tab { padding: 7px 18px; border-radius: 20px; border: 1px solid $da-border-light; background: $da-panel; color: $da-text-dim; font-size: 13px; cursor: pointer; transition: all .2s;
@@ -239,14 +278,28 @@ onMounted(() => loadConfigList())
   &.active { background: $da-accent-dim; border-color: $da-accent; color: $da-accent; font-weight: 600; }
 }
 .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; margin-top: 16px; flex: 1; min-height: 0; overflow-y: auto; align-content: start; }
-.config-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; padding: 50px 0; color: rgba(126,184,247,0.4); gap: 10px; p { font-size: 13px; margin: 0; } }
+.config-empty { grid-column: 1 / -1; min-height: 220px; }
 .config-card { background: $da-panel; border: 1px solid $da-border; border-left: 4px solid $da-success; border-radius: 10px; padding: 20px; transition: transform .25s, box-shadow .25s;
   &:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,212,255,.15); }
   &.is-disabled { border-left-color: #4a5578; opacity: .7; }
 }
 .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .card-info { display: flex; align-items: center; gap: 12px; }
-.card-emoji { font-size: 28px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: $da-panel-alt; border: 1px solid $da-border-light; border-radius: 12px; }
+.card-symbol {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, rgba(0,212,255,.12), rgba(13, 28, 48, .82));
+  border: 1px solid $da-border-light;
+  border-radius: 12px;
+  color: $da-accent;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
 .card-name { font-size: 16px; font-weight: 600; color: $da-text-bright; }
 .card-unit { font-size: 12px; color: $da-text-dim; margin-top: 2px; }
 

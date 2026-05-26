@@ -54,17 +54,8 @@ function forceDashboardScrollTop(vm) {
 }
 
 function resetDashboardScroll(vm) {
-  vm._scrollResetTimers?.forEach((timer) => window.clearTimeout(timer))
-  vm._scrollResetTimers = []
-
   vm.$nextTick(() => {
     forceDashboardScrollTop(vm)
-
-    const checkpoints = [0, 80, 240, 800, 1600]
-    checkpoints.forEach((delay) => {
-      const timer = window.setTimeout(() => forceDashboardScrollTop(vm), delay)
-      vm._scrollResetTimers.push(timer)
-    })
   })
 }
 
@@ -85,7 +76,6 @@ export function mountDashboardPage(vm) {
 
   vm.initTime()
   vm.fetchData().then(() => {
-    resetDashboardScroll(vm)
     vm.$nextTick(() => {
       vm.initHourDistChart()
       vm.initUnifiedTrendChart()
@@ -113,7 +103,6 @@ export function unmountDashboardPage(vm) {
   vm._kpiRefreshTask?.stop()
   vm._refreshTextTask?.stop()
   vm._resizeTask?.stop()
-  vm._scrollResetTimers?.forEach((timer) => window.clearTimeout(timer))
 
   detachDashboardListeners(vm)
 

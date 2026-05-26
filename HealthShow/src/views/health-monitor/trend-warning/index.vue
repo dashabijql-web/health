@@ -1,46 +1,31 @@
 <template>
-  <div class="tw-page">
-    <!-- 顶部标题 -->
-    <div class="tw-header">
-      <div class="tw-title">
-        <span class="tw-icon">📈</span>
-        <span>健康趋势预警</span>
-        <span class="tw-subtitle">基于近 14 天历史数据预测未来 7 天风险</span>
-      </div>
-      <div class="tw-actions">
-        <span class="last-update" v-if="lastUpdate">{{ lastUpdate }} 更新</span>
-        <el-button size="small" :loading="loading" @click="fetchData" class="refresh-btn">
-          <el-icon><Refresh /></el-icon> 刷新
-        </el-button>
-      </div>
-    </div>
+  <div class="tw-page hm-page-shell">
+    <PageHeroHeader
+      class="tw-hero"
+      variant="cockpit"
+      eyebrow="Trend Forecast"
+      title="健康趋势预警"
+      description="基于近 14 天历史数据预测未来 7 天风险，先锁定高风险人群，再按部门和姓名继续收窄。"
+    >
+      <template #meta>
+        <div class="tw-hero-meta">
+          <span class="hm-status-chip hm-status-chip--danger">高风险 {{ summary.highRisk || 0 }}</span>
+          <span class="hm-status-chip hm-status-chip--warning">中风险 {{ summary.mediumRisk || 0 }}</span>
+          <span class="hm-status-chip">最近更新 {{ lastUpdate || '--:--' }}</span>
+        </div>
+      </template>
+      <template #actions>
+        <button type="button" class="hm-action-btn" :disabled="loading" @click="fetchData">
+          <el-icon><Refresh /></el-icon>
+          {{ loading ? '刷新中...' : '刷新' }}
+        </button>
+      </template>
+    </PageHeroHeader>
 
-    <!-- 汇总卡片 -->
-    <div class="tw-summary" v-loading="loading">
-      <div class="sum-card high">
-        <div class="sum-num">{{ summary.highRisk || 0 }}</div>
-        <div class="sum-label">高风险人员</div>
-        <div class="sum-desc">≤3天可能超标</div>
-      </div>
-      <div class="sum-card medium">
-        <div class="sum-num">{{ summary.mediumRisk || 0 }}</div>
-        <div class="sum-label">中风险人员</div>
-        <div class="sum-desc">4~7天可能超标</div>
-      </div>
-      <div class="sum-card low">
-        <div class="sum-num">{{ summary.lowRisk || 0 }}</div>
-        <div class="sum-label">低风险人员</div>
-        <div class="sum-desc">趋势向危险方向</div>
-      </div>
-      <div class="sum-card normal">
-        <div class="sum-num">{{ summary.normal || 0 }}</div>
-        <div class="sum-label">正常人员</div>
-        <div class="sum-desc">暂无异常趋势</div>
-      </div>
-    </div>
+    <MetricStrip class="tw-summary-strip" :items="summaryStripItems" dense />
 
     <!-- 筛选栏 -->
-    <div class="tw-filter">
+    <div class="tw-filter hm-filter-toolbar">
       <el-select v-model="filterLevel" placeholder="风险等级" clearable size="small" style="width:120px">
         <el-option label="高风险" :value="3" />
         <el-option label="中风险" :value="2" />
@@ -56,7 +41,11 @@
     <!-- 风险列表 -->
     <div class="tw-body" v-loading="loading">
       <div v-if="!loading && filteredList.length === 0" class="empty-tip">
-        <el-empty description="暂无趋势风险人员" />
+        <PageEmptyState
+          eyebrow="Trend Queue"
+          title="暂无趋势风险人员"
+          description="可以切换部门、风险等级或姓名条件，继续排查预测队列。"
+        />
       </div>
 
       <div v-for="emp in pagedList" :key="emp.empCode" class="emp-card"
@@ -116,12 +105,15 @@
 
 <script>
 import { getTrendWarningPrediction } from '@/api/trend-warning'
+import MetricStrip from '@/components/health-shell/MetricStrip.vue'
+import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { Refresh } from '@element-plus/icons-vue'
 import SparkLine from './TrendSparkLine.js'
 
 export default {
   name: 'TrendWarning',
-  components: { Refresh, SparkLine },
+  components: { Refresh, SparkLine, PageHeroHeader, MetricStrip, PageEmptyState },
   data() {
     return {
       loading: false,
@@ -139,6 +131,14 @@ export default {
     deptOptions() {
       const s = new Set(this.list.map(e => e.deptName).filter(Boolean))
       return [...s].sort()
+    },
+    summaryStripItems() {
+      return [
+        { key: 'high', label: '高风险人员', value: this.summary.highRisk || 0, note: '≤3天可能超标', tone: 'danger' },
+        { key: 'medium', label: '中风险人员', value: this.summary.mediumRisk || 0, note: '4~7天可能超标', tone: 'warning' },
+        { key: 'low', label: '低风险人员', value: this.summary.lowRisk || 0, note: '趋势正在逼近阈值', tone: 'primary' },
+        { key: 'normal', label: '正常人员', value: this.summary.normal || 0, note: '暂无异常趋势', tone: 'success' }
+      ]
     },
     filteredList() {
       return this.list.filter(e => {

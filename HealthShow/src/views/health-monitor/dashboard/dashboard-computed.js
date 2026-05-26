@@ -49,7 +49,8 @@ export const dashboardComputed = {
       warningEvents: this.warningEvents,
       focusWarningEvents: this.focusWarningEvents,
       kpiUnhandledHigh: this.kpiUnhandledHigh,
-      periodLabel: this.periodLabel
+      periodLabel: this.periodLabel,
+      preShiftData: this.preShiftData
     })
   },
 

@@ -366,7 +366,7 @@
   }
 
   .el-table {
-    min-width: 1540px;
+    min-width: 1360px;
     --el-table-border-color: rgba(0, 212, 255, 0.2) !important;
     --el-table-row-hover-bg-color: rgba(0, 80, 180, 0.3) !important;
     --el-table-bg-color: transparent !important;
@@ -736,6 +736,37 @@
     background: transparent !important;
     padding: 16px 20px 20px !important;
     color: #a8c5e6 !important;
+  }
+}
+
+@media (max-width: 1600px) and (min-width: 769px) {
+  .rt-ph {
+    padding: 10px 12px;
+  }
+
+  .rt-ph-right {
+    gap: 6px;
+  }
+
+  .rt-inp {
+    width: 132px;
+  }
+
+  .rt-sel {
+    width: 116px;
+  }
+
+  .rt-sel-sm {
+    width: 98px;
+  }
+
+  .rt-btn {
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .rt-tbl-wrap .el-table {
+    min-width: 1280px;
   }
 }
 

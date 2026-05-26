@@ -166,6 +166,42 @@ export function useEmployeeProfilePage() {
     lastUpdate: lastUpdate.value,
     nextActionSummary: nextActionSummary.value
   }))
+  const trendStats = computed(() => [
+    {
+      key: 'avg-hr',
+      label: '7日均心率',
+      value: trend7.value.avgHr || '--',
+      unit: 'bpm',
+      tone: (vitals.value.heartRate && (vitals.value.heartRate < 60 || vitals.value.heartRate > 100)) ? 'danger' : 'accent'
+    },
+    {
+      key: 'avg-spo2',
+      label: '7日均血氧',
+      value: trend7.value.avgSpo2 || '--',
+      unit: '%',
+      tone: (vitals.value.bloodOxygen && vitals.value.bloodOxygen < 95) ? 'warning' : 'safe'
+    },
+    {
+      key: 'warn-7d',
+      label: '7日预警',
+      value: warn7Count.value,
+      unit: '次',
+      tone: warn7Count.value > 0 ? 'danger' : 'muted'
+    }
+  ])
+  const recentWarningSummary = computed(() => [
+    { key: 'pending', label: '未处理', value: pendCount.value, tone: pendCount.value > 0 ? 'danger' : 'safe' },
+    { key: 'warn7', label: '近7日', value: warn7Count.value, tone: warn7Count.value > 0 ? 'warning' : 'muted' },
+    { key: 'warn30', label: '近30日', value: warnCount.value, tone: warnCount.value > 0 ? 'accent' : 'muted' }
+  ])
+  const recentWarnings = computed(() => warnings.value.slice(0, 4))
+  const recentWarningFootnote = computed(() => {
+    if (!warnCount.value) return '当前没有近30日预警记录。'
+    if (warnCount.value > recentWarnings.value.length) {
+      return `已展示最近 ${recentWarnings.value.length} 条，更多记录可进入预警中心继续查看。`
+    }
+    return '当前按时间倒序展示最近预警。'
+  })
 
   function resetProfileState() {
     resetEmployeeProfileState({
@@ -280,6 +316,15 @@ export function useEmployeeProfilePage() {
     router.push(buildReportCenterRoute(empInfo.value))
   }
 
+  function goWarningCenter() {
+    router.push({
+      path: '/alert-management/records',
+      query: {
+        keyword: empInfo.value.empName || empInfo.value.empCode || ''
+      }
+    })
+  }
+
   onMounted(async () => {
     await loadProfilePage()
     startProfileRefresh()
@@ -331,6 +376,9 @@ export function useEmployeeProfilePage() {
     printAiReport,
     profileInsightLines,
     profileSummaryCards,
+    recentWarnings,
+    recentWarningSummary,
+    recentWarningFootnote,
     pressClass,
     refresh,
     riskItems,
@@ -346,6 +394,7 @@ export function useEmployeeProfilePage() {
       const t = v > 100 ? v / 10 : v
       return Math.min(100, Math.max(0, ((t - 35) / 5) * 100))
     },
+    trendStats,
     trendRef,
     vitalItems,
     vitals,
@@ -353,6 +402,7 @@ export function useEmployeeProfilePage() {
     warnCount,
     warnItems,
     warnings,
-    exercise
+    exercise,
+    goWarningCenter
   }
 }

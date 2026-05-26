@@ -44,3 +44,53 @@ test('visual audit groups issues by type for faster failure triage', () => {
   assert.match(auditSource, /routes:\s*Array\.from\(item\.routes\)\.sort\(\)/)
   assert.match(auditSource, /viewports:\s*Array\.from\(item\.viewports\)\.sort\(\)/)
 })
+
+test('visual audit supports a reliable windows desktop viewport matrix', () => {
+  assert.match(auditSource, /VISUAL_VIEWPORT_PROFILE/)
+  assert.match(auditSource, /windows-desktop-matrix/)
+  assert.match(auditSource, /slug:\s*'fhd-100'/)
+  assert.match(auditSource, /width:\s*1920,\s*height:\s*1080/)
+  assert.match(auditSource, /slug:\s*'fhd-125'/)
+  assert.match(auditSource, /width:\s*1536,\s*height:\s*864/)
+  assert.match(auditSource, /slug:\s*'fhd-150'/)
+  assert.match(auditSource, /width:\s*1280,\s*height:\s*720/)
+  assert.match(auditSource, /slug:\s*'qhd-100'/)
+  assert.match(auditSource, /width:\s*2560,\s*height:\s*1440/)
+  assert.match(auditSource, /slug:\s*'qhd-125'/)
+  assert.match(auditSource, /width:\s*2048,\s*height:\s*1152/)
+  assert.match(auditSource, /slug:\s*'qhd-150'/)
+  assert.match(auditSource, /width:\s*1707,\s*height:\s*960/)
+})
+
+test('visual audit validates runtime viewport metrics and non-fullpage png dimensions', () => {
+  assert.match(auditSource, /window\.innerWidth/)
+  assert.match(auditSource, /window\.innerHeight/)
+  assert.match(auditSource, /window\.devicePixelRatio/)
+  assert.match(auditSource, /visualViewport\?\.scale/)
+  assert.match(auditSource, /readPngSize|pngDimensions|screenshotDimensions/)
+  assert.match(auditSource, /page\.screenshot\(\{[\s\S]*fullPage:\s*false/)
+  assert.match(auditSource, /viewport_mismatch/)
+  assert.match(auditSource, /device_pixel_ratio_mismatch/)
+  assert.match(auditSource, /screenshot_size_mismatch/)
+})
+
+test('visual audit supports optional scroll evidence capture for page and inner scroll containers', () => {
+  assert.match(auditSource, /VISUAL_SCROLL_AUDIT/)
+  assert.match(auditSource, /scrollArtifacts/)
+  assert.match(auditSource, /pageScrollStates/)
+  assert.match(auditSource, /scrollContainers/)
+  assert.match(auditSource, /scroll-mid|page-mid/)
+  assert.match(auditSource, /scroll-bottom|page-bottom/)
+  assert.match(auditSource, /container-top|scroll-container-top/)
+  assert.match(auditSource, /container-bottom|scroll-container-bottom/)
+  assert.match(auditSource, /largest scroll container|scrollable container/i)
+})
+
+test('package scripts expose a windows desktop scroll audit entrypoint', () => {
+  const packagePath = path.join(ROOT, 'package.json')
+  const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
+  assert.equal(
+    pkg.scripts['audit:visual:windows-desktop-scroll'],
+    'node scripts/with-env.mjs VISUAL_VIEWPORT_PROFILE=windows-desktop-matrix VISUAL_SCROLL_AUDIT=1 -- npm run audit:visual'
+  )
+})

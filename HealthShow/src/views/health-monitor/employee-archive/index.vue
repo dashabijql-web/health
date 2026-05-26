@@ -1,18 +1,39 @@
 <template>
-  <div class="ea-page">
-    <!-- 顶部标题栏 -->
-    <div class="ea-header">
-      <div class="ea-title">
-        <el-icon class="ea-title-icon"><UserFilled /></el-icon>
-        职工健康档案库
-      </div>
-      <div class="ea-header-right">
-        <span class="ea-total">共 <b>{{ loading ? '--' : filtered.length }}</b> 名员工</span>
-      </div>
-    </div>
+  <div class="ea-page hm-page-shell">
+    <PageHeroHeader
+      class="ea-hero"
+      variant="cockpit"
+      eyebrow="Employee Archive"
+      title="职工健康档案库"
+      description="集中维护职工健康档案、画像入口与 AI 诊断报告，按姓名、工号和部门快速收敛到目标员工。"
+    >
+      <template #meta>
+        <div class="ea-hero-meta">
+          <span class="hm-status-chip hm-status-chip--success">检索结果 {{ loading ? '--' : filtered.length }} 人</span>
+          <span class="hm-status-chip">{{ deptList.length }} 个部门</span>
+          <span v-if="selectedDept" class="hm-status-chip hm-status-chip--warning">当前部门 {{ selectedDept }}</span>
+        </div>
+      </template>
+      <template #actions>
+        <button
+          v-if="selectedDept"
+          type="button"
+          class="hm-action-btn hm-action-btn--success"
+          @click="openDeptReport"
+          title="生成该部门AI健康报告"
+        >
+          <el-icon><Document /></el-icon>
+          AI 部门报告
+        </button>
+        <button type="button" class="hm-action-btn hm-action-btn--primary" @click="handleAdd">
+          <el-icon><Plus /></el-icon>
+          新增职工
+        </button>
+      </template>
+    </PageHeroHeader>
 
     <!-- 搜索栏 -->
-    <div class="ea-search-bar">
+    <div class="ea-search-bar hm-filter-toolbar">
       <el-input v-model="keyword" placeholder="输入姓名或工号搜索" class="ea-input" clearable @clear="keyword = ''">
         <template #prefix><el-icon><Search /></el-icon></template>
       </el-input>
@@ -20,10 +41,9 @@
         <el-option v-for="d in deptList" :key="d" :label="d" :value="d" />
       </el-select>
       <button class="ea-reset-btn" @click="keyword = ''; selectedDept = ''">重置</button>
-      <button class="ea-dept-report-btn" v-if="selectedDept" @click="openDeptReport" title="生成该部门AI健康报告">
-        <el-icon><Document /></el-icon> AI部门报告
-      </button>
-      <button class="ea-add-btn" @click="handleAdd"><el-icon><Plus /></el-icon> 新增职工</button>
+      <div class="ea-search-meta">
+        <span class="ea-total">共 <b>{{ loading ? '--' : filtered.length }}</b> 名员工</span>
+      </div>
     </div>
 
     <!-- 员工卡片网格 -->
@@ -225,7 +245,8 @@
 </template>
 
 <script setup>
-import { UserFilled, Search, Plus, Edit, Delete, Monitor, Document } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Monitor, Document } from '@element-plus/icons-vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
 import { useEmployeeArchivePage } from './use-employee-archive-page'
 

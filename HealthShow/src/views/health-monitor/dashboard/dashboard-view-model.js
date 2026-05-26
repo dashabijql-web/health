@@ -111,13 +111,13 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
   const b = bodyIndicators || {}
   return [
     {
-      label: '人均心率', val: b.avgHeartRate || '--', unit: 'bpm', color: '#00d4ff', icon: 'Monitor',
+      label: '心率均值', val: b.avgHeartRate || '--', unit: 'bpm', color: '#00d4ff', icon: 'Monitor',
       route: '/health-monitor/heart-rate',
       tag: !b.avgHeartRate ? '-' : b.avgHeartRate > 100 ? '偏快' : b.avgHeartRate < 55 ? '偏慢' : '正常',
       tagCls: !b.avgHeartRate ? '' : (b.avgHeartRate > 100 || b.avgHeartRate < 55) ? 'vtag-warn' : 'vtag-ok'
     },
     {
-      label: '人均血氧', val: b.avgBloodOxygen || '--', unit: '%', color: '#67C23A', icon: 'FirstAidKit',
+      label: '血氧均值', val: b.avgBloodOxygen || '--', unit: '%', color: '#67C23A', icon: 'FirstAidKit',
       route: '/health-monitor/blood-oxygen',
       tag: !b.avgBloodOxygen ? '-' : b.avgBloodOxygen < 90 ? '过低' : b.avgBloodOxygen < 95 ? '偏低' : '良好',
       tagCls: !b.avgBloodOxygen ? '' : b.avgBloodOxygen < 90 ? 'vtag-danger' : b.avgBloodOxygen < 95 ? 'vtag-warn' : 'vtag-ok'
@@ -129,17 +129,17 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
       tagCls: !b.avgPressure ? '' : b.avgPressure > 80 ? 'vtag-danger' : b.avgPressure > 60 ? 'vtag-warn' : 'vtag-ok'
     },
     {
-      label: '人均体温', val: b.avgTemperature || '--', unit: '°C', color: '#00c8c8', icon: 'Sunny',
+      label: '体温均值', val: b.avgTemperature || '--', unit: '°C', color: '#00c8c8', icon: 'Sunny',
       tag: !b.avgTemperature ? '-' : b.avgTemperature > 37.5 ? '偏高' : b.avgTemperature < 36 ? '偏低' : '正常',
       tagCls: !b.avgTemperature ? '' : (b.avgTemperature > 37.5 || b.avgTemperature < 36) ? 'vtag-warn' : 'vtag-ok'
     },
     {
-      label: '人均步数', val: b.avgSteps ? Math.round(b.avgSteps / 1000 * 10) / 10 + 'k' : '--', unit: '', color: '#F56C6C', icon: 'Promotion',
+      label: '日均步数', val: b.avgSteps ? Math.round(b.avgSteps / 1000 * 10) / 10 + 'k' : '--', unit: '', color: '#F56C6C', icon: 'Promotion',
       tag: !b.avgSteps ? '-' : b.avgSteps < 5000 ? '偏少' : b.avgSteps > 12000 ? '充足' : '达标',
       tagCls: !b.avgSteps ? '' : b.avgSteps < 5000 ? 'vtag-warn' : 'vtag-ok'
     },
     {
-      label: '收缩压(高压)',
+      label: '高压均值',
       val: b.avgBloodPressureHigh ? Math.round(b.avgBloodPressureHigh) : '--',
       unit: 'mmHg',
       color: '#f87171',
@@ -154,7 +154,7 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
         : 'vtag-warn'
     },
     {
-      label: '舒张压(低压)',
+      label: '低压均值',
       val: b.avgBloodPressureLow ? Math.round(b.avgBloodPressureLow) : '--',
       unit: 'mmHg',
       color: '#36d399',
@@ -169,7 +169,7 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
         : 'vtag-warn'
     },
     {
-      label: '人均卡路里',
+      label: '热量均值',
       val: b.avgCalories ? Math.round(b.avgCalories) : '--',
       unit: 'kcal',
       color: '#FFB84D',
@@ -191,7 +191,7 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
         : 0
       const fatigue = Math.min(100, Math.round(pressure * 0.4 + hrDev * 0.3 + warnRate * 0.3))
       return {
-        label: '全矿疲劳指数', val: pressure > 0 ? fatigue : '--', unit: '',
+        label: '疲劳指数', val: pressure > 0 ? fatigue : '--', unit: '',
         color: fatigue >= 70 ? '#ff5252' : fatigue >= 45 ? '#ffd200' : '#38ef7d',
         icon: 'Cpu',
         tag: fatigue >= 70 ? '高疲劳' : fatigue >= 45 ? '中疲劳' : pressure > 0 ? '良好' : '-',

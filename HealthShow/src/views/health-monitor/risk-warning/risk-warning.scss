@@ -232,6 +232,12 @@
   border: 1px solid rgba(56, 239, 125, 0.2);
   border-radius: 8px; color: #38ef7d; font-size: 13px;
 }
+.rw-dw-handled-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:56px; min-height:24px; padding:0 10px; margin-right:6px;
+  border-radius:999px; border:1px solid rgba(56,239,125,.24);
+  background:rgba(56,239,125,.1); color:#8ff0b8; font-size:12px; font-weight:700;
+}
 
 /* Drawer body */
 .rw-dw-wrap { padding:16px 20px; display:flex; flex-direction:column; gap:14px; height:100%; overflow-y:auto;
@@ -265,6 +271,11 @@
 @keyframes rwSpin { to{transform:rotate(360deg)} }
 .rw-dw-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:8px; color:#6a88ab; font-size:20px;
   p { font-size:12px; margin:0; } }
+.rw-dw-empty-mark {
+  display:grid; place-items:center; width:54px; height:54px;
+  border-radius:18px; border:1px solid rgba(0,212,255,.18); background:rgba(0,212,255,.08);
+  color:#bfe6ff; font-family:var(--font-mono); font-size:12px; font-weight:700; letter-spacing:.08em;
+}
 
 /* Summary */
 .rw-dw-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
@@ -275,6 +286,16 @@
 
 /* ══ 列表布局 ══ */
 .rw-list-wrap  { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+
+@media (max-width: 1600px) and (min-width: 769px) {
+  .rw-aside-top {
+    height: 165px;
+  }
+
+  .rw-aside-bot .rw-pc > div {
+    min-height: 160px;
+  }
+}
 
 
 /* Round 05: mobile warning cards avoid dense table label/value collisions */

@@ -46,6 +46,8 @@
     "audit:perf:old": "node scripts/with-env.mjs API_DATA_SOURCE=old API_EXPECT_NON_EMPTY=1 -- npm run audit:perf",
     "audit:perf:new": "node scripts/with-env.mjs API_DATA_SOURCE=new API_EXPECT_NON_EMPTY=0 -- npm run audit:perf",
     "audit:visual": "node tests/visual/page-layout-audit.mjs",
+    "audit:visual:windows-desktop": "node scripts/with-env.mjs VISUAL_VIEWPORT_PROFILE=windows-desktop-matrix -- npm run audit:visual",
+    "audit:visual:windows-desktop-scroll": "node scripts/with-env.mjs VISUAL_VIEWPORT_PROFILE=windows-desktop-matrix VISUAL_SCROLL_AUDIT=1 -- npm run audit:visual",
     "audit:quality:code": "node tests/quality/code-health.mjs",
     "audit:product": "node tests/product/ux-competitor-benchmark.mjs",
     "test:perf": "node scripts/health-test-runner.mjs perf",

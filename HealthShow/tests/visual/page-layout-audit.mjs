@@ -11,6 +11,9 @@ import {
 
 const BASE_URL = await resolveFrontendBaseUrl();
 const API_DATA_SOURCE = process.env.API_DATA_SOURCE || 'old';
+const VISUAL_VIEWPORT_PROFILE = process.env.VISUAL_VIEWPORT_PROFILE || 'default';
+const VISUAL_SCROLL_AUDIT = process.env.VISUAL_SCROLL_AUDIT === '1';
+const VISUAL_SCROLL_CONTAINER_LIMIT = Number.parseInt(process.env.VISUAL_SCROLL_CONTAINER_LIMIT || '1', 10);
 const RUN_ID = new Date().toISOString().replace(/[:.]/g, '-');
 const ARTIFACT_DIR = path.resolve(process.cwd(), 'tests', 'visual', 'artifacts', RUN_ID);
 const ARTIFACT_RETENTION = Number.parseInt(process.env.VISUAL_ARTIFACT_RETENTION || '8', 10);
@@ -30,14 +33,28 @@ const DEFAULT_ROUTES = [
   { slug: 'ai-chat', path: '/ai-chat/index' }
 ];
 
-const VIEWPORTS = [
-  { slug: 'desktop-1440', width: 1440, height: 900, deviceScaleFactor: 1 },
-  // 2560x1600 @ 150% Windows scaling roughly maps to a 1707x1067 CSS viewport.
-  { slug: 'desktop-1707', width: 1707, height: 1067, deviceScaleFactor: 1 },
-  { slug: 'desktop-1920', width: 1920, height: 1080, deviceScaleFactor: 1 },
-  { slug: 'mobile-390', width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
-  { slug: 'mobile-414', width: 414, height: 896, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
-];
+const VIEWPORT_PROFILES = {
+  default: [
+    { slug: 'desktop-1440', width: 1440, height: 900, deviceScaleFactor: 1, expectVisualViewportScale: true },
+    // 2560x1600 @ 150% Windows scaling roughly maps to a 1707x1067 CSS viewport.
+    { slug: 'desktop-1707', width: 1707, height: 1067, deviceScaleFactor: 1, expectVisualViewportScale: true },
+    { slug: 'desktop-1920', width: 1920, height: 1080, deviceScaleFactor: 1, expectVisualViewportScale: true },
+    { slug: 'mobile-390', width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    { slug: 'mobile-414', width: 414, height: 896, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
+  ],
+  'windows-desktop-matrix': [
+    // 1920x1080 at 100% / 125% / 150% scaling -> 1920x1080 / 1536x864 / 1280x720 CSS viewport.
+    { slug: 'fhd-100', width: 1920, height: 1080, deviceScaleFactor: 1, expectVisualViewportScale: true },
+    { slug: 'fhd-125', width: 1536, height: 864, deviceScaleFactor: 1, expectVisualViewportScale: true },
+    { slug: 'fhd-150', width: 1280, height: 720, deviceScaleFactor: 1, expectVisualViewportScale: true },
+    // 2560x1440 at 100% / 125% / 150% scaling -> 2560x1440 / 2048x1152 / 1707x960 CSS viewport.
+    { slug: 'qhd-100', width: 2560, height: 1440, deviceScaleFactor: 1, expectVisualViewportScale: true },
+    { slug: 'qhd-125', width: 2048, height: 1152, deviceScaleFactor: 1, expectVisualViewportScale: true },
+    { slug: 'qhd-150', width: 1707, height: 960, deviceScaleFactor: 1, expectVisualViewportScale: true }
+  ]
+};
+
+const VIEWPORTS = VIEWPORT_PROFILES[VISUAL_VIEWPORT_PROFILE] || VIEWPORT_PROFILES.default;
 
 function selectedRoutes() {
   const filter = new Set(
@@ -54,9 +71,11 @@ const summary = {
   runId: RUN_ID,
   baseUrl: BASE_URL,
   dataSource: API_DATA_SOURCE,
+  viewportProfile: VISUAL_VIEWPORT_PROFILE,
+  scrollAudit: VISUAL_SCROLL_AUDIT,
   startedAt: new Date().toISOString(),
   routes: selectedRoutes().map((route) => route.slug),
-  viewports: VIEWPORTS.map(({ slug, width, height }) => ({ slug, width, height })),
+  viewports: VIEWPORTS.map(({ slug, width, height, deviceScaleFactor }) => ({ slug, width, height, deviceScaleFactor })),
   results: [],
   issues: []
 };
@@ -68,6 +87,17 @@ function issue(route, viewport, type, message, extra = {}) {
   const item = { route: route.slug, viewport: viewport.slug, type, message: truncate(message, 300), ...extra };
   summary.issues.push(item);
   return item;
+}
+
+function readPngSize(buffer) {
+  const pngSignature = '89504e470d0a1a0a';
+  if (buffer.subarray(0, 8).toString('hex') !== pngSignature) {
+    throw new Error('screenshot is not a PNG file');
+  }
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20)
+  };
 }
 
 async function loginViaApi(context, page) {
@@ -267,12 +297,237 @@ async function collectLayoutIssues(page, route, viewport) {
       });
     });
 
+    if (routeSlug === 'dashboard' && vw >= 1200) {
+      const vitalCards = Array.from(document.querySelectorAll('.dm-vital-card'))
+        .filter(isVisible)
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          const labelRect = element.querySelector('.dm-vital-label')?.getBoundingClientRect() ?? null;
+          const valueRect = element.querySelector('.dm-vital-val')?.getBoundingClientRect() ?? null;
+          return {
+            text: (element.innerText || element.textContent || '').replace(/\s+/g, ' ').trim(),
+            width: rect.width,
+            labelWidth: labelRect?.width ?? 0,
+            labelHeight: labelRect?.height ?? 0,
+            valueWidth: valueRect?.width ?? 0,
+            valueHeight: valueRect?.height ?? 0
+          };
+        });
+
+      const collapsedVitalCards = vitalCards.filter((item) =>
+        item.width < 108
+        || (item.labelWidth > 0 && item.labelWidth < 28 && item.labelHeight > 34)
+        || (item.valueWidth > 0 && item.valueWidth < 24 && item.valueHeight > 18)
+      );
+
+      collapsedVitalCards.slice(0, 3).forEach((item) => {
+        issues.push({
+          type: 'dashboard_vital_card_collapsed',
+          message: `vital card is too narrow for desktop reading: "${item.text}" (${Math.round(item.width)}px wide, label ${Math.round(item.labelWidth)}x${Math.round(item.labelHeight)}, value ${Math.round(item.valueWidth)}x${Math.round(item.valueHeight)})`
+        });
+      });
+    }
+
     return issues.map((entry) => ({ route: routeSlug, viewport: viewportSlug, ...entry }));
   }, { routeSlug: route.slug, viewportSlug: viewport.slug });
 }
 
+async function collectRenderMetrics(page) {
+  return await page.evaluate(() => ({
+    innerWidth: window.innerWidth,
+    innerHeight: window.innerHeight,
+    devicePixelRatio: window.devicePixelRatio,
+    visualViewportScale: window.visualViewport?.scale ?? null
+  }));
+}
+
+async function captureScrollEvidence(page, route, viewport) {
+  const scrollArtifacts = { pageScrollStates: [], scrollContainers: [] };
+
+  const pageHost = await page.evaluate(() => {
+    const candidates = [
+      document.scrollingElement,
+      document.querySelector('.app-main'),
+      document.querySelector('.main-container'),
+      document.querySelector('.app-container'),
+      document.querySelector('.dm-outer'),
+      document.querySelector('.rw-root'),
+      document.querySelector('.ep-page'),
+      document.querySelector('.ea-page')
+    ].filter(Boolean);
+
+    const seen = new Set();
+    const isScrollable = (element) => {
+      if (!element) return false;
+      const rect = element.getBoundingClientRect();
+      return element.scrollHeight > element.clientHeight + 80
+        && element.clientHeight > 260
+        && rect.width > window.innerWidth * 0.5;
+    };
+
+    for (const candidate of candidates) {
+      if (seen.has(candidate)) continue;
+      seen.add(candidate);
+      if (!isScrollable(candidate)) continue;
+      candidate.setAttribute('data-visual-page-scroll-host', '1');
+      return {
+        selector: '[data-visual-page-scroll-host="1"]',
+        maxScrollTop: Math.max(0, candidate.scrollHeight - candidate.clientHeight),
+        clientHeight: candidate.clientHeight
+      };
+    }
+
+    return null;
+  });
+
+  if (pageHost?.maxScrollTop > 80) {
+    const scrollStops = [
+      { slug: 'page-mid', ratio: 0.5 },
+      { slug: 'page-bottom', ratio: 1 }
+    ];
+    for (const stop of scrollStops) {
+      const nextTop = Math.round(pageHost.maxScrollTop * stop.ratio);
+      await page.evaluate(({ selector, nextTop }) => {
+        const host = document.querySelector(selector);
+        if (host) host.scrollTop = nextTop;
+      }, { selector: pageHost.selector, nextTop });
+      await page.waitForTimeout(250);
+      const screenshotName = `${route.slug}-${viewport.slug}-${stop.slug}.png`;
+      const screenshotPath = path.join(ARTIFACT_DIR, screenshotName);
+      await page.screenshot({ path: screenshotPath, fullPage: false });
+      scrollArtifacts.pageScrollStates.push({
+        slug: stop.slug,
+        scrollTop: nextTop,
+        screenshot: screenshotPath
+      });
+    }
+
+    await page.evaluate(({ selector }) => {
+      const host = document.querySelector(selector);
+      if (host) host.scrollTop = 0;
+    }, { selector: pageHost.selector });
+    await page.waitForTimeout(120);
+  }
+
+  const scrollContainers = await page.evaluate((limit) => {
+    const previous = Array.from(document.querySelectorAll('[data-visual-scroll-capture-id]'));
+    previous.forEach((element) => element.removeAttribute('data-visual-scroll-capture-id'));
+
+    const isVisible = (element) => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.visibility !== 'hidden'
+        && style.display !== 'none'
+        && Number(style.opacity) !== 0
+        && rect.width > 0
+        && rect.height > 0;
+    };
+
+    const describe = (element) => {
+      const testId = element.getAttribute('data-testid');
+      if (testId) return `[data-testid="${testId}"]`;
+      if (element.id) return `#${element.id}`;
+      const classNames = Array.from(element.classList || []).filter(Boolean).slice(0, 2);
+      if (classNames.length) return `.${classNames.join('.')}`;
+      return element.tagName.toLowerCase();
+    };
+
+    const candidates = Array.from(document.body.querySelectorAll('*'))
+      .filter(isVisible)
+      .map((element) => {
+        const style = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        const canScrollY = ['auto', 'scroll'].includes(style.overflowY) || ['auto', 'scroll'].includes(style.overflow);
+        return {
+          element,
+          rect,
+          area: rect.width * rect.height,
+          canScrollY,
+          scrollHeight: element.scrollHeight,
+          clientHeight: element.clientHeight
+        };
+      })
+      .filter((item) =>
+        item.canScrollY
+        && item.scrollHeight > item.clientHeight + 80
+        && item.clientHeight >= 120
+        && item.rect.width >= 180
+        && item.area >= 60000
+        && !(item.rect.height > window.innerHeight * 0.8 && item.rect.width > window.innerWidth * 0.8)
+      )
+      .sort((a, b) => b.area - a.area);
+
+    const selected = [];
+    for (const item of candidates) {
+      if (selected.some((current) => current.element.contains(item.element) || item.element.contains(current.element))) continue;
+      selected.push(item);
+      if (selected.length >= limit) break;
+    }
+
+    return selected.map((item, index) => {
+      const id = `scroll-${index + 1}`;
+      item.element.setAttribute('data-visual-scroll-capture-id', id);
+      return {
+        id,
+        selector: `[data-visual-scroll-capture-id="${id}"]`,
+        descriptor: describe(item.element),
+        maxScrollTop: Math.max(0, item.element.scrollHeight - item.element.clientHeight)
+      };
+    });
+  }, VISUAL_SCROLL_CONTAINER_LIMIT);
+
+  for (const container of scrollContainers) {
+    const locator = page.locator(container.selector);
+    if ((await locator.count()) !== 1) continue;
+
+    await page.evaluate(({ selector }) => {
+      const element = document.querySelector(selector);
+      if (element) element.scrollTop = 0;
+    }, { selector: container.selector });
+    await page.waitForTimeout(150);
+
+    const topName = `${route.slug}-${viewport.slug}-${container.id}-container-top.png`;
+    const topPath = path.join(ARTIFACT_DIR, topName);
+    await locator.screenshot({ path: topPath });
+
+    await page.evaluate(({ selector, nextTop }) => {
+      const element = document.querySelector(selector);
+      if (element) element.scrollTop = nextTop;
+    }, { selector: container.selector, nextTop: container.maxScrollTop });
+    await page.waitForTimeout(180);
+
+    const bottomName = `${route.slug}-${viewport.slug}-${container.id}-container-bottom.png`;
+    const bottomPath = path.join(ARTIFACT_DIR, bottomName);
+    await locator.screenshot({ path: bottomPath });
+
+    scrollArtifacts.scrollContainers.push({
+      descriptor: container.descriptor,
+      topScreenshot: topPath,
+      bottomScreenshot: bottomPath
+    });
+
+    await page.evaluate(({ selector }) => {
+      const element = document.querySelector(selector);
+      if (element) element.scrollTop = 0;
+    }, { selector: container.selector });
+  }
+
+  return scrollArtifacts;
+}
+
 async function auditRoute(browser, route, viewport) {
-  const contextOptions = viewport.isMobile ? { ...devices['iPhone 13'], viewport: { width: viewport.width, height: viewport.height } } : { viewport };
+  const contextOptions = viewport.isMobile
+    ? {
+        ...devices['iPhone 13'],
+        viewport: { width: viewport.width, height: viewport.height },
+        deviceScaleFactor: viewport.deviceScaleFactor ?? 2,
+        isMobile: true,
+        hasTouch: true
+      }
+    : {
+        viewport: { width: viewport.width, height: viewport.height },
+        deviceScaleFactor: viewport.deviceScaleFactor ?? 1
+      };
   const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
   const result = { route: route.slug, path: route.path, viewport: viewport.slug, status: 'passed', screenshot: null, issues: [] };
@@ -291,13 +546,61 @@ async function auditRoute(browser, route, viewport) {
     if (result.finalHash.includes('/404')) {
       result.issues.push(issue(route, viewport, 'not_found', 'route rendered 404'));
     }
+    result.renderMetrics = await collectRenderMetrics(page);
+    if (result.renderMetrics.innerWidth !== viewport.width || result.renderMetrics.innerHeight !== viewport.height) {
+      result.issues.push(issue(
+        route,
+        viewport,
+        'viewport_mismatch',
+        `runtime viewport ${result.renderMetrics.innerWidth}x${result.renderMetrics.innerHeight} does not match expected ${viewport.width}x${viewport.height}`,
+        { renderMetrics: result.renderMetrics }
+      ));
+    }
+    const expectedDpr = viewport.deviceScaleFactor ?? 1;
+    if (result.renderMetrics.devicePixelRatio !== expectedDpr) {
+      result.issues.push(issue(
+        route,
+        viewport,
+        'device_pixel_ratio_mismatch',
+        `devicePixelRatio ${result.renderMetrics.devicePixelRatio} does not match expected ${expectedDpr}`,
+        { renderMetrics: result.renderMetrics }
+      ));
+    }
+    if (viewport.expectVisualViewportScale && result.renderMetrics.visualViewportScale !== null && result.renderMetrics.visualViewportScale !== 1) {
+      result.issues.push(issue(
+        route,
+        viewport,
+        'visual_viewport_scale_mismatch',
+        `visualViewport.scale ${result.renderMetrics.visualViewportScale} should be 1 or null for reliable fixed-size desktop captures`,
+        { renderMetrics: result.renderMetrics }
+      ));
+    }
     const layoutIssues = await collectLayoutIssues(page, route, viewport);
     for (const found of layoutIssues) {
       result.issues.push(issue(route, viewport, found.type, found.message, found));
     }
     const screenshotName = `${route.slug}-${viewport.slug}.png`;
     result.screenshot = path.join(ARTIFACT_DIR, screenshotName);
-    await page.screenshot({ path: result.screenshot, fullPage: true });
+    await page.screenshot({ path: result.screenshot, fullPage: false });
+    const screenshotBuffer = await fs.readFile(result.screenshot);
+    result.screenshotDimensions = readPngSize(screenshotBuffer);
+    const expectedScreenshotWidth = viewport.width * (viewport.deviceScaleFactor ?? 1);
+    const expectedScreenshotHeight = viewport.height * (viewport.deviceScaleFactor ?? 1);
+    if (
+      result.screenshotDimensions.width !== expectedScreenshotWidth
+      || result.screenshotDimensions.height !== expectedScreenshotHeight
+    ) {
+      result.issues.push(issue(
+        route,
+        viewport,
+        'screenshot_size_mismatch',
+        `png size ${result.screenshotDimensions.width}x${result.screenshotDimensions.height} does not match expected ${expectedScreenshotWidth}x${expectedScreenshotHeight}`,
+        { screenshotDimensions: result.screenshotDimensions }
+      ));
+    }
+    if (VISUAL_SCROLL_AUDIT && !viewport.isMobile) {
+      result.scrollArtifacts = await captureScrollEvidence(page, route, viewport);
+    }
     if (result.issues.length > 0) result.status = 'failed';
   } catch (error) {
     result.status = 'failed';
@@ -336,7 +639,8 @@ summary.routeSummaries = summary.routes.map((routeSlug) => {
     screenshots: routeResults.map((result) => ({
       viewport: result.viewport,
       status: result.status,
-      file: result.screenshot ? path.basename(result.screenshot) : null
+      file: result.screenshot ? path.basename(result.screenshot) : null,
+      scrollArtifacts: result.scrollArtifacts || null
     }))
   };
 });
@@ -367,6 +671,8 @@ const lines = [
   `- status: ${summary.status}`,
   `- base_url: ${BASE_URL}`,
   `- data_source: ${API_DATA_SOURCE}`,
+  `- viewport_profile: ${VISUAL_VIEWPORT_PROFILE}`,
+  `- scroll_audit: ${VISUAL_SCROLL_AUDIT}`,
   `- failed_routes: ${summary.failedRoutes}`,
   `- failed_checks: ${summary.failedChecks}`,
   `- artifact_dir: ${ARTIFACT_DIR}`,
@@ -398,6 +704,25 @@ const lines = [
   '',
   ...summary.results.map((result) => `- ${result.status === 'passed' ? 'PASS' : 'FAIL'} ${result.route} ${result.viewport} screenshot=${path.basename(result.screenshot || '')}`)
 ];
+
+if (VISUAL_SCROLL_AUDIT) {
+  lines.push('', '## Scroll Evidence', '');
+  const scrollLines = summary.results.flatMap((result) => {
+    const items = [];
+    for (const state of result.scrollArtifacts?.pageScrollStates || []) {
+      items.push(`- ${result.route} ${result.viewport} ${state.slug}: ${path.basename(state.screenshot)}`);
+    }
+    for (const container of result.scrollArtifacts?.scrollContainers || []) {
+      items.push(`- ${result.route} ${result.viewport} largest scroll container ${container.descriptor}: top=${path.basename(container.topScreenshot)} bottom=${path.basename(container.bottomScreenshot)}`);
+    }
+    return items;
+  });
+  if (scrollLines.length > 0) {
+    lines.push(...scrollLines);
+  } else {
+    lines.push('- none');
+  }
+}
 
 if (summary.issues.length > 0) {
   lines.push('', '## Issues', '');

@@ -33,7 +33,7 @@
             <span class="dm-ev-user">{{ ev.userName }}</span>
             <span class="dm-ev-val">{{ ev.indicator }}: <em>{{ ev.value }}</em></span>
             <span v-if="ev.handled" class="dm-ev-done">已处理</span>
-            <span v-else>
+            <span v-else class="dm-ev-actions">
               <span class="dm-ev-pending">待处理</span>
               <button type="button" class="dm-ev-handle-btn" @click.stop="openHandleDialog(ev)">处理</button>
             </span>

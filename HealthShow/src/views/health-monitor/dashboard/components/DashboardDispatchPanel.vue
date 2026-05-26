@@ -1,80 +1,89 @@
 <template>
-  <div class="dm-dispatch-rail">
-    <div :class="['dm-dispatch-hero', `tone-${dispatchPriority.tone}`]">
-      <div class="dm-dispatch-hero-label">当前值班优先级</div>
-      <div class="dm-dispatch-hero-title">{{ dispatchPriority.title }}</div>
-      <div class="dm-dispatch-hero-sub">{{ dispatchPriority.sub }}</div>
-      <div class="dm-dispatch-hero-pills">
-        <span class="dm-dispatch-hero-pill tone-danger">高危待处理 {{ kpiUnhandledHigh }}</span>
-        <span class="dm-dispatch-hero-pill tone-warning">禁止入井 {{ preShiftData.failedCount || 0 }}</span>
+  <div class="dm-dispatch-shell">
+    <div :class="['dm-dispatch-mission', `tone-${dispatchPriority.tone}`]">
+      <div class="dm-dispatch-mission-copy">
+        <div class="dm-dispatch-mission-label">当前值班优先级</div>
+        <div class="dm-dispatch-mission-title">{{ dispatchPriority.title }}</div>
+        <div class="dm-dispatch-mission-sub">{{ dispatchPriority.sub }}</div>
+        <div class="dm-dispatch-mission-pills">
+          <span class="dm-dispatch-mission-pill tone-danger">高危待处理 {{ kpiUnhandledHigh }}</span>
+          <span class="dm-dispatch-mission-pill tone-warning">禁止入井 {{ preShiftData.failedCount || 0 }}</span>
+        </div>
       </div>
-    </div>
-    <div class="dm-dispatch-actions">
-      <button
-        v-for="action in dispatchActionItems"
-        :key="action.label"
-        :class="['dm-dispatch-action', `tone-${action.tone}`]"
-        @click="$emit('navigate', action.path)"
-      >
-        <span class="dm-dispatch-action-label">{{ action.label }}</span>
-        <span class="dm-dispatch-action-value">{{ action.value }}</span>
-        <span class="dm-dispatch-action-sub">{{ action.sub }}</span>
-        <span class="dm-dispatch-action-link">进入处置</span>
+      <button class="dm-dispatch-mission-cta" @click="$emit('navigate', primaryActionPath)">
+        {{ primaryActionLabel }}
       </button>
     </div>
-
-    <div class="dm-dispatch-grid">
-      <div class="dm-dispatch-card">
-        <div class="dm-dispatch-label">高危待处理</div>
-        <div class="dm-dispatch-value danger">{{ kpiUnhandledHigh }}</div>
-        <div class="dm-dispatch-desc">优先进入待处理列表，完成高危预警闭环。</div>
-        <button class="dm-dispatch-btn" @click="$emit('navigate', '/alert-management/notifications')">进入待处理</button>
-      </div>
-      <div class="dm-dispatch-card">
-        <div class="dm-dispatch-label">禁止入井</div>
-        <div class="dm-dispatch-value warn">{{ preShiftData.failedCount || 0 }}</div>
-        <div class="dm-dispatch-desc">班前健康筛查未通过人员，需优先复核准入原因。</div>
-        <button class="dm-dispatch-btn" @click="$emit('navigate', '/health-monitor/mine-entry')">查看准入</button>
-      </div>
-      <div class="dm-dispatch-card dm-dispatch-card--list">
-        <div class="dm-dispatch-head">
-          <span class="dm-dispatch-label">重点人员</span>
-          <span class="dm-dispatch-mini">{{ focusWarningEvents.length }} 人</span>
+    <div class="dm-dispatch-workspace">
+      <section class="dm-dispatch-queue">
+        <div class="dm-dispatch-section-head">
+          <span class="dm-dispatch-section-title">待处理闭环队列</span>
+          <span class="dm-dispatch-section-note">先处置，再复盘</span>
         </div>
-        <div v-if="focusWarningEvents.length" class="dm-dispatch-list">
+        <div class="dm-dispatch-queue-list">
           <button
-            v-for="(item, idx) in focusWarningEvents"
-            :key="item.id || idx"
-            class="dm-dispatch-person"
-            @click="$emit('person-click', item)"
+            v-for="(action, index) in dispatchActionItems"
+            :key="action.label"
+            :class="['dm-dispatch-queue-item', `tone-${action.tone}`]"
+            @click="$emit('navigate', action.path)"
           >
-            <span class="dm-dispatch-person-name">{{ item.userName || '--' }}</span>
-            <span class="dm-dispatch-person-type">{{ item.type || item.warningType || '预警' }}</span>
-            <span class="dm-dispatch-person-val">{{ item.value || item.warningValue || '--' }}</span>
+            <span class="dm-dispatch-queue-order">{{ index + 1 }}</span>
+            <span class="dm-dispatch-queue-main">
+              <span class="dm-dispatch-queue-head">
+                <span class="dm-dispatch-queue-label">{{ action.label }}</span>
+                <span class="dm-dispatch-queue-value">{{ action.value }}</span>
+              </span>
+              <span class="dm-dispatch-queue-sub">{{ action.sub }}</span>
+            </span>
+            <span class="dm-dispatch-queue-cta">{{ action.cta || '查看详情' }}</span>
           </button>
         </div>
-        <div v-else class="dm-dispatch-empty">当前没有待处理重点人员。</div>
-      </div>
-      <div class="dm-dispatch-card dm-dispatch-card--wide">
-        <div class="dm-dispatch-head">
-          <span class="dm-dispatch-label">AI 值班摘要</span>
-          <button class="dm-dispatch-link" @click="$emit('toggle-ai')">
-            {{ mineAiLoading ? '分析中…' : mineAiReport ? '查看全文' : '生成分析' }}
-          </button>
+      </section>
+
+      <section class="dm-dispatch-assist">
+        <div class="dm-dispatch-assist-card dm-dispatch-assist-card--summary">
+          <div class="dm-dispatch-section-head">
+            <span class="dm-dispatch-section-title">AI 值班摘要</span>
+            <button class="dm-dispatch-link" @click="$emit('toggle-ai')">
+              {{ mineAiLoading ? '分析中…' : mineAiReport ? '查看全文' : '生成分析' }}
+            </button>
+          </div>
+          <p class="dm-dispatch-ai-text">{{ dashboardAiSummary }}</p>
+          <div class="dm-dispatch-tags">
+            <span v-if="riskDeptList[0]" class="dm-dispatch-tag">重点部门：{{ riskDeptList[0].name }}</span>
+            <span v-if="latestDangerEvent?.userName" class="dm-dispatch-tag">重点人员：{{ latestDangerEvent.userName }}</span>
+            <span class="dm-dispatch-tag">班前未通过：{{ preShiftData.failedCount || 0 }} 人</span>
+          </div>
         </div>
-        <p class="dm-dispatch-ai-text">{{ dashboardAiSummary }}</p>
-        <div class="dm-dispatch-tags">
-          <span v-if="riskDeptList[0]" class="dm-dispatch-tag">重点部门：{{ riskDeptList[0].name }}</span>
-          <span v-if="latestDangerEvent?.userName" class="dm-dispatch-tag">重点人员：{{ latestDangerEvent.userName }}</span>
-          <span class="dm-dispatch-tag">班前未通过：{{ preShiftData.failedCount || 0 }} 人</span>
+
+        <div class="dm-dispatch-assist-card dm-dispatch-assist-card--focus">
+          <div class="dm-dispatch-section-head">
+            <span class="dm-dispatch-section-title">重点人员</span>
+            <span class="dm-dispatch-section-note">{{ focusWarningEvents.length }} 人</span>
+          </div>
+          <div v-if="focusWarningEvents.length" class="dm-dispatch-focus-list">
+            <button
+              v-for="(item, idx) in focusWarningEvents"
+              :key="item.id || idx"
+              class="dm-dispatch-person"
+              @click="$emit('person-click', item)"
+            >
+              <span class="dm-dispatch-person-name">{{ item.userName || '--' }}</span>
+              <span class="dm-dispatch-person-type">{{ item.type || item.warningType || '预警' }}</span>
+              <span class="dm-dispatch-person-val">{{ item.value || item.warningValue || '--' }}</span>
+            </button>
+          </div>
+          <div v-else class="dm-dispatch-empty">当前没有待处理重点人员。</div>
         </div>
-      </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   dispatchPriority: { type: Object, required: true },
   dispatchActionItems: { type: Array, required: true },
   kpiUnhandledHigh: { type: Number, default: 0 },
@@ -88,58 +97,78 @@ defineProps({
 })
 
 defineEmits(['navigate', 'person-click', 'toggle-ai'])
+
+const primaryActionPath = computed(() => props.dispatchActionItems[0]?.path || '/alert-management/notifications')
+const primaryActionLabel = computed(() => props.dispatchActionItems[0]?.cta || '进入待处理')
 </script>
 
 <style scoped>
-.dm-dispatch-rail {
-  display: grid;
-  grid-template-columns: 280px 1fr;
+.dm-dispatch-shell {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  padding: 10px 14px 14px;
+  height: 100%;
+  padding: 12px 14px 14px;
 }
 
-.dm-dispatch-hero {
+.dm-dispatch-mission {
   --dispatch-tone: var(--accent-primary);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
   position: relative;
   overflow: hidden;
-  min-height: 156px;
-  padding: 16px;
-  border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--dispatch-tone) 28%, transparent);
+  min-height: 148px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--dispatch-tone) 24%, transparent);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--dispatch-tone) 12%, rgba(8, 15, 30, 0.84)), rgba(8, 15, 30, 0.86)),
-    linear-gradient(135deg, rgba(255,255,255,0.02), transparent 45%);
+    linear-gradient(180deg, color-mix(in srgb, var(--dispatch-tone) 11%, rgba(8, 15, 30, 0.88)), rgba(8, 15, 30, 0.88)),
+    linear-gradient(135deg, rgba(255,255,255,0.04), transparent 48%);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.08),
-    0 18px 36px -24px color-mix(in srgb, var(--dispatch-tone) 36%, transparent);
+    inset 0 1px 0 rgba(255,255,255,0.07),
+    0 18px 36px -26px color-mix(in srgb, var(--dispatch-tone) 28%, transparent);
 }
-.dm-dispatch-hero::after {
+.dm-dispatch-mission::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 100% 0%, rgba(255,255,255,0.08), transparent 40%);
+  background: radial-gradient(circle at 100% 0%, rgba(255,255,255,0.08), transparent 42%);
   pointer-events: none;
 }
-.dm-dispatch-hero.tone-danger { --dispatch-tone: var(--accent-danger); }
-.dm-dispatch-hero.tone-warn { --dispatch-tone: var(--accent-warning); }
-.dm-dispatch-hero.tone-accent { --dispatch-tone: var(--accent-primary); }
-.dm-dispatch-hero.tone-calm { --dispatch-tone: var(--accent-success); }
-.dm-dispatch-hero-label { position: relative; z-index: 1; font-size: 12px; color: rgba(139,166,200,0.82); }
-.dm-dispatch-hero-title { position: relative; z-index: 1; margin-top: 10px; font-size: 24px; font-weight: 800; color: #eef7ff; line-height: 1.3; letter-spacing: -0.02em; }
-.dm-dispatch-hero-sub { position: relative; z-index: 1; margin-top: 8px; font-size: 12px; line-height: 1.7; color: rgba(143,181,211,0.92); }
-.dm-dispatch-hero-pills {
-  position: relative;
-  z-index: 1;
+.dm-dispatch-mission.tone-danger { --dispatch-tone: var(--accent-danger); }
+.dm-dispatch-mission.tone-warn { --dispatch-tone: var(--accent-warning); }
+.dm-dispatch-mission.tone-accent { --dispatch-tone: var(--accent-primary); }
+.dm-dispatch-mission.tone-calm { --dispatch-tone: var(--accent-success); }
+.dm-dispatch-mission-copy { position: relative; z-index: 1; min-width: 0; }
+.dm-dispatch-mission-label { font-size: 12px; color: rgba(139,166,200,0.84); }
+.dm-dispatch-mission-title {
+  margin-top: 10px;
+  font-size: clamp(28px, 1.9vw, 40px);
+  font-weight: 800;
+  color: #eef7ff;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
+}
+.dm-dispatch-mission-sub {
+  max-width: 620px;
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: rgba(153,190,220,0.92);
+}
+.dm-dispatch-mission-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
 }
-.dm-dispatch-hero-pill {
+.dm-dispatch-mission-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 30px;
+  padding: 0 11px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.04);
@@ -147,76 +176,179 @@ defineEmits(['navigate', 'person-click', 'toggle-ai'])
   font-size: 11px;
   font-weight: 700;
 }
-.dm-dispatch-hero-pill.tone-danger {
+.dm-dispatch-mission-pill.tone-danger {
   color: var(--accent-danger);
   border-color: rgba(248, 113, 113, 0.24);
   background: rgba(248, 113, 113, 0.08);
 }
-.dm-dispatch-hero-pill.tone-warning {
+.dm-dispatch-mission-pill.tone-warning {
   color: var(--accent-warning);
   border-color: rgba(245, 158, 11, 0.24);
   background: rgba(245, 158, 11, 0.08);
 }
+.dm-dispatch-mission-cta {
+  position: relative;
+  z-index: 1;
+  min-width: 126px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--dispatch-tone) 40%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--dispatch-tone) 16%, rgba(7, 19, 34, 0.96));
+  color: #eef7ff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.dm-dispatch-mission-cta:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--dispatch-tone) 58%, transparent);
+  background: color-mix(in srgb, var(--dispatch-tone) 22%, rgba(7, 19, 34, 0.98));
+}
 
-.dm-dispatch-actions {
+.dm-dispatch-workspace {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.06fr) minmax(288px, 0.94fr);
+  gap: 12px;
+}
+
+.dm-dispatch-queue,
+.dm-dispatch-assist-card {
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+.dm-dispatch-queue {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+}
+.dm-dispatch-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
 }
-.dm-dispatch-action {
+.dm-dispatch-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #eef7ff;
+}
+.dm-dispatch-section-note {
+  font-size: 11px;
+  color: rgba(139,166,200,0.78);
+}
+.dm-dispatch-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  min-height: 0;
+}
+.dm-dispatch-queue-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 82px;
+  padding: 14px 14px 14px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(0,212,255,0.14);
+  background: rgba(255,255,255,0.025);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+.dm-dispatch-queue-item:hover {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,0.045);
+  border-color: rgba(0,212,255,0.28);
+  box-shadow: 0 16px 28px -26px rgba(62, 183, 255, 0.55);
+}
+.dm-dispatch-queue-item.tone-danger { border-color: rgba(255,95,95,0.24); }
+.dm-dispatch-queue-item.tone-warn { border-color: rgba(255,210,0,0.22); }
+.dm-dispatch-queue-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.18);
+  color: #b7e9ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.dm-dispatch-queue-main {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 156px;
-  border: 1px solid rgba(0, 212, 255, 0.16);
-  border-radius: 16px;
-  padding: 14px 14px 12px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
-.dm-dispatch-action:hover {
-  background: rgba(0,212,255,0.08);
-  border-color: rgba(0,212,255,0.3);
-  transform: translateY(-1px);
-  box-shadow: 0 16px 28px -24px rgba(62, 183, 255, 0.7);
+.dm-dispatch-queue-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
-.dm-dispatch-action.tone-danger { border-color: rgba(255,95,95,0.22); }
-.dm-dispatch-action.tone-warn { border-color: rgba(255,210,0,0.2); }
-.dm-dispatch-action.tone-muted { border-color: rgba(139,166,200,0.16); }
-.dm-dispatch-action-label { font-size: 12px; color: rgba(139,166,200,0.82); }
-.dm-dispatch-action-value { font-size: 24px; font-weight: 800; color: #eef7ff; line-height: 1.1; letter-spacing: -0.03em; }
-.dm-dispatch-action-sub { font-size: 11px; line-height: 1.6; color: rgba(143,181,211,0.88); }
-.dm-dispatch-action-link {
-  margin-top: auto;
-  color: rgba(183, 233, 255, 0.92);
-  font-size: 11px;
+.dm-dispatch-queue-label {
+  font-size: 13px;
   font-weight: 700;
+  color: #e8f4ff;
+}
+.dm-dispatch-queue-value {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: #eef7ff;
+}
+.dm-dispatch-queue-item.tone-danger .dm-dispatch-queue-value { color: #ff6a6a; }
+.dm-dispatch-queue-item.tone-warn .dm-dispatch-queue-value { color: #ffd45a; }
+.dm-dispatch-queue-item.tone-primary .dm-dispatch-queue-value,
+.dm-dispatch-queue-item.tone-accent .dm-dispatch-queue-value { color: #7bd7ff; }
+.dm-dispatch-queue-item.tone-muted .dm-dispatch-queue-value { color: #d5ebff; }
+.dm-dispatch-queue-sub {
+  font-size: 12px;
+  line-height: 1.65;
+  color: rgba(143,181,211,0.88);
+}
+.dm-dispatch-queue-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,212,255,0.18);
+  background: rgba(0,212,255,0.08);
+  color: #b7e9ff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.dm-dispatch-grid {
-  grid-column: 1 / -1;
+.dm-dispatch-assist {
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
 }
-.dm-dispatch-card {
-  min-height: 112px;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 16px;
-  padding: 14px;
-  background: rgba(255,255,255,0.025);
+.dm-dispatch-assist-card {
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  padding: 14px;
 }
-.dm-dispatch-label { font-size: 12px; color: #8ba6c8; }
-.dm-dispatch-value { font-size: 30px; line-height: 1; font-weight: 700; font-family: 'Consolas', monospace; }
-.dm-dispatch-value.danger { color: #ff5f5f; }
-.dm-dispatch-value.warn { color: #ffd200; }
-.dm-dispatch-desc { flex: 1; color: rgba(139,166,200,0.78); font-size: 12px; line-height: 1.7; }
-.dm-dispatch-btn,
+.dm-dispatch-assist-card--summary {
+  gap: 12px;
+}
 .dm-dispatch-link {
   border: 1px solid rgba(0,212,255,0.22);
   background: rgba(0,212,255,0.08);
@@ -226,33 +358,22 @@ defineEmits(['navigate', 'person-click', 'toggle-ai'])
   font-size: 12px;
   cursor: pointer;
 }
-.dm-dispatch-btn:hover,
 .dm-dispatch-link:hover { background: rgba(0,212,255,0.16); }
-.dm-dispatch-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.dm-dispatch-mini { color: rgba(139,166,200,0.7); font-size: 11px; }
-.dm-dispatch-list { display:flex; flex-direction:column; gap:8px; }
-.dm-dispatch-person {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.02);
-  cursor: pointer;
-  text-align: left;
+.dm-dispatch-ai-text {
+  margin: 0;
+  color: #d5ebff;
+  font-size: 12px;
+  line-height: 1.85;
 }
-.dm-dispatch-person:hover { background: rgba(255,82,82,0.12); }
-.dm-dispatch-person-name { font-size:12px; font-weight:700; color:#e8f4ff; }
-.dm-dispatch-person-type,
-.dm-dispatch-person-val { font-size:11px; color:#8fb5d3; }
-.dm-dispatch-empty { color: rgba(139,166,200,0.74); font-size:12px; line-height:1.7; }
-.dm-dispatch-ai-text { margin:0; color:#d5ebff; font-size:12px; line-height:1.8; }
-.dm-dispatch-tags { display:flex; flex-wrap:wrap; gap:8px; }
+.dm-dispatch-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
 .dm-dispatch-tag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   color: #a9dfff;
   background: rgba(0,212,255,0.06);
   border: 1px solid rgba(0,212,255,0.14);
@@ -260,31 +381,82 @@ defineEmits(['navigate', 'person-click', 'toggle-ai'])
   padding: 4px 10px;
   font-size: 11px;
 }
+.dm-dispatch-focus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  min-height: 0;
+}
+.dm-dispatch-person {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  cursor: pointer;
+  text-align: left;
+}
+.dm-dispatch-person:hover { background: rgba(255,82,82,0.12); }
+.dm-dispatch-person-name { font-size: 13px; font-weight: 700; color: #e8f4ff; }
+.dm-dispatch-person-type,
+.dm-dispatch-person-val { font-size: 12px; color: #8fb5d3; }
+.dm-dispatch-empty {
+  margin-top: 12px;
+  color: rgba(139,166,200,0.74);
+  font-size: 12px;
+  line-height: 1.7;
+}
 
 @media (max-width: 1400px) {
-  .dm-dispatch-rail {
+  .dm-dispatch-mission {
     grid-template-columns: 1fr;
   }
-  .dm-dispatch-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .dm-dispatch-mission-cta {
+    width: 100%;
+  }
+  .dm-dispatch-workspace {
+    grid-template-columns: 1fr;
+  }
+  .dm-dispatch-assist {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
   }
 }
 
 @media (max-width: 768px) {
-  .dm-dispatch-rail {
+  .dm-dispatch-shell {
     gap: 10px;
     padding: 10px 10px 12px;
   }
 
-  .dm-dispatch-actions,
-  .dm-dispatch-grid {
+  .dm-dispatch-mission {
+    gap: 12px;
+    min-height: auto;
+    padding: 16px;
+  }
+
+  .dm-dispatch-workspace,
+  .dm-dispatch-assist {
     grid-template-columns: 1fr;
   }
 
-  .dm-dispatch-hero,
-  .dm-dispatch-action,
-  .dm-dispatch-card {
-    min-height: auto;
+  .dm-dispatch-queue-item,
+  .dm-dispatch-person {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .dm-dispatch-queue-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dm-dispatch-queue-cta {
+    margin-top: 2px;
   }
 }
 </style>

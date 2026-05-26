@@ -1,23 +1,37 @@
 <template>
-  <div class="ep-page">
-    <!-- 顶部标题 -->
-    <div class="ep-header">
-      <button class="ep-back" @click="$router.back()">
-        <el-icon><ArrowLeft /></el-icon> 返回
-      </button>
-      <div class="ep-title">职工健康画像</div>
-      <div class="ep-header-emp">
-        <span class="ep-hname">{{ empInfo.empName }}</span>
-        <span :class="['ep-online', isOnline ? 'on' : 'off']">
-          <i class="ep-dot"></i>{{ isOnline ? '在线' : '离线' }}
-        </span>
-        <span class="ep-update">更新于：{{ lastUpdate }}</span>
-        <button class="ep-ai-btn" @click="openAiReport" :disabled="aiReportLoading">
-          <el-icon><Document /></el-icon>
-          {{ aiReportLoading ? '生成中...' : 'AI诊断报告' }}
+  <div class="ep-page hm-page-shell">
+    <PageHeroHeader
+      class="ep-hero"
+      variant="cockpit"
+      eyebrow="Employee Portrait"
+      title="职工健康画像"
+      :description="`聚焦 ${empInfo.empName || '--'} 的实时体征、预警闭环和 7 日趋势，给值班与画像分析一个统一视角。`"
+    >
+      <template #meta>
+        <div class="ep-hero-meta">
+          <span class="hm-status-chip">{{ empInfo.empName || '--' }}</span>
+          <span :class="['hm-status-chip', isOnline ? 'hm-status-chip--success' : 'hm-status-chip--warning']">
+            {{ isOnline ? '在线中' : '当前离线' }}
+          </span>
+          <span class="hm-status-chip">最近更新 {{ lastUpdate }}</span>
+        </div>
+      </template>
+      <template #actions>
+        <button type="button" class="hm-action-btn" @click="$router.back()">
+          <el-icon><ArrowLeft /></el-icon>
+          返回
         </button>
-      </div>
-    </div>
+        <button
+          type="button"
+          class="hm-action-btn hm-action-btn--success"
+          @click="openAiReport"
+          :disabled="aiReportLoading"
+        >
+          <el-icon><Document /></el-icon>
+          {{ aiReportLoading ? '生成中...' : 'AI 诊断报告' }}
+        </button>
+      </template>
+    </PageHeroHeader>
 
     <div class="ep-quickbar">
       <button class="ep-qbtn" @click="goArchive">档案库</button>
@@ -89,27 +103,17 @@
 
         <!-- 7天体征趋势 -->
         <div class="ep-panel ep-trend">
-          <div class="ep-ph"><span class="ep-ph-bar"></span>7天体征趋势</div>
-          <div ref="trendRef" class="ep-trend-chart"></div>
-        </div>
-
-        <!-- 近期预警 -->
-        <div class="ep-panel ep-warns">
           <div class="ep-ph">
-            <span class="ep-ph-bar"></span>近期预警
-            <span class="ep-warn-count" v-if="warnings.length">({{ warnings.length }})</span>
+            <span class="ep-ph-bar"></span>7天体征趋势
+            <span class="ep-ph-link">趋势摘要</span>
           </div>
-          <div v-if="warnings.length === 0" class="ep-empty-warn">暂无预警记录</div>
-          <div v-else class="ep-warn-scroll-wrap">
-            <div class="ep-warn-list ep-warn-scroll">
-              <div v-for="(w, idx) in warnings.concat(warnings)" :key="(w.id || w.time) + '_' + idx" class="ep-warn-item">
-                <span :class="['ep-wdot', w.handled ? 'done' : 'pend']"></span>
-                <span class="ep-wtype">{{ w.warningType || w.type || '--' }}</span>
-                <span class="ep-wtime">{{ fmtTime(w.createTime || w.time) }}</span>
-                <span :class="['ep-wst', w.handled ? 'done' : 'pend']">{{ w.handled ? '已处理' : '未处理' }}</span>
-              </div>
+          <div class="ep-trend-stats">
+            <div v-for="item in trendStats" :key="item.key" :class="['ep-trend-stat', `tone-${item.tone}`]">
+              <span class="ep-trend-stat-label">{{ item.label }}</span>
+              <span class="ep-trend-stat-value">{{ item.value }}<em v-if="item.unit">{{ item.unit }}</em></span>
             </div>
           </div>
+          <div ref="trendRef" class="ep-trend-chart"></div>
         </div>
 
       </aside>
@@ -304,11 +308,46 @@
 
       </aside>
     </div>
+
+    <section class="ep-panel ep-warning-band">
+      <div class="ep-ph">
+        <span class="ep-ph-bar"></span>近期预警轨迹
+        <span class="ep-warn-count" v-if="warnings.length">({{ warnings.length }})</span>
+      </div>
+      <div class="ep-warning-band__body">
+        <div class="ep-warning-band__meta">
+          <div class="ep-warn-summary">
+            <div v-for="item in recentWarningSummary" :key="item.key" :class="['ep-warn-pill', `tone-${item.tone}`]">
+              <span class="ep-warn-pill-label">{{ item.label }}</span>
+              <strong class="ep-warn-pill-value">{{ item.value }}</strong>
+            </div>
+          </div>
+          <div class="ep-warn-footer">
+            <span class="ep-warn-footnote">{{ recentWarningFootnote }}</span>
+            <button type="button" class="ep-warn-more" @click="goWarningCenter">查看全部</button>
+          </div>
+        </div>
+        <div class="ep-warning-band__list">
+          <div v-if="warnings.length === 0" class="ep-empty-warn">暂无预警记录</div>
+          <div v-else class="ep-warn-list">
+            <div v-for="(w, idx) in recentWarnings" :key="(w.id || w.time) + '_' + idx" class="ep-warn-item">
+              <span :class="['ep-wdot', w.handled ? 'done' : 'pend']"></span>
+              <div class="ep-warn-copy">
+                <span class="ep-wtype">{{ w.warningType || w.type || '--' }}</span>
+                <span class="ep-wtime">{{ fmtTime(w.createTime || w.time) }}</span>
+              </div>
+              <span :class="['ep-wst', w.handled ? 'done' : 'pend']">{{ w.handled ? '已处理' : '未处理' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup>
 import { ArrowLeft, Document } from '@element-plus/icons-vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import HeartRateWave from '@/components/HeartRateWave.vue'
 import { useEmployeeProfilePage } from './use-employee-profile-page'
 
@@ -347,6 +386,9 @@ const {
   profileInsightLines,
   profileSummaryCards,
   pressClass,
+  recentWarningFootnote,
+  recentWarnings,
+  recentWarningSummary,
   refresh,
   riskItems,
   spo2Class,
@@ -354,11 +396,13 @@ const {
   spo2Items,
   tempClass,
   tempPct,
+  trendStats,
   trendRef,
   vitalItems,
   vitals,
   warnings,
-  warnItems
+  warnItems,
+  goWarningCenter
 } = useEmployeeProfilePage()
 </script>
 
