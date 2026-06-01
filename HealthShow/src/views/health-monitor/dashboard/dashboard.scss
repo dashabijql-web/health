@@ -64,7 +64,7 @@ $danger: $red;
   display: grid;
   grid-template-columns: minmax(360px, 0.76fr) minmax(620px, 1.24fr);
   gap: 14px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .db-control-grid > * {
@@ -129,14 +129,17 @@ $danger: $red;
 }
 
 .db-governance-workspace {
-  display: grid;
-  grid-template-rows: minmax(420px, .92fr) minmax(460px, 1.08fr);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
 }
 
 .db-closure-lane {
   display: flex;
   flex-direction: column;
-  min-height: 420px;
+  height: clamp(460px, 54vh, 620px);
+  min-height: 0;
 }
 
 .db-closure-items {
@@ -202,14 +205,16 @@ $danger: $red;
 }
 
 .db-closure-stream {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
 }
 
 .db-closure-lane .dm-model-video-col {
   flex: 1 1 auto;
   width: 100%;
   min-height: 0;
+  height: auto;
   border-right: none;
   background: transparent;
 }
@@ -219,18 +224,28 @@ $danger: $red;
 }
 
 .db-duty-console {
-  min-height: 460px;
+  min-height: 0;
+}
+
+.db-duty-console .dm-dispatch-shell {
+  height: auto;
+  min-height: 0;
+}
+
+.db-duty-console .dm-dispatch-workspace {
+  flex: none;
+  min-height: 0;
 }
 
 .db-intel-band {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 14px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .db-trend-command {
-  min-height: 430px;
+  min-height: 0;
 }
 
 .db-trend-grid {
@@ -243,11 +258,11 @@ $danger: $red;
 }
 
 .db-trend-grid .dm-data-block {
-  min-height: 292px;
+  min-height: 260px;
 }
 
 .db-insight-sidebar {
-  min-height: 430px;
+  min-height: 0;
 }
 
 .db-support-band {
@@ -262,7 +277,7 @@ $danger: $red;
 
 .db-support-sidebar .dm-right-rank,
 .db-support-sidebar .dm-right-action {
-  min-height: 256px;
+  min-height: 230px;
 }
 
 @media (max-width: 1500px) and (min-width: 1101px) {
@@ -279,6 +294,10 @@ $danger: $red;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
+  }
+
+  .db-support-band .dm-main-env {
+    grid-column: 1 / -1;
   }
 }
 
@@ -1053,6 +1072,62 @@ $danger: $red;
 .dm-monitor-sidebar .dm-right-warnrate {
   height:100%;
 }
+
+// A+C compact layout overrides. The rebuilt dashboard reuses older panels whose
+// original 100% heights assumed a fixed cockpit canvas; keep them content-sized here.
+.db-control-system .db-duty-console.dm-command-dispatch-shell,
+.db-control-system .db-trend-command.dm-main-model,
+.db-control-system .dm-main-env {
+  height: auto;
+  min-height: 0;
+}
+
+.db-control-system .db-closure-lane {
+  height: clamp(460px, 54vh, 620px);
+  min-height: 0;
+}
+
+.db-control-system .db-duty-console .dm-dispatch-shell {
+  height: auto;
+  min-height: 0;
+}
+
+.db-control-system .db-duty-console .dm-dispatch-workspace {
+  flex: none;
+  min-height: 0;
+}
+
+.db-control-system .db-closure-lane .dm-model-video-col {
+  height: auto;
+  min-height: 0;
+}
+
+.db-control-system .db-closure-lane .dm-event-list-wrap,
+.db-control-system .db-closure-lane .dm-event-list {
+  min-height: 0;
+}
+
+.db-control-system .db-trend-command {
+  height: auto;
+  min-height: 0;
+}
+
+.db-control-system .db-support-sidebar.dm-command-sidebar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 14px;
+  height: auto;
+  min-height: 0;
+}
+
+.db-control-system .db-support-sidebar.dm-command-sidebar .dm-right-rank,
+.db-control-system .db-support-sidebar.dm-command-sidebar .dm-right-action {
+  flex: none;
+  height: auto;
+  min-height: 230px;
+}
+
 .dm-preshift-body { display:flex; align-items:center; gap:12px; padding:8px 14px 12px; }
 .dm-ps-ring-wrap { position:relative; width:80px; height:80px; flex-shrink:0; }
 .dm-ps-ring { width:80px; height:80px; transform:rotate(-90deg); }

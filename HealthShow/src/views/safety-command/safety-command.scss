@@ -127,11 +127,11 @@ $mono: 'JetBrains Mono','Courier New',monospace;
   display: grid;
   grid-template-columns: minmax(520px, 1.18fr) minmax(360px, 0.82fr);
   gap: 14px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .sc-situation-stage {
-  min-height: 620px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -162,8 +162,9 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 
 .sc-stage-canvas {
   position: relative;
-  flex: 1;
-  min-height: 420px;
+  flex: none;
+  height: clamp(380px, 38vw, 520px);
+  min-height: 0;
   margin: 16px 18px 0;
   border-radius: 22px;
   border: 1px solid rgba($accent, .13);
@@ -341,7 +342,8 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 }
 
 .sc-response-queue {
-  min-height: 620px;
+  align-self: start;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -440,33 +442,33 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 
 .sc-risk-lane {
   margin: 0 18px 18px;
-  flex: 1;
+  flex: none;
+  height: clamp(220px, 24vw, 300px);
 }
 
 .sc-war-support {
   display: grid;
   grid-template-columns: minmax(280px, .88fr) minmax(270px, .82fr) minmax(300px, .96fr);
   gap: 14px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .sc-war-support > * {
   min-width: 0;
-  min-height: 300px;
-}
-
-.sc-support-rank,
-.sc-support-events {
-  grid-row: span 2;
+  min-height: 0;
 }
 
 .sc-support-events {
   display: flex;
   flex-direction: column;
+  grid-column: 1 / -1;
+  height: clamp(320px, 32vw, 430px);
 }
 
 .sc-support-events > .ev-panel {
   flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 
 .sc-closure-panel,
@@ -477,8 +479,9 @@ $mono: 'JetBrains Mono','Courier New',monospace;
   flex-direction: column;
 }
 
-.sc-support-area {
-  min-height: 300px;
+.sc-war-support .sc-support-area {
+  min-height: 0;
+  height: clamp(300px, 28vw, 380px);
 }
 
 // ── Root container ────────────────────────────────────────────────────────────
@@ -816,6 +819,42 @@ $mono: 'JetBrains Mono','Courier New',monospace;
   .dlg-ai-ts { font-size: 11px; color: #bbb; margin-top: 6px; }
 }
 .info-html { padding: 6px; line-height: 1.8; }
+
+// A+C compact layout overrides. These sit after legacy panel rules because several
+// reused child components still carry their original grid/flex classes.
+.sc-war-support .sc-support-rank,
+.sc-war-support .sc-closure-panel,
+.sc-war-support .sc-vitals-panel,
+.sc-war-support .sc-dist-panel,
+.sc-war-support .sc-trend-panel {
+  grid-column: auto;
+  grid-row: auto;
+  height: clamp(300px, 28vw, 380px);
+}
+
+.sc-war-support .sc-support-events {
+  grid-column: 1 / -1;
+  grid-row: auto;
+}
+
+.sc-war-support :deep(.rank-scroll),
+.sc-war-support :deep(.ag),
+.sc-war-support :deep(.ev-list) {
+  overflow-y: auto;
+}
+
+.sc-war-support :deep(.area-panel),
+.sc-war-support :deep(.rank-panel),
+.sc-war-support :deep(.ev-panel) {
+  min-height: 0;
+}
+
+.sc-war-support :deep(.dist-body),
+.sc-war-support :deep(.trend-body),
+.sc-war-support :deep(.vitals-body),
+.sc-war-support :deep(.resp-body) {
+  min-height: 0;
+}
 
 @media (max-width: 1400px) {
   .sc-war-grid,
