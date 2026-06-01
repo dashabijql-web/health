@@ -24,10 +24,10 @@ export function dashboardWarningLevelEventClass(level) {
 
 export function dashboardWarningLevelMarkerColor(level) {
   return {
-    danger: '#ff5252',
-    warn: '#ffd200',
-    info: '#00d4ff'
-  }[level] || '#00d4ff'
+    danger: '#ff3b3b',
+    warn: '#ff8c00',
+    info: '#00c8ff'
+  }[level] || '#00c8ff'
 }
 
 export function dashboardWarningLevelTagType(level) {

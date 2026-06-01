@@ -1,14 +1,13 @@
 <template>
-  <div class="dm-outer" @transitionend.stop @animationend.stop>
-  <div class="dm-root" ref="dmScale">
+  <div class="hm-page-shell db" ref="dmScale" @transitionend.stop @animationend.stop>
 
     <!-- ══════════ HEADER ══════════ -->
-    <header class="dm-hd">
+    <header class="db-hd">
       <PageHeroHeader
-        class="dm-hd-hero"
+        class="db-hd-hero"
         variant="cockpit"
         eyebrow="Cockpit Dashboard"
-        title="信智科技职业健康监测管理系统"
+        title="统一管控"
         :description="dashboardHeroDescription"
       >
         <template #meta>
@@ -53,11 +52,10 @@
 
     <!-- ══════════ BODY ══════════ -->
     <div class="dm-bd" ref="dmBody">
-      <div class="dm-panel dm-main-metrics dm-panel--interactive" @click="openDeptPersonModal">
-        <div class="dm-ph">
-          <span class="dm-ph-bar"></span>
-          <span class="dm-ph-title">{{ periodLabel }}检测人数</span>
-          <span class="dm-ph-sub">
+      <div class="db-panel dm-main-metrics db-panel--interactive" @click="openDeptPersonModal">
+        <div class="db-track">
+          <span class="db-track-title">{{ periodLabel }}检测人数</span>
+          <span class="db-track-sub">
             <span class="dm-main-metrics-total">共 {{ totalPersons !== null ? totalPersons.toLocaleString() : '--' }} 人次</span>
             <span class="dm-inline-action">查看部门详情</span>
           </span>
@@ -67,7 +65,7 @@
             v-for="m in metricCards"
             :key="m.label"
             class="dm-metric-card"
-            :style="{ '--metric-tone': m.color, '--metric-tone-soft': `${m.color}66` }"
+            :style="{ '--metric-tone': m.color }"
             @click.stop="onMetricCardClick(m)"
           >
             <div class="dm-metric-val">
@@ -77,22 +75,15 @@
             <div class="dm-metric-bar-wrap">
               <div class="dm-metric-bar" :style="{ width: `${m.pct}%` }"></div>
             </div>
-            <div class="dm-metric-records" :title="m.records.toLocaleString()+'条记录'">
-              {{ m.records >= 10000 ? (m.records/10000).toFixed(1)+'万次' : m.records.toLocaleString()+'次' }}
-            </div>
-            <div class="dm-metric-rec-bar-wrap">
-              <div class="dm-metric-rec-bar" :style="{ width: `${m.recPct}%` }"></div>
-            </div>
           </div>
         </div>
       </div>
 
       <section class="dm-command-band">
-        <div class="dm-panel dm-command-overview">
-          <div class="dm-ph">
-            <span class="dm-ph-bar"></span>
-            <span class="dm-ph-title">态势概览</span>
-            <span class="dm-ph-sub">{{ periodLabel }}核心体征均值与健康状态</span>
+        <div class="db-panel dm-command-overview">
+          <div class="db-track">
+            <span class="db-track-title">态势概览</span>
+            <span class="db-track-sub">{{ periodLabel }}核心体征均值与健康状态</span>
           </div>
           <div class="dm-command-overview-body">
             <div class="dm-command-section dm-command-section--vitals">
@@ -151,11 +142,10 @@
           </div>
         </div>
 
-        <div class="dm-panel dm-main-dispatch dm-command-dispatch-shell">
-          <div class="dm-ph">
-            <span class="dm-ph-bar dm-ph-bar--warning"></span>
-            <span class="dm-ph-title">值班决策面板</span>
-            <span class="dm-ph-sub">先看高危闭环，再看趋势变化</span>
+        <div class="db-panel dm-main-dispatch dm-command-dispatch-shell">
+          <div class="db-track">
+            <span class="db-track-title">值班决策面板</span>
+            <span class="db-track-sub">先看高危闭环，再看趋势变化</span>
           </div>
           <DashboardDispatchPanel
             :dispatch-priority="dispatchPriority"
@@ -194,11 +184,10 @@
       </section>
 
       <section class="dm-monitor-band">
-        <div class="dm-panel dm-main-model">
-          <div class="dm-ph">
-            <span class="dm-ph-bar"></span>
-            <span class="dm-ph-title">健康监测中心</span>
-            <span class="dm-ph-sub">实时体征综合分析</span>
+        <div class="db-panel dm-main-model">
+          <div class="db-track">
+            <span class="db-track-title">健康监测中心</span>
+            <span class="db-track-sub">实时体征综合分析</span>
           </div>
           <div class="dm-model-body">
             <DashboardWarningStream
@@ -212,7 +201,6 @@
             <div class="dm-model-data-col">
               <div class="dm-data-block dm-data-block-trend">
                 <div class="dm-block-hd">
-                  <span class="dm-ph-bar"></span>
                   <span class="dm-block-title">{{ trendBlockTitle }}</span>
                   <span class="dm-block-sub">异常率变化</span>
                 </div>
@@ -221,7 +209,6 @@
 
               <div class="dm-data-block">
                 <div class="dm-block-hd">
-                  <span class="dm-ph-bar"></span>
                   <span class="dm-block-title">{{ hourDistTitle }}</span>
                 </div>
                 <div id="hourDistChart" class="dm-chart-flex"></div>
@@ -272,18 +259,16 @@
           @go-device="goToDeviceList"
         />
 
-        <div class="dm-panel dm-main-env">
-          <div class="dm-ph">
-            <span class="dm-ph-bar"></span>
-            <span class="dm-ph-title">环境健康关联</span>
-            <span class="dm-ph-sub">CO浓度/粉尘 vs 血氧趋势（模拟）</span>
+        <div class="db-panel dm-main-env">
+          <div class="db-track">
+            <span class="db-track-title">环境健康关联</span>
+            <span class="db-track-sub">CO浓度/粉尘 vs 血氧趋势（模拟）</span>
           </div>
           <div ref="envChartRef" class="dm-env-chart"></div>
         </div>
       </section>
 
     </div><!-- /dm-bd -->
-  </div><!-- /dm-root -->
 
   <DashboardDialogs
     :emp-drawer="empDrawer"
@@ -302,7 +287,7 @@
     :submit-handle="submitHandle"
   />
 
-  </div><!-- /dm-outer -->
+  </div><!-- /hm-page-shell -->
 
 </template>
 

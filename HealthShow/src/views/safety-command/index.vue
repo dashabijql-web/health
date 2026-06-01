@@ -1,40 +1,41 @@
 <template>
-  <div class="cc">
-
-    <!-- TOPBAR -->
-    <div class="tb">
-      <div class="tb-logo">
-        <div class="pulse" :class="isSafe ? '' : 'pulse-red'"></div>
-        信智科技 · 安全指挥中心
-      </div>
-      <div class="tb-sep"></div>
-      <div class="tb-status" :class="isSafe ? 'status-safe' : 'status-danger'">
-        <div class="status-orb" :class="isSafe ? '' : 'orb-danger'"></div>
-        <div class="status-label">{{ isSafe ? '当 前 安 全' : '存 在 高 危' }}</div>
-      </div>
-      <div class="tb-r">
-        <div class="tb-date">{{ currentDate }}</div>
-        <div class="tb-time">{{ currentTime }}</div>
-        <div class="tb-sep"></div>
-        <div class="emer-btns">
+  <div class="hm-page-shell cc sc-page">
+    <PageHeroHeader
+      class="sc-hero"
+      variant="cockpit"
+      eyebrow="Command Center"
+      title="安全指挥中心"
+      :description="safetyHeroDescription"
+    >
+      <template #meta>
+        <div class="sc-hero-meta">
+          <span :class="['sc-live-dot', isSafe ? 'is-safe' : 'is-danger']"></span>
+          <span :class="['hm-status-chip', isSafe ? 'hm-status-chip--success' : 'hm-status-chip--danger']">
+            {{ isSafe ? '当前安全' : '存在高危' }}
+          </span>
+          <span class="sc-hero-date">{{ currentDate }}</span>
+          <span class="sc-hero-time">{{ currentTime }}</span>
+        </div>
+      </template>
+      <template #actions>
+        <div class="sc-emergency-actions">
           <button class="eb eb-o" @click="emergencyCall">呼叫</button>
           <button class="eb eb-o" @click="emergencyBroadcast">广播</button>
           <button class="eb eb-r" @click="emergencyEvacuate">撤离</button>
         </div>
-      </div>
-    </div>
+      </template>
+    </PageHeroHeader>
+
+    <MetricStrip
+      class="sc-summary-strip"
+      :items="safetyMetricItems"
+      dense
+      clickable
+      @select="handleSafetyMetricSelect"
+    />
 
     <!-- BODY GRID -->
     <div class="body">
-
-      <!-- KPI Strip (col1-4, row1) -->
-      <KpiCardRow
-        :stats="stats"
-        :watch-status="watchStatus"
-        :max-sos-duration="0"
-        :max-fall-duration="0"
-        @detail="handleKpiDetail"
-      />
 
       <!-- Col1: Dept Risk (row 2-3) -->
       <DeptRankTable
@@ -279,7 +280,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import KpiCardRow from './components/KpiCardRow.vue'
+import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
+import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 import DeptRankTable from './components/DeptRankTable.vue'
 import RiskPersonPanel from './components/RiskPersonPanel.vue'
 import AreaMapGrid from './components/AreaMapGrid.vue'
@@ -320,12 +322,53 @@ const {
 // ── Derived KPI ───────────────────────────────────────────────────────────────
 const isSafe = computed(() => stats.value.sos === 0 && stats.value.fall === 0)
 const pendingCount = computed(() => events.value.length)
+const safetyHeroDescription = computed(() =>
+  `当前待处置 ${pendingCount.value} 条，已闭环 ${handledCount.value} 条，手表在线 ${watchStatus.value.online}/${watchStatus.value.total || '--'}。`
+)
+const safetyMetricItems = computed(() => [
+  {
+    key: 'underground',
+    label: '井下人数',
+    value: stats.value.underground,
+    note: `正常 ${stats.value.normal} / 总数 ${stats.value.total}`,
+    tone: 'primary'
+  },
+  {
+    key: 'sos',
+    label: 'SOS 求救',
+    value: stats.value.sos,
+    note: stats.value.sos > 0 ? '立即处置' : '无紧急求救',
+    tone: stats.value.sos > 0 ? 'danger' : 'success'
+  },
+  {
+    key: 'fall',
+    label: '跌倒检测',
+    value: stats.value.fall,
+    note: stats.value.fall > 0 ? '需要复核' : '无跌倒事件',
+    tone: stats.value.fall > 0 ? 'danger' : 'success'
+  },
+  {
+    key: 'alerts',
+    label: '其他预警',
+    value: stats.value.static + stats.value.abnormal,
+    note: `静止 ${stats.value.static} / 异常 ${stats.value.abnormal}`,
+    tone: stats.value.static + stats.value.abnormal > 0 ? 'warning' : 'primary'
+  },
+  {
+    key: 'watch',
+    label: '手表状态',
+    value: `${watchStatus.value.online}/${watchStatus.value.total || '--'}`,
+    note: `离线 ${watchStatus.value.offline} / 低电 ${watchStatus.value.lowBattery}`,
+    tone: watchStatus.value.offline > 20 || watchStatus.value.lowBattery > 30 ? 'warning' : 'success'
+  }
+])
 // 优先用 watchStatus.online（来自 getStatistics().onlineUsers）
 const warningHandledRate = computed(() => {
   const total = pendingCount.value + handledCount.value
   return total > 0 ? Math.round(handledCount.value / total * 100) : 0
 })
 const warningTotal = computed(() => pendingCount.value + handledCount.value)
+const handleSafetyMetricSelect = (item) => handleKpiDetail(item.key)
 
 // ── Dept ranking ──────────────────────────────────────────────────────────────
 const deptsSorted = computed(() => buildDeptRankData(departments.value))

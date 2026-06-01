@@ -262,6 +262,56 @@ test('safety command narrow desktop leaderboard drops the status pill before col
   )
 })
 
+test('safety command adopts the shared flagship command shell and summary strip', () => {
+  const source = readSource('src/views/safety-command/index.vue')
+
+  assert.match(
+    source,
+    /class="hm-page-shell cc sc-page"|class="cc sc-page hm-page-shell"|class="cc hm-page-shell sc-page"/,
+    'safety command should opt into the shared flagship page shell'
+  )
+  assert.match(source, /PageHeroHeader/, 'safety command should use the shared cockpit hero')
+  assert.match(source, /MetricStrip/, 'safety command should expose the shared metric strip')
+  assert.doesNotMatch(source, /<KpiCardRow/, 'safety command should not keep a second bespoke KPI strip in the body grid')
+})
+
+test('safety command desktop shell avoids fixed one-screen locking after redesign', () => {
+  const styleSource = readSource('src/views/safety-command/safety-command.scss')
+  const desktopShellSection = styleSource.split('@media (max-width: 768px)')[0]
+
+  assert.match(
+    desktopShellSection,
+    /\.cc\s*\{[\s\S]*\n\s*height:\s*auto;/,
+    'safety command desktop shell should allow content height to extend the page'
+  )
+  assert.match(
+    desktopShellSection,
+    /\.cc\s*\{[\s\S]*\n\s*min-height:\s*calc\(100vh - 50px\);/,
+    'safety command desktop shell should preserve a full-screen minimum height baseline'
+  )
+  assert.match(
+    desktopShellSection,
+    /\.cc\s*\{[\s\S]*\n\s*overflow-y:\s*auto;/,
+    'safety command desktop shell should keep vertical page scrolling available'
+  )
+})
+
+test('dashboard command hero and command band prioritize unified control decisions', () => {
+  const viewSource = readSource('src/views/health-monitor/dashboard/index.vue')
+  const styleSource = readSource('src/views/health-monitor/dashboard/dashboard.scss')
+
+  assert.match(
+    viewSource,
+    /title="统一管控"/,
+    'dashboard hero should make unified control the primary page identity'
+  )
+  assert.match(
+    styleSource,
+    /\.dm-command-band\s*\{[\s\S]*grid-template-columns:\s*minmax\(260px,\s*0\.72fr\)\s+minmax\(560px,\s*1\.45fr\)\s+minmax\(280px,\s*0\.74fr\);/,
+    'dashboard command band should reserve the widest desktop rail for the duty decision panel'
+  )
+})
+
 test('risk warning medium desktop breakpoint preserves dept chart height', () => {
   const source = readSource('src/views/health-monitor/risk-warning/risk-warning.scss')
 

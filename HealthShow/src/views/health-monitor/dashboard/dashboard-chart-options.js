@@ -50,13 +50,13 @@ export function buildDeptChartOption({ deptStatsList, deptDataList, riskDeptList
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      backgroundColor: 'rgba(10,20,50,0.9)',
-      borderColor: '#00d4ff',
+      backgroundColor: 'rgba(5,9,22,0.96)',
+      borderColor: '#00c8ff',
       textStyle: { color: '#fff', fontSize: 11 },
       formatter: (p) =>
         `${p[0].name}<br/>` +
-        `<span style="color:#00d4ff">●</span> 检测人数: <b style="color:#00d4ff">${p[0].value.toLocaleString()}</b><br/>` +
-        `<span style="color:#ff9800">●</span> 异常人数: <b style="color:#ff9800">${p[1].value.toLocaleString()}</b>`
+        `<span style="color:#00c8ff">●</span> 检测人数: <b style="color:#00c8ff">${p[0].value.toLocaleString()}</b><br/>` +
+        `<span style="color:#ff8c00">●</span> 异常人数: <b style="color:#ff8c00">${p[1].value.toLocaleString()}</b>`
     },
     legend: {
       data: ['检测人数', '异常人数'],
@@ -95,15 +95,15 @@ export function buildDeptChartOption({ deptStatsList, deptDataList, riskDeptList
         data: sorted.map((d) => d.dataCount),
         itemStyle: {
           color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
-            { offset: 0, color: '#00d4ff' },
-            { offset: 1, color: '#00d4ff33' }
+            { offset: 0, color: '#00c8ff' },
+            { offset: 1, color: '#00c8ff33' }
           ]),
           borderRadius: [0, 3, 3, 0]
         },
         label: {
           show: true,
           position: 'right',
-          color: '#00d4ff',
+          color: '#00c8ff',
           fontSize: 8,
           formatter: (p) => (p.value >= 1000 ? `${(p.value / 1000).toFixed(1)}k` : p.value)
         }
@@ -115,7 +115,7 @@ export function buildDeptChartOption({ deptStatsList, deptDataList, riskDeptList
         data: sorted.map((d) => d.warningCount),
         itemStyle: {
           color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
-            { offset: 0, color: '#ff9800' },
+            { offset: 0, color: '#ff8c00' },
             { offset: 1, color: '#ffcc0244' }
           ]),
           borderRadius: [0, 3, 3, 0]
@@ -123,7 +123,7 @@ export function buildDeptChartOption({ deptStatsList, deptDataList, riskDeptList
         label: {
           show: true,
           position: 'right',
-          color: '#ff9800',
+          color: '#ff8c00',
           fontSize: 8,
           formatter: (p) => p.value || ''
         }
@@ -137,7 +137,7 @@ export function buildDeptDetailChartOption({
   personCounts,
   abnormalCounts,
   personColor = '#00e5ff',
-  abnormalColor = '#ff9800'
+  abnormalColor = '#ff8c00'
 }) {
   return {
     backgroundColor: '#0a1628',
@@ -157,7 +157,7 @@ export function buildDeptDetailChartOption({
       data: days,
       boundaryGap: false,
       axisLabel: { color: 'rgba(180,210,240,0.55)', fontSize: 12, margin: 12 },
-      axisLine: { lineStyle: { color: 'rgba(0,212,255,0.12)' } },
+      axisLine: { lineStyle: { color: 'rgba(0,200,255,0.12)' } },
       axisTick: { show: false }
     },
     yAxis: {
@@ -173,7 +173,7 @@ export function buildDeptDetailChartOption({
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(8,14,40,0.92)',
-      borderColor: 'rgba(0,212,255,0.3)',
+      borderColor: 'rgba(0,200,255,0.3)',
       textStyle: { color: '#e8f4ff', fontSize: 12 },
       formatter: (params) => {
         let s = `<div style="font-size:11px;color:#8ba6c8;margin-bottom:4px">${params[0].axisValue}</div>`
@@ -241,7 +241,7 @@ export function buildDeptPersonChartOption({ days, series }) {
     legend: {
       right: 10, top: 'middle', orient: 'vertical', type: 'scroll',
       textStyle: { color: 'rgba(200,224,248,0.8)', fontSize: 12 },
-      pageIconColor: '#00d4ff', pageTextStyle: { color: '#8ba6c8' },
+      pageIconColor: '#00c8ff', pageTextStyle: { color: '#8ba6c8' },
       icon: 'circle', itemWidth: 10, itemHeight: 10, itemGap: 12
     },
     xAxis: {
@@ -249,7 +249,7 @@ export function buildDeptPersonChartOption({ days, series }) {
       data: days,
       boundaryGap: false,
       axisLabel: { color: 'rgba(180,210,240,0.55)', fontSize: 12, margin: 12 },
-      axisLine: { lineStyle: { color: 'rgba(0,212,255,0.12)' } },
+      axisLine: { lineStyle: { color: 'rgba(0,200,255,0.12)' } },
       axisTick: { show: false }
     },
     yAxis: {
@@ -297,12 +297,12 @@ export function buildUnifiedTrendChartOption({ rawData, vitalRanges }) {
   const sampleRecord = rawData[0] || {}
   const getFieldKey = (possibleKeys) => possibleKeys.find((key) => Object.prototype.hasOwnProperty.call(sampleRecord, key)) || possibleKeys[0]
   const seriesLeft = [
-    { name: '心率', key: getFieldKey(['heartRateRate', 'hrRate', 'heartRateAbnormalRate']), color: '#00d4ff', threshold: vitalRanges.heartRate.max },
+    { name: '心率', key: getFieldKey(['heartRateRate', 'hrRate', 'heartRateAbnormalRate']), color: '#00c8ff', threshold: vitalRanges.heartRate.max },
     { name: '血氧', key: getFieldKey(['bloodOxygenRate', 'boRate', 'bloodOxygenAbnormalRate']), color: '#67C23A', threshold: vitalRanges.bloodOxygen.max },
     { name: '体温', key: getFieldKey(['temperatureRate', 'tempRate', 'temperatureAbnormalRate']), color: '#ffd200', threshold: vitalRanges.temperature.max }
   ]
   const seriesRight = [
-    { name: '压力', key: getFieldKey(['pressureRate', 'stressRate', 'pressureAbnormalRate']), color: '#3eb7ff', threshold: vitalRanges.pressure.max, yAxisIndex: 1 }
+    { name: '压力', key: getFieldKey(['pressureRate', 'stressRate', 'pressureAbnormalRate']), color: '#00c8ff', threshold: vitalRanges.pressure.max, yAxisIndex: 1 }
   ]
   const allSeries = [...seriesLeft, ...seriesRight]
 
@@ -311,7 +311,7 @@ export function buildUnifiedTrendChartOption({ rawData, vitalRanges }) {
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(10,20,50,0.92)',
-      borderColor: '#00d4ff33',
+      borderColor: '#00c8ff33',
       borderWidth: 1,
       textStyle: { color: '#fff', fontSize: 11 },
       formatter(params) {
@@ -349,7 +349,7 @@ export function buildUnifiedTrendChartOption({ rawData, vitalRanges }) {
         type: 'value',
         min: 0,
         position: 'right',
-        axisLabel: { color: '#3eb7ff', fontSize: 10, formatter: (v) => `${v}%` },
+        axisLabel: { color: '#00c8ff', fontSize: 10, formatter: (v) => `${v}%` },
         splitLine: { show: false }
       }
     ],
@@ -407,7 +407,7 @@ export function buildEmpTrendChartOption(trend) {
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(10,20,50,0.92)',
-      borderColor: '#00d4ff',
+      borderColor: '#00c8ff',
       textStyle: { color: '#fff', fontSize: 12 }
     },
     legend: {
@@ -453,8 +453,8 @@ export function buildEmpTrendChartOption(trend) {
         smooth: true,
         symbol: 'circle',
         symbolSize: 5,
-        lineStyle: { color: '#ff5252', width: 2 },
-        itemStyle: { color: '#ff5252' },
+        lineStyle: { color: '#ff3b3b', width: 2 },
+        itemStyle: { color: '#ff3b3b' },
         areaStyle: {
           color: {
             type: 'linear',
@@ -477,8 +477,8 @@ export function buildEmpTrendChartOption(trend) {
         smooth: true,
         symbol: 'circle',
         symbolSize: 5,
-        lineStyle: { color: '#00d4ff', width: 2 },
-        itemStyle: { color: '#00d4ff' },
+        lineStyle: { color: '#00c8ff', width: 2 },
+        itemStyle: { color: '#00c8ff' },
         areaStyle: {
           color: {
             type: 'linear',
@@ -487,8 +487,8 @@ export function buildEmpTrendChartOption(trend) {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(0,212,255,0.2)' },
-              { offset: 1, color: 'rgba(0,212,255,0)' }
+              { offset: 0, color: 'rgba(0,200,255,0.2)' },
+              { offset: 1, color: 'rgba(0,200,255,0)' }
             ]
           }
         }
@@ -516,9 +516,9 @@ export function buildEmpRadarChartOption(scores) {
         { name: '活动量', max: 100 }
       ],
       axisName: { color: '#8ba6c8', fontSize: 11 },
-      axisLine: { lineStyle: { color: 'rgba(0,212,255,0.15)' } },
-      splitLine: { lineStyle: { color: 'rgba(0,212,255,0.12)' } },
-      splitArea: { areaStyle: { color: ['rgba(0,212,255,0.02)', 'rgba(0,212,255,0.05)'] } }
+      axisLine: { lineStyle: { color: 'rgba(0,200,255,0.15)' } },
+      splitLine: { lineStyle: { color: 'rgba(0,200,255,0.12)' } },
+      splitArea: { areaStyle: { color: ['rgba(0,200,255,0.02)', 'rgba(0,200,255,0.05)'] } }
     },
     series: [
       {
@@ -526,9 +526,9 @@ export function buildEmpRadarChartOption(scores) {
         data: [
           {
             value: [s.heartRate || 0, s.bloodOxygen || 0, s.temperature || 0, s.bloodPressure || 0, s.activity || 0],
-            areaStyle: { color: 'rgba(0,212,255,0.15)' },
-            lineStyle: { color: '#00d4ff', width: 2 },
-            itemStyle: { color: '#00d4ff' }
+            areaStyle: { color: 'rgba(0,200,255,0.15)' },
+            lineStyle: { color: '#00c8ff', width: 2 },
+            itemStyle: { color: '#00c8ff' }
           }
         ]
       }
@@ -544,7 +544,7 @@ export function buildWarnCurveChartOption({ times, series, warnTime, warnLevel }
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(10,20,50,0.92)',
-      borderColor: '#00d4ff44',
+      borderColor: '#00c8ff44',
       textStyle: { color: '#fff', fontSize: 11 },
       formatter: params => {
         const header = `<div style="color:#8ba0bb;margin-bottom:3px">${params[0]?.axisValue}</div>`
@@ -600,8 +600,8 @@ export function buildWarnTypeChartOption(data) {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(10,20,50,0.9)',
-      borderColor: '#00d4ff',
+      backgroundColor: 'rgba(5,9,22,0.96)',
+      borderColor: '#00c8ff',
       textStyle: { color: '#fff', fontSize: 12 },
       formatter: '{b}: {c}次 ({d}%)'
     },
@@ -612,7 +612,7 @@ export function buildWarnTypeChartOption(data) {
       data: data.map(d => ({ name: d.name, value: d.value, itemStyle: { color: d.color } })),
       label: { show: false },
       emphasis: {
-        itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,212,255,0.3)' }
+        itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,200,255,0.3)' }
       }
     }]
   }
@@ -631,8 +631,8 @@ export function buildHourDistChartOption({ labels, vals, activePeriod, maxVal, y
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(10,20,50,0.9)',
-      borderColor: '#00d4ff',
+      backgroundColor: 'rgba(5,9,22,0.96)',
+      borderColor: '#00c8ff',
       textStyle: { color: '#fff', fontSize: 10 },
       formatter: p => `${p[0].axisValue}：${p[0].value}次`
     },
@@ -653,9 +653,9 @@ export function buildHourDistChartOption({ labels, vals, activePeriod, maxVal, y
       itemStyle: {
         color: params => {
           const v = params.value
-          if (v >= maxVal * 0.7) return '#ff5252'
+          if (v >= maxVal * 0.7) return '#ff3b3b'
           if (v >= maxVal * 0.4) return '#ffd200'
-          return '#00d4ff'
+          return '#00c8ff'
         },
         borderRadius: [2, 2, 0, 0]
       },
@@ -729,7 +729,7 @@ export function buildEnvHealthChartOption({ hours, coData, dustData, boData }) {
 }
 
 export function buildGaugeChartOption({ value, highColor, lowColor }) {
-  const color = value >= 50 ? highColor : value >= 20 ? '#E6A23C' : lowColor
+  const color = value >= 50 ? highColor : value >= 20 ? '#ff8c00' : lowColor
   return {
     backgroundColor: 'transparent',
     series: [{
@@ -738,7 +738,7 @@ export function buildGaugeChartOption({ value, highColor, lowColor }) {
       radius: '90%', center: ['50%', '65%'],
       min: 0, max: 100,
       axisLine: {
-        lineStyle: { width: 8, color: [[value / 100, color], [1, 'rgba(26,77,143,0.25)']] }
+        lineStyle: { width: 8, color: [[value / 100, color], [1, 'rgba(0, 200, 255, 0.1)']] }
       },
       pointer: { show: false },
       axisTick: { show: false },

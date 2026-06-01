@@ -23,9 +23,9 @@ test('dashboard warning level helpers distinguish danger, warn and info', () => 
   assert.equal(dashboardWarningLevelEventClass('warn'), 'ev-warn')
   assert.equal(dashboardWarningLevelEventClass('info'), 'ev-info')
 
-  assert.equal(dashboardWarningLevelMarkerColor('danger'), '#ff5252')
-  assert.equal(dashboardWarningLevelMarkerColor('warn'), '#ffd200')
-  assert.equal(dashboardWarningLevelMarkerColor('info'), '#00d4ff')
+  assert.equal(dashboardWarningLevelMarkerColor('danger'), '#ff3b3b')
+  assert.equal(dashboardWarningLevelMarkerColor('warn'), '#ff8c00')
+  assert.equal(dashboardWarningLevelMarkerColor('info'), '#00c8ff')
 
   assert.equal(dashboardWarningLevelTagType('danger'), 'danger')
   assert.equal(dashboardWarningLevelTagType('warn'), 'warning')

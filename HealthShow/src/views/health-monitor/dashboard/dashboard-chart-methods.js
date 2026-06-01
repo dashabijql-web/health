@@ -49,10 +49,10 @@ export const dashboardChartMethods = {
   initDeviceCharts() {
     const totalDevices = this.deviceStats.boundDevices ?? this.deviceStats.total ?? 1
     const onlineRate = totalDevices > 0 ? Math.round((this.deviceOnline / totalDevices) * 100) : 0
-    this.initGauge('onlineRateChart', onlineRate, '#00d4ff', '#F56C6C')
-    this.initGauge('activeRateChart', this.deviceStats.activeRate || 0, '#67C23A', '#F56C6C')
-    this.initGauge('usageRateChart', this.deviceStats.usageRate || 0, '#3eb7ff', '#E6A23C')
-    this.initGauge('warningRateChart', this.deviceStats.warningRate || 0, '#F56C6C', '#67C23A')
+    this.initGauge('onlineRateChart', onlineRate, '#00c8ff', '#ff3b3b')
+    this.initGauge('activeRateChart', this.deviceStats.activeRate || 0, '#00e676', '#ff3b3b')
+    this.initGauge('usageRateChart', this.deviceStats.usageRate || 0, '#00c8ff', '#ff8c00')
+    this.initGauge('warningRateChart', this.deviceStats.warningRate || 0, '#ff3b3b', '#00e676')
   },
 
   initEnvHealthChart() {

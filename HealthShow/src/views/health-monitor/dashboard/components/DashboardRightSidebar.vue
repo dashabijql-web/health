@@ -1,10 +1,9 @@
 <template>
   <aside class="dm-right">
-    <div v-if="showRankPanel" class="dm-panel dm-right-rank">
-      <div class="dm-ph">
-        <span class="dm-ph-bar"></span>
-        <span class="dm-ph-title">异常人员排行</span>
-        <span class="dm-ph-sub">{{ periodLabel }}累计</span>
+    <div v-if="showRankPanel" class="db-panel dm-right-rank">
+      <div class="db-track">
+        <span class="db-track-title">异常人员排行</span>
+        <span class="db-track-sub">{{ periodLabel }}累计</span>
       </div>
       <div class="dm-top5-list">
         <div
@@ -29,11 +28,10 @@
       </div>
     </div>
 
-    <div v-if="showActionPanel" class="dm-panel dm-right-action">
-      <div class="dm-ph">
-        <span class="dm-ph-bar dm-ph-bar--warning"></span>
-        <span class="dm-ph-title">值班提示</span>
-        <span class="dm-ph-sub">优先处理最紧急闭环</span>
+    <div v-if="showActionPanel" class="db-panel dm-right-action">
+      <div class="db-track">
+        <span class="db-track-title">值班提示</span>
+        <span class="db-track-sub">优先处理最紧急闭环</span>
       </div>
       <div class="dm-action-cues">
         <button
@@ -52,11 +50,10 @@
       </div>
     </div>
 
-    <div v-if="showWarnRatePanel" class="dm-panel dm-right-warnrate">
-      <div class="dm-ph">
-        <span class="dm-ph-bar"></span>
-        <span class="dm-ph-title">指标预警率分析</span>
-        <span class="dm-ph-sub">{{ periodLabel }}触发预警人员占比</span>
+    <div v-if="showWarnRatePanel" class="db-panel dm-right-warnrate">
+      <div class="db-track">
+        <span class="db-track-title">指标预警率分析</span>
+        <span class="db-track-sub">{{ periodLabel }}触发预警人员占比</span>
       </div>
       <div class="dm-warn-stats">
         <PageEmptyState
@@ -88,11 +85,10 @@
       </div>
     </div>
 
-    <div v-if="showPreShiftPanel" class="dm-panel dm-right-preshift dm-panel--interactive" @click="goMineEntry">
-      <div class="dm-ph">
-        <span class="dm-ph-bar dm-ph-bar--success"></span>
-        <span class="dm-ph-title">班前健康准入</span>
-        <span class="dm-ph-sub">{{ preShiftStatusText }}</span>
+    <div v-if="showPreShiftPanel" class="db-panel dm-right-preshift db-panel--interactive" @click="goMineEntry">
+      <div class="db-track">
+        <span class="db-track-title">班前健康准入</span>
+        <span class="db-track-sub">{{ preShiftStatusText }}</span>
       </div>
       <div class="dm-preshift-body">
         <div class="dm-ps-ring-wrap">
@@ -134,10 +130,9 @@
       </div>
     </div>
 
-    <div v-if="showAiPanel" class="dm-panel dm-right-ai">
-      <div class="dm-ph">
-        <span class="dm-ph-bar dm-ph-bar-ai"></span>
-        <span class="dm-ph-title">AI 全矿健康分析</span>
+    <div v-if="showAiPanel" class="db-panel dm-right-ai">
+      <div class="db-track">
+        <span class="db-track-title">AI 全矿健康分析</span>
         <button class="dm-ai-btn" :disabled="mineAiLoading" @click="$emit('toggle-ai', false)">
           {{ mineAiLoading ? '分析中…' : (mineAiReport ? '刷新' : '生成分析') }}
         </button>
