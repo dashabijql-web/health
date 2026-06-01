@@ -102,7 +102,7 @@ export function buildWarningTypeData({ warningTypesData, warningEvents }) {
   const source = (warningTypesData || []).length
     ? warningTypesData
     : (() => {
-        const typeMap = {}
+        const typeMap = {};
         (warningEvents || []).forEach((e) => {
           const key = e.type || '其他'
           typeMap[key] = (typeMap[key] || 0) + 1

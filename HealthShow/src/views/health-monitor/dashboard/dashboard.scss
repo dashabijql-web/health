@@ -18,6 +18,270 @@ $success: $green;
 $warning: $orange;
 $danger: $red;
 
+.db-control-system {
+  width: 100%;
+  min-height: calc(100vh - 50px);
+  height: auto;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  font-family: var(--font-body);
+  color: $text;
+  font-size: 13px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.018), transparent 360px),
+    radial-gradient(circle at 14% 8%, rgba($green, .1), transparent 28%),
+    radial-gradient(circle at 86% 12%, rgba($orange, .09), transparent 30%),
+    linear-gradient(135deg, #040914 0%, #07111d 48%, #0d1218 100%);
+}
+
+.db-duty-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 12px 0;
+}
+
+.db-duty-hero__header {
+  border: 1px solid rgba($green, .18);
+  background:
+    linear-gradient(90deg, rgba($green, .08), transparent 44%),
+    linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 22px 56px -42px rgba($green, .42);
+}
+
+.db-command-ribbon {
+  width: 100%;
+}
+
+.db-control-body {
+  flex: none;
+}
+
+.db-control-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.76fr) minmax(620px, 1.24fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.db-control-grid > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+.db-health-rail,
+.db-governance-workspace {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.db-health-rail {
+  position: sticky;
+  top: 62px;
+  align-self: start;
+}
+
+.db-duty-snapshot,
+.db-health-snapshot,
+.db-device-rail,
+.db-closure-lane,
+.db-duty-console,
+.db-trend-command,
+.db-insight-sidebar,
+.db-support-sidebar {
+  min-width: 0;
+}
+
+.db-duty-snapshot .dm-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.db-health-snapshot .dm-vitals-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.db-health-snapshot .dm-vitals-supplemental {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.db-device-rail {
+  min-height: 214px;
+}
+
+.db-device-rail .dm-device-body {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.db-device-rail .dm-device-cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.db-device-rail .dm-device-gauges {
+  justify-content: space-between;
+  overflow-x: auto;
+}
+
+.db-governance-workspace {
+  display: grid;
+  grid-template-rows: minmax(420px, .92fr) minmax(460px, 1.08fr);
+}
+
+.db-closure-lane {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+}
+
+.db-closure-items {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(133, 175, 220, .09);
+}
+
+.db-closure-item {
+  min-width: 0;
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba($green, .18);
+  background: linear-gradient(180deg, rgba($green, .075), rgba(255,255,255,.018));
+  color: $text;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgba($accent, .32);
+    background: rgba(255,255,255,.048);
+  }
+
+  &.tone-danger {
+    border-color: rgba($red, .3);
+    background: linear-gradient(180deg, rgba($red, .09), rgba(255,255,255,.018));
+    strong { color: $red; }
+  }
+
+  &.tone-warning {
+    border-color: rgba($orange, .28);
+    background: linear-gradient(180deg, rgba($orange, .08), rgba(255,255,255,.018));
+    strong { color: $orange; }
+  }
+
+  &.tone-success strong {
+    color: $green;
+  }
+}
+
+.db-closure-label,
+.db-closure-item em {
+  display: block;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.db-closure-item strong {
+  font-family: $mono;
+  font-size: 28px;
+  line-height: 1;
+  color: $white;
+}
+
+.db-closure-stream {
+  flex: 1;
+  min-height: 0;
+}
+
+.db-closure-lane .dm-model-video-col {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border-right: none;
+  background: transparent;
+}
+
+.db-closure-lane .dm-event-list-wrap {
+  padding: 12px 16px 0;
+}
+
+.db-duty-console {
+  min-height: 460px;
+}
+
+.db-intel-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.db-trend-command {
+  min-height: 430px;
+}
+
+.db-trend-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, .95fr) minmax(0, .9fr);
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.db-trend-grid .dm-data-block {
+  min-height: 292px;
+}
+
+.db-insight-sidebar {
+  min-height: 430px;
+}
+
+.db-support-band {
+  grid-template-columns: minmax(0, 1fr) minmax(420px, .72fr);
+}
+
+.db-support-sidebar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.db-support-sidebar .dm-right-rank,
+.db-support-sidebar .dm-right-action {
+  min-height: 256px;
+}
+
+@media (max-width: 1500px) and (min-width: 1101px) {
+  .db-intel-band {
+    grid-template-columns: 1fr;
+  }
+
+  .db-trend-grid {
+    grid-template-columns: repeat(3, minmax(260px, 1fr));
+  }
+
+  .db-insight-sidebar {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
+
 .db {
   width: 100%;
   min-height: calc(100vh - 50px);
@@ -1471,7 +1735,45 @@ $danger: $red;
 // ══════════════════════════════════════════════════════════════
 // 中等屏幕响应式（≤1100px 内容区）：dm-model-video-col 宽度收窄，防止挤压图表列
 // ══════════════════════════════════════════════════════════════
+@media (max-width: 1400px) {
+  .db-control-grid,
+  .db-intel-band,
+  .db-support-band {
+    grid-template-columns: 1fr;
+  }
+
+  .db-health-rail {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(300px, .9fr) minmax(420px, 1.1fr);
+  }
+
+  .db-device-rail {
+    grid-column: 1 / -1;
+  }
+
+  .db-governance-workspace {
+    grid-template-rows: auto;
+  }
+}
+
 @media (max-width: 1100px) {
+  .db-control-system {
+    height: auto !important;
+    min-height: 100vh;
+    overflow-y: auto !important;
+  }
+
+  .db-health-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .db-closure-items,
+  .db-trend-grid,
+  .db-support-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .db {
     height: auto !important;
     min-height: 100vh;
@@ -1523,6 +1825,50 @@ $danger: $red;
 // 首屏降噪：隐藏非必须模块
 // ══════════════════════════════════════════════════════════════
 @media (max-width: 768px) {
+  .db-control-system {
+    transform: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100vh;
+  }
+
+  .db-duty-hero {
+    padding: 10px 10px 0;
+  }
+
+  .db-control-body {
+    padding: 10px 8px 80px;
+  }
+
+  .db-control-grid,
+  .db-intel-band,
+  .db-support-band,
+  .db-health-rail,
+  .db-governance-workspace,
+  .db-support-sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px;
+  }
+
+  .db-closure-items,
+  .db-trend-grid,
+  .db-duty-snapshot .dm-metrics-row,
+  .db-health-snapshot .dm-vitals-grid,
+  .db-health-snapshot .dm-vitals-supplemental {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .db-closure-lane,
+  .db-duty-console,
+  .db-trend-command,
+  .db-insight-sidebar,
+  .db-support-sidebar .dm-right-rank,
+  .db-support-sidebar .dm-right-action {
+    min-height: 0;
+    height: auto;
+  }
+
   // ── 整体容器 ──
   .db  { transform: none !important; width: 100% !important; height: auto !important; min-height: 100vh; }
   .dm-outer { height: auto !important; overflow-y: auto; overflow-x: hidden; }

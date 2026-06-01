@@ -1,12 +1,11 @@
 <template>
-  <div class="hm-page-shell db" ref="dmScale" @transitionend.stop @animationend.stop>
+  <div class="hm-page-shell db-control-system" ref="dmScale" @transitionend.stop @animationend.stop>
 
-    <!-- ══════════ HEADER ══════════ -->
-    <header class="db-hd">
+    <header class="db-duty-hero">
       <PageHeroHeader
-        class="db-hd-hero"
+        class="db-duty-hero__header"
         variant="cockpit"
-        eyebrow="Cockpit Dashboard"
+        eyebrow="Duty Closure"
         title="统一管控"
         :description="dashboardHeroDescription"
       >
@@ -43,179 +42,190 @@
       </PageHeroHeader>
 
       <MetricStrip
-        class="dm-hd-kpis"
+        class="db-command-ribbon"
         :items="headerMetricStripItems"
         dense
         @select="onHeaderMetricSelect"
       />
     </header>
 
-    <!-- ══════════ BODY ══════════ -->
-    <div class="dm-bd" ref="dmBody">
-      <div class="db-panel dm-main-metrics db-panel--interactive" @click="openDeptPersonModal">
-        <div class="db-track">
-          <span class="db-track-title">{{ periodLabel }}检测人数</span>
-          <span class="db-track-sub">
-            <span class="dm-main-metrics-total">共 {{ totalPersons !== null ? totalPersons.toLocaleString() : '--' }} 人次</span>
-            <span class="dm-inline-action">查看部门详情</span>
-          </span>
-        </div>
-        <div class="dm-metrics-row">
-          <div
-            v-for="m in metricCards"
-            :key="m.label"
-            class="dm-metric-card"
-            :style="{ '--metric-tone': m.color }"
-            @click.stop="onMetricCardClick(m)"
-          >
-            <div class="dm-metric-val">
-              {{ m.val.toLocaleString() }}
+    <div class="db-control-body dm-bd" ref="dmBody">
+      <section class="db-control-grid">
+        <aside class="db-health-rail">
+          <div class="db-panel db-duty-snapshot db-panel--interactive" @click="openDeptPersonModal">
+            <div class="db-track">
+              <span class="db-track-title">{{ periodLabel }}检测人数</span>
+              <span class="db-track-sub">
+                <span class="dm-main-metrics-total">共 {{ totalPersons !== null ? totalPersons.toLocaleString() : '--' }} 人次</span>
+                <span class="dm-inline-action">查看部门详情</span>
+              </span>
             </div>
-            <div class="dm-metric-label">{{ m.label }}</div>
-            <div class="dm-metric-bar-wrap">
-              <div class="dm-metric-bar" :style="{ width: `${m.pct}%` }"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <section class="dm-command-band">
-        <div class="db-panel dm-command-overview">
-          <div class="db-track">
-            <span class="db-track-title">态势概览</span>
-            <span class="db-track-sub">{{ periodLabel }}核心体征均值与健康状态</span>
-          </div>
-          <div class="dm-command-overview-body">
-            <div class="dm-command-section dm-command-section--vitals">
-              <div class="dm-command-section-hd">体征健康评估</div>
-              <div class="dm-vitals-grid">
-                <div
-                  v-for="v in primaryVitalCards"
-                  :key="v.label"
-                  :class="['dm-vital-card', v.route ? 'is-clickable' : '']"
-                  :style="{ '--vital-tone': v.color, '--vital-tone-soft': `${v.color}12`, '--vital-tone-border': `${v.color}33` }"
-                  @click="v.route && $router.push(v.route)"
-                >
-                  <div class="dm-vital-head">
-                    <div class="dm-vital-icon">
-                      <el-icon :size="15"><component :is="v.icon" /></el-icon>
-                    </div>
-                    <div class="dm-vital-label">{{ v.label }}</div>
-                  </div>
-                  <div class="dm-vital-reading">
-                    <span class="dm-vital-val">{{ v.val }}</span>
-                    <span v-if="v.unit" class="dm-vital-unit">{{ v.unit }}</span>
-                  </div>
-                  <div class="dm-vital-foot">
-                    <div class="dm-vital-tag" :class="v.tagCls">{{ v.tag }}</div>
-                  </div>
+            <div class="dm-metrics-row">
+              <div
+                v-for="m in metricCards"
+                :key="m.label"
+                class="dm-metric-card"
+                :style="{ '--metric-tone': m.color }"
+                @click.stop="onMetricCardClick(m)"
+              >
+                <div class="dm-metric-val">
+                  {{ m.val.toLocaleString() }}
                 </div>
-              </div>
-              <div class="dm-vitals-supplemental">
-                <button
-                  v-for="v in supplementalVitalCards"
-                  :key="`${v.label}-supplemental`"
-                  type="button"
-                  :class="['dm-vitals-supplemental__item', v.route ? 'is-clickable' : '']"
-                  :style="{ '--vital-tone': v.color, '--vital-tone-soft': `${v.color}14`, '--vital-tone-border': `${v.color}2b` }"
-                  @click="v.route && $router.push(v.route)"
-                >
-                  <span class="dm-vitals-supplemental__label">{{ v.label }}</span>
-                  <span class="dm-vitals-supplemental__value">{{ v.val }}<em v-if="v.unit">{{ v.unit }}</em></span>
-                  <span :class="['dm-vitals-supplemental__tag', v.tagCls]">{{ v.tag }}</span>
-                </button>
-              </div>
-              <div class="dm-assess-bars">
-                <div
-                  v-for="item in healthAssess"
-                  :key="`health-assess-${item.label}`"
-                  class="dm-assess-row"
-                >
-                  <span class="dm-assess-label">{{ item.label }}</span>
-                  <span class="dm-assess-track">
-                    <span class="dm-assess-fill" :style="{ width: `${item.pct}%`, background: item.color }"></span>
-                  </span>
-                  <span class="dm-assess-tag" :style="{ color: item.color }">{{ item.tag }}</span>
+                <div class="dm-metric-label">{{ m.label }}</div>
+                <div class="dm-metric-bar-wrap">
+                  <div class="dm-metric-bar" :style="{ width: `${m.pct}%` }"></div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="db-panel dm-main-dispatch dm-command-dispatch-shell">
-          <div class="db-track">
-            <span class="db-track-title">值班决策面板</span>
-            <span class="db-track-sub">先看高危闭环，再看趋势变化</span>
+          <div class="db-panel db-health-snapshot">
+            <div class="db-track">
+              <span class="db-track-title">健康快照</span>
+              <span class="db-track-sub">{{ periodLabel }}体征均值</span>
+            </div>
+            <div class="dm-vitals-grid">
+              <div
+                v-for="v in primaryVitalCards"
+                :key="v.label"
+                :class="['dm-vital-card', v.route ? 'is-clickable' : '']"
+                :style="{ '--vital-tone': v.color, '--vital-tone-soft': `${v.color}12`, '--vital-tone-border': `${v.color}33` }"
+                @click="v.route && $router.push(v.route)"
+              >
+                <div class="dm-vital-head">
+                  <div class="dm-vital-icon">
+                    <el-icon :size="15"><component :is="v.icon" /></el-icon>
+                  </div>
+                  <div class="dm-vital-label">{{ v.label }}</div>
+                </div>
+                <div class="dm-vital-reading">
+                  <span class="dm-vital-val">{{ v.val }}</span>
+                  <span v-if="v.unit" class="dm-vital-unit">{{ v.unit }}</span>
+                </div>
+                <div class="dm-vital-foot">
+                  <div class="dm-vital-tag" :class="v.tagCls">{{ v.tag }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="dm-vitals-supplemental">
+              <button
+                v-for="v in supplementalVitalCards"
+                :key="`${v.label}-supplemental`"
+                type="button"
+                :class="['dm-vitals-supplemental__item', v.route ? 'is-clickable' : '']"
+                :style="{ '--vital-tone': v.color, '--vital-tone-soft': `${v.color}14`, '--vital-tone-border': `${v.color}2b` }"
+                @click="v.route && $router.push(v.route)"
+              >
+                <span class="dm-vitals-supplemental__label">{{ v.label }}</span>
+                <span class="dm-vitals-supplemental__value">{{ v.val }}<em v-if="v.unit">{{ v.unit }}</em></span>
+                <span :class="['dm-vitals-supplemental__tag', v.tagCls]">{{ v.tag }}</span>
+              </button>
+            </div>
+            <div class="dm-assess-bars">
+              <div
+                v-for="item in healthAssess"
+                :key="`health-assess-${item.label}`"
+                class="dm-assess-row"
+              >
+                <span class="dm-assess-label">{{ item.label }}</span>
+                <span class="dm-assess-track">
+                  <span class="dm-assess-fill" :style="{ width: `${item.pct}%`, background: item.color }"></span>
+                </span>
+                <span class="dm-assess-tag" :style="{ color: item.color }">{{ item.tag }}</span>
+              </div>
+            </div>
           </div>
-          <DashboardDispatchPanel
-            :dispatch-priority="dispatchPriority"
-            :dispatch-action-items="dispatchActionItems"
-            :kpi-unhandled-high="kpiUnhandledHigh"
-            :pre-shift-data="preShiftData"
-            :focus-warning-events="focusWarningEvents"
-            :mine-ai-report="mineAiReport"
-            :mine-ai-loading="mineAiLoading"
-            :dashboard-ai-summary="dashboardAiSummary"
-            :risk-dept-list="riskDeptList"
-            :latest-danger-event="latestDangerEvent"
-            @navigate="$router.push($event)"
-            @person-click="goToEmployeeProfile"
-            @toggle-ai="toggleMineAiPanel"
+
+          <DashboardDevicePanel
+            class="db-device-rail"
+            :device-cards="deviceCards"
+            @go-device="goToDeviceList"
           />
-        </div>
+        </aside>
 
-        <DashboardRightSidebar
-          class="dm-command-sidebar"
-          mode="primary"
-          :period-label="periodLabel"
-          :top5-display-data="top5DisplayData"
-          :top5-max="top5Max"
-          :warning-rate-list="warningRateList"
-          :pre-shift-data="preShiftData"
-          :mine-ai-report="mineAiReport"
-          :mine-ai-loading="mineAiLoading"
-          :latest-danger-event="latestDangerEvent"
-          :kpi-unhandled-high="kpiUnhandledHigh"
-          :focus-warning-count="focusWarningEvents.length"
-          @open-employee="openEmployeeDrawer"
-          @toggle-ai="toggleMineAiPanel"
-          @show-ai="mineAiDialogVisible = true"
-        />
-      </section>
-
-      <section class="dm-monitor-band">
-        <div class="db-panel dm-main-model">
-          <div class="db-track">
-            <span class="db-track-title">健康监测中心</span>
-            <span class="db-track-sub">实时体征综合分析</span>
-          </div>
-          <div class="dm-model-body">
+        <main class="db-governance-workspace">
+          <section class="db-panel db-closure-lane">
+            <div class="db-track">
+              <span class="db-track-title">闭环指挥线</span>
+              <span class="db-track-sub">先清待办，再看趋势</span>
+            </div>
+            <div class="db-closure-items">
+              <button
+                v-for="item in closureLaneItems"
+                :key="item.key"
+                type="button"
+                :class="['db-closure-item', `tone-${item.tone}`]"
+                @click="item.route && $router.push(item.route)"
+              >
+                <span class="db-closure-label">{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+                <em>{{ item.note }}</em>
+              </button>
+            </div>
             <DashboardWarningStream
+              class="db-closure-stream"
               :warning-events="warningEvents"
               :latest-danger-event="latestDangerEvent"
               :format-time-ago="formatTimeAgo"
               :open-warn-curve="openWarnCurve"
               :open-handle-dialog="openHandleDialog"
             />
+          </section>
 
-            <div class="dm-model-data-col">
-              <div class="dm-data-block dm-data-block-trend">
-                <div class="dm-block-hd">
-                  <span class="dm-block-title">{{ trendBlockTitle }}</span>
-                  <span class="dm-block-sub">异常率变化</span>
-                </div>
-                <div ref="unifiedTrendChart" class="dm-chart-flex"></div>
-              </div>
+          <div class="db-panel db-duty-console dm-main-dispatch dm-command-dispatch-shell">
+            <div class="db-track">
+              <span class="db-track-title">值班决策面板</span>
+              <span class="db-track-sub">任务闭环 / 班前准入 / 重点人员</span>
+            </div>
+            <DashboardDispatchPanel
+              :dispatch-priority="dispatchPriority"
+              :dispatch-action-items="dispatchActionItems"
+              :kpi-unhandled-high="kpiUnhandledHigh"
+              :pre-shift-data="preShiftData"
+              :focus-warning-events="focusWarningEvents"
+              :mine-ai-report="mineAiReport"
+              :mine-ai-loading="mineAiLoading"
+              :dashboard-ai-summary="dashboardAiSummary"
+              :risk-dept-list="riskDeptList"
+              :latest-danger-event="latestDangerEvent"
+              @navigate="$router.push($event)"
+              @person-click="goToEmployeeProfile"
+              @toggle-ai="toggleMineAiPanel"
+            />
+          </div>
+        </main>
+      </section>
 
-              <div class="dm-data-block">
-                <div class="dm-block-hd">
-                  <span class="dm-block-title">{{ hourDistTitle }}</span>
-                </div>
-                <div id="hourDistChart" class="dm-chart-flex"></div>
+      <section class="db-intel-band">
+        <div class="db-panel dm-main-model db-trend-command">
+          <div class="db-track">
+            <span class="db-track-title">趋势研判</span>
+            <span class="db-track-sub">{{ trendBlockTitle }} / {{ hourDistTitle }}</span>
+          </div>
+          <div class="db-trend-grid">
+            <div class="dm-data-block dm-data-block-trend">
+              <div class="dm-block-hd">
+                <span class="dm-block-title">{{ trendBlockTitle }}</span>
+                <span class="dm-block-sub">异常率变化</span>
               </div>
+              <div ref="unifiedTrendChart" class="dm-chart-flex"></div>
+            </div>
+
+            <div class="dm-data-block">
+              <div class="dm-block-hd">
+                <span class="dm-block-title">{{ hourDistTitle }}</span>
+              </div>
+              <div id="hourDistChart" class="dm-chart-flex"></div>
+            </div>
+
+            <div class="dm-data-block">
+              <div class="dm-block-hd">
+                <span class="dm-block-title">预警类型</span>
+                <span class="dm-block-sub">结构占比</span>
+              </div>
+              <div id="warnTypeChart" class="dm-chart-flex"></div>
             </div>
           </div>
-
           <div class="dm-model-footer">
             <div class="dm-mf-group is-handled">
               <div class="dm-mf-dot"></div>
@@ -234,7 +244,7 @@
         </div>
 
         <DashboardRightSidebar
-          class="dm-monitor-sidebar"
+          class="db-insight-sidebar dm-monitor-sidebar"
           mode="secondary"
           :period-label="periodLabel"
           :top5-display-data="top5DisplayData"
@@ -252,11 +262,23 @@
         />
       </section>
 
-      <section class="dm-support-band">
-        <DashboardDevicePanel
-          class="dm-support-device"
-          :device-cards="deviceCards"
-          @go-device="goToDeviceList"
+      <section class="dm-support-band db-support-band">
+        <DashboardRightSidebar
+          class="db-support-sidebar dm-command-sidebar"
+          mode="primary"
+          :period-label="periodLabel"
+          :top5-display-data="top5DisplayData"
+          :top5-max="top5Max"
+          :warning-rate-list="warningRateList"
+          :pre-shift-data="preShiftData"
+          :mine-ai-report="mineAiReport"
+          :mine-ai-loading="mineAiLoading"
+          :latest-danger-event="latestDangerEvent"
+          :kpi-unhandled-high="kpiUnhandledHigh"
+          :focus-warning-count="focusWarningEvents.length"
+          @open-employee="openEmployeeDrawer"
+          @toggle-ai="toggleMineAiPanel"
+          @show-ai="mineAiDialogVisible = true"
         />
 
         <div class="db-panel dm-main-env">
@@ -268,7 +290,7 @@
         </div>
       </section>
 
-    </div><!-- /dm-bd -->
+    </div>
 
   <DashboardDialogs
     :emp-drawer="empDrawer"
@@ -330,6 +352,43 @@ export default {
           clickable: Boolean(item.clickable),
           route: item.route
         }))
+      },
+      closureLaneItems() {
+        const pending = (this.warningEvents || []).filter((item) => !item.handled).length
+        return [
+          {
+            key: 'high',
+            label: '高危闭环',
+            value: this.kpiUnhandledHigh || 0,
+            note: '通知页优先处置',
+            tone: (this.kpiUnhandledHigh || 0) > 0 ? 'danger' : 'success',
+            route: '/alert-management/notifications'
+          },
+          {
+            key: 'pending',
+            label: '全量待办',
+            value: pending,
+            note: `${this.periodLabel}预警流`,
+            tone: pending > 0 ? 'warning' : 'success',
+            route: '/alert-management/records'
+          },
+          {
+            key: 'entry',
+            label: '准入复核',
+            value: this.preShiftData?.failedCount || 0,
+            note: '班前未通过',
+            tone: (this.preShiftData?.failedCount || 0) > 0 ? 'warning' : 'success',
+            route: '/health-monitor/mine-entry'
+          },
+          {
+            key: 'device',
+            label: '设备干预',
+            value: this.deviceWarningCount || 0,
+            note: `离线 ${this.deviceOffline || 0}`,
+            tone: (this.deviceWarningCount || this.deviceOffline) ? 'warning' : 'success',
+            route: { path: '/admin/device-list', query: { filter: 'warning' } }
+          }
+        ]
       },
       primaryVitalCards() {
         return (this.vitalCards || []).slice(0, 6)

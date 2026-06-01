@@ -267,7 +267,7 @@ test('safety command adopts the shared flagship command shell and summary strip'
 
   assert.match(
     source,
-    /class="hm-page-shell cc sc-page"|class="cc sc-page hm-page-shell"|class="cc hm-page-shell sc-page"/,
+    /class="hm-page-shell sc-war-room"/,
     'safety command should opt into the shared flagship page shell'
   )
   assert.match(source, /PageHeroHeader/, 'safety command should use the shared cockpit hero')
@@ -309,6 +309,54 @@ test('dashboard command hero and command band prioritize unified control decisio
     styleSource,
     /\.dm-command-band\s*\{[\s\S]*grid-template-columns:\s*minmax\(260px,\s*0\.72fr\)\s+minmax\(560px,\s*1\.45fr\)\s+minmax\(280px,\s*0\.74fr\);/,
     'dashboard command band should reserve the widest desktop rail for the duty decision panel'
+  )
+})
+
+test('command center A+C redesign keeps explicit legacy backups', () => {
+  const backupFiles = [
+    'src/views/safety-command/legacy-20260601/index.vue',
+    'src/views/safety-command/legacy-20260601/safety-command.scss',
+    'src/views/health-monitor/dashboard/legacy-20260601/index.vue',
+    'src/views/health-monitor/dashboard/legacy-20260601/dashboard.scss'
+  ]
+
+  for (const relativePath of backupFiles) {
+    assert.doesNotThrow(
+      () => readSource(relativePath),
+      `${relativePath} should preserve the pre-redesign page as an explicit local backup`
+    )
+  }
+})
+
+test('safety command A+C redesign reads as a field command war room', () => {
+  const viewSource = readSource('src/views/safety-command/index.vue')
+  const styleSource = readSource('src/views/safety-command/safety-command.scss')
+
+  assert.match(viewSource, /class="hm-page-shell sc-war-room"/, 'safety command should use the new war-room shell')
+  assert.match(viewSource, /sc-incident-hero/, 'safety command should lead with an incident response hero')
+  assert.match(viewSource, /sc-situation-stage/, 'safety command should include a central situation stage')
+  assert.match(viewSource, /sc-response-queue/, 'safety command should include a primary response queue')
+  assert.match(viewSource, /sc-command-ribbon/, 'safety command should keep only a compact metric ribbon above the stage')
+  assert.match(
+    styleSource,
+    /\.sc-war-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(520px,\s*1\.18fr\)\s+minmax\(360px,\s*0\.82fr\);/,
+    'safety command desktop layout should reserve the dominant width for the situation stage'
+  )
+})
+
+test('dashboard A+C redesign reads as a duty closure control system', () => {
+  const viewSource = readSource('src/views/health-monitor/dashboard/index.vue')
+  const styleSource = readSource('src/views/health-monitor/dashboard/dashboard.scss')
+
+  assert.match(viewSource, /class="hm-page-shell db-control-system"/, 'dashboard should use the new control-system shell')
+  assert.match(viewSource, /db-duty-hero/, 'dashboard should lead with a duty decision hero')
+  assert.match(viewSource, /db-closure-lane/, 'dashboard should expose the warning closure lane')
+  assert.match(viewSource, /db-governance-workspace/, 'dashboard should include the governance workspace')
+  assert.match(viewSource, /db-health-rail/, 'dashboard should keep a compact health snapshot rail')
+  assert.match(
+    styleSource,
+    /\.db-control-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(360px,\s*0\.76fr\)\s+minmax\(620px,\s*1\.24fr\);/,
+    'dashboard desktop layout should reserve the dominant width for the closure workspace'
   )
 })
 
