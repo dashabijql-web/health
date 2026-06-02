@@ -107,4 +107,19 @@ test('A+C command pages avoid self-amplifying stretch layouts', () => {
     /\.db-device-rail\s+\.dm-dcard:nth-child\(5\):last-child\s*\{[\s\S]*grid-column:\s*1\s*\/\s*-1;/,
     'dashboard mobile device card grid should let the odd final device card span the row'
   )
+  assert.match(
+    dashboardStyle,
+    /\.db-control-system\s+\.db-trend-command\.dm-main-model\s*\{[\s\S]*min-height:\s*clamp\(360px,\s*34vh,\s*430px\);[\s\S]*overflow:\s*visible;/,
+    'dashboard trend command panel should be bounded to chart content instead of keeping the oversized model shell'
+  )
+  assert.match(
+    dashboardStyle,
+    /@media\s*\(max-width:\s*1100px\)\s*\{[\s\S]*\.db-control-system\s+\.db-trend-command\.dm-main-model\s*\{[\s\S]*height:\s*auto;[\s\S]*min-height:\s*0;/,
+    'dashboard medium/mobile trend panel should override the shared 640px model shell height'
+  )
+  assert.match(
+    dashboardStyle,
+    /@media\s*\(max-width:\s*1800px\)\s*and\s*\(min-width:\s*1101px\)\s*\{[\s\S]*\.db-intel-band\s*\{[\s\S]*grid-template-columns:\s*1fr;/,
+    'dashboard trend and insight band should collapse before the right sidebar creates a large blank area under the trend charts'
+  )
 })

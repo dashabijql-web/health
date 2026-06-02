@@ -262,7 +262,7 @@ $danger: $red;
 }
 
 .db-trend-grid {
-  flex: 1;
+  flex: none;
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, .95fr) minmax(0, .9fr);
@@ -272,6 +272,10 @@ $danger: $red;
 
 .db-trend-grid .dm-data-block {
   min-height: 260px;
+}
+
+.db-trend-command .dm-chart-flex {
+  min-height: 224px;
 }
 
 .db-insight-sidebar {
@@ -293,7 +297,7 @@ $danger: $red;
   min-height: 230px;
 }
 
-@media (max-width: 1500px) and (min-width: 1101px) {
+@media (max-width: 1800px) and (min-width: 1101px) {
   .db-intel-band {
     grid-template-columns: 1fr;
   }
@@ -308,7 +312,9 @@ $danger: $red;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
   }
+}
 
+@media (max-width: 1500px) and (min-width: 1101px) {
   .db-support-band .dm-main-env {
     grid-column: 1 / -1;
   }
@@ -1193,10 +1199,15 @@ $danger: $red;
 // A+C compact layout overrides. The rebuilt dashboard reuses older panels whose
 // original 100% heights assumed a fixed cockpit canvas; keep them content-sized here.
 .db-control-system .db-duty-console.dm-command-dispatch-shell,
-.db-control-system .db-trend-command.dm-main-model,
 .db-control-system .dm-main-env {
   height: auto;
   min-height: 0;
+}
+
+.db-control-system .db-trend-command.dm-main-model {
+  height: auto;
+  min-height: clamp(360px, 34vh, 430px);
+  overflow: visible;
 }
 
 .db-control-system .db-closure-lane {
@@ -1226,7 +1237,7 @@ $danger: $red;
 
 .db-control-system .db-trend-command {
   height: auto;
-  min-height: 0;
+  min-height: clamp(360px, 34vh, 430px);
 }
 
 .db-control-system .db-support-sidebar.dm-command-sidebar {
@@ -2001,6 +2012,10 @@ $danger: $red;
   .dm-main-model {
     height: 640px;
     min-height: 640px;
+  }
+  .db-control-system .db-trend-command.dm-main-model {
+    height: auto;
+    min-height: 0;
   }
   .dm-monitor-sidebar {
     height:auto;
