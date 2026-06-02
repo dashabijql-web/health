@@ -1,8 +1,10 @@
 @import '@/styles/dark-admin.scss';
 
 .page-container {
-  height: calc(100vh - 50px);
-  overflow: hidden;
+  height: auto;
+  min-height: calc(100vh - 50px);
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   padding: 20px;
@@ -81,7 +83,15 @@
 .stat-label { font-size: 12px; color: $da-text-dim; margin-top: 4px; }
 .stat-badge { font-size: 11px; color: $da-danger; background: rgba(255,82,82,.12); border: 1px solid rgba(255,82,82,.3); padding: 2px 8px; border-radius: 10px; }
 .panel { @include da-panel; }
-.panel.table-panel { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.panel.table-panel {
+  flex: none;
+  height: clamp(640px, 64vh, 920px);
+  max-height: none;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 .table-body { flex: 1; min-height: 0; overflow: hidden; }
 .search-form { flex-shrink: 0; padding: 16px 20px; }
 .panel-header { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid $da-border; }
@@ -226,5 +236,9 @@
   :deep(.el-pagination) { flex-wrap: wrap; justify-content: center; }
 
   /* 表格面板高度不固定 */
-  .panel.table-panel { flex: none; }
+  .panel.table-panel {
+    flex: none;
+    height: auto;
+    max-height: none;
+  }
 }
