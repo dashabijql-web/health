@@ -62,4 +62,29 @@ test('A+C command pages avoid self-amplifying stretch layouts', () => {
     /\.db-control-system\s+\.db-support-sidebar\.dm-command-sidebar\s*\{[\s\S]*display:\s*grid;/,
     'dashboard support sidebar should override the legacy command-sidebar flex stack so rank/action panels do not collapse'
   )
+  assert.match(
+    dashboardStyle,
+    /\.db-health-snapshot\s*\{[\s\S]*align-self:\s*stretch;/,
+    'dashboard health snapshot should stretch across the flex rail instead of shrink-wrapping two-column vital cards'
+  )
+  assert.match(
+    dashboardStyle,
+    /\.db-health-snapshot\s+\.dm-vitals-supplemental__item:nth-child\(3\):last-child\s*\{[\s\S]*grid-column:\s*1\s*\/\s*-1;/,
+    'dashboard health snapshot should not leave an empty supplemental cell in its narrow two-column rail'
+  )
+  assert.match(
+    dashboardStyle,
+    /\.db-health-snapshot\s+\.dm-assess-row:nth-child\(3\):last-child\s*\{[\s\S]*grid-column:\s*1\s*\/\s*-1;/,
+    'dashboard health snapshot assessment summary should not leave an empty cell in its narrow two-column rail'
+  )
+  assert.match(
+    dashboardStyle,
+    /@media\s*\(min-width:\s*1500px\)\s*\{[\s\S]*\.db-health-snapshot\s+\.dm-vitals-grid,[\s\S]*\.db-health-snapshot\s+\.dm-vitals-supplemental,[\s\S]*\.db-health-snapshot\s+\.dm-assess-bars\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/,
+    'dashboard health snapshot should switch to a 3-column matrix only when the rail is wide enough'
+  )
+  assert.match(
+    dashboardStyle,
+    /@media\s*\(max-width:\s*768px\)\s*\{[\s\S]*\.db-health-rail\s*\{[\s\S]*align-self:\s*stretch;[\s\S]*width:\s*100%;/,
+    'dashboard mobile health rail should fill the viewport instead of inheriting desktop shrink-wrap alignment'
+  )
 })

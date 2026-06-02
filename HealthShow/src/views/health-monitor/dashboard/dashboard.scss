@@ -702,6 +702,110 @@ $danger: $red;
   flex-shrink:0;
 }
 
+// Dashboard health snapshot needs one visual grammar: equal cells, no half-empty row.
+.db-health-snapshot {
+  align-self: stretch;
+}
+
+.db-health-snapshot .dm-vitals-grid,
+.db-health-snapshot .dm-vitals-supplemental {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 12px 0;
+}
+
+.db-health-snapshot .dm-vital-card {
+  min-height: 94px;
+  border-radius: 14px;
+}
+
+.db-health-snapshot .dm-vital-card {
+  gap: 8px;
+  padding: 10px;
+}
+
+.db-health-snapshot .dm-vital-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.db-health-snapshot .dm-vital-val {
+  font-size: 22px;
+}
+
+.db-health-snapshot .dm-vitals-supplemental__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 7px;
+  min-height: 72px;
+  padding: 10px;
+  border-radius: 14px;
+}
+
+.db-health-snapshot .dm-vitals-supplemental__item:nth-child(3):last-child {
+  grid-column: 1 / -1;
+}
+
+.db-health-snapshot .dm-vitals-supplemental__label,
+.db-health-snapshot .dm-vitals-supplemental__value,
+.db-health-snapshot .dm-vitals-supplemental__tag {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.db-health-snapshot .dm-vitals-supplemental__tag {
+  align-self: flex-end;
+  justify-self: auto;
+}
+
+.db-health-snapshot .dm-assess-bars {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 0;
+  padding: 10px 12px 12px;
+}
+
+.db-health-snapshot .dm-assess-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 36px;
+  gap: 6px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .02);
+  border: 1px solid rgba(133, 175, 220, .08);
+}
+
+.db-health-snapshot .dm-assess-row:nth-child(3):last-child {
+  grid-column: 1 / -1;
+}
+
+.db-health-snapshot .dm-assess-label {
+  width: auto;
+}
+
+.db-health-snapshot .dm-assess-track {
+  height: 6px;
+}
+
+@media (min-width: 1500px) {
+  .db-health-snapshot .dm-vitals-grid,
+  .db-health-snapshot .dm-vitals-supplemental,
+  .db-health-snapshot .dm-assess-bars {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .db-health-snapshot .dm-vitals-supplemental__item:nth-child(3):last-child,
+  .db-health-snapshot .dm-assess-row:nth-child(3):last-child {
+    grid-column: auto;
+  }
+}
+
 // ══ MAIN flex:1 ══
 .dm-main-dispatch { overflow:hidden; }
 .dm-main-model   { min-height:432px; overflow:hidden; }
@@ -1926,11 +2030,17 @@ $danger: $red;
     gap: 10px;
   }
 
+  .db-health-rail {
+    align-self: stretch;
+    width: 100%;
+  }
+
   .db-closure-items,
   .db-trend-grid,
   .db-duty-snapshot .dm-metrics-row,
   .db-health-snapshot .dm-vitals-grid,
-  .db-health-snapshot .dm-vitals-supplemental {
+  .db-health-snapshot .dm-vitals-supplemental,
+  .db-health-snapshot .dm-assess-bars {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

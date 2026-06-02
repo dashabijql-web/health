@@ -17,7 +17,7 @@ export function generateAiReport(empCode, force = false) {
 }
 
 export function getMineAiReport() {
-  return request({ url: '/ai/health-report/mine', method: 'get' })
+  return request({ url: '/ai/health-report/mine', method: 'get', silentError: true })
 }
 export function generateMineAiReport(force = false) {
   return request({ url: '/ai/health-report/mine/generate', method: 'post', params: { force }, timeout: 150000 })

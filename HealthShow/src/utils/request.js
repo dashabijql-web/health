@@ -203,6 +203,10 @@ service.interceptors.response.use(
         return Promise.reject(new Error(res.message || 'Error'))
       }
 
+      if (response.config?.silentError) {
+        return Promise.reject(new Error(res.message || res.msg || 'Error'))
+      }
+
       // 其他业务错误 → 弹出错误提示（5秒后自动消失），同一消息去重
       const errMsg = res.message || res.msg || '请求失败'
       if (!activeErrors.has(errMsg)) {
@@ -289,6 +293,10 @@ service.interceptors.response.use(
     // 如果判断是 Token 问题 → 静默跳登录
     if (isTokenIssue) {
       redirectToLogin()
+      return Promise.reject(error)
+    }
+
+    if (config?.silentError) {
       return Promise.reject(error)
     }
 

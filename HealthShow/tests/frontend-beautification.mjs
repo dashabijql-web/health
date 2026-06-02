@@ -385,6 +385,27 @@ test('dashboard loading does not schedule repeated forced scroll-to-top resets',
   assert.doesNotMatch(source, /vm\.fetchData\(\)\.then\(\(\)\s*=>\s*\{\s*resetDashboardScroll\(vm\)/)
 })
 
+test('dashboard background mine AI cache preload stays silent on empty reports', () => {
+  const aiSource = readSource('src/api/ai.js')
+  const requestSource = readSource('src/utils/request.js')
+
+  assert.match(
+    aiSource,
+    /getMineAiReport\(\)\s*\{[\s\S]*silentError:\s*true/,
+    'dashboard mine AI cache preload should not raise a global message when no cached report exists'
+  )
+  assert.match(
+    requestSource,
+    /response\.config\?\.silentError/,
+    'business-code failures should respect request silentError'
+  )
+  assert.match(
+    requestSource,
+    /config\?\.silentError/,
+    'HTTP failures should respect request silentError'
+  )
+})
+
 test('real-time desktop table keeps a deliberate horizontal scroll strategy instead of clipping action columns', () => {
   const source = readSource('src/views/health-monitor/real-time/realtime.scss')
   const viewSource = readSource('src/views/health-monitor/real-time/components/RealtimeUserTable.vue')
