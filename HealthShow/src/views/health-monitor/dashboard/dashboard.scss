@@ -114,18 +114,31 @@ $danger: $red;
   min-height: 214px;
 }
 
+.db-device-rail.dm-main-device {
+  height: auto;
+  overflow: visible;
+}
+
 .db-device-rail .dm-device-body {
   flex-direction: column;
   align-items: stretch;
+  flex: none;
+  min-height: 0;
+  overflow: visible;
 }
 
 .db-device-rail .dm-device-cards {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.db-device-rail .dm-dcard:nth-child(5):last-child {
+  grid-column: 1 / -1;
 }
 
 .db-device-rail .dm-device-gauges {
   justify-content: space-between;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  overflow: visible;
 }
 
 .db-governance-workspace {
@@ -2187,11 +2200,14 @@ $danger: $red;
   // ── 体征评估：2列 ──
   .dm-vitals-grid { grid-template-columns: repeat(2, 1fr); }
 
-  // ── 设备状态：3列（不是6个挤一排）──
-  .dm-device-cards { grid-template-columns: repeat(3, 1fr) !important; }
+  // ── 设备状态：2列，最后一项跨行补齐，避免 3+2 空槽 ──
+  .db-device-rail .dm-device-cards { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .dm-dcard-val   { font-size: 20px; }
   .dm-dcard-label { font-size: 11px; }
-  .dm-device-gauges { flex-wrap: wrap; }
+  .db-device-rail .dm-device-gauges {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
 
   .dm-vitals-supplemental {
     grid-template-columns: repeat(2, 1fr);

@@ -87,4 +87,24 @@ test('A+C command pages avoid self-amplifying stretch layouts', () => {
     /@media\s*\(max-width:\s*768px\)\s*\{[\s\S]*\.db-health-rail\s*\{[\s\S]*align-self:\s*stretch;[\s\S]*width:\s*100%;/,
     'dashboard mobile health rail should fill the viewport instead of inheriting desktop shrink-wrap alignment'
   )
+  assert.match(
+    dashboardStyle,
+    /\.db-device-rail\.dm-main-device\s*\{[\s\S]*height:\s*auto;[\s\S]*overflow:\s*visible;/,
+    'dashboard device rail should not inherit the shared height:100% clipped device panel shell'
+  )
+  assert.match(
+    dashboardStyle,
+    /\.db-device-rail\s+\.dm-device-cards\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
+    'dashboard device rail cards should avoid a 3+2 matrix with an empty final slot'
+  )
+  assert.match(
+    dashboardStyle,
+    /@media\s*\(max-width:\s*768px\)\s*\{[\s\S]*\.db-device-rail\s+\.dm-device-cards\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    'dashboard mobile device cards should use a deliberate two-column grid instead of a 3+2 layout with an empty slot'
+  )
+  assert.match(
+    dashboardStyle,
+    /\.db-device-rail\s+\.dm-dcard:nth-child\(5\):last-child\s*\{[\s\S]*grid-column:\s*1\s*\/\s*-1;/,
+    'dashboard mobile device card grid should let the odd final device card span the row'
+  )
 })
