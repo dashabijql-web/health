@@ -85,16 +85,16 @@ export const riskWarningPageRuntime = {
       const leftPct=Math.min(42,Math.max(24,maxLen*2.8))+'%'
       c.setOption({
         backgroundColor:'transparent',
-        tooltip:{trigger:'axis',axisPointer:{type:'shadow'},backgroundColor:'rgba(8,13,35,0.92)',borderColor:'rgba(0,212,255,0.25)',textStyle:{color:'#e0f0ff',fontSize:11}},
-        legend:{data:['心率','血氧','体温','压力'],right:6,top:4,textStyle:{color:'#8ba6c8',fontSize:10},itemWidth:10,itemHeight:8,icon:'rect'},
+        tooltip:{trigger:'axis',axisPointer:{type:'shadow'},backgroundColor:'rgba(8,13,35,0.92)',borderColor:'rgba(0,212,255,0.25)',textStyle:{color:'#e0f0ff',fontSize:12}},
+        legend:{data:['心率','血氧','体温','压力'],right:6,top:4,textStyle:{color:'#8ba6c8',fontSize:12},itemWidth:10,itemHeight:8,icon:'rect'},
         grid:{left:leftPct,right:'8%',top:'14%',bottom:'6%'},
-        xAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'rgba(0,212,255,0.07)',type:'dashed'}},axisLabel:{color:'#8ba6c8',fontSize:10}},
-        yAxis:{type:'category',data:names,inverse:true,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:'#a8c5e6',fontSize:11,overflow:'truncate',width:80}},
+        xAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'rgba(0,212,255,0.07)',type:'dashed'}},axisLabel:{color:'#8ba6c8',fontSize:12}},
+        yAxis:{type:'category',data:names,inverse:true,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:'#a8c5e6',fontSize:12,overflow:'truncate',width:92}},
         series:[
-          {name:'心率',type:'bar',stack:'total',barWidth:'50%',data:this.deptData.map(d=>d.heartRate||0),itemStyle:{color:'#ef4444'},label:{show:true,position:'inside',color:'#fff',fontSize:9,formatter:p=>p.value>0?p.value:''}},
-          {name:'血氧',type:'bar',stack:'total',data:this.deptData.map(d=>d.bloodOxygen||0),itemStyle:{color:'#f97316'},label:{show:true,position:'inside',color:'#fff',fontSize:9,formatter:p=>p.value>0?p.value:''}},
-          {name:'体温',type:'bar',stack:'total',data:this.deptData.map(d=>d.temperature||0),itemStyle:{color:'#22c55e'},label:{show:true,position:'inside',color:'#fff',fontSize:9,formatter:p=>p.value>0?p.value:''}},
-          {name:'压力',type:'bar',stack:'total',data:this.deptData.map(d=>d.pressure||0),itemStyle:{color:'#00d4ff',borderRadius:[0,4,4,0]},label:{show:true,position:'inside',color:'#fff',fontSize:9,formatter:p=>p.value>0?p.value:''}}
+          {name:'心率',type:'bar',stack:'total',barWidth:'50%',data:this.deptData.map(d=>d.heartRate||0),itemStyle:{color:'#ef4444'},label:{show:true,position:'inside',color:'#fff',fontSize:12,formatter:p=>p.value>0?p.value:''}},
+          {name:'血氧',type:'bar',stack:'total',data:this.deptData.map(d=>d.bloodOxygen||0),itemStyle:{color:'#f97316'},label:{show:true,position:'inside',color:'#fff',fontSize:12,formatter:p=>p.value>0?p.value:''}},
+          {name:'体温',type:'bar',stack:'total',data:this.deptData.map(d=>d.temperature||0),itemStyle:{color:'#22c55e'},label:{show:true,position:'inside',color:'#fff',fontSize:12,formatter:p=>p.value>0?p.value:''}},
+          {name:'压力',type:'bar',stack:'total',data:this.deptData.map(d=>d.pressure||0),itemStyle:{color:'#00d4ff',borderRadius:[0,4,4,0]},label:{show:true,position:'inside',color:'#fff',fontSize:12,formatter:p=>p.value>0?p.value:''}}
         ]
       })
     },
