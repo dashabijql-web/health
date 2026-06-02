@@ -7,11 +7,11 @@
 
 .rw-root {
   width: 100%;
-  height: calc(100vh - 50px) !important; /* 视口高度 - 顶部导航栏 */
-  min-height: 600px; /* 最小高度防止过小 */
+  height: auto;
+  min-height: calc(100vh - 50px);
   background:$bg;
   background-image: radial-gradient(circle at 18% 28%,rgba(239,68,68,.05) 0%,transparent 48%),radial-gradient(circle at 82% 72%,rgba(42,82,152,.08) 0%,transparent 48%);
-  overflow:hidden; display:flex; flex-direction:column;
+  overflow:visible; display:flex; flex-direction:column;
   font-family:var(--font-body); color:$text;
 }
 
@@ -32,11 +32,16 @@
 .rw-hd-time { flex-shrink:0; font-family:var(--font-mono); font-size:13px; color:$dim; }
 
 /* Body（hm-body mixin） */
+.rw-bd {
+  flex: none;
+  align-items: flex-start;
+  overflow: visible;
+}
 
 /* Aside */
-.rw-aside { width:320px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
-.rw-aside-top { height:190px; flex-shrink:0; }
-.rw-aside-bot { flex:1; min-height:0; }
+.rw-aside { width:clamp(320px, 20vw, 400px); flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
+.rw-aside-top { height:180px; flex-shrink:0; }
+.rw-aside-bot { flex:none; min-height:0; height:clamp(380px, 38vh, 460px); }
 .rw-stat-list { padding:8px 14px; display:flex; flex-direction:column; gap:8px; }
 .rw-stat-row { display:flex; align-items:center; gap:8px; }
 .rw-stat-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
@@ -46,8 +51,9 @@
 .rw-stat-val { font-size:13px; font-weight:700; font-family:'Consolas',monospace; width:32px; text-align:right; flex-shrink:0; }
 
 /* Main（hm-main mixin） */
-.rw-panel-trend { height:260px; flex-shrink:0; }
-.rw-panel-list  { flex:1; min-height:0; }
+.rw-main { overflow:visible; }
+.rw-panel-trend { height:clamp(250px, 24vh, 300px); flex-shrink:0; }
+.rw-panel-list  { flex:none; min-height:0; height:clamp(260px, 26vh, 320px); max-height:320px; }
 
 /* Panel（hm-panel mixin + 页面特有） */
 .rw-ph { height:36px; flex-shrink:0; display:flex; align-items:center; gap:8px; padding:0 12px; border-bottom:1px solid rgba(0,212,255,.09); background:rgba(0,212,255,.035); }
@@ -352,7 +358,7 @@
   .rw-bd { overflow:visible; height:auto!important; }
   .rw-aside { display:none; }
   .rw-panel-trend { display:none; }
-  .rw-panel-list { min-height:0; }
+  .rw-panel-list { min-height:0; height:auto; max-height:none; }
   .rw-list-wrap { overflow:visible; }
   .rw-list-hd,
   .rw-list-row { display:none; }
