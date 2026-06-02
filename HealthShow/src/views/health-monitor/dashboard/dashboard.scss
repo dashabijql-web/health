@@ -83,7 +83,7 @@ $danger: $red;
 .db-health-rail {
   position: sticky;
   top: 62px;
-  align-self: start;
+  align-self: stretch;
 }
 
 .db-duty-snapshot,
@@ -112,6 +112,7 @@ $danger: $red;
 
 .db-device-rail {
   min-height: 214px;
+  flex: 1 1 auto;
 }
 
 .db-device-rail.dm-main-device {
@@ -122,9 +123,10 @@ $danger: $red;
 .db-device-rail .dm-device-body {
   flex-direction: column;
   align-items: stretch;
-  flex: none;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: visible;
+  justify-content: space-between;
 }
 
 .db-device-rail .dm-device-cards {

@@ -89,6 +89,21 @@ test('A+C command pages avoid self-amplifying stretch layouts', () => {
   )
   assert.match(
     dashboardStyle,
+    /\.db-health-rail\s*\{\s*position:\s*sticky;[\s\S]*top:\s*62px;[\s\S]*align-self:\s*stretch;/,
+    'dashboard health rail should stretch to the governance row so the device panel absorbs leftover vertical space'
+  )
+  assert.match(
+    dashboardStyle,
+    /\.db-device-rail\s*\{[^}]*min-height:\s*214px;[^}]*flex:\s*1\s+1\s+auto;/,
+    'dashboard device panel should flex to fill the remaining health rail height instead of leaving page-background whitespace below it'
+  )
+  assert.match(
+    dashboardStyle,
+    /\.db-device-rail\s+\.dm-device-body\s*\{[^}]*flex:\s*1\s+1\s+auto;[^}]*justify-content:\s*space-between;/,
+    'dashboard device panel body should distribute cards and gauges when the panel grows'
+  )
+  assert.match(
+    dashboardStyle,
     /\.db-device-rail\.dm-main-device\s*\{[\s\S]*height:\s*auto;[\s\S]*overflow:\s*visible;/,
     'dashboard device rail should not inherit the shared height:100% clipped device panel shell'
   )
