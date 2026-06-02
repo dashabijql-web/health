@@ -45,6 +45,20 @@
         </div>
 
         <div class="sc-stage-canvas">
+          <div class="sc-stage-intel">
+            <button
+              v-for="item in stageIntelItems"
+              :key="item.key"
+              type="button"
+              :class="['sc-stage-intel-card', `tone-${item.tone}`]"
+              @click="showInfoDialog(item.label, item.note)"
+            >
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <em>{{ item.note }}</em>
+            </button>
+          </div>
+
           <div class="sc-stage-radar">
             <span class="sc-radar-ring ring-1"></span>
             <span class="sc-radar-ring ring-2"></span>
@@ -64,9 +78,29 @@
             @click="node.dept ? showDeptDetail(node.dept) : showAreaDetail(node.area)"
           >
             <span class="sc-node-pulse"></span>
-            <span class="sc-node-name">{{ node.label }}</span>
-            <strong>{{ node.value }}</strong>
+            <span class="sc-node-main">
+              <span class="sc-node-name">{{ node.label }}</span>
+              <span class="sc-stage-node-meta">{{ node.meta }}</span>
+            </span>
+            <span class="sc-node-score">
+              <strong>{{ node.value }}</strong>
+              <em>{{ node.status }}</em>
+            </span>
           </button>
+
+          <div class="sc-stage-action-strip">
+            <button
+              v-for="action in stageActionItems"
+              :key="action.key"
+              type="button"
+              :class="['sc-stage-action-cell', `tone-${action.tone}`]"
+              @click="action.key === 'broadcast' ? emergencyBroadcast() : showInfoDialog(action.label, action.note)"
+            >
+              <span>{{ action.label }}</span>
+              <strong>{{ action.value }}</strong>
+              <em>{{ action.note }}</em>
+            </button>
+          </div>
         </div>
 
         <div class="sc-stage-telemetry">
@@ -196,9 +230,11 @@ import SafetyCommandDialogs from './components/SafetyCommandDialogs.vue'
 import EventHandleDialog from './components/EventHandleDialog.vue'
 import PersonDetailDrawer from './components/PersonDetailDrawer.vue'
 import {
-  buildAreasFromDepartments,
   buildDeptRankData,
   buildDonutSegments,
+  buildStageActionItems,
+  buildStageIntelItems,
+  buildStageNodes,
   buildTop5RiskPersons,
   buildTrendChange,
   buildTrendPath,
@@ -328,33 +364,26 @@ const commandTelemetry = computed(() => [
   }
 ])
 
-const stageNodes = computed(() => {
-  const positions = [
-    [16, 22], [72, 18], [24, 68], [82, 62], [50, 12], [52, 78]
-  ]
-  const deptNodes = deptsSorted.value.slice(0, 6).map((dept, index) => ({
-    key: `dept-${dept.id || dept.name || index}`,
-    label: dept.name || `部门${index + 1}`,
-    value: dept.warnings || 0,
-    tone: dept.level === 'H' ? 'danger' : dept.level === 'M' ? 'warning' : dept.level === 'L' ? 'primary' : 'safe',
-    dept,
-    x: positions[index][0],
-    y: positions[index][1]
-  }))
-
-  if (deptNodes.length) return deptNodes
-
-  const fallbackAreas = (areas.value?.length ? areas.value : buildAreasFromDepartments(departments.value)).slice(0, 6)
-  return fallbackAreas.map((area, index) => ({
-    key: `area-${area.id || area.name || index}`,
-    label: area.name || `区域${index + 1}`,
-    value: area.warning || area.count || 0,
-    tone: area.level === 'danger' ? 'danger' : area.level === 'warning' ? 'warning' : 'safe',
-    area,
-    x: positions[index][0],
-    y: positions[index][1]
-  }))
-})
+const stageIntelItems = computed(() => buildStageIntelItems({
+  stats: stats.value,
+  watchStatus: watchStatus.value,
+  pendingCount: pendingCount.value,
+  handledCount: handledCount.value,
+  warningHandledRate: warningHandledRate.value,
+  deptsSorted: deptsSorted.value
+}))
+const stageActionItems = computed(() => buildStageActionItems({
+  stats: stats.value,
+  watchStatus: watchStatus.value,
+  pendingCount: pendingCount.value,
+  handledCount: handledCount.value,
+  warningHandledRate: warningHandledRate.value
+}))
+const stageNodes = computed(() => buildStageNodes({
+  deptsSorted: deptsSorted.value,
+  areas: areas.value,
+  departments: departments.value
+}))
 
 const commandQueue = computed(() => {
   const queue = (events.value || []).slice(0, 5).map((event) => ({

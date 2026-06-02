@@ -193,3 +193,39 @@ test('safety command emergency list uses dense incident columns', () => {
     'emergency event rows should render as a seven-column incident matrix on desktop'
   )
 })
+
+test('safety command situation stage carries layered operational density', () => {
+  const safetyPage = src('src/views/safety-command/index.vue')
+  const safetyStyle = src('src/views/safety-command/safety-command.scss')
+
+  assert.match(
+    safetyPage,
+    /class="sc-stage-intel"/,
+    'situation stage should add an in-map operational intelligence rail instead of leaving the radar canvas empty'
+  )
+  assert.match(
+    safetyPage,
+    /class="sc-stage-node-meta"/,
+    'situation stage nodes should expose second-line department incident composition'
+  )
+  assert.match(
+    safetyPage,
+    /class="sc-stage-action-strip"/,
+    'situation stage should add a compact response-chain strip inside the canvas'
+  )
+  assert.match(
+    safetyPage,
+    /const stageIntelItems = computed/,
+    'situation stage density should be derived from live page data, not static markup'
+  )
+  assert.match(
+    safetyStyle,
+    /\.sc-stage-intel\s*\{[\s\S]*position:\s*absolute;[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
+    'situation stage intelligence rail should be an absolute two-column matrix over the map'
+  )
+  assert.match(
+    safetyStyle,
+    /\.sc-stage-action-strip\s*\{[\s\S]*position:\s*absolute;[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);/,
+    'situation stage response chain should fill the lower canvas with four balanced cells'
+  )
+})

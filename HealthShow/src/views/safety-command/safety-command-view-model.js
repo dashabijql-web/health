@@ -284,6 +284,114 @@ export function buildWatchStatus(realtimeStats) {
   }
 }
 
+export function buildStageIntelItems({ stats, watchStatus, pendingCount, handledCount, warningHandledRate, deptsSorted }) {
+  const statData = stats || {}
+  const watchData = watchStatus || {}
+  const topDept = (deptsSorted || [])[0]
+  const criticalCount = (statData.sos || 0) + (statData.fall || 0)
+  const onlineRate = watchData.total ? Math.round((watchData.online || 0) / watchData.total * 100) : 0
+
+  return [
+    {
+      key: 'active-risk',
+      label: '当前风险',
+      value: pendingCount || 0,
+      note: `高危 ${criticalCount} / 其他 ${Math.max(0, (pendingCount || 0) - criticalCount)}`,
+      tone: criticalCount > 0 ? 'danger' : pendingCount > 0 ? 'warning' : 'safe'
+    },
+    {
+      key: 'watch-link',
+      label: '通信覆盖',
+      value: `${onlineRate}%`,
+      note: `在线 ${watchData.online || 0} / 离线 ${watchData.offline || 0}`,
+      tone: watchData.offline > 0 ? 'warning' : 'safe'
+    },
+    {
+      key: 'top-zone',
+      label: '重点部门',
+      value: topDept?.name || '待识别',
+      note: topDept ? `预警 ${topDept.warnings || 0} / ${topDept.statusText || '正常'}` : '暂无部门预警',
+      tone: topDept?.level === 'H' ? 'danger' : topDept?.level === 'M' ? 'warning' : 'primary'
+    },
+    {
+      key: 'closure-target',
+      label: '闭环目标',
+      value: `${warningHandledRate || 0}%`,
+      note: `已处置 ${handledCount || 0} / 待处置 ${pendingCount || 0}`,
+      tone: warningHandledRate >= 80 ? 'safe' : 'warning'
+    }
+  ]
+}
+
+export function buildStageActionItems({ stats, watchStatus, pendingCount, handledCount, warningHandledRate }) {
+  const statData = stats || {}
+  const watchData = watchStatus || {}
+  const criticalCount = (statData.sos || 0) + (statData.fall || 0)
+
+  return [
+    {
+      key: 'locate',
+      label: '定位核查',
+      value: pendingCount || 0,
+      note: pendingCount > 0 ? '待锁定事件' : '无需介入',
+      tone: pendingCount > 0 ? 'warning' : 'safe'
+    },
+    {
+      key: 'broadcast',
+      label: '广播触达',
+      value: `${watchData.online || 0}`,
+      note: `在线终端 / ${watchData.total || 0}`,
+      tone: watchData.online > 0 ? 'primary' : 'warning'
+    },
+    {
+      key: 'medical',
+      label: '医疗联动',
+      value: criticalCount,
+      note: 'SOS + 跌倒',
+      tone: criticalCount > 0 ? 'danger' : 'safe'
+    },
+    {
+      key: 'review',
+      label: '复盘闭环',
+      value: handledCount || 0,
+      note: `闭环率 ${warningHandledRate || 0}%`,
+      tone: warningHandledRate >= 80 ? 'safe' : 'warning'
+    }
+  ]
+}
+
+export function buildStageNodes({ deptsSorted, areas, departments }) {
+  const positions = [
+    [17, 38], [80, 25], [25, 64], [84, 58], [50, 20], [52, 74]
+  ]
+  const deptNodes = (deptsSorted || []).slice(0, 6).map((dept, index) => ({
+    key: `dept-${dept.id || dept.name || index}`,
+    label: dept.name || `部门${index + 1}`,
+    value: dept.warnings || 0,
+    meta: `SOS ${dept.sos || 0} / 跌倒 ${dept.fall || 0} / 异常 ${(dept.static || 0) + (dept.abnormal || 0)}`,
+    status: dept.statusText || '正常',
+    tone: dept.level === 'H' ? 'danger' : dept.level === 'M' ? 'warning' : dept.level === 'L' ? 'primary' : 'safe',
+    dept,
+    x: positions[index][0],
+    y: positions[index][1]
+  }))
+
+  if (deptNodes.length) return deptNodes
+
+  const fallbackAreas = (areas?.length ? areas : buildAreasFromDepartments(departments)).slice(0, 6)
+  return fallbackAreas.map((area, index) => ({
+    key: `area-${area.id || area.name || index}`,
+    label: area.name || `区域${index + 1}`,
+    value: area.warning || area.count || 0,
+    meta: `SOS ${area.sos || 0} / 跌倒 ${area.fall || 0} / 异常 ${area.warning || area.count || 0}`,
+    status: area.level === 'danger' ? '高危' : area.level === 'warning' ? '中危' : '正常',
+    tone: area.level === 'danger' ? 'danger' : area.level === 'warning' ? 'warning' : 'safe',
+    area,
+    x: positions[index][0],
+    y: positions[index][1]
+  }))
+}
+
 export function normalizeWarningTrendData(rawTrend) {
   if (Array.isArray(rawTrend)) return rawTrend
   if (rawTrend?.dates && Array.isArray(rawTrend.dates)) {
