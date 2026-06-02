@@ -11,7 +11,7 @@ function readSource(relativePath) {
   return readFileSync(path.join(healthShowRoot, relativePath), 'utf8')
 }
 
-test('risk warning desktop layout gives the department chart priority over the table height', () => {
+test('risk warning desktop layout extends downward instead of squeezing charts and table into one screen', () => {
   const source = readSource('src/views/health-monitor/risk-warning/risk-warning.scss')
 
   assert.match(
@@ -31,12 +31,17 @@ test('risk warning desktop layout gives the department chart priority over the t
   )
   assert.match(
     source,
-    /\.rw-aside-bot\s*\{[\s\S]*height:\s*clamp\(380px,\s*38vh,\s*460px\);/,
-    'department distribution panel should keep a stable chart-first height on desktop'
+    /\.rw-aside-bot\s*\{[\s\S]*height:\s*clamp\(460px,\s*46vh,\s*620px\);/,
+    'department distribution panel should keep a large chart-first height and let the page extend downward'
   )
   assert.match(
     source,
-    /\.rw-panel-list\s*\{[\s\S]*height:\s*clamp\(260px,\s*26vh,\s*320px\);[\s\S]*max-height:\s*320px;/,
-    'warning list panel should be bounded so it does not show too many rows on tall desktop viewports'
+    /\.rw-panel-list\s*\{[\s\S]*height:\s*clamp\(380px,\s*34vh,\s*520px\);[\s\S]*max-height:\s*none;/,
+    'warning list panel should get enough vertical room while page scrolling handles the extra height'
+  )
+  assert.doesNotMatch(
+    source,
+    /\.rw-panel-list\s*\{[\s\S]*max-height:\s*320px;/,
+    'warning list panel should not be capped to a single-screen compromise'
   )
 })
