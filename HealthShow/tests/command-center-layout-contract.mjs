@@ -229,3 +229,23 @@ test('safety command situation stage carries layered operational density', () =>
     'situation stage response chain should fill the lower canvas with four balanced cells'
   )
 })
+
+test('safety command response queue is bounded so support grid does not leave a blank left gutter', () => {
+  const safetyStyle = src('src/views/safety-command/safety-command.scss')
+
+  assert.match(
+    safetyStyle,
+    /\.sc-response-queue\s*\{[\s\S]*height:\s*clamp\(700px,\s*calc\(38vw\s*\+\s*198px\),\s*735px\);[\s\S]*max-height:\s*clamp\(700px,\s*calc\(38vw\s*\+\s*198px\),\s*735px\);/,
+    'desktop response queue should be bounded to the stage panel height so the next support row starts without a left-side blank gap'
+  )
+  assert.match(
+    safetyStyle,
+    /\.sc-queue-list\s*\{[\s\S]*flex:\s*1\s+1\s+auto;[\s\S]*overflow-y:\s*auto;/,
+    'response queue cards should scroll internally instead of increasing the whole grid row height'
+  )
+  assert.match(
+    safetyStyle,
+    /\.sc-risk-lane\s*\{[\s\S]*height:\s*clamp\(150px,\s*14vw,\s*210px\);/,
+    'high-risk people lane should be compact enough that it does not push the support grid downward'
+  )
+})

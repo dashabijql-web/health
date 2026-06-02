@@ -496,6 +496,8 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 .sc-response-queue {
   align-self: start;
   min-height: 0;
+  height: clamp(700px, calc(38vw + 198px), 735px);
+  max-height: clamp(700px, calc(38vw + 198px), 735px);
   display: flex;
   flex-direction: column;
 }
@@ -516,10 +518,13 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 }
 
 .sc-queue-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 18px;
+  gap: 8px;
+  padding: 14px 18px;
 }
 
 .sc-queue-card {
@@ -527,8 +532,8 @@ $mono: 'JetBrains Mono','Courier New',monospace;
   grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  min-height: 72px;
-  padding: 12px 14px;
+  min-height: 66px;
+  padding: 10px 14px;
   border-radius: 14px;
   border: 1px solid rgba($orange, .18);
   background: linear-gradient(90deg, rgba($orange, .075), rgba(255,255,255,.018));
@@ -595,7 +600,7 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 .sc-risk-lane {
   margin: 0 18px 18px;
   flex: none;
-  height: clamp(220px, 24vw, 300px);
+  height: clamp(150px, 14vw, 210px);
 }
 
 .sc-war-support {
@@ -1017,6 +1022,11 @@ $mono: 'JetBrains Mono','Courier New',monospace;
   .sc-situation-stage,
   .sc-response-queue {
     min-height: 0;
+  }
+
+  .sc-response-queue {
+    height: auto;
+    max-height: none;
   }
 
   .sc-support-rank,
