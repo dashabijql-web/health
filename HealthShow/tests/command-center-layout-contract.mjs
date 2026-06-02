@@ -104,6 +104,21 @@ test('A+C command pages avoid self-amplifying stretch layouts', () => {
   )
   assert.match(
     dashboardStyle,
+    /\.db-control-system\s+\.dm-right-preshift\s+\.dm-preshift-body\s*\{[^}]*flex:\s*1\s+1\s+auto;[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(128px,\s*\.72fr\)\s+minmax\(0,\s*1fr\);/,
+    'dashboard pre-shift panel body should fill the stretched panel and use a two-column matrix instead of leaving blank lower space'
+  )
+  assert.match(
+    dashboardStyle,
+    /\.db-control-system\s+\.dm-right-preshift\s+\.dm-ps-ring-wrap\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;[^}]*min-height:\s*154px;[^}]*display:\s*grid;[^}]*place-items:\s*center;/,
+    'dashboard pre-shift ring should center inside the expanded body area'
+  )
+  assert.match(
+    dashboardStyle,
+    /\.db-control-system\s+\.dm-right-preshift\s+\.dm-ps-stats\s*\{[^}]*display:\s*grid;[^}]*grid-template-rows:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/,
+    'dashboard pre-shift stats should fill the panel height as three balanced rows'
+  )
+  assert.match(
+    dashboardStyle,
     /\.db-device-rail\.dm-main-device\s*\{[\s\S]*height:\s*auto;[\s\S]*overflow:\s*visible;/,
     'dashboard device rail should not inherit the shared height:100% clipped device panel shell'
   )
