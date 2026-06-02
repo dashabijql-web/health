@@ -153,3 +153,43 @@ test('A+C command pages avoid self-amplifying stretch layouts', () => {
     'dashboard trend and insight band should collapse before the right sidebar creates a large blank area under the trend charts'
   )
 })
+
+test('safety command emergency list uses dense incident columns', () => {
+  const eventPanel = src('src/views/safety-command/components/EventPanel.vue')
+
+  assert.match(
+    eventPanel,
+    /class="ev-main"/,
+    'emergency event rows should expose a main grid shell instead of a sparse two-column row'
+  )
+  assert.match(
+    eventPanel,
+    /class="ev-field ev-person"/,
+    'emergency event rows should include a dedicated person field'
+  )
+  assert.match(
+    eventPanel,
+    /class="ev-field ev-dept"/,
+    'emergency event rows should include a dedicated department field'
+  )
+  assert.match(
+    eventPanel,
+    /class="ev-field ev-location"/,
+    'emergency event rows should include a dedicated location field'
+  )
+  assert.match(
+    eventPanel,
+    /class="ev-field ev-duration"/,
+    'emergency event rows should include a dedicated response-duration field'
+  )
+  assert.match(
+    eventPanel,
+    /class="ev-field ev-stage"/,
+    'emergency event rows should include a dedicated response-stage field'
+  )
+  assert.match(
+    eventPanel,
+    /\.ev-main\s*\{[\s\S]*grid-template-columns:\s*minmax\(180px,\s*1\.35fr\)\s+minmax\(112px,\s*\.78fr\)\s+minmax\(124px,\s*\.9fr\)\s+minmax\(132px,\s*1fr\)\s+minmax\(82px,\s*\.52fr\)\s+minmax\(104px,\s*\.72fr\)\s+minmax\(84px,\s*\.48fr\);/,
+    'emergency event rows should render as a seven-column incident matrix on desktop'
+  )
+})

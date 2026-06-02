@@ -21,20 +21,52 @@
         @click="$emit('showDetail', ev)"
       >
         <div :class="['ev-side', (ev.eventType==='sos'||ev.eventType==='fall') ? '' : 'side-w']"></div>
-        <div class="ev-body">
-          <div class="ev-top">
-            <span class="ev-type">{{ ev.icon }} {{ ev.type }}</span>
-            <span v-if="ev.durationMinutes" :class="['ev-dur', (ev.eventType==='sos'||ev.eventType==='fall')?'':'dur-w', ev.durationMinutes>5&&'dur-crit']">{{ ev.durationMinutes }} MIN</span>
+        <div class="ev-main">
+          <div class="ev-primary" :title="ev.type || '未知事件'">
+            <div class="ev-title-row">
+              <span :class="['ev-level', `ev-level-${ev.level || 'medium'}`]">{{ eventLevelText(ev) }}</span>
+              <span class="ev-type">{{ ev.icon || 'WARN' }} {{ ev.type || '未知事件' }}</span>
+            </div>
+            <span class="ev-advice">{{ eventAdviceText(ev) }}</span>
           </div>
-          <div class="ev-meta">
-            <span @click.stop="$emit('showPerson', ev)" class="link-txt">{{ ev.user }}</span>
-            <span> · </span>
-            <span @click.stop="$emit('showDept', ev.dept)" class="link-txt">{{ ev.dept || ev.location }}</span>
+
+          <div class="ev-field ev-person">
+            <span class="ev-k">人员</span>
+            <span @click.stop="$emit('showPerson', ev)" class="ev-v ev-link" :title="ev.user || '未知人员'">
+              {{ ev.user || '未知人员' }}
+              <small v-if="ev.userCode">{{ ev.userCode }}</small>
+            </span>
           </div>
-        </div>
-        <div class="ev-right">
-          <span class="ev-age">{{ ev.time }}</span>
-          <span class="ev-act" @click.stop="$emit('handle', ev)">处理</span>
+
+          <div class="ev-field ev-dept">
+            <span class="ev-k">部门</span>
+            <span @click.stop="$emit('showDept', ev.dept)" class="ev-v ev-link" :title="eventDeptText(ev)">
+              {{ eventDeptText(ev) }}
+            </span>
+          </div>
+
+          <div class="ev-field ev-location">
+            <span class="ev-k">位置</span>
+            <span class="ev-v" :title="eventLocationText(ev)">{{ eventLocationText(ev) }}</span>
+          </div>
+
+          <div class="ev-field ev-duration">
+            <span class="ev-k">滞留</span>
+            <span :class="['ev-v', 'ev-duration-value', { 'is-hot': isDurationHot(ev), 'is-warn': !isPriorityEvent(ev) }]">
+              {{ eventDurationText(ev) }}
+            </span>
+          </div>
+
+          <div class="ev-field ev-stage">
+            <span class="ev-k">阶段</span>
+            <span :class="['ev-v', 'ev-stage-value', eventStageClass(ev)]">{{ eventStageText(ev) }}</span>
+          </div>
+
+          <div class="ev-field ev-action-field">
+            <span class="ev-k">发生</span>
+            <span class="ev-v ev-age">{{ ev.time || '刚刚' }}</span>
+            <span class="ev-act" @click.stop="$emit('handle', ev)">处理</span>
+          </div>
         </div>
       </div>
     </div>
@@ -69,6 +101,45 @@ const filterTabs = computed(() => {
 const filteredEvents = computed(() =>
   currentFilter.value === 'all' ? props.events : props.events.filter(e => e.eventType === currentFilter.value)
 )
+
+const levelTextMap = { critical: '特急', high: '紧急', medium: '一般', low: '轻微' }
+const adviceTextMap = {
+  sos: '定位派单 / 语音回呼',
+  fall: '医疗联动 / 就近支援',
+  static: '语音确认 / 区域巡检',
+  abnormal: '复测指标 / 追踪班组'
+}
+
+const isPriorityEvent = (event) => event?.eventType === 'sos' || event?.eventType === 'fall'
+const eventMinutes = (event) => Math.max(0, Number(event?.durationMinutes) || 0)
+const eventLevelText = (event) => levelTextMap[event?.level] || levelTextMap.medium
+const eventDeptText = (event) => event?.dept || '未分组'
+const eventLocationText = (event) => event?.location || event?.dept || '未定位'
+const eventAdviceText = (event) => adviceTextMap[event?.eventType] || adviceTextMap.abnormal
+const isDurationHot = (event) => eventMinutes(event) > (isPriorityEvent(event) ? 5 : 10)
+
+const eventDurationText = (event) => {
+  const minutes = eventMinutes(event)
+  if (!minutes) return '刚触发'
+  if (minutes >= 60) return `${Math.floor(minutes / 60)}H ${minutes % 60}M`
+  return `${minutes} MIN`
+}
+
+const eventStageText = (event) => {
+  const minutes = eventMinutes(event)
+  if (!minutes) return '待确认'
+  if (isPriorityEvent(event) && minutes > 10) return '升级联动'
+  if (isPriorityEvent(event) && minutes > 5) return '超时响应'
+  if (event?.eventType === 'static' && minutes > 15) return '复核超时'
+  if (event?.eventType === 'abnormal' && minutes > 10) return '待复测'
+  return '处置中'
+}
+
+const eventStageClass = (event) => {
+  if (isDurationHot(event)) return 'stage-hot'
+  if (isPriorityEvent(event)) return 'stage-priority'
+  return 'stage-normal'
+}
 
 const buildTrendChart = () => {
   if (!trendRef.value || props.trendData.length === 0) return
@@ -112,7 +183,7 @@ $dim:rgba(255,255,255,.45); $dim2:rgba(255,255,255,.22);
 .ev-empty { text-align:center; padding:20px; color:rgba($green,.7); font-size:11px; }
 
 .ev {
-  display:flex; align-items:stretch; border-radius:3px; overflow:hidden;
+  display:grid; grid-template-columns:3px minmax(0, 1fr); align-items:stretch; border-radius:4px; overflow:hidden;
   border:1px solid rgba($red,.12); background:rgba($red,.03);
   cursor:pointer; transition:background .15s; flex-shrink:0;
   &.ev-warn { border-color:rgba($orange,.12); background:rgba($orange,.03); }
@@ -125,26 +196,158 @@ $dim:rgba(255,255,255,.45); $dim2:rgba(255,255,255,.22);
 }
 .side-w { background:linear-gradient(180deg,$orange,rgba($orange,.3)); }
 
-.ev-body { flex:1; padding:7px 9px; display:flex; flex-direction:column; gap:3px; }
-.ev-top  { display:flex; align-items:center; gap:6px; }
-.ev-type { font-size:11px; font-weight:600; color:#fff; letter-spacing:.3px; }
-.ev-dur  {
-  font-size:8px; padding:1px 5px; border-radius:1px; font-family:'JetBrains Mono','Courier New',monospace; letter-spacing:.5px;
-  background:rgba($red,.15); color:#ff8090; border:1px solid rgba($red,.2);
-  &.dur-w  { background:rgba($orange,.15); color:#ffaa55; border-color:rgba($orange,.2); }
-  &.dur-crit { color:$red; animation:blink 1s infinite; }
+.ev-main {
+  min-width:0;
+  display:grid;
+  grid-template-columns: minmax(180px, 1.35fr) minmax(112px, .78fr) minmax(124px, .9fr) minmax(132px, 1fr) minmax(82px, .52fr) minmax(104px, .72fr) minmax(84px, .48fr);
+  align-items:center;
+  gap:0 10px;
+  padding:7px 10px;
+}
+.ev-primary,
+.ev-field {
+  min-width:0;
+}
+.ev-primary {
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.ev-title-row {
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.ev-level {
+  flex-shrink:0;
+  font-size:9px;
+  line-height:1;
+  padding:3px 5px;
+  border-radius:2px;
+  font-weight:700;
+  font-family:'JetBrains Mono','Courier New',monospace;
+}
+.ev-level-critical { background:rgba($red,.18); color:#ff8a98; border:1px solid rgba($red,.28); }
+.ev-level-high { background:rgba($orange,.18); color:#ffb06a; border:1px solid rgba($orange,.28); }
+.ev-level-medium { background:rgba($yellow,.12); color:#ffe277; border:1px solid rgba($yellow,.2); }
+.ev-level-low { background:rgba($green,.1); color:#75f0a4; border:1px solid rgba($green,.18); }
+.ev-type {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:11px;
+  font-weight:700;
+  color:#fff;
+  letter-spacing:.3px;
+}
+.ev-advice {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:9px;
+  color:rgba($cyan,.72);
+}
+.ev-field {
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  padding-left:10px;
+  border-left:1px solid rgba(255,255,255,.045);
+}
+.ev-k {
+  font-size:8px;
+  line-height:1;
+  color:rgba(255,255,255,.28);
+  letter-spacing:.8px;
+}
+.ev-v {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:10px;
+  line-height:1.2;
+  color:rgba(255,255,255,.74);
+  small {
+    margin-left:5px;
+    color:rgba(255,255,255,.32);
+    font-family:'JetBrains Mono','Courier New',monospace;
+    font-size:8px;
+  }
+}
+.ev-link {
+  cursor:pointer;
+  &:hover { color:$cyan; }
+}
+.ev-duration-value {
+  font-family:'JetBrains Mono','Courier New',monospace;
+  color:#ff8a98;
+  &.is-warn { color:#ffb06a; }
+  &.is-hot { color:$red; animation:blink 1s infinite; }
+}
+.ev-stage-value {
+  font-weight:700;
+  &.stage-hot { color:$red; }
+  &.stage-priority { color:#ffb06a; }
+  &.stage-normal { color:rgba($green,.82); }
 }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-.ev-meta { font-size:10px; color:$dim; display:flex; gap:3px; align-items:center; }
-.link-txt { cursor:pointer; &:hover { color:$cyan; } }
-
-.ev-right { padding:7px 9px; display:flex; flex-direction:column; align-items:flex-end; justify-content:space-between; flex-shrink:0; }
-.ev-age { font-size:9px; color:$dim2; font-family:'JetBrains Mono','Courier New',monospace; }
+.ev-action-field {
+  align-items:flex-end;
+  padding-left:8px;
+}
+.ev-age { color:$dim2; font-family:'JetBrains Mono','Courier New',monospace; }
 .ev-act {
-  font-size:9px; padding:2px 8px; border-radius:1px; cursor:pointer; letter-spacing:.5px;
+  margin-top:2px; font-size:9px; line-height:1; padding:4px 8px; border-radius:2px; cursor:pointer; letter-spacing:.5px;
   background:rgba($cyan,.07); border:1px solid rgba($cyan,.25); color:$cyan;
   transition:all .15s;
   &:hover { background:rgba($cyan,.18); }
+}
+
+@media (max-width: 980px) {
+  .ev-main {
+    grid-template-columns:minmax(0, 1.2fr) repeat(2, minmax(0, 1fr));
+    gap:7px 8px;
+  }
+  .ev-action-field { align-items:flex-start; }
+}
+
+@media (max-width: 640px) {
+  .ph {
+    align-items:flex-start;
+    gap:8px;
+    flex-direction:column;
+  }
+  .tabs {
+    flex-wrap:wrap;
+  }
+  .ev-main {
+    grid-template-columns:1fr 1fr;
+  }
+  .ev-primary {
+    grid-column:1 / -1;
+  }
+  .ev-location,
+  .ev-stage {
+    grid-column:1 / -1;
+  }
+  .ev-field {
+    padding-left:0;
+    border-left:none;
+  }
+  .ev-action-field {
+    grid-column:1 / -1;
+    display:grid;
+    grid-template-columns:auto minmax(0, 1fr) auto;
+    align-items:center;
+    gap:6px;
+  }
+  .ev-act {
+    margin-top:0;
+  }
 }
 </style>
