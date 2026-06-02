@@ -63,13 +63,14 @@
             <div class="dm-metrics-row">
               <div
                 v-for="m in metricCards"
-                :key="m.label"
-                class="dm-metric-card"
+                :key="m.key"
+                :class="['dm-metric-card', m.summary ? 'is-summary' : '']"
                 :style="{ '--metric-tone': m.color }"
                 @click.stop="onMetricCardClick(m)"
               >
                 <div class="dm-metric-val">
-                  {{ m.val.toLocaleString() }}
+                  <span>{{ m.val.toLocaleString() }}</span>
+                  <em v-if="m.unit">{{ m.unit }}</em>
                 </div>
                 <div class="dm-metric-label">{{ m.label }}</div>
                 <div class="dm-metric-bar-wrap">

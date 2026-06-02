@@ -156,6 +156,10 @@ export const dashboardChartMethods = {
   },
 
   onMetricCardClick(m) {
+    if (m.metricDetail === false) {
+      this.openDeptPersonModal()
+      return
+    }
     this.metricDetailModal.metricType = m.key
     this.metricDetailModal.metricLabel = m.label
     this.metricDetailModal.metricColor = m.color

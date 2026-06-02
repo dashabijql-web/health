@@ -88,10 +88,13 @@ export function buildDashboardHeaderKpis({
 }
 
 export function buildDashboardMetricCards({ metricList, personCounts, checkData, kpiRealtimeTotal }) {
-  const total = kpiRealtimeTotal || 1
-  const maxRec = Math.max(...metricList.map((item) => Number(checkData[item.key] || 0)), 1)
+  const metrics = metricList || []
+  const personValues = metrics.map((item) => Number(personCounts[item.key] || 0))
+  const maxPersonValue = Math.max(...personValues, 0)
+  const total = Number(personCounts.totalPersons || kpiRealtimeTotal || maxPersonValue || 1)
+  const maxRec = Math.max(...metrics.map((item) => Number(checkData[item.key] || 0)), 1)
 
-  return metricList.map((item) => {
+  const cards = metrics.map((item) => {
     const personValue = Number(personCounts[item.key] || 0)
     const recordValue = Number(checkData[item.key] || 0)
     return {
@@ -102,9 +105,30 @@ export function buildDashboardMetricCards({ metricList, personCounts, checkData,
       rate: Math.round(personValue / total * 100),
       records: recordValue,
       recPct: Math.round(recordValue / maxRec * 100),
-      pct: Math.round(personValue / total * 100)
+      pct: Math.round(personValue / total * 100),
+      metricDetail: true
     }
   })
+
+  const coveredPersons = personValues.length ? Math.min(...personValues) : 0
+  const coverageRate = Math.max(0, Math.min(100, Math.round(coveredPersons / total * 100)))
+  const coverageColor = coverageRate >= 80 ? '#38ef7d' : coverageRate >= 60 ? '#ff8c00' : '#ff5252'
+
+  cards.push({
+    key: 'allCoverage',
+    label: '全项覆盖',
+    color: coverageColor,
+    val: coverageRate,
+    unit: '%',
+    rate: coverageRate,
+    records: coveredPersons,
+    recPct: coverageRate,
+    pct: coverageRate,
+    metricDetail: false,
+    summary: true
+  })
+
+  return cards
 }
 
 export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) {
