@@ -140,6 +140,169 @@ test('dashboard support band keeps device and environment panels on equal-height
   )
 })
 
+test('flagship desktop shells avoid one-screen locking and allow full-page cinematic scrolling', () => {
+  const realtimeStyle = readSource('src/views/health-monitor/real-time/realtime.scss')
+
+  assert.match(
+    realtimeStyle,
+    /\.rt-root\s*\{[\s\S]*\n\s*height:\s*auto;/,
+    'realtime desktop shell should allow content height to extend the page'
+  )
+  assert.match(
+    realtimeStyle,
+    /\.rt-root\s*\{[\s\S]*\n\s*min-height:\s*calc\(100vh - 50px\);/,
+    'realtime desktop shell should preserve a full-screen minimum height baseline'
+  )
+  assert.match(
+    realtimeStyle,
+    /\.rt-root\s*\{[\s\S]*\n\s*overflow:\s*visible;/,
+    'realtime desktop shell should not clip the flagship cinematic page shell'
+  )
+})
+
+test('second-wave cockpit pages share the flagship shell language', () => {
+  const riskWarningSource = readSource('src/views/health-monitor/risk-warning/index.vue')
+  const employeeProfileSource = readSource('src/views/health-monitor/employee-profile/index.vue')
+
+  assert.match(
+    riskWarningSource,
+    /class="hm-page-shell rw-root"/,
+    'risk warning should opt into the shared flagship page shell'
+  )
+  assert.match(
+    employeeProfileSource,
+    /MetricStrip/,
+    'employee profile should expose the shared metric strip in its flagship header band'
+  )
+})
+
+test('employee profile metric strip derives from the computed summary ref without runtime crashes', () => {
+  const source = readSource('src/views/health-monitor/employee-profile/index.vue')
+
+  assert.match(
+    source,
+    /profileSummaryCards\.value\.map\(/,
+    'employee profile metric strip should map the computed summary ref through .value inside script setup'
+  )
+})
+
+test('risk warning desktop shell avoids fixed viewport locking', () => {
+  const styleSource = readSource('src/views/health-monitor/risk-warning/risk-warning.scss')
+
+  assert.match(
+    styleSource,
+    /\.rw-root\s*\{[\s\S]*\n\s*height:\s*auto;/,
+    'risk warning desktop shell should allow content height to extend the page'
+  )
+  assert.match(
+    styleSource,
+    /\.rw-root\s*\{[\s\S]*\n\s*min-height:\s*calc\(100vh - 50px\);/,
+    'risk warning desktop shell should preserve a full-screen minimum height baseline'
+  )
+  assert.match(
+    styleSource,
+    /\.rw-root\s*\{[\s\S]*\n\s*overflow:\s*visible;/,
+    'risk warning desktop shell should not clip the cinematic page shell'
+  )
+})
+
+test('mine entry and report center share the flagship hero and metric strip shell', () => {
+  const mineEntrySource = readSource('src/views/health-monitor/mine-entry/index.vue')
+  const reportCenterSource = readSource('src/views/health-monitor/report-center/index.vue')
+
+  assert.match(
+    mineEntrySource,
+    /class="hm-page-shell me-root"/,
+    'mine entry should opt into the shared flagship page shell'
+  )
+  assert.match(
+    mineEntrySource,
+    /PageHeroHeader/,
+    'mine entry should adopt the shared cockpit hero shell'
+  )
+  assert.match(
+    mineEntrySource,
+    /MetricStrip/,
+    'mine entry should expose a shared metric strip under the cockpit hero'
+  )
+  assert.match(
+    reportCenterSource,
+    /class="hm-page-shell rc-page"/,
+    'report center should opt into the shared flagship page shell'
+  )
+  assert.match(
+    reportCenterSource,
+    /MetricStrip/,
+    'report center should expose a shared metric strip for its overview band'
+  )
+})
+
+test('trend warning and ai chat share the flagship hero and metric strip shell', () => {
+  const trendWarningSource = readSource('src/views/health-monitor/trend-warning/index.vue')
+  const aiChatSource = readSource('src/views/ai-chat/index.vue')
+
+  assert.match(
+    trendWarningSource,
+    /class="tw-page hm-page-shell"|class="hm-page-shell tw-page"/,
+    'trend warning should opt into the shared flagship page shell'
+  )
+  assert.match(
+    trendWarningSource,
+    /MetricStrip/,
+    'trend warning should expose a shared metric strip under the cockpit hero'
+  )
+  assert.match(
+    aiChatSource,
+    /class="hm-page-shell ai-chat-page"|class="ai-chat-page hm-page-shell"/,
+    'ai chat should opt into the shared flagship page shell'
+  )
+  assert.match(
+    aiChatSource,
+    /MetricStrip/,
+    'ai chat should expose a shared metric strip under the cockpit hero'
+  )
+})
+
+test('ai chat desktop shell avoids fixed viewport locking', () => {
+  const styleSource = readSource('src/views/ai-chat/ai-chat.scss')
+
+  assert.match(
+    styleSource,
+    /\.ai-chat-page\s*\{[\s\S]*\n\s*height:\s*auto;/,
+    'ai chat desktop shell should allow content height to extend the page'
+  )
+  assert.match(
+    styleSource,
+    /\.ai-chat-page\s*\{[\s\S]*\n\s*min-height:\s*calc\(100vh - 50px\);/,
+    'ai chat desktop shell should preserve a full-screen minimum height baseline'
+  )
+  assert.match(
+    styleSource,
+    /\.ai-chat-page\s*\{[\s\S]*\n\s*overflow:\s*visible;/,
+    'ai chat desktop shell should not clip the flagship cinematic page shell'
+  )
+})
+
+test('report center desktop shell avoids fixed viewport locking', () => {
+  const styleSource = readSource('src/views/health-monitor/report-center/report-center.scss')
+
+  assert.match(
+    styleSource,
+    /\.rc-page\s*\{[\s\S]*\n\s*height:\s*auto;/,
+    'report center desktop shell should allow content height to extend the page'
+  )
+  assert.match(
+    styleSource,
+    /\.rc-page\s*\{[\s\S]*\n\s*min-height:\s*calc\(100vh - 50px\);/,
+    'report center desktop shell should preserve a full-screen minimum height baseline'
+  )
+  assert.match(
+    styleSource,
+    /\.rc-page\s*\{[\s\S]*\n\s*overflow:\s*visible;/,
+    'report center desktop shell should not clip the cinematic page shell'
+  )
+})
+
 test('dashboard warning stream action cluster keeps pending label and handle button on a dedicated inline rail', () => {
   const viewSource = readSource('src/views/health-monitor/dashboard/components/DashboardWarningStream.vue')
   const styleSource = readSource('src/views/health-monitor/dashboard/dashboard.scss')

@@ -314,7 +314,7 @@ tests/runs/<run-id>/
   "environment": {
     "frontend": "http://127.0.0.1:9528/",
     "backend": "http://127.0.0.1:8080/health",
-    "sql_server": "127.0.0.1:58135",
+    "sql_server": "127.0.0.1:11433",
     "redis": "127.0.0.1:6379",
     "tcp": "127.0.0.1:9000"
   },

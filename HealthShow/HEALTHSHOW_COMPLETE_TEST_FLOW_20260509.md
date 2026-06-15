@@ -88,7 +88,7 @@ npm run test:full
 - Maven：`D:/apache-maven-3.8.1/bin/mvn.cmd`
 - Node/npm
 - Python
-- SQL Server，默认监听 `localhost,58135`
+- SQL Server，默认监听 `localhost,11433`
 - `sqlcmd`
 - Redis，默认监听 `localhost,6379`
 - Playwright Chromium
@@ -100,7 +100,7 @@ npm run test:full
 | 后端 HTTP | `127.0.0.1:8080` |
 | 后端 TCP 手表接入 | `127.0.0.1:9000` |
 | 前端 Vite | `127.0.0.1:9528` |
-| SQL Server | `127.0.0.1:58135` |
+| SQL Server | `127.0.0.1:11433` |
 | Redis | `127.0.0.1:6379` |
 
 ---
@@ -123,8 +123,8 @@ npm run test:full
 SQL Server 必须能响应：
 
 ```powershell
-sqlcmd -S localhost,58135 -U sa -P '[REDACTED]' -d health -Q "SET NOCOUNT ON; SELECT 1 AS ok;"
-sqlcmd -S localhost,58135 -U sa -P '[REDACTED]' -d health_new -Q "SET NOCOUNT ON; SELECT 1 AS ok;"
+sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health -Q "SET NOCOUNT ON; SELECT 1 AS ok;"
+sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; SELECT 1 AS ok;"
 ```
 
 实际密码不要写入文档，运行时设置：
@@ -308,7 +308,7 @@ npm run test:full:new
 - Playwright browser
 - SQL_PASSWORD
 - sqlcmd
-- SQL Server 58135
+- SQL Server 11433
 - TCP 9000
 - Redis 6379
 

@@ -11,7 +11,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 健康记录 Service 实现
@@ -25,6 +28,11 @@ import java.util.*;
 @Slf4j
 public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, HealthRecord>
         implements HealthRecordService {
+
+    private static final int RECENT_HEALTH_RECORD_MONTHS = 13;
+    private static final String HEALTH_RECORD_PAGE_COLUMNS =
+            "id, heart_rate, blood_oxygen, sleep_minutes, steps, calories, pressure, " +
+            "blood_pressure_high, blood_pressure_low, temperature, user_code, record_time";
 
     /**
      * 覆盖 IService.save()：将记录路由到对应月份表。
@@ -74,6 +82,10 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
                                                String userCode,
                                                String startTime,
                                                String endTime) {
+        if (isBlank(userCode) && isBlank(startTime) && isBlank(endTime)) {
+            return getPageWithoutFilters(page);
+        }
+
         QueryWrapper<HealthRecord> wrapper = new QueryWrapper<>();
         if (userCode != null && !userCode.isBlank()) {
             wrapper.eq("user_code", userCode);
@@ -87,6 +99,82 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
         }
         wrapper.orderByDesc("record_time");
         return baseMapper.selectPage(page, wrapper);
+    }
+
+    private Page<HealthRecord> getPageWithoutFilters(Page<HealthRecord> page) {
+        long pageSize = Math.max(page.getSize(), 1L);
+        long current = Math.max(page.getCurrent(), 1L);
+        long offset = (current - 1) * pageSize;
+
+        List<String> recentTables = recentHealthRecordTablesDescending();
+        LinkedHashMap<String, Long> tableCounts = new LinkedHashMap<>();
+        long total = 0L;
+        for (String table : recentTables) {
+            long count = Optional.ofNullable(baseMapper.countRowsByTableName(table)).orElse(0L);
+            tableCounts.put(table, count);
+            total += count;
+        }
+
+        page.setTotal(total);
+        if (total == 0 || offset >= total) {
+            page.setRecords(Collections.emptyList());
+            return page;
+        }
+
+        List<String> selectedTables = new ArrayList<>();
+        long remainingOffset = offset;
+        long sourceOffset = 0L;
+        long availableRows = 0L;
+
+        for (Map.Entry<String, Long> entry : tableCounts.entrySet()) {
+            long count = entry.getValue();
+            if (count <= 0) {
+                continue;
+            }
+            if (selectedTables.isEmpty() && remainingOffset >= count) {
+                remainingOffset -= count;
+                continue;
+            }
+            if (selectedTables.isEmpty()) {
+                sourceOffset = remainingOffset;
+            }
+            selectedTables.add(entry.getKey());
+            availableRows += count;
+            if (availableRows >= sourceOffset + pageSize) {
+                break;
+            }
+        }
+
+        if (selectedTables.isEmpty()) {
+            page.setRecords(Collections.emptyList());
+            return page;
+        }
+
+        String tableSource = buildPageSource(selectedTables);
+        page.setRecords(baseMapper.selectPageFromSource(tableSource, sourceOffset, pageSize));
+        return page;
+    }
+
+    private List<String> recentHealthRecordTablesDescending() {
+        LocalDateTime now = LocalDateTime.now();
+        List<String> tables = new ArrayList<>(
+                TableNameUtil.healthRecordTables(now.minusMonths(RECENT_HEALTH_RECORD_MONTHS - 1L), now)
+        );
+        Collections.reverse(tables);
+        return tables;
+    }
+
+    private String buildPageSource(List<String> tables) {
+        if (tables.size() == 1) {
+            return tables.get(0);
+        }
+        return tables.stream()
+                .map(table -> "SELECT " + HEALTH_RECORD_PAGE_COLUMNS + " FROM " + table)
+                .collect(Collectors.joining(" UNION ALL ", "(", ") health_record_page_source"));
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     @Override

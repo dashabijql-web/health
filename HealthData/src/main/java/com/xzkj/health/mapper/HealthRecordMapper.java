@@ -84,6 +84,28 @@ public interface HealthRecordMapper extends BaseMapper<HealthRecord> {
     List<HealthRecord> selectAbnormalHeartRate();
 
     /**
+     * 无过滤分页优化：按月分区表行数元数据计算总量，避免在 v_health_record 上做 COUNT/排序全扫。
+     */
+    @Select("SELECT COALESCE(SUM(CAST(rows AS BIGINT)), 0) " +
+            "FROM sys.partitions " +
+            "WHERE object_id = OBJECT_ID(#{tableName}) AND index_id IN (0, 1)")
+    Long countRowsByTableName(@Param("tableName") String tableName);
+
+    /**
+     * 无过滤分页优化：对单月表或少量月表 UNION ALL 子查询做分页，避免直接排序整个 v_health_record 视图。
+     */
+    @Select("SELECT " +
+            "id, heart_rate, blood_oxygen, sleep_minutes, steps, calories, pressure, " +
+            "blood_pressure_high, blood_pressure_low, temperature, user_code, " +
+            "CONVERT(VARCHAR(19), record_time, 120) AS record_time " +
+            "FROM ${tableSource} " +
+            "ORDER BY record_time DESC " +
+            "OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY")
+    List<HealthRecord> selectPageFromSource(@Param("tableSource") String tableSource,
+                                            @Param("offset") long offset,
+                                            @Param("size") long size);
+
+    /**
      * 自定义查询：统计每个用户的记录数量（查视图）
      */
     @Select("SELECT user_code, COUNT(*) as record_count FROM v_health_record GROUP BY user_code")

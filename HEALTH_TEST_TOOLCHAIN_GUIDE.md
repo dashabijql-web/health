@@ -607,7 +607,7 @@ Health 的真实依赖在 Windows：
 - 前端 dev server：`localhost:9528`
 - 后端 Spring Boot：`localhost:8080/health`
 - TCP Netty：`9000`
-- SQL Server：`localhost,58135`
+- SQL Server：`localhost,11433`
 - Redis：`127.0.0.1:6379`
 - 模拟器：Windows Python 进程
 

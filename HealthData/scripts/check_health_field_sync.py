@@ -40,9 +40,9 @@ WARNING_REQUIRED_COLUMNS = {
     "create_time",
 }
 
-SQL_SERVER = os.getenv("SQL_SERVER", "localhost,58135")
+SQL_SERVER = os.getenv("SQL_SERVER", "localhost,11433")
 SQL_USER = os.getenv("SQL_USER", "sa")
-SQL_PASSWORD = os.getenv("SQL_PASSWORD", "123abcd.")
+SQL_PASSWORD = os.getenv("SQL_PASSWORD", "123abcd,")
 SQL_DB = os.getenv("SQL_DB", "health")
 SQLCMD_BIN = os.getenv("SQLCMD_BIN") or shutil.which("sqlcmd") or ""
 SKIP_DB_CHECK = os.getenv("HEALTH_SKIP_DB_CHECK", "").lower() in {"1", "true", "yes"}
@@ -96,6 +96,8 @@ def current_month_suffix() -> str:
 def sql_text(query: str) -> str:
     if not SQLCMD_BIN:
         raise RuntimeError("sqlcmd not found")
+    if not SQL_PASSWORD:
+        raise RuntimeError("SQL_PASSWORD is required")
 
     batch = f"SET NOCOUNT ON; {query}"
     completed = subprocess.run(

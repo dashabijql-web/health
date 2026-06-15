@@ -1,11 +1,12 @@
 .rc-page {
-  height: 100%;
+  height: auto;
+  min-height: calc(100vh - 50px);
   display: flex;
   flex-direction: column;
   background: #0a1628;
-  padding: 16px;
+  padding: 0 0 calc(20px + env(safe-area-inset-bottom));
   gap: 12px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .rc-hero {
@@ -100,9 +101,24 @@
 }
 
 .rc-overview-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  :deep(.hm-metric-strip__item) {
+    min-height: 108px;
+    border-color: rgba(0, 212, 255, 0.14);
+    background: linear-gradient(135deg, rgba(10, 28, 50, 0.98), rgba(8, 18, 33, 0.95));
+  }
+
+  :deep(.hm-metric-strip__label) {
+    color: #7fa0be;
+  }
+
+  :deep(.hm-metric-strip__value) {
+    color: #e7f5ff;
+    font-size: 24px;
+  }
+
+  :deep(.hm-metric-strip__note) {
+    color: #9fbad5;
+  }
 }
 
 .rc-overview-card {

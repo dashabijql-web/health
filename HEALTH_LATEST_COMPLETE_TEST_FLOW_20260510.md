@@ -159,7 +159,7 @@ finished_at: 2026-05-10 23:52:07 +08:00
 
 这个 runner 当前负责：
 
-- 检查或启动 SQL Server `127.0.0.1:58135`
+- 检查或启动 SQL Server `127.0.0.1:11433`
 - 检查或启动 Redis `127.0.0.1:6379`
 - 检查或启动后端 HTTP `127.0.0.1:8080/health`
 - 检查或启动后端 TCP `127.0.0.1:9000`
@@ -338,7 +338,7 @@ runner 启动测试前检查：
 
 | 项 | 目标 |
 | --- | --- |
-| SQL Server | `127.0.0.1:58135` |
+| SQL Server | `127.0.0.1:11433` |
 | Redis | `127.0.0.1:6379` |
 | backend HTTP | `127.0.0.1:8080` |
 | backend TCP | `127.0.0.1:9000` |
@@ -790,7 +790,7 @@ pipeline 和 warning pipeline 必须 passed
 
 | 现象 | 优先处理 |
 | --- | --- |
-| SQL 58135 不通 | 检查 SQL Server 服务 |
+| SQL 11433 不通 | 检查 SQL Server 服务 |
 | Redis 6379 不通 | 检查 Redis 服务或 runner 启动日志 |
 | backend 8080 不通 | 看 `backend.err.log` 和 Maven 启动日志 |
 | 跑 runner 或 `audit:auth` 时后端无法重启，或 `audit:auth` 卡在 `starting backend process` | 检查 `tests/run-full-stack-local.py` 是否仍通过 `health-wsl-stack.sh` 管理后端、前端和模拟器；检查 `tests/e2e/auth-session-regression.mjs` 是否仍通过 WSL stack 控制后端启停；然后跑 `npm run test:fast` 和 `npm run audit:auth` |

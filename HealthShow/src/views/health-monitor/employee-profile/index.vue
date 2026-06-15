@@ -40,17 +40,10 @@
       <button class="ep-qbtn" @click="goReportCenter">报表中心</button>
     </div>
 
-    <div class="ep-summary-strip">
-      <div
-        v-for="card in profileSummaryCards"
-        :key="card.label"
-        :class="['ep-summary-card', `tone-${card.tone}`]"
-      >
-        <div class="ep-summary-label">{{ card.label }}</div>
-        <div class="ep-summary-value">{{ card.value }}</div>
-        <div class="ep-summary-sub">{{ card.sub }}</div>
-      </div>
-    </div>
+    <MetricStrip
+      class="ep-summary-strip"
+      :items="summaryMetricItems"
+    />
 
     <!-- AI 报告 Dialog -->
     <el-dialog v-model="aiReportVisible" :title="'AI 健康诊断报告 — ' + empInfo.empName" width="820px" :close-on-click-modal="false">
@@ -346,7 +339,9 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { ArrowLeft, Document } from '@element-plus/icons-vue'
+import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import HeartRateWave from '@/components/HeartRateWave.vue'
 import { useEmployeeProfilePage } from './use-employee-profile-page'
@@ -404,6 +399,20 @@ const {
   warnItems,
   goWarningCenter
 } = useEmployeeProfilePage()
+
+const summaryMetricItems = computed(() => profileSummaryCards.value.map((card) => ({
+  key: card.label,
+  label: card.label,
+  value: card.value,
+  note: card.sub,
+  tone: card.tone === 'danger'
+    ? 'danger'
+    : card.tone === 'warn'
+      ? 'warning'
+      : card.tone === 'safe'
+        ? 'success'
+        : 'primary'
+})))
 </script>
 
 <style scoped>

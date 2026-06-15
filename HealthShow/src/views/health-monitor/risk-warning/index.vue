@@ -1,5 +1,5 @@
 <template>
-  <div class="rw-root">
+  <div class="hm-page-shell rw-root">
 
     <!-- ══ Header ══ -->
     <header class="rw-hd">

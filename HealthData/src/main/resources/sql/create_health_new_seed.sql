@@ -1,7 +1,8 @@
 /*
   基于当前 health 库创建可写的 health_new，并清空业务流水及待重建的组织人员基础数据。
   同时确保保留默认超级管理员：admin / admin123。
-  适用：SQL Server 2019，本机实例 R9000K3080\MSSQLSERVER2019 / localhost,58135
+  历史用途：基于 Windows SQL Server 2019 目录生成 health_new 种子库。
+  当前本机默认已迁移到 WSL SQL Server 2022 / localhost,11433；运行前必须按实际实例调整备份和数据文件路径。
 */
 
 DECLARE @backup nvarchar(260) = N'C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER2019\MSSQL\Backup\health_new_seed_20260506.bak';

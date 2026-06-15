@@ -1,0 +1,48 @@
+--- HealthShow/src/views/health-monitor/dashboard/dashboard.scss
++++ HealthShow/src/views/health-monitor/dashboard/dashboard.scss
+@@ -84,33 +84,28 @@
+ 
+ // ── Panel 通用 ──
+ .dm-panel {
+-  background:linear-gradient(180deg, rgba(11, 28, 51, 0.9), rgba(10, 22, 40, 0.82));
+-  border:1px solid $border;
++  background: var(--bg-panel, rgba(11, 28, 51, 0.4));
++  border: 1px solid var(--border-soft, rgba(133, 175, 220, 0.15));
+   border-radius:20px;
+   display:flex;
+   flex-direction:column;
+   overflow:hidden;
+-  box-shadow: 0 22px 40px -34px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255,255,255,0.04);
+-  backdrop-filter: blur(18px);
++  box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.5);
++  backdrop-filter: blur(24px);
++  transition: background-color 0.3s ease, border-color 0.3s ease;
+ }
+ .dm-panel--interactive { cursor:pointer; }
+ .dm-left .dm-panel,
+-.dm-right .dm-panel {
+-  background:linear-gradient(180deg, rgba(11, 28, 51, 0.84), rgba(10, 22, 40, 0.8));
+-}
+-.dm-main .dm-panel {
+-  background:linear-gradient(180deg, rgba(11, 28, 51, 0.96), rgba(8, 20, 36, 0.88));
+-}
++.dm-right .dm-panel,
++.dm-main .dm-panel { background: none; }
++
+ .dm-ph {
+-  min-height:48px; flex-shrink:0;
++  min-height:52px; flex-shrink:0;
+   display:flex; align-items:center; gap:8px; padding:0 16px;
+-  border-bottom:1px solid rgba(133,175,220,0.12);
+-  background:linear-gradient(180deg, rgba(255,255,255,0.045), transparent);
++  border-bottom: 1px solid var(--border-light, rgba(255, 255, 255, 0.06));
+ }
+-.dm-ph-bar   { width:4px; height:14px; border-radius:2px; background:linear-gradient(180deg,$accent,#1677ff); flex-shrink:0; }
+-.dm-ph-bar--warning { background:linear-gradient(180deg, $warning, rgba(245, 158, 11, 0.34)); }
+-.dm-ph-bar--success { background:linear-gradient(180deg, $success, rgba(54, 211, 153, 0.34)); }
+-.dm-ph-title { font-size:14px; font-weight:700; color:$white; letter-spacing:0.01em; }
++.dm-ph-bar { display: none; } // 移除旧版色条
++.dm-ph-title { font-size:15px; font-weight:600; color: var(--text-primary, #ffffff); letter-spacing:0.02em; }
+ .dm-ph-sub {
+   margin-left:auto;
+   font-size:12px;

@@ -1,7 +1,8 @@
 <template>
-  <div class="rt-root">
+  <div class="hm-page-shell rt-root">
     <RealtimeHeader
       :warning-users="warningUsers"
+      :total-count="allUsers.length"
       :normal-count="normalCount"
       :warning-count="warningCount"
       :current-time="currentTime"

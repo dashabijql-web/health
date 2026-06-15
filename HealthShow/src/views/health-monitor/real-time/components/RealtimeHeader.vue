@@ -46,20 +46,48 @@
         <span v-else class="rt-ticker-empty">暂无预警人员</span>
       </div>
     </div>
+
+    <MetricStrip
+      class="rt-hd-kpis"
+      :items="headerMetricItems"
+      dense
+    />
   </header>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
+import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 import { getRealtimeIndicator } from '../realtime-helpers'
 
 const props = defineProps({
   warningUsers: { type: Array, default: () => [] },
+  totalCount: { type: Number, default: 0 },
   normalCount: { type: Number, default: 0 },
   warningCount: { type: Number, default: 0 },
   currentTime: { type: String, default: '' }
 })
 
 const tickerUsers = computed(() => [...props.warningUsers, ...props.warningUsers])
+const headerMetricItems = computed(() => [
+  {
+    label: '在线总数',
+    value: `${props.totalCount} 人`,
+    note: '15 秒自动刷新',
+    tone: 'primary'
+  },
+  {
+    label: '正常状态',
+    value: `${props.normalCount} 人`,
+    note: '实时同步',
+    tone: 'success'
+  },
+  {
+    label: '预警中',
+    value: `${props.warningCount} 人`,
+    note: props.warningCount > 0 ? '优先通知与广播' : '当前无预警',
+    tone: props.warningCount > 0 ? 'danger' : 'success'
+  }
+])
 </script>

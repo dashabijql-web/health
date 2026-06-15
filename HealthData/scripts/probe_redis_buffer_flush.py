@@ -15,9 +15,9 @@ import time
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SQL_SERVER = os.getenv("SQL_SERVER", "localhost,58135")
+SQL_SERVER = os.getenv("SQL_SERVER", "localhost,11433")
 SQL_USER = os.getenv("SQL_USER", "sa")
-SQL_PASSWORD = os.getenv("SQL_PASSWORD", "123abcd.")
+SQL_PASSWORD = os.getenv("SQL_PASSWORD", "123abcd,")
 SQLCMD_BIN = os.getenv("SQLCMD_BIN") or shutil.which("sqlcmd") or ""
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
@@ -38,6 +38,8 @@ REDIS_BUFFER_KEY = os.getenv("HEALTH_BUFFER_KEY") or f"health:buffer:{PROBE_SOUR
 def sql_json(query: str):
     if not SQLCMD_BIN:
         raise RuntimeError("sqlcmd not found")
+    if not SQL_PASSWORD:
+        raise RuntimeError("SQL_PASSWORD is required")
 
     batch = f"SET NOCOUNT ON; {query}"
     completed = subprocess.run(

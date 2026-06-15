@@ -1,125 +1,125 @@
 <template>
-  <div class="ai-chat-page">
+  <div class="hm-page-shell ai-chat-page">
     <PageHeroHeader
       class="chat-hero"
-      eyebrow="AI Assistant"
+      variant="cockpit"
+      eyebrow="AI Health Copilot"
       title="AI 健康助手"
-      description="你可以问我关于员工健康数据的任何问题"
+      description="把实时体征、趋势风险、部门分布和明细查询汇成一条指挥会话流，给值班、研判和追问留在同一块面板里。"
     >
       <template #meta>
         <div class="chat-hero-meta">
-          <span class="chat-live-dot"></span>
-          <span class="chat-hero-meta-label">会话中</span>
-          <span class="chat-hero-meta-count">{{ messages.length }} 条消息</span>
+          <span :class="['hm-status-chip', loading ? 'hm-status-chip--warning' : messages.length ? 'hm-status-chip--success' : '']">
+            <span :class="['chat-live-dot', !loading && messages.length === 0 ? 'is-idle' : '']"></span>
+            {{ sessionStateLabel }}
+          </span>
+          <span class="hm-status-chip">{{ messages.length }} 条消息</span>
+          <span class="hm-status-chip hm-status-chip--warning">{{ quickQuestions.length }} 个快捷问题</span>
         </div>
       </template>
       <template #actions>
-        <div class="header-btns">
-        <el-button size="small" @click="exportChat" :disabled="messages.length === 0" class="new-chat-btn">
+        <button type="button" class="hm-action-btn" @click="exportChat" :disabled="messages.length === 0">
           导出对话
-        </el-button>
-        <el-button size="small" @click="newChat" :disabled="loading" class="new-chat-btn">
+        </button>
+        <button type="button" class="hm-action-btn hm-action-btn--primary" @click="newChat" :disabled="loading">
           新对话
-        </el-button>
-        </div>
+        </button>
       </template>
     </PageHeroHeader>
 
-    <!-- 消息列表 -->
-    <div class="message-list" ref="messageListRef">
-      <div v-if="messages.length === 0" class="chat-empty-state">
-        <PageEmptyState
-          eyebrow="AI Copilot"
-          title="准备开始新的健康分析会话"
-          description="可以直接提问，或先从下方快捷问题开始，快速查看部门趋势、个体画像和预警统计。"
-        />
-      </div>
+    <MetricStrip class="chat-summary-strip" :items="summaryMetricItems" dense />
 
-      <!-- 对话记录 -->
-      <div
-        v-for="(msg, index) in messages"
-        :key="index"
-        :class="['message', msg.role]"
-      >
-        <div class="avatar">{{ msg.role === 'user' ? '我' : 'AI' }}</div>
-        <div class="msg-body">
-          <div class="bubble" v-html="formatMessage(msg.content)"></div>
-          <!-- SQL 调试块：仅 AI 消息且有 SQL 时显示 -->
-          <div v-if="msg.sql" class="sql-debug">
-            <div class="sql-toggle" @click="msg.sqlOpen = !msg.sqlOpen">
-              <span>{{ msg.sqlOpen ? '收起生成的 SQL' : '查看生成的 SQL' }}</span>
+    <div class="chat-stage">
+      <div class="message-list" ref="messageListRef">
+        <div v-if="messages.length === 0" class="chat-empty-state">
+          <PageEmptyState
+            eyebrow="AI Copilot"
+            title="准备开始新的健康分析会话"
+            description="可以直接提问，或先从下方快捷问题开始，快速查看部门趋势、个体画像和预警统计。"
+          />
+        </div>
+
+        <div
+          v-for="(msg, index) in messages"
+          :key="index"
+          :class="['message', msg.role]"
+        >
+          <div class="avatar">{{ msg.role === 'user' ? '我' : 'AI' }}</div>
+          <div class="msg-body">
+            <div class="bubble" v-html="formatMessage(msg.content)"></div>
+            <div v-if="msg.sql" class="sql-debug">
+              <div class="sql-toggle" @click="msg.sqlOpen = !msg.sqlOpen">
+                <span>{{ msg.sqlOpen ? '收起生成的 SQL' : '查看生成的 SQL' }}</span>
+              </div>
+              <pre v-if="msg.sqlOpen" class="sql-block">{{ msg.sql }}</pre>
             </div>
-            <pre v-if="msg.sqlOpen" class="sql-block">{{ msg.sql }}</pre>
+            <template v-if="msg.queryData && msg.queryData.length >= 2">
+              <div v-if="getVizType(msg.queryData) === 'table'" class="viz-table-wrap">
+                <table class="viz-table">
+                  <thead>
+                    <tr><th v-for="col in getQueryColumns(msg)" :key="col">{{ col }}</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, ri) in msg.queryData" :key="ri">
+                      <td v-for="col in getQueryColumns(msg)" :key="col">{{ formatCell(row[col]) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-else-if="getVizType(msg.queryData) !== 'none'"
+                   :id="'viz-chart-' + index"
+                   :style="{ height: getVizType(msg.queryData) === 'bar' ? Math.min(msg.queryData.length * 28 + 20, 420) + 'px' : '220px' }"
+                   class="viz-chart">
+              </div>
+            </template>
           </div>
-          <!-- P1/P2: 数据可视化块 -->
-          <template v-if="msg.queryData && msg.queryData.length >= 2">
-            <div v-if="getVizType(msg.queryData) === 'table'" class="viz-table-wrap">
-              <table class="viz-table">
-                <thead>
-                  <tr><th v-for="col in getQueryColumns(msg)" :key="col">{{ col }}</th></tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(row, ri) in msg.queryData" :key="ri">
-                    <td v-for="col in getQueryColumns(msg)" :key="col">{{ formatCell(row[col]) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div v-else-if="getVizType(msg.queryData) !== 'none'"
-                 :id="'viz-chart-' + index"
-                 :style="{ height: getVizType(msg.queryData) === 'bar' ? Math.min(msg.queryData.length * 28 + 20, 420) + 'px' : '220px' }"
-                 class="viz-chart">
-            </div>
-          </template>
         </div>
-      </div>
-
-      <!-- 加载中 -->
-      <div class="message assistant" v-if="loading">
-        <div class="avatar">AI</div>
-        <div class="bubble loading">
-          <span class="dot"></span>
-          <span class="dot"></span>
-          <span class="dot"></span>
+        <div class="message assistant" v-if="loading">
+          <div class="avatar">AI</div>
+          <div class="bubble loading">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 输入区域 -->
-    <div class="input-area">
-      <el-input
-        v-model="inputText"
-        placeholder="输入你的问题，按 Enter 发送..."
-        :disabled="loading"
-        @keyup.enter="sendMessage"
-        class="chat-input"
-      />
-      <el-button
-        type="primary"
-        :loading="loading"
-        @click="sendMessage"
-        class="send-btn"
-      >
-        发送
-      </el-button>
-    </div>
-
-    <!-- 快捷问题 -->
-    <div class="quick-questions">
-      <span class="label">快捷提问：</span>
-      <el-tag
-        v-for="q in quickQuestions"
-        :key="q"
-        @click="askQuick(q)"
-        class="quick-tag"
-        :class="{ disabled: loading }"
-      >{{ q }}</el-tag>
+    <div class="chat-console">
+      <div class="input-area">
+        <el-input
+          v-model="inputText"
+          placeholder="输入你的问题，按 Enter 发送..."
+          :disabled="loading"
+          @keyup.enter="sendMessage"
+          class="chat-input"
+        />
+        <el-button
+          type="primary"
+          :loading="loading"
+          @click="sendMessage"
+          class="send-btn"
+        >
+          发送
+        </el-button>
+      </div>
+      <div class="quick-questions">
+        <span class="label">快捷提问：</span>
+        <el-tag
+          v-for="q in quickQuestions"
+          :key="q"
+          @click="askQuick(q)"
+          class="quick-tag"
+          :class="{ disabled: loading }"
+        >{{ q }}</el-tag>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
 import { clearAiSession } from '@/api/ai'
@@ -128,6 +128,10 @@ import { getToken } from '@/utils/auth'
 import { getMarked } from '@/utils/lazy-vendors'
 import { createAiChatChartRegistry } from './ai-chat-chart.js'
 import { printChatTranscript } from './ai-chat-export.js'
+import {
+  buildAiChatSummaryMetricItems,
+  getAiChatSessionStateLabel
+} from './ai-chat-view-model.js'
 import {
   decodeBase64Utf8,
   formatCell,
@@ -147,23 +151,25 @@ const markdownParser = ref(null)
 const sessionId = ref(generateSessionId())
 const chartRegistry = createAiChatChartRegistry()
 const quickQuestions = ref([...DEFAULT_QUICK_QUESTIONS])
+const userMessageCount = computed(() => messages.value.filter((msg) => msg.role === 'user').length)
+const assistantMessageCount = computed(() => messages.value.filter((msg) => msg.role === 'assistant').length)
+const queryResultCount = computed(() => messages.value.filter((msg) => Array.isArray(msg.queryData) && msg.queryData.length > 0).length)
+const sessionStateLabel = computed(() => getAiChatSessionStateLabel({ loading: loading.value, messageCount: messages.value.length }))
+const summaryMetricItems = computed(() => buildAiChatSummaryMetricItems({
+  loading: loading.value,
+  messageCount: messages.value.length,
+  userMessageCount: userMessageCount.value,
+  assistantMessageCount: assistantMessageCount.value,
+  queryResultCount: queryResultCount.value,
+  quickQuestionCount: quickQuestions.value.length
+}))
 
-/**
- * B5: 动态快捷问题 —— 从数据库拉取真实部门名称生成个性化问题
- *
- * 生成策略：
- *   - 随机选 2 个部门，分别生成"该部门血氧/心率"问题
- *   - 保留 2 个通用聚合问题（睡眠、预警）
- *   - 总共 4 个快捷标签
- */
 async function loadDynamicQuickQuestions() {
   try {
     const res = await request({ url: '/department/list', method: 'get' })
     const questions = buildDynamicQuickQuestions(res.data || [])
     if (questions) quickQuestions.value = questions
-  } catch (e) {
-    // 网络失败时保留默认问题，不报错
-  }
+  } catch (e) {}
 }
 
 onMounted(() => {
@@ -178,16 +184,6 @@ async function ensureMarkdownParser() {
   return markdownParser.value
 }
 
-/**
- * 流式发送消息
- *
- * 【核心原理】
- * 1. 先在消息列表加一条空的 assistant 消息（占位）
- * 2. 用 fetch 发 POST 请求，获取可读流（ReadableStream）
- * 3. 逐块读取流数据，解析 SSE 格式的 "data: token\n\n"
- * 4. 每收到一个 token 就追加到那条 assistant 消息里
- * 5. 收到 [DONE] 信号时结束
- */
 async function sendMessage() {
   const question = inputText.value.trim()
   if (!question || loading.value) return
@@ -196,19 +192,16 @@ async function sendMessage() {
   inputText.value = ''
   loading.value = true
 
-  // 添加 AI 占位消息（content 逐字填入，sql/queryData 在流结束时填入）
   const aiMsgIndex = messages.value.length
   messages.value.push({ role: 'assistant', content: '', sql: null, sqlOpen: false, queryData: null, queryColumns: null, queryResult: null })
   scrollToBottom()
 
   try {
-    // 用原生 fetch 请求流式接口（axios 不支持流式，必须用 fetch）
-    // 注意：必须走 /dev-api/ 代理路径，Vite 会转发到后端 /health/
     const response = await fetch('/dev-api/ai/chat/stream', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'satoken': getToken() || ''
+        satoken: getToken() || ''
       },
       body: JSON.stringify({ question, sessionId: sessionId.value })
     })
@@ -218,7 +211,6 @@ async function sendMessage() {
       return
     }
 
-    // 读取流
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
@@ -228,10 +220,8 @@ async function sendMessage() {
       if (done) break
 
       buffer += decoder.decode(value, { stream: true })
-
-      // 按行解析 SSE（格式: "data: xxx\n\n"）
       const lines = buffer.split('\n')
-      buffer = lines.pop() // 最后一行可能不完整，留到下次
+      buffer = lines.pop() || ''
 
       for (const line of lines) {
         if (!line.startsWith('data:')) continue
@@ -242,36 +232,36 @@ async function sendMessage() {
           scrollToBottom()
           break
         }
+
         if (data.startsWith('[SESSION]:')) {
           sessionId.value = data.slice(10)
           continue
         }
+
         if (data.startsWith('[DATA]:')) {
-          // P1/P2: 解析原始查询结果，用于渲染表格或图表
           try {
             const queryResult = normalizeQueryPayload(JSON.parse(decodeBase64Utf8(data.slice(7))))
             messages.value[aiMsgIndex].queryResult = queryResult
             messages.value[aiMsgIndex].queryData = queryResult.rows
             messages.value[aiMsgIndex].queryColumns = queryResult.columns
-            const vtype = getVizType(queryResult.rows)
-            if (vtype === 'bar' || vtype === 'line') {
-              nextTick(() => chartRegistry.initChart(aiMsgIndex, queryResult.rows, vtype))
+            const vizType = getVizType(queryResult.rows)
+            if (vizType === 'bar' || vizType === 'line') {
+              nextTick(() => chartRegistry.initChart(aiMsgIndex, queryResult.rows, vizType))
             }
-          } catch (e) { /* 忽略解析错误 */ }
+          } catch (e) {}
           continue
         }
+
         if (data.startsWith('[SQL]:')) {
-          // Base64 解码 SQL
-          const sqlB64 = data.slice(6)
-          messages.value[aiMsgIndex].sql = decodeBase64Utf8(sqlB64)
+          messages.value[aiMsgIndex].sql = decodeBase64Utf8(data.slice(6))
           continue
         }
+
         if (data.startsWith('[ERROR]')) {
           messages.value[aiMsgIndex].content = data.slice(7)
           continue
         }
 
-        // 正常 token：追加到 AI 消息
         messages.value[aiMsgIndex].content += data
         scrollToBottom()
       }
@@ -284,15 +274,6 @@ async function sendMessage() {
   }
 }
 
-/**
- * B6: 导出对话 —— 生成 HTML 打印页，让用户另存为 PDF 或直接打印
- *
- * 策略：
- *   1. 生成一个包含样式的独立 HTML 字符串
- *   2. 用 window.open 打开新窗口
- *   3. 写入 HTML，延迟调用 window.print()（弹出系统打印对话框）
- *   4. 用户可选择"另存为 PDF"或打印纸质版
- */
 async function exportChat() {
   if (messages.value.length === 0) return
   const parser = await ensureMarkdownParser()
@@ -303,14 +284,11 @@ onUnmounted(() => {
   chartRegistry.disposeAll()
 })
 
-// ─── 对话操作 ─────────────────────────────────────────────────────────────
-
-// 开始新对话：清除后端历史 + 重置前端消息 + 生成新 sessionId
 async function newChat() {
   if (loading.value) return
   try {
     await clearAiSession(sessionId.value)
-  } catch (e) { /* 忽略清除失败 */ }
+  } catch (e) {}
   chartRegistry.disposeAll()
   sessionId.value = generateSessionId()
   messages.value = []

@@ -1,5 +1,5 @@
 <template>
-  <div class="rc-page">
+  <div class="hm-page-shell rc-page">
     <PageHeroHeader
       class="rc-hero"
       variant="cockpit"
@@ -53,17 +53,10 @@
 
     <!-- ══ 内容区（可导出区域）══ -->
     <div class="rc-content" ref="reportArea" v-loading="loading">
-      <div class="rc-overview-row">
-        <div
-          v-for="card in reportOverviewCards"
-          :key="card.label"
-          :class="['rc-overview-card', `tone-${card.tone}`]"
-        >
-          <div class="rc-overview-label">{{ card.label }}</div>
-          <div class="rc-overview-value">{{ card.value }}</div>
-          <div class="rc-overview-sub">{{ card.sub }}</div>
-        </div>
-      </div>
+      <MetricStrip
+        class="rc-overview-row"
+        :items="reportOverviewMetricItems"
+      />
 
       <div class="rc-ai-card">
         <div class="rc-ai-head">
@@ -183,6 +176,7 @@
 </template>
 
 <script>
+import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { getHtml2Canvas, getJsPDF, getXLSX } from '@/utils/lazy-vendors'
 import {
@@ -212,7 +206,7 @@ import {
 
 export default {
   name: 'ReportCenter',
-  components: { PageHeroHeader },
+  components: { PageHeroHeader, MetricStrip },
   data() {
     return createReportCenterState()
   },
@@ -229,6 +223,21 @@ export default {
         trendData: this.trendData,
         trendDays: this.trendDays
       })
+    },
+    reportOverviewMetricItems() {
+      return this.reportOverviewCards.map((card) => ({
+        key: card.label,
+        label: card.label,
+        value: card.value,
+        note: card.sub,
+        tone: card.tone === 'danger'
+          ? 'danger'
+          : card.tone === 'warn'
+            ? 'warning'
+            : card.tone === 'info'
+              ? 'success'
+              : 'primary'
+      }))
     },
     reportExportState() {
       return buildReportExportState({

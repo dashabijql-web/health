@@ -286,7 +286,7 @@ class HealthLoopRunner:
         if self.args.profile in {"full", "dual-db"}:
             checks.extend(
                 [
-                    {"name": "sql-server", "ok": socket_open(58135), "required": True, "detail": "127.0.0.1:58135", "hint": "start SQL Server"},
+                    {"name": "sql-server", "ok": socket_open(11433), "required": True, "detail": "127.0.0.1:11433", "hint": "start SQL Server"},
                     {"name": "redis", "ok": socket_open(6379), "required": True, "detail": "127.0.0.1:6379", "hint": "start Redis"},
                     {"name": "data-source", "ok": True, "required": True, "detail": requested_source, "hint": ""},
                 ]
@@ -303,7 +303,7 @@ class HealthLoopRunner:
         if self.args.profile in {"standard", "nightly"}:
             checks.extend(
                 [
-                    {"name": "sql-server", "ok": socket_open(58135), "required": True, "detail": "127.0.0.1:58135", "hint": "start SQL Server"},
+                    {"name": "sql-server", "ok": socket_open(11433), "required": True, "detail": "127.0.0.1:11433", "hint": "start SQL Server"},
                     {"name": "redis", "ok": socket_open(6379), "required": True, "detail": "127.0.0.1:6379", "hint": "start Redis"},
                     {"name": "tcp-9000", "ok": socket_open(9000), "required": True, "detail": "127.0.0.1:9000", "hint": "start backend TCP listener"},
                 ]

@@ -1,12 +1,16 @@
 .rt-root {
   width: 100%;
-  height: calc(100vh - 50px);
-  min-height: 600px;
-  background: #0a0e27;
-  overflow: hidden;
+  min-height: calc(100vh - 50px);
+  height: auto;
+  background:
+    radial-gradient(circle at 16% 14%, rgba(62, 183, 255, 0.12), transparent 28%),
+    radial-gradient(circle at 84% 12%, rgba(54, 211, 153, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(6, 17, 31, 0.98), rgba(9, 18, 33, 0.96));
+  overflow: visible;
   display: flex;
   flex-direction: column;
-  font-family: 'Microsoft YaHei', sans-serif;
+  gap: 12px;
+  font-family: var(--font-body);
   color: #a8c5e6;
 }
 
@@ -21,6 +25,10 @@
 }
 
 .rt-hd-hero {
+  width: 100%;
+}
+
+.rt-hd-kpis {
   width: 100%;
 }
 
@@ -179,7 +187,8 @@
   flex: 1;
   display: flex;
   padding: 10px;
-  overflow: hidden;
+  min-height: clamp(560px, calc(100vh - 240px), 980px);
+  overflow: visible;
 }
 
 .rt-main {

@@ -86,7 +86,7 @@ async function checkCommand(name, command, args = [], hint = '') {
 async function checkSql() {
   addCheck('SQL_PASSWORD', Boolean(process.env.SQL_PASSWORD), process.env.SQL_PASSWORD ? 'set' : 'missing', 'pipeline 写入/回归测试需要 SQL_PASSWORD');
   await checkCommand('sqlcmd', process.env.SQLCMD_BIN || 'sqlcmd', ['-?'], '先安装 sqlcmd 或设置 SQLCMD_BIN');
-  const result = await connectPort(parseSqlServerPort(process.env.SQL_SERVER || 'localhost,58135'));
+  const result = await connectPort(parseSqlServerPort(process.env.SQL_SERVER || 'localhost,11433'));
   addCheck('sql-server', result.ok, result.detail, '启动 SQL Server');
 }
 

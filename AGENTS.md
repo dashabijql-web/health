@@ -263,7 +263,7 @@ bash /home/j/code/health/tools/health-wsl-stack.sh simulator start
 常用核对命令：
 
 ```powershell
-sqlcmd -S localhost,58135 -U sa -P 123abcd. -d health_new -Q "SET NOCOUNT ON; SELECT 'department' AS table_name, COUNT(*) AS row_count FROM department UNION ALL SELECT 'employee', COUNT(*) FROM employee UNION ALL SELECT 'device', COUNT(*) FROM device UNION ALL SELECT 'device_user', COUNT(*) FROM device_user UNION ALL SELECT 'realtime_data', COUNT(*) FROM realtime_data UNION ALL SELECT 'user_online_status', COUNT(*) FROM user_online_status UNION ALL SELECT 'job_type', COUNT(*) FROM job_type UNION ALL SELECT 'alert_config', COUNT(*) FROM alert_config UNION ALL SELECT 'sys_user', COUNT(*) FROM sys_user;"
+sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; SELECT 'department' AS table_name, COUNT(*) AS row_count FROM department UNION ALL SELECT 'employee', COUNT(*) FROM employee UNION ALL SELECT 'device', COUNT(*) FROM device UNION ALL SELECT 'device_user', COUNT(*) FROM device_user UNION ALL SELECT 'realtime_data', COUNT(*) FROM realtime_data UNION ALL SELECT 'user_online_status', COUNT(*) FROM user_online_status UNION ALL SELECT 'job_type', COUNT(*) FROM job_type UNION ALL SELECT 'alert_config', COUNT(*) FROM alert_config UNION ALL SELECT 'sys_user', COUNT(*) FROM sys_user;"
 ```
 
 协作提醒：

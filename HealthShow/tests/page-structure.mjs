@@ -204,6 +204,7 @@ const migratedPages = [
       'ai-chat-query-result.js',
       'ai-chat-session.js',
       'ai-chat-text.js',
+      'ai-chat-view-model.js',
       'ai-chat.scss'
     ]
   },

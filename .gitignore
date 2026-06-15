@@ -15,3 +15,8 @@ tests/runs/
 tests/latest-run.json
 
 .claude/
+.playwright-mcp/
+.superpowers/
+**/.playwright-cli/
+**/output/playwright/
+**/output/comparison/
