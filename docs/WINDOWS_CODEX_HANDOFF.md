@@ -18,6 +18,49 @@
 - `admin / admin123` 登录入口。
 - 月分表、视图、存储过程、权限表、预警配置等非代码资产。
 
+## 访问入口和账号
+
+- 前端访问地址：`http://localhost:9528/`
+- 后端访问地址：`http://localhost:8080/health`
+- 后端健康检查：`http://localhost:8080/health/actuator/health`
+- 后端业务指标：`http://localhost:8080/health/actuator/metrics`
+- 手表 TCP 端口：`9000`
+- 管理员账号：`admin`
+- 管理员密码：`admin123`
+- 登录 token 存在 Cookie，不是 localStorage。
+- 前端本地开发通过 Vite 代理把 `/dev-api/*` 重写到 `/health/*`。
+- 前端右上角可切换“新库 / 老库”，请求头是 `X-Health-Data-Source`。
+
+## 手表模拟器
+
+模拟器脚本：
+
+```text
+HealthShow\watch_tcp_simulator_1000.py
+```
+
+Windows 手动启动：
+
+```powershell
+cd D:\Health\HealthShow
+python watch_tcp_simulator_1000.py
+```
+
+默认模拟器连接：
+
+- 主机：`127.0.0.1`
+- TCP 端口：`9000`
+- 默认数量：`1000` 块模拟手表
+- 模拟器 IMEI 正则：`^3594567800\d{5}$`
+- 命中模拟器正则的数据默认写入老库 `health`
+
+规则：
+
+- 同一台机器最多只运行一个模拟器实例。
+- 做老库演示、压测、数据密度验收时启动模拟器。
+- 做新库空态、真实手表验收时先停止模拟器。
+- 如果页面右上角切到“新库”，业务表为空是预期；如果切到“老库”，模拟器数据应进入 `health`。
+
 ## 源机器导出
 
 在能访问当前 SQL Server 的机器上执行。以下示例使用 SQL Server 2022 默认实例目录；如果实例名或安装目录不同，先改路径。
@@ -149,6 +192,18 @@ python watch_tcp_simulator_1000.py
 ```
 
 模拟器最多只允许一个实例。新库/真实手表验收前必须停止模拟器；旧库/演示数据密度验收时再启动模拟器。
+
+启动后访问：
+
+```text
+http://localhost:9528/
+```
+
+登录：
+
+```text
+admin / admin123
+```
 
 ## 验证
 
