@@ -267,6 +267,17 @@ const healthMonitorRouter = {
         navGroup: 'monitor',
         navOrder: 26
       }
+    },
+    {
+      path: 'watch-raw',
+      name: 'WatchRawPackets',
+      component: () => import('@/views/health-monitor/watch-raw/index.vue'),
+      meta: {
+        title: '原始数据',
+        icon: 'Document',
+        navGroup: 'monitor',
+        navOrder: 27
+      }
     }
   ]
 }

@@ -4,6 +4,7 @@ import com.xzkj.health.protocol.WatchMessage;
 import com.xzkj.health.service.DataProcessService;
 import com.xzkj.health.service.DeviceManagerService;
 import com.xzkj.health.service.DeviceManagerService.ConnectionProtocol;
+import com.xzkj.health.service.watch.WatchRawPacketService;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,8 @@ class WatchDataHandlerTest {
     void loginMessagesRegisterDeviceAndPersistLogin() {
         DeviceManagerService deviceManager = mock(DeviceManagerService.class);
         DataProcessService dataService = mock(DataProcessService.class);
-        EmbeddedChannel channel = new EmbeddedChannel(new WatchDataHandler(deviceManager, dataService));
+        WatchRawPacketService rawPacketService = mock(WatchRawPacketService.class);
+        EmbeddedChannel channel = new EmbeddedChannel(new WatchDataHandler(deviceManager, dataService, rawPacketService));
 
         WatchMessage message = new WatchMessage();
         message.setProtocolCode("AP00");
@@ -52,8 +54,9 @@ class WatchDataHandlerTest {
                 same(channel),
                 eq(ConnectionProtocol.TCP));
         verify(dataService).saveDeviceLogin(eq("123456789012345"), anyString());
+        verify(rawPacketService).capture(eq(message), eq("123456789012345"), anyString());
         String response = readAsciiOutbound(channel);
-        assertTrue(response.startsWith("IW*BP00*,"));
+        assertTrue(response.startsWith("IWBP00,"));
         assertTrue(response.endsWith(",8#"));
 
         channel.finishAndReleaseAll();
@@ -63,7 +66,8 @@ class WatchDataHandlerTest {
     void heartRateMessagesDispatchToHealthHandler() {
         DeviceManagerService deviceManager = mock(DeviceManagerService.class);
         DataProcessService dataService = mock(DataProcessService.class);
-        EmbeddedChannel channel = new EmbeddedChannel(new WatchDataHandler(deviceManager, dataService));
+        WatchRawPacketService rawPacketService = mock(WatchRawPacketService.class);
+        EmbeddedChannel channel = new EmbeddedChannel(new WatchDataHandler(deviceManager, dataService, rawPacketService));
 
         WatchMessage message = new WatchMessage();
         message.setProtocolCode("AP49");
@@ -87,7 +91,8 @@ class WatchDataHandlerTest {
     void healthAllMessagesReuseRegisteredImeiAndReplyOverTcp() {
         DeviceManagerService deviceManager = mock(DeviceManagerService.class);
         DataProcessService dataService = mock(DataProcessService.class);
-        EmbeddedChannel channel = new EmbeddedChannel(new WatchDataHandler(deviceManager, dataService));
+        WatchRawPacketService rawPacketService = mock(WatchRawPacketService.class);
+        EmbeddedChannel channel = new EmbeddedChannel(new WatchDataHandler(deviceManager, dataService, rawPacketService));
         when(deviceManager.getImeiByChannel(same(channel))).thenReturn("123456789012345");
 
         WatchMessage message = new WatchMessage();
@@ -111,7 +116,8 @@ class WatchDataHandlerTest {
     void unknownProtocolsFallBackToSimpleAckWithoutTouchingDataService() {
         DeviceManagerService deviceManager = mock(DeviceManagerService.class);
         DataProcessService dataService = mock(DataProcessService.class);
-        EmbeddedChannel channel = new EmbeddedChannel(new WatchDataHandler(deviceManager, dataService));
+        WatchRawPacketService rawPacketService = mock(WatchRawPacketService.class);
+        EmbeddedChannel channel = new EmbeddedChannel(new WatchDataHandler(deviceManager, dataService, rawPacketService));
 
         WatchMessage message = new WatchMessage();
         message.setProtocolCode("APZZ");
@@ -126,7 +132,7 @@ class WatchDataHandlerTest {
                 same(channel),
                 eq(ConnectionProtocol.TCP));
         verifyNoInteractions(dataService);
-        assertEquals("IW*BPZZ*#", readAsciiOutbound(channel));
+        assertEquals("IWBPZZ#", readAsciiOutbound(channel));
 
         channel.finishAndReleaseAll();
     }

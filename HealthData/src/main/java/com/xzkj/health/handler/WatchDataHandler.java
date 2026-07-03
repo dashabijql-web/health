@@ -13,6 +13,7 @@ import com.xzkj.health.protocol.WatchMessage;
 import com.xzkj.health.service.DataProcessService;
 import com.xzkj.health.service.DeviceManagerService;
 import com.xzkj.health.service.DeviceManagerService.ConnectionProtocol;
+import com.xzkj.health.service.watch.WatchRawPacketService;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -32,11 +33,15 @@ public class WatchDataHandler extends SimpleChannelInboundHandler<WatchMessage> 
 
     private final DeviceManagerService deviceManager;
     private final DataProcessService dataService;
+    private final WatchRawPacketService rawPacketService;
     private final Map<String, WatchProtocolHandler> protocolHandlers;
 
-    public WatchDataHandler(DeviceManagerService deviceManager, DataProcessService dataService) {
+    public WatchDataHandler(DeviceManagerService deviceManager,
+                            DataProcessService dataService,
+                            WatchRawPacketService rawPacketService) {
         this.deviceManager = deviceManager;
         this.dataService = dataService;
+        this.rawPacketService = rawPacketService;
         this.protocolHandlers = buildProtocolHandlers();
     }
 
@@ -50,6 +55,7 @@ public class WatchDataHandler extends SimpleChannelInboundHandler<WatchMessage> 
 
             log.info("收到消息: 协议号={}, IMEI={}, 参数个数={}",
                     protocolCode, imei, msg.getParamCount());
+            rawPacketService.capture(msg, imei, String.valueOf(ctx.channel().remoteAddress()));
 
             if (requiresRegisteredDevice(protocolCode) && isBlank(imei)) {
                 log.error("设备未登录就发送数据: 协议={}, ChannelId={}",
