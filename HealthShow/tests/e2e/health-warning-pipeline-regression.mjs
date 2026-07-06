@@ -17,7 +17,7 @@ import {
 const execFileAsync = promisify(execFile);
 
 const SQLCMD_BIN = process.env.SQLCMD_BIN || 'sqlcmd';
-const SQL_SERVER = process.env.SQL_SERVER || 'localhost,11433';
+const SQL_SERVER = process.env.SQL_SERVER || 'localhost,1433';
 const SQL_USER = process.env.SQL_USER || 'sa';
 const SQL_PASSWORD = process.env.SQL_PASSWORD || '';
 const SQL_DB = process.env.SQL_DB || 'health';

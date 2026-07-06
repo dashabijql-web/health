@@ -1,42 +1,49 @@
 <template>
-  <div class="hm-page-shell ai-chat-page">
-    <PageHeroHeader
-      class="chat-hero"
-      variant="cockpit"
-      eyebrow="AI Health Copilot"
-      title="AI 健康助手"
-      description="把实时体征、趋势风险、部门分布和明细查询汇成一条指挥会话流，给值班、研判和追问留在同一块面板里。"
-    >
-      <template #meta>
-        <div class="chat-hero-meta">
-          <span :class="['hm-status-chip', loading ? 'hm-status-chip--warning' : messages.length ? 'hm-status-chip--success' : '']">
-            <span :class="['chat-live-dot', !loading && messages.length === 0 ? 'is-idle' : '']"></span>
-            {{ sessionStateLabel }}
-          </span>
-          <span class="hm-status-chip">{{ messages.length }} 条消息</span>
-          <span class="hm-status-chip hm-status-chip--warning">{{ quickQuestions.length }} 个快捷问题</span>
+  <div class="ai-chat-page">
+    <header class="ac-hd">
+      <div class="ac-hd-left">
+        <span class="ac-live-dot" :class="{ 'is-active': loading, 'is-idle': !loading && messages.length === 0 }"></span>
+        <h1 class="ac-hd-title">AI 健康助手</h1>
+      </div>
+      <div class="ac-hd-kpis">
+        <div class="ac-kpi">
+          <span class="ac-kpi-n">{{ messages.length }}</span>
+          <span class="ac-kpi-l">消息数</span>
         </div>
-      </template>
-      <template #actions>
-        <button type="button" class="hm-action-btn" @click="exportChat" :disabled="messages.length === 0">
+        <div class="ac-kpi">
+          <span class="ac-kpi-n">{{ userMessageCount }}</span>
+          <span class="ac-kpi-l">提问</span>
+        </div>
+        <div class="ac-kpi">
+          <span class="ac-kpi-n">{{ assistantMessageCount }}</span>
+          <span class="ac-kpi-l">回答</span>
+        </div>
+        <div class="ac-kpi">
+          <span class="ac-kpi-n">{{ queryResultCount }}</span>
+          <span class="ac-kpi-l">数据查询</span>
+        </div>
+      </div>
+      <div class="ac-hd-status">
+        <span :class="['ac-status-chip', loading ? 'is-loading' : messages.length ? 'is-active' : '']">
+          {{ sessionStateLabel }}
+        </span>
+      </div>
+      <div class="ac-hd-actions">
+        <button type="button" class="ac-action-btn" @click="exportChat" :disabled="messages.length === 0">
           导出对话
         </button>
-        <button type="button" class="hm-action-btn hm-action-btn--primary" @click="newChat" :disabled="loading">
+        <button type="button" class="ac-action-btn ac-action-btn--primary" @click="newChat" :disabled="loading">
           新对话
         </button>
-      </template>
-    </PageHeroHeader>
-
-    <MetricStrip class="chat-summary-strip" :items="summaryMetricItems" dense />
+      </div>
+    </header>
 
     <div class="chat-stage">
       <div class="message-list" ref="messageListRef">
-        <div v-if="messages.length === 0" class="chat-empty-state">
-          <PageEmptyState
-            eyebrow="AI Copilot"
-            title="准备开始新的健康分析会话"
-            description="可以直接提问，或先从下方快捷问题开始，快速查看部门趋势、个体画像和预警统计。"
-          />
+        <div v-if="messages.length === 0" class="ac-empty-state">
+          <div class="ac-empty-icon">AI</div>
+          <div class="ac-empty-title">准备开始新的健康分析会话</div>
+          <div class="ac-empty-desc">可以直接提问，或先从下方快捷问题开始，快速查看部门趋势、个体画像和预警统计。</div>
         </div>
 
         <div
@@ -119,19 +126,13 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import MetricStrip from '@/components/health-shell/MetricStrip.vue'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
-import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
 import { clearAiSession } from '@/api/ai'
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
 import { getMarked } from '@/utils/lazy-vendors'
 import { createAiChatChartRegistry } from './ai-chat-chart.js'
 import { printChatTranscript } from './ai-chat-export.js'
-import {
-  buildAiChatSummaryMetricItems,
-  getAiChatSessionStateLabel
-} from './ai-chat-view-model.js'
+import { getAiChatSessionStateLabel } from './ai-chat-view-model.js'
 import {
   decodeBase64Utf8,
   formatCell,
@@ -155,14 +156,6 @@ const userMessageCount = computed(() => messages.value.filter((msg) => msg.role 
 const assistantMessageCount = computed(() => messages.value.filter((msg) => msg.role === 'assistant').length)
 const queryResultCount = computed(() => messages.value.filter((msg) => Array.isArray(msg.queryData) && msg.queryData.length > 0).length)
 const sessionStateLabel = computed(() => getAiChatSessionStateLabel({ loading: loading.value, messageCount: messages.value.length }))
-const summaryMetricItems = computed(() => buildAiChatSummaryMetricItems({
-  loading: loading.value,
-  messageCount: messages.value.length,
-  userMessageCount: userMessageCount.value,
-  assistantMessageCount: assistantMessageCount.value,
-  queryResultCount: queryResultCount.value,
-  quickQuestionCount: quickQuestions.value.length
-}))
 
 async function loadDynamicQuickQuestions() {
   try {

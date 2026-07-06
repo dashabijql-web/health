@@ -40,7 +40,7 @@ WARNING_REQUIRED_COLUMNS = {
     "create_time",
 }
 
-SQL_SERVER = os.getenv("SQL_SERVER", "localhost,11433")
+SQL_SERVER = os.getenv("SQL_SERVER", "localhost,1433")
 SQL_USER = os.getenv("SQL_USER", "sa")
 SQL_PASSWORD = os.getenv("SQL_PASSWORD", "123abcd,")
 SQL_DB = os.getenv("SQL_DB", "health")

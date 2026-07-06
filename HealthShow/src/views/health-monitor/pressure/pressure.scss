@@ -7,9 +7,9 @@ $cyan:   #00d4ff;
 @include hm-main('ps');
 @include hm-panel('ps');
 @include hm-overview('ps');
-@include hm-kpi-cards('ps');
-@include hm-range-info('ps');
-@include hm-pagination('ps');
+@include hm-hero-zone('ps');
+@include hm-zone-cards('ps');
+@include hm-charts-row('ps');
 
 // ── Root ──
 .ps-root {
@@ -145,16 +145,15 @@ $cyan:   #00d4ff;
 }
 
 // ── Main（hm-main mixin） ──
-.ps-overview-panel { height: 162px; flex-shrink: 0; }
-.ps-mid-row        { height: 190px; flex-shrink: 0; display: flex; gap: 10px; }
 .ps-panel-hourly   { flex: 1; }
 .ps-panel-dist     { flex: 0 0 258px; }
 
-// ── Right list ──
-.ps-rtlist {
-  width: 272px; flex-shrink: 0;
-  display: flex; flex-direction: column; min-height: 0;
-  .ps-panel { flex: 1; min-height: 0; }
+// ── Zone card border colors ──
+.ps-zone-card {
+  &.zone-relaxed  { border-color: rgba(79,195,247,0.3); }
+  &.zone-normal   { border-color: rgba(82,196,26,0.3); }
+  &.zone-elevated { border-color: rgba(255,184,77,0.3); }
+  &.zone-high     { border-color: rgba(255,82,82,0.3); }
 }
 
 // ── Panel（hm-panel mixin + 页面特有） ──
@@ -171,22 +170,6 @@ $cyan:   #00d4ff;
   box-shadow: 0 0 6px rgba(251,146,60,0.7);
 }
 // ph-title, rt-total, trend-tags, tag, pc → hm-panel mixin
-
-// overview + kpi-cards → hm-overview + hm-kpi-cards mixins
-// KPI 小卡片 orange overrides
-.ps-kpi-cards {
-}
-.ps-kpi-card {
-  background: rgba(251,146,60,0.04);
-  border: 1px solid rgba(251,146,60,0.1);
-  border-radius: 7px;
-  padding: 7px 10px;
-  display: flex; flex-direction: column; justify-content: center;
-}
-// kpi-card-val, kpi-card-unit, kpi-card-label → hm-kpi-cards mixin
-// 压力等级说明 - ps uses orange colors + wider name, override mixin defaults
-.ps-range-info { background: rgba(251,146,60,0.03); border-color: rgba(251,146,60,0.1); }
-.ps-range-name { width: 78px; }
 
 // 部门筛选标签
 .ps-dept-tag {
@@ -206,56 +189,6 @@ $cyan:   #00d4ff;
 .ps-dist-bar-wrap { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
 .ps-dist-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; opacity: 0.85; }
 .ps-dist-pct { font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; width: 34px; text-align: right; flex-shrink: 0; }
-
-// ── 实时列表 ──
-.ps-rt-hd {
-  display: grid; grid-template-columns: 28px 1fr 44px 42px 44px;
-  gap: 6px; padding: 6px 10px; flex-shrink: 0;
-  background: rgba(251,146,60,0.06);
-  span { font-size: 11px; color: $dim; font-weight: 600; }
-}
-.ps-rt-body {
-  flex: 1; overflow-y: auto; padding: 3px 6px; min-height: 0;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(251,146,60,0.18); border-radius: 2px; }
-}
-.ps-rt-row {
-  display: grid; grid-template-columns: 28px 1fr 44px 42px 44px;
-  gap: 6px; padding: 6px 4px; margin-bottom: 1px;
-  border-radius: 5px; align-items: center;
-  border-left: 2px solid transparent;
-  transition: background 0.2s;
-  &:hover { background: rgba(251,146,60,0.055); }
-  &.relaxed  { border-left-color: rgba(79,195,247,0.55);  }
-  &.normal   { border-left-color: rgba(82,196,26,0.45);   }
-  &.elevated { border-left-color: rgba(255,184,77,0.55);  }
-  &.high     { border-left-color: rgba(255,82,82,0.65);   }
-}
-.ps-rt-idx  { font-size: 11px; color: $dim; font-family: 'Consolas', monospace; text-align: center; }
-.ps-rt-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ps-rt-val {
-  font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; color: #52c41a;
-  .ps-rt-row.elevated & { color: #FFB84D; }
-  .ps-rt-row.high     & { color: #ff5252; }
-  .ps-rt-row.relaxed  & { color: #4FC3F7; }
-}
-.ps-rt-badge {
-  font-size: 10px; padding: 1px 4px; border-radius: 3px; text-align: center;
-  &.relaxed  { background: rgba(79,195,247,0.13);  color: #4FC3F7; border: 1px solid rgba(79,195,247,0.28);  }
-  &.normal   { background: rgba(82,196,26,0.13);   color: #52c41a; border: 1px solid rgba(82,196,26,0.28);   }
-  &.elevated { background: rgba(255,184,77,0.13);  color: #FFB84D; border: 1px solid rgba(255,184,77,0.28);  }
-  &.high     { background: rgba(255,82,82,0.13);   color: #ff5252; border: 1px solid rgba(255,82,82,0.28);   }
-}
-.ps-rt-time { font-size: 10px; color: $dim; }
-
-// pagination → hm-pagination mixin + orange overrides
-.ps-rt-pg { border-top-color: rgba(251,146,60,0.1); }
-.ps-pg-btn {
-  background: rgba(251,146,60,0.07); border-color: rgba(251,146,60,0.18);
-  color: $accent;
-  &:hover:not(:disabled) { background: rgba(251,146,60,0.16); }
-}
-.ps-pg-info { font-size: 12px; color: $accent; min-width: 44px; text-align: center; }
 
 // ── 异常明细面板 ──
 .ps-panel-anomaly { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
@@ -307,37 +240,5 @@ $cyan:   #00d4ff;
   .anom-elevated & { color: #FFB84D; background: rgba(255,184,77,0.12);  border: 1px solid rgba(255,184,77,0.25);  }
 }
 .pa-time { font-size: 10px; color: $dim; }
-
-// ── 压力分布统计面板 ──
-.ps-panel-dist-stat { flex-shrink: 0; height: 140px; }
-.ps-ds-total {
-  margin-left: auto; font-size: 12px; color: $dim;
-  em { color: #93c5fd; font-style: normal; font-weight: 700; }
-}
-.ps-ds-body {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 8px; padding: 6px 0 8px;
-}
-.ps-ds-zone {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px; padding: 10px 8px 8px;
-  text-align: center; transition: background 0.15s;
-  &:hover { background: rgba(255,255,255,0.07); }
-  &.zone-relaxed  { border-color: rgba(79,195,247,0.2);  }
-  &.zone-normal   { border-color: rgba(82,196,26,0.2);   }
-  &.zone-elevated { border-color: rgba(255,184,77,0.2);  }
-  &.zone-high     { border-color: rgba(255,82,82,0.2);   }
-}
-.ps-ds-icon  { font-size: 16px; margin-bottom: 4px; }
-.ps-ds-count { font-size: 24px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
-.ps-ds-pct   { font-size: 11px; margin-top: 1px; }
-.ps-ds-label { font-size: 13px; font-weight: 600; color: $white; margin-top: 4px; }
-.ps-ds-range { font-size: 10px; color: $dim; margin-top: 2px; }
-.ps-ds-bar-row {
-  display: flex; height: 6px; border-radius: 3px; overflow: hidden;
-  background: rgba(255,255,255,0.05); margin-bottom: 2px;
-}
-.ps-ds-seg { transition: width 0.4s ease; min-width: 0; }
 
 @include hm-mobile('ps');

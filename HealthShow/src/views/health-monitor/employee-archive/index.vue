@@ -1,39 +1,32 @@
 <template>
-  <div class="ea-page hm-page-shell">
-    <PageHeroHeader
-      class="ea-hero"
-      variant="cockpit"
-      eyebrow="Employee Archive"
-      title="职工健康档案库"
-      description="集中维护职工健康档案、画像入口与 AI 诊断报告，按姓名、工号和部门快速收敛到目标员工。"
-    >
-      <template #meta>
-        <div class="ea-hero-meta">
-          <span class="hm-status-chip hm-status-chip--success">检索结果 {{ loading ? '--' : filtered.length }} 人</span>
-          <span class="hm-status-chip">{{ deptList.length }} 个部门</span>
-          <span v-if="selectedDept" class="hm-status-chip hm-status-chip--warning">当前部门 {{ selectedDept }}</span>
+  <div class="ea-page">
+    <header class="ea-hd">
+      <div class="ea-hd-left">
+        <span class="ea-live-dot"></span>
+        <h1 class="ea-hd-title">职工健康档案库</h1>
+      </div>
+      <div class="ea-hd-kpis">
+        <div class="ea-kpi">
+          <span class="ea-kpi-n">{{ loading ? '--' : filtered.length }}</span>
+          <span class="ea-kpi-l">检索结果</span>
         </div>
-      </template>
-      <template #actions>
-        <button
-          v-if="selectedDept"
-          type="button"
-          class="hm-action-btn hm-action-btn--success"
-          @click="openDeptReport"
-          title="生成该部门AI健康报告"
-        >
-          <el-icon><Document /></el-icon>
-          AI 部门报告
+        <div class="ea-kpi">
+          <span class="ea-kpi-n">{{ deptList.length }}</span>
+          <span class="ea-kpi-l">部门数</span>
+        </div>
+      </div>
+      <div class="ea-hd-actions">
+        <button v-if="selectedDept" type="button" class="ea-action-btn ea-action-btn--success" @click="openDeptReport" title="生成该部门AI健康报告">
+          <el-icon><Document /></el-icon> AI 部门报告
         </button>
-        <button type="button" class="hm-action-btn hm-action-btn--primary" @click="handleAdd">
-          <el-icon><Plus /></el-icon>
-          新增职工
+        <button type="button" class="ea-action-btn ea-action-btn--primary" @click="handleAdd">
+          <el-icon><Plus /></el-icon> 新增职工
         </button>
-      </template>
-    </PageHeroHeader>
+      </div>
+    </header>
 
     <!-- 搜索栏 -->
-    <div class="ea-search-bar hm-filter-toolbar">
+    <div class="ea-search-bar">
       <el-input v-model="keyword" placeholder="输入姓名或工号搜索" class="ea-input" clearable @clear="keyword = ''">
         <template #prefix><el-icon><Search /></el-icon></template>
       </el-input>
@@ -82,11 +75,9 @@
       </div>
 
       <div v-if="!loading && filtered.length === 0" class="ea-empty">
-        <PageEmptyState
-          eyebrow="Archive Search"
-          title="未找到符合条件的员工"
-          description="可以放宽关键词或切换部门筛选，继续检索职工档案和画像入口。"
-        />
+        <div class="ea-empty-icon">ARCH</div>
+        <div class="ea-empty-title">未找到符合条件的员工</div>
+        <div class="ea-empty-desc">可以放宽关键词或切换部门筛选，继续检索职工档案和画像入口。</div>
       </div>
     </div>
 
@@ -246,8 +237,6 @@
 
 <script setup>
 import { Search, Plus, Edit, Delete, Monitor, Document } from '@element-plus/icons-vue'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
-import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
 import { useEmployeeArchivePage } from './use-employee-archive-page'
 
 const {

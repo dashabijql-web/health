@@ -10,8 +10,11 @@
 
 @mixin hm-body($p, $gap: 10px, $pad: 10px) {
   .#{$p}-bd {
-    flex: 1; display: flex; gap: $gap; padding: $pad;
-    overflow-y: auto; overflow-x: hidden; min-height: 0;
+    flex: 1; display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    gap: $gap; padding: $pad;
+    overflow: hidden; min-height: 0;
   }
 }
 
@@ -45,14 +48,14 @@
     flex: 1; min-height: 0;
     display: flex; align-items: center; padding: 8px 14px; gap: 14px;
   }
-  .#{$p}-gauge-wrap  { width: 120px; height: 108px; flex-shrink: 0; position: relative; }
+  .#{$p}-gauge-wrap  { width: 180px; height: 170px; flex-shrink: 0; position: relative; }
   .#{$p}-gauge-chart { width: 100%; height: 100%; }
   .#{$p}-gauge-center {
-    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
     text-align: center; pointer-events: none;
   }
-  .#{$p}-gauge-val { font-size: 22px; font-weight: 700; color: $accent; font-family: 'Consolas', monospace; line-height: 1; }
-  .#{$p}-gauge-sub { font-size: 10px; color: $dim; margin-top: 1px; white-space: nowrap; }
+  .#{$p}-gauge-val { font-size: 32px; font-weight: 700; color: $accent; font-family: 'Consolas', monospace; line-height: 1; }
+  .#{$p}-gauge-sub { font-size: 11px; color: $dim; margin-top: 2px; white-space: nowrap; }
 }
 
 @mixin hm-kpi-cards($p) {
@@ -165,7 +168,9 @@
 
     /* Body 竖向堆叠 */
     .#{$p}-bd {
+      display: flex !important;
       flex-direction: column !important;
+      grid-template-columns: unset !important;
       overflow: visible !important;
       height: auto !important;
       padding: 8px 10px;
@@ -187,14 +192,93 @@
       height: auto;
     }
 
-    /* 右侧实时列表全宽固定高度 */
-    .#{$p}-rtlist {
-      width: 100% !important;
-      height: 300px;
-      flex-shrink: 0;
+    /* Hero 区域竖向 */
+    .#{$p}-hero {
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+    .#{$p}-zone-cards {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    /* 图表行竖向 */
+    .#{$p}-charts-row {
+      flex-direction: column !important;
+      height: auto !important;
     }
 
     /* 弹窗宽度 */
     :deep(.el-dialog) { width: 95% !important; }
+  }
+}
+
+// ── 新版布局 mixin ──
+
+@mixin hm-hero-zone($p) {
+  .#{$p}-hero {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 14px 18px;
+    background: $panel;
+    border: 1px solid $border;
+    border-radius: 10px;
+    backdrop-filter: blur(8px);
+    flex-shrink: 0;
+  }
+}
+
+@mixin hm-zone-cards($p) {
+  .#{$p}-zone-cards {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    align-self: stretch;
+  }
+  .#{$p}-zone-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: background 0.2s, border-color 0.2s;
+    &:hover { background: rgba(255,255,255,0.06); }
+  }
+  .#{$p}-zone-icon {
+    font-size: 16px; margin-bottom: 2px;
+  }
+  .#{$p}-zone-count {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: 'Consolas', monospace;
+    line-height: 1.1;
+    em { font-size: 12px; font-style: normal; color: #8ba6c8; margin-left: 2px; }
+  }
+  .#{$p}-zone-label { font-size: 13px; font-weight: 600; color: $white; }
+  .#{$p}-zone-range { font-size: 10px; color: $dim; }
+  .#{$p}-zone-pct-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  .#{$p}-zone-pct-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+    min-width: 3px;
+  }
+}
+
+@mixin hm-charts-row($p) {
+  .#{$p}-charts-row {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+    height: 220px;
   }
 }

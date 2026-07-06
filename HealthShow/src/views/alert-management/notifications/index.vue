@@ -1,33 +1,15 @@
 <template>
-  <div class="notif-page">
-    <WarningCenterNav />
-
-    <PageHeroHeader
-      class="notif-hero"
-      variant="cockpit"
-      eyebrow="Alert Management"
-      title="消息通知中心"
-      :description="boardSubline"
-    >
-      <template #meta>
-        <div class="notif-hero-meta">
-          <span class="notif-live-dot"></span>
-          <span class="notif-hero-meta-label">待处理队列</span>
-          <el-badge
-            :value="unhandledCount"
-            :hidden="unhandledCount === 0"
-            :max="99"
-            type="danger"
-            class="notif-badge"
-          >
-            <span class="notif-hero-meta-count">待处理预警</span>
-          </el-badge>
-          <span class="notif-hero-meta-time">最近刷新 {{ lastFetchedAt || '--' }}</span>
-        </div>
-      </template>
-      <template #actions>
-        <div class="notif-header-right">
-        <!-- 筛选 -->
+  <div class="nf-root">
+    <header class="nf-hd">
+      <div class="nf-hd-left">
+        <span class="nf-live-dot"></span>
+        <h1 class="nf-hd-title">消息通知中心</h1>
+      </div>
+      <div class="nf-hd-kpis">
+        <span class="nf-kpi">待处理 <em class="nf-kpi-val danger">{{ unhandledCount }}</em></span>
+      </div>
+      <div class="nf-hd-time">{{ lastFetchedAt || '--' }}</div>
+      <div class="nf-hd-actions">
         <el-select v-model="filter.level" placeholder="全部级别" size="small" clearable style="width:110px" @change="fetchList">
           <el-option label="全部级别" value="" />
           <el-option label="危险" value="3" />
@@ -40,37 +22,15 @@
           <el-option :label="warningHandledStatusLabel({ handled: true })" :value="true" />
         </el-select>
         <el-input v-model="filter.userCode" placeholder="搜索员工工号" size="small" clearable style="width:150px" @change="fetchList" />
-        <el-button size="small" type="primary" plain @click="handleMarkAllRead" :disabled="unhandledCount === 0">
-          全部标记已读
-        </el-button>
+        <el-button size="small" type="primary" plain @click="handleMarkAllRead" :disabled="unhandledCount === 0">全部已读</el-button>
         <el-button size="small" @click="fetchList" :loading="loading">刷新</el-button>
-        </div>
-      </template>
-    </PageHeroHeader>
+      </div>
+    </header>
 
-    <div class="notif-focus-board">
-      <div class="notif-focus-main">
-        <div class="notif-focus-label">当前处置优先级</div>
-        <div class="notif-focus-headline">{{ boardHeadline }}</div>
-        <div class="notif-focus-sub">{{ boardSubline }}</div>
-        <div class="notif-focus-tags">
-          <span
-            v-for="tag in activeFilterTags"
-            :key="tag"
-            class="notif-focus-tag"
-          >{{ tag }}</span>
-          <span v-if="activeFilterTags.length === 0" class="notif-focus-tag is-muted">当前查看默认待处理队列</span>
-        </div>
-      </div>
-      <div class="notif-focus-actions">
-        <button class="notif-focus-btn tone-accent" @click="goOverview">风险总览</button>
-        <button class="notif-focus-btn tone-warn" @click="goRecords">处置记录</button>
-        <button class="notif-focus-btn" @click="clearFilters" :disabled="!hasActiveFilters">清空筛选</button>
-      </div>
-    </div>
+    <WarningCenterNav />
 
     <!-- ── 统计行 ── -->
-    <div class="notif-stats-row">
+    <div class="nf-stats-row">
       <div class="notif-stat notif-stat--danger" @click="setLevelFilter('3')">
         <span class="ns-val">{{ levelCounts[3] || 0 }}</span>
         <span class="ns-label">危险</span>
@@ -90,11 +50,11 @@
     </div>
 
     <!-- ── 通知列表 ── -->
-    <div class="notif-list" v-loading="loading">
+    <div class="nf-list" v-loading="loading">
       <div
         v-for="item in list"
         :key="item.id"
-        :class="['notif-item', `lv-${item.warningLevel}`, item.handled ? 'is-handled' : '']"
+        :class="['nf-item', `lv-${item.warningLevel}`, item.handled ? 'is-handled' : '']"
         @click="openDetail(item)"
       >
         <div class="ni-left">
@@ -128,13 +88,13 @@
           <el-button size="small" plain @click="goToUser(item)">画像</el-button>
         </div>
       </div>
-      <div v-if="!loading && list.length === 0" class="notif-empty">
+      <div v-if="!loading && list.length === 0" class="nf-empty">
         <span>暂无通知消息</span>
       </div>
     </div>
 
     <!-- ── 分页 ── -->
-    <div class="notif-pagination">
+    <div class="nf-pagination">
       <el-pagination
         v-model:current-page="pagination.page"
         v-model:page-size="pagination.size"
@@ -152,7 +112,6 @@
 
 <script>
 import WarningCenterNav from '@/components/WarningCenterNav.vue'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { getRiskWarningList, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
 import dayjs from 'dayjs'
 import { createIntervalTask } from '@/utils/task-timer'
@@ -160,7 +119,7 @@ import { buildWarningLifecycleItem, levelLabel, markWarningHandled, warningHandl
 
 export default {
   name: 'NotificationCenter',
-  components: { WarningCenterNav, PageHeroHeader },
+  components: { WarningCenterNav },
   data() {
     return {
       loading: false,
@@ -170,34 +129,6 @@ export default {
       levelCounts: { 1: 0, 2: 0, 3: 0 },
       unhandledCount: 0,
       lastFetchedAt: ''
-    }
-  },
-  computed: {
-    hasActiveFilters() {
-      return Boolean(this.filter.level || this.filter.userCode || this.filter.handled === true || this.filter.handled === '')
-    },
-    activeFilterTags() {
-      const tags = []
-      if (this.filter.level) tags.push(`级别：${this.levelLabel(this.filter.level)}`)
-      if (this.filter.handled === true) tags.push('状态：已处理')
-      if (this.filter.handled === '') tags.push('状态：全部')
-      if (this.filter.userCode) tags.push(`员工：${this.filter.userCode}`)
-      return tags
-    },
-    boardHeadline() {
-      if (this.levelCounts[3] > 0) return `先处理 ${this.levelCounts[3]} 条危险预警`
-      if (this.unhandledCount > 0) return `当前仍有 ${this.unhandledCount} 条待处理预警`
-      return '当前没有待处理预警'
-    },
-    boardSubline() {
-      const parts = []
-      if (this.filter.userCode) parts.push(`当前聚焦员工 ${this.filter.userCode}`)
-      if (this.filter.level) parts.push(`已按 ${this.levelLabel(this.filter.level)} 级别筛选`)
-      if (this.filter.handled === true) parts.push('当前查看已处理记录')
-      if (this.filter.handled === '') parts.push('当前显示全部处理状态')
-      if (!parts.length) parts.push('默认展示待处理预警队列，适合做值班闭环处置')
-      if (this.lastFetchedAt) parts.push(`最近刷新 ${this.lastFetchedAt}`)
-      return parts.join('，')
     }
   },
   mounted() {
@@ -288,21 +219,6 @@ export default {
       this.filter.handled = val
       this.pagination.page = 1
       this.fetchList()
-    },
-    clearFilters() {
-      this.filter = { level: '', handled: false, userCode: '' }
-      this.pagination.page = 1
-      this.fetchList()
-    },
-    goOverview() {
-      this.$router.push('/health-monitor/risk-warning')
-    },
-    goRecords() {
-      const query = {}
-      if (this.filter.level) query.warningLevel = this.filter.level
-      if (this.filter.handled !== '') query.handleStatus = this.filter.handled ? 'handled' : 'unhandled'
-      if (this.filter.userCode) query.keyword = this.filter.userCode
-      this.$router.push({ path: '/alert-management/records', query })
     },
     levelLabel(lv) {
       return levelLabel(lv)

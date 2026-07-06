@@ -148,7 +148,7 @@
 .ep-body {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(170px, 200px) 1fr minmax(220px, 260px);
+  grid-template-columns: minmax(200px, 232px) 1fr minmax(248px, 288px);
   align-items: start;
   gap: 10px;
   padding: 10px 14px;
@@ -270,9 +270,25 @@
   }
 }
 
+.ep-trend-chart-wrap {
+  position: relative;
+}
+.ep-trend-nodata {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  pointer-events: none;
+  span { font-size: 12px; color: rgba(100,140,180,0.38); }
+  em   { font-size: 10px; font-style: normal; color: rgba(100,140,180,0.22); }
+}
+
 .ep-trend-chart {
   width: 100%;
-  height: 132px;
+  height: 160px;
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(6, 18, 46, 0.68), rgba(8, 16, 31, 0.78));
   border: 1px solid rgba(0,180,255,0.1);
@@ -409,10 +425,9 @@
   min-height: 0;
 }
 
-/* ═══ 中栏：左面板列 | 矿工 | 右面板列 ═══ */
+/* ═══ 中栏：矿工全宽 ═══ */
 .ep-center {
-  display: grid;
-  grid-template-columns: minmax(130px, 155px) 1fr minmax(130px, 155px);
+  display: block;
   height: 100%;
 }
 
@@ -480,34 +495,43 @@
 .ep-miner-stage {
   position: relative;
   width: 100%;
-  height: min(72vh, 940px);
-  min-height: 820px;
-  max-height: 940px;
+  height: min(58vh, 700px);
+  min-height: 580px;
+  max-height: 700px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: radial-gradient(ellipse at 50% 35%, rgba(0, 60, 120, 0.18) 0%, transparent 65%);
 }
 
 /* 旋转圆环 */
 .ep-ring { position: absolute; border-radius: 50%; border: 1px solid transparent; }
 .ep-ring1 {
   width: 300px; height: 300px;
-  top: 50%; left: 50%; transform: translate(-50%, 20%);
+  top: 50%; left: 50%;
   background: conic-gradient(rgba(0,180,255,0.6), rgba(0,180,255,0.05), rgba(0,180,255,0.6)) border-box;
   -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: destination-out; mask-composite: exclude;
-  animation: epRing1Centered 4s linear infinite;
+  animation: epRingTorso 4s linear infinite;
 }
 .ep-ring2 {
   width: 250px; height: 250px;
-  top: 50%; left: 50%; transform: translate(-50%, 15%);
+  top: 50%; left: 50%;
   background: conic-gradient(rgba(0,220,255,0.3), transparent, rgba(0,220,255,0.3)) border-box;
   -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: destination-out; mask-composite: exclude;
-  animation: epRing1Centered 6s linear infinite reverse;
+  animation: epRingTorsoSm 6s linear infinite reverse;
 }
-@keyframes epRing1Centered { 0% { transform: translate(-50%, 20%) rotate(0deg); } 100% { transform: translate(-50%, 20%) rotate(360deg); } }
+/* rings positioned at ~37% from top = torso/chest area */
+@keyframes epRingTorso {
+  0%   { transform: translate(-50%, -30%) rotate(0deg); }
+  100% { transform: translate(-50%, -30%) rotate(360deg); }
+}
+@keyframes epRingTorsoSm {
+  0%   { transform: translate(-50%, -30%) rotate(0deg); }
+  100% { transform: translate(-50%, -30%) rotate(360deg); }
+}
 
 /* 扫描线 */
 .ep-scan-overlay {
@@ -543,13 +567,29 @@
 .ep-fv.dim    { color: #5a8090; font-size: 13px; }
 .ep-fu { font-size: 11px; color: #4a7090; }
 
+/* HUD 角标装饰 */
+.ep-miner-corner {
+  position: absolute;
+  width: 18px; height: 18px;
+  border-style: solid;
+  border-color: rgba(0, 180, 255, 0.5);
+  z-index: 10;
+  pointer-events: none;
+}
+.ep-mc-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+.ep-mc-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+.ep-mc-bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+.ep-mc-br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+
 /* ── 身体部位热区高亮 ── */
 .ep-hotspot {
   position: absolute; z-index: 5; pointer-events: none;
   opacity: 0; transition: opacity 0.4s;
   display: flex; flex-direction: column; align-items: center;
 }
-.ep-hotspot.active { opacity: 1; }
+.ep-hotspot.has-data { opacity: 0.5; }
+.ep-hotspot.active   { opacity: 1; }
+.ep-hotspot.danger   { opacity: 1; }
 .ep-hs-pulse {
   width: 20px; height: 20px; border-radius: 50%;
   background: rgba(255,180,50,0.3); border: 2px solid #FFB84D;
@@ -560,10 +600,37 @@
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.6); opacity: 0.4; }
 }
-.ep-hs-label {
-  font-size: 10px; color: #FFB84D; margin-top: 3px; white-space: nowrap;
-  text-shadow: 0 0 6px rgba(255,180,50,0.8);
-  .ep-hotspot.danger & { color: #ff5252; text-shadow: 0 0 6px rgba(255,80,80,0.8); }
+.ep-hs-data {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.62);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 184, 77, 0.22);
+  margin-top: 4px;
+  .ep-hotspot.danger & { border-color: rgba(255, 82, 82, 0.3); }
+}
+.ep-hs-val {
+  font-size: 17px;
+  font-weight: 700;
+  font-family: monospace;
+  color: #FFB84D;
+  .ep-hotspot.danger & { color: #ff5252; }
+  &.red    { color: #ff5252; }
+  &.yellow { color: #ffaa00; }
+  &.green  { color: #00e676; }
+  &.cyan   { color: #00c8ff; }
+}
+.ep-hs-u {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.38);
+}
+.ep-hs-name {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 3px;
+  letter-spacing: 0.1em;
 }
 /* 各部位位置（相对 ep-miner-stage） */
 .ep-hs-heart { top: 28%; left: 54%; }   /* 心脏 */
@@ -580,6 +647,7 @@
 .ep-vital-card.hr   { border-left: 3px solid #ff5252; }
 .ep-vital-card.spo2 { border-left: 3px solid #1890ff; }
 .ep-vital-card.temp { border-left: 3px solid #ffaa00; }
+.ep-vital-card.bp   { border-left: 3px solid #e040fb; }
 .ep-vital-card.steps{ border-left: 3px solid #00c853; }
 .ep-vc-label { font-size: 10px; color: #4a7090; margin-bottom: 2px; }
 .ep-vc-val { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: #e0f0ff; font-family: monospace; }
@@ -592,6 +660,7 @@
 .hr-fill   { background: linear-gradient(90deg, #ff5252, #ff8a80); }
 .spo2-fill { background: linear-gradient(90deg, #1890ff, #40c4ff); }
 .temp-fill { background: linear-gradient(90deg, #ffaa00, #ffd740); }
+.bp-fill   { background: linear-gradient(90deg, #e040fb, #ea80fc); }
 .steps-fill{ background: linear-gradient(90deg, #00c853, #69f0ae); }
 .ep-vc-range { font-size: 10px; color: rgba(255,255,255,0.25); }
 .ep-update-time { font-size: 10px; color: #3a5070; text-align: right; margin-top: 4px; }
@@ -635,6 +704,130 @@
 .green  { color: #00e676; }
 .cyan   { color: #00c8ff; }
 .dim    { color: #5a8090; }
+
+/* ═══ 状态横幅 ═══ */
+.ep-status-banner {
+  margin: 0 14px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.1);
+  transition: background 0.5s, border-color 0.5s;
+}
+
+.ep-sb--safe {
+  background: rgba(0, 200, 83, 0.05);
+  border-color: rgba(0, 200, 83, 0.2);
+  .ep-sb-dot { background: #00e676; box-shadow: 0 0 8px rgba(0,230,118,0.7); }
+  .ep-sb-title { color: #00e676; }
+}
+.ep-sb--warning {
+  background: rgba(255, 170, 0, 0.05);
+  border-color: rgba(255, 170, 0, 0.25);
+  .ep-sb-dot { background: #ffaa00; box-shadow: 0 0 8px rgba(255,170,0,0.6); animation: sbPulse 1.2s ease-in-out infinite; }
+  .ep-sb-title { color: #ffaa00; }
+}
+.ep-sb--danger {
+  background: rgba(255, 50, 50, 0.07);
+  border-color: rgba(255, 50, 50, 0.32);
+  .ep-sb-dot { background: #ff4444; box-shadow: 0 0 10px rgba(255,50,50,0.8); animation: sbPulse 0.65s ease-in-out infinite; }
+  .ep-sb-title { color: #ff4444; font-weight: 800; }
+}
+.ep-sb--idle {
+  .ep-sb-dot { background: #3a5070; }
+  .ep-sb-title { color: #3a5070; }
+}
+
+.ep-sb-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+@keyframes sbPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(1.7); }
+}
+
+.ep-sb-content {
+  flex: 1; display: flex; align-items: center; gap: 16px; min-width: 0;
+}
+.ep-sb-title {
+  font-size: 13px; font-weight: 700; color: #8ab0d0; white-space: nowrap;
+}
+.ep-sb-detail {
+  font-size: 12px; color: #6a8aaa;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ep-sb-right {
+  display: flex; align-items: center; gap: 16px; flex-shrink: 0; font-size: 11px;
+}
+.ep-sb-pending {
+  color: #ff8f8f; background: rgba(255,82,82,0.1);
+  padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(255,82,82,0.2);
+}
+.ep-sb-update { color: #3a5070; }
+
+/* ═══ 圆弧仪表盘 ═══ */
+.ep-gauge-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.ep-gauge-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.ep-gauge-svg {
+  width: 100%;
+  max-width: 128px;
+  height: auto;
+  overflow: visible;
+}
+.ep-gauge-tag {
+  position: absolute;
+  top: 4px; right: 4px;
+  font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: 3px;
+  letter-spacing: 0.04em;
+  &.warning { background: rgba(255,170,0,0.14); color: #ffaa00; border: 1px solid rgba(255,170,0,0.22); }
+  &.danger  { background: rgba(255,50,50,0.14);  color: #ff4444; border: 1px solid rgba(255,50,50,0.24); }
+}
+
+/* ═══ 运动数据条 ═══ */
+.ep-exercise-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px 0 4px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.ep-ex-item {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto auto;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+}
+.ep-ex-label  { color: #4a7090; white-space: nowrap; }
+.ep-ex-val    { font-family: monospace; font-weight: 700; text-align: right; }
+.ep-ex-bar    { height: 3px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+.ep-ex-fill   { height: 100%; border-radius: 2px; transition: width 0.8s; }
+.ep-ex-target { color: #3a5070; white-space: nowrap; }
+
+/* ═══ 左栏基本信息（紧凑版） ═══ */
+.ep-basic-compact { display: flex; flex-direction: column; gap: 8px; }
+.ep-bc-name { font-size: 16px; font-weight: 700; color: #e8f4ff; }
+.ep-bc-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+}
+.ep-bc-code {
+  font-size: 11px; color: #4a7090;
+  code { color: #00c8ff; font-family: monospace; font-size: 11px; }
+}
 
 /* ═══ 移动端适配 ═══ */
 @media (max-width: 768px) {

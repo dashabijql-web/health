@@ -67,10 +67,12 @@ public class DeviceController {
             }
 
             // 构建详细设备信息
+            Set<String> listedImeis = new HashSet<>();
             for (Device device : allDevices) {
                 Map<String, Object> deviceInfo = new HashMap<>();
                 deviceInfo.put("id", device.getId());
                 deviceInfo.put("imei", device.getImei());
+                listedImeis.add(device.getImei());
 
                 // 实时检查设备是否在线
                 boolean isOnline = deviceManager.isDeviceOnline(device.getImei());
@@ -94,6 +96,24 @@ public class DeviceController {
                 deviceInfo.put("bufferCount", bufferCountMap.getOrDefault(device.getId(), 0));
 
                 deviceList.add(deviceInfo);
+            }
+
+            for (String imei : deviceManager.getOnlineDevices()) {
+                if (listedImeis.contains(imei)) {
+                    continue;
+                }
+                Map<String, Object> deviceInfo = new HashMap<>();
+                deviceInfo.put("id", null);
+                deviceInfo.put("imei", imei);
+                deviceInfo.put("status", 1);
+                deviceInfo.put("lastOnlineTime", null);
+                deviceInfo.put("bindStatus", false);
+                deviceInfo.put("userName", "未建档设备");
+                deviceInfo.put("deptName", "--");
+                deviceInfo.put("hasWarning", false);
+                deviceInfo.put("batteryLevel", null);
+                deviceInfo.put("bufferCount", 0);
+                deviceList.add(0, deviceInfo);
             }
 
             Map<String, Object> data = new HashMap<>();

@@ -24,7 +24,7 @@ import java.util.Arrays;
  *   IW*AP49*72#                     → 上报心率 72 bpm
  *   IW*AP50*36.7,90#                → 上报体温 36.7°C，电量 90%
  *   IW*APHP*72,98,8000,36.7,...#    → 综合健康数据
- *   IW*BP00*,20240115143000,8#      → 服务器响应登录，带服务器时间
+ *   IWBP00,20240115143000,8#        → 服务器响应登录，带服务器时间
  *   IWBP03#                         → 服务器心跳包（简短格式，无星号）
  *
  * 【协议号命名规则】
@@ -199,15 +199,15 @@ public class WatchMessage {
      *
      * 示例：
      *   msg.protocolCode = "AP49" (心率上报)
-     *   msg.buildResponse("OK") → "IW*BP49*OK#"
-     *   msg.buildResponse()     → "IW*BP49*#"
+     *   msg.buildResponse("OK") → "IWBP49,OK#"
+     *   msg.buildResponse()     → "IWBP49#"
      *
      * @param responseParams 响应参数（可变参数，可以不传）
      * @return 完整的响应消息字符串
      */
     public String buildResponse(String... responseParams) {
         StringBuilder sb = new StringBuilder();
-        sb.append("IW*");
+        sb.append("IW");
 
         // 根据当前协议号推算响应协议号
         String responseCode;
@@ -225,13 +225,13 @@ public class WatchMessage {
 
         // 添加参数部分
         if (responseParams != null && responseParams.length > 0) {
-            sb.append("*");
+            sb.append(",");
             for (int i = 0; i < responseParams.length; i++) {
                 if (i > 0) sb.append(",");
                 sb.append(responseParams[i]);
             }
         } else {
-            sb.append("*");  // 没有参数时仍然保留 *
+            // 没有参数时不再额外补分隔符，保持和协议示例一致
         }
 
         sb.append("#");  // 结束符
@@ -243,7 +243,7 @@ public class WatchMessage {
      *
      * 示例：
      *   msg.protocolCode = "AP49"
-     *   msg.buildSimpleAck() → "IW*BP49*#"
+     *   msg.buildSimpleAck() → "IWBP49#"
      *
      * 用于大多数上行消息的简单确认（设备收到 ACK 后知道服务器已接收数据）
      *

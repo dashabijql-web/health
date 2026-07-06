@@ -7,6 +7,7 @@ import io.netty.channel.sctp.SctpMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.xzkj.health.service.watch.WatchRawPacketService;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -123,6 +124,9 @@ public class DeviceManagerService {
     @Autowired
     private DeviceService deviceService;
 
+    @Autowired
+    private WatchRawPacketService rawPacketService;
+
     // ─── 设备注册 / 注销 ──────────────────────────────────────────────
 
     /**
@@ -228,7 +232,7 @@ public class DeviceManagerService {
      * 本方法已根据协议类型选择正确的发送方式，对调用者完全透明。
      *
      * @param imei    目标设备的 IMEI 号
-     * @param message 要发送的文本消息（遵循协议格式，如 "IW*BP31*#"）
+     * @param message 要发送的文本消息（遵循协议格式，如 "IWBP31,353456789012345#"）
      * @return true = 发送成功，false = 设备不在线
      */
     public boolean sendToDevice(String imei, String message) {
@@ -251,6 +255,7 @@ public class DeviceManagerService {
         }
 
         log.debug("向设备发送消息: IMEI={}, 协议={}, 消息={}", imei, protocol, message);
+        rawPacketService.captureOutgoing(message, imei, String.valueOf(channel.remoteAddress()));
         return true;
     }
 
@@ -258,15 +263,15 @@ public class DeviceManagerService {
      * 向指定设备发送下行指令（自动构建协议格式，自动适配 TCP / SCTP）
      *
      * 根据协议规范，下行指令格式：
-     *   IW*协议号*IMEI,参数1,参数2,...#
+     *   IW协议号,IMEI,参数1,参数2,...#
      *
      * 示例：发送立即测量心率指令（带流水号）
      *   sendCommand("353456789012345", "BPXL", "080835")
-     *   → 发送："IW*BPXL*353456789012345,080835#"
+     *   → 发送："IWBPXL,353456789012345,080835#"
      *
      * 示例：发送无参数指令
      *   sendCommand("353456789012345", "BP31")
-     *   → 发送："IW*BP31*353456789012345#"
+     *   → 发送："IWBP31,353456789012345#"
      *
      * @param imei         目标设备 IMEI
      * @param protocolCode 下行协议号（BP 开头，如 "BPXL"、"BPXY"、"BPXZ"）
@@ -275,7 +280,7 @@ public class DeviceManagerService {
      */
     public boolean sendCommand(String imei, String protocolCode, String... params) {
         StringBuilder sb = new StringBuilder();
-        sb.append("IW*").append(protocolCode).append("*");
+        sb.append("IW").append(protocolCode).append(",");
         sb.append(imei);  // IMEI 是第一个固定参数
 
         if (params != null && params.length > 0) {

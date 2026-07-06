@@ -1,54 +1,17 @@
 <template>
-  <div class="hm-admin-page role-mgmt-container">
-    <PageHeroHeader
-      variant="admin"
-      eyebrow="Role Governance"
-      title="角色管理"
-      description="维护系统角色、权限边界和角色成员关系。"
-    >
-      <template #meta>
-        <div class="hm-admin-page__hero-meta">
-          <span class="hm-toolbar-chip">角色总数 {{ stats.totalRoles }}</span>
-          <span class="hm-toolbar-chip">启用 {{ stats.activeRoles }}</span>
-        </div>
-      </template>
-      <template #actions>
-        <div class="hm-admin-page__clock"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-      </template>
-    </PageHeroHeader>
-
-    <!-- 统计卡片 -->
-    <el-row :gutter="16" class="mb-16">
-      <el-col :span="8">
-        <div class="stat-card">
-          <div class="stat-icon-wrap primary"><el-icon size="26"><Setting /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ stats.totalRoles }}</div>
-            <div class="stat-label">角色总数</div>
-          </div>
-        </div>
-      </el-col>
-      <el-col :span="8">
-        <div class="stat-card">
-          <div class="stat-icon-wrap success"><el-icon size="26"><CircleCheck /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ stats.activeRoles }}</div>
-            <div class="stat-label">已启用</div>
-          </div>
-          <div class="stat-badge green">启用</div>
-        </div>
-      </el-col>
-      <el-col :span="8">
-        <div class="stat-card">
-          <div class="stat-icon-wrap danger"><el-icon size="26"><CircleClose /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ stats.inactiveRoles }}</div>
-            <div class="stat-label">已禁用</div>
-          </div>
-          <div class="stat-badge red">禁用</div>
-        </div>
-      </el-col>
-    </el-row>
+  <div class="role-mgmt-container">
+    <header class="rm-hd">
+      <div class="rm-hd-left">
+        <span class="rm-live-dot"></span>
+        <h1 class="rm-hd-title">角色管理</h1>
+      </div>
+      <div class="rm-hd-kpis">
+        <div class="rm-kpi"><span class="rm-kpi-n">{{ stats.totalRoles }}</span><span class="rm-kpi-l">角色总数</span></div>
+        <div class="rm-kpi"><span class="rm-kpi-n success">{{ stats.activeRoles }}</span><span class="rm-kpi-l">已启用</span></div>
+        <div class="rm-kpi"><span class="rm-kpi-n danger">{{ stats.inactiveRoles }}</span><span class="rm-kpi-l">已禁用</span></div>
+      </div>
+      <div class="rm-hd-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
+    </header>
 
     <!-- 搜索区 -->
     <div class="panel mb-16">
@@ -272,7 +235,6 @@
 </template>
 
 <script>
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import {
   Search,
   Refresh,
@@ -294,7 +256,7 @@ import { useRoleManagementPage } from './use-role-management-page'
 
 export default {
   name: 'RoleManagement',
-  components: { PageHeroHeader },
+  components: {},
   setup() {
     return {
       CircleCheck,

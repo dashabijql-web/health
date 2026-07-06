@@ -72,49 +72,36 @@
       <!-- ─ 中间主体 ─ -->
       <main class="bp-main">
 
-        <!-- 概况：双值 + KPI cards + 血压等级说明 -->
-        <div class="bp-panel bp-overview-panel">
-          <div class="bp-ph">
-            <span class="bp-ph-bar"></span>
-            <span class="bp-ph-title">{{ overviewTitle }}</span>
+        <!-- Hero 区：大号血压双值 + 4 区间卡 -->
+        <div class="bp-hero">
+          <div class="bp-dual-wrap">
+            <div class="bp-dual-item">
+              <div class="bp-dual-val" style="color:#a78bfa">{{ overview.avgSystolic || '--' }}</div>
+              <div class="bp-dual-label">收缩压 <span class="bp-dual-unit">mmHg</span></div>
+              <div class="bp-dual-sub">正常 90~139</div>
+            </div>
+            <div class="bp-dual-sep">/</div>
+            <div class="bp-dual-item">
+              <div class="bp-dual-val" style="color:#38bdf8">{{ overview.avgDiastolic || '--' }}</div>
+              <div class="bp-dual-label">舒张压 <span class="bp-dual-unit">mmHg</span></div>
+              <div class="bp-dual-sub">正常 60~89</div>
+            </div>
           </div>
-          <div class="bp-overview-body">
-            <!-- 双值显示区 -->
-            <div class="bp-dual-wrap">
-              <div class="bp-dual-item">
-                <div class="bp-dual-val" style="color:#a78bfa">{{ overview.avgSystolic || '--' }}</div>
-                <div class="bp-dual-label">收缩压 <span class="bp-dual-unit">mmHg</span></div>
-                <div class="bp-dual-sub">正常 90~139</div>
-              </div>
-              <div class="bp-dual-sep">/</div>
-              <div class="bp-dual-item">
-                <div class="bp-dual-val" style="color:#38bdf8">{{ overview.avgDiastolic || '--' }}</div>
-                <div class="bp-dual-label">舒张压 <span class="bp-dual-unit">mmHg</span></div>
-                <div class="bp-dual-sub">正常 60~89</div>
-              </div>
-            </div>
-            <!-- KPI cards -->
-            <div class="bp-kpi-cards">
-              <div class="bp-kpi-card" v-for="c in ovCards" :key="c.label">
-                <div class="bp-kpi-card-val" :style="{color: c.color}">{{ c.val }}<span class="bp-kpi-card-unit">{{ c.unit }}</span></div>
-                <div class="bp-kpi-card-label">{{ c.label }}</div>
-              </div>
-            </div>
-            <!-- 血压等级说明 -->
-            <div class="bp-grade-info">
-              <div class="bp-grade-title">血压等级参考</div>
-              <div class="bp-grade-item" v-for="g in bpGrades" :key="g.label">
-                <span class="bp-grade-dot" :style="{background: g.color}"></span>
-                <span class="bp-grade-name" :style="{color: g.color}">{{ g.label }}</span>
-                <span class="bp-grade-val">{{ g.range }}</span>
+          <div class="bp-zone-cards">
+            <div v-for="z in bpZones" :key="z.key" :class="['bp-zone-card', z.cls]">
+              <span class="bp-zone-icon" :style="{color: z.color}">{{ z.icon }}</span>
+              <span class="bp-zone-count" :style="{color: z.color}">{{ z.count }}<em>人</em></span>
+              <span class="bp-zone-label">{{ z.label }}</span>
+              <span class="bp-zone-range">{{ z.range }}</span>
+              <div class="bp-zone-pct-bar">
+                <div class="bp-zone-pct-fill" :style="{ width: z.pct + '%', background: z.color }"></div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- mid-row：趋势 + 分布 + 小时均值 -->
-        <div class="bp-mid-row">
-          <!-- 每日趋势折线 -->
+        <!-- 图表行：趋势 + 24h小时波动 -->
+        <div class="bp-charts-row">
           <div class="bp-panel bp-panel-trend">
             <div class="bp-ph">
               <span class="bp-ph-bar"></span>
@@ -128,29 +115,6 @@
               <div ref="trendRef" style="width:100%;height:100%"></div>
             </div>
           </div>
-
-          <!-- 分布饼图 -->
-          <div class="bp-panel bp-panel-dist">
-            <div class="bp-ph">
-              <span class="bp-ph-bar"></span>
-              <span class="bp-ph-title">血压等级分布</span>
-            </div>
-            <div class="bp-dist-body">
-              <div ref="distRef" class="bp-dist-chart"></div>
-              <div class="bp-dist-legend">
-                <div class="bp-dist-row" v-for="d in distLegend" :key="d.name">
-                  <div class="bp-dist-dot" :style="{background: d.color}"></div>
-                  <span class="bp-dist-name">{{ d.name }}</span>
-                  <div class="bp-dist-bar-wrap">
-                    <div class="bp-dist-bar" :style="{width: d.value + '%', background: d.color}"></div>
-                  </div>
-                  <span class="bp-dist-pct" :style="{color: d.color}">{{ d.value }}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 小时均值图 -->
           <div class="bp-panel bp-panel-hourly">
             <div class="bp-ph">
               <span class="bp-ph-bar"></span>
@@ -159,29 +123,6 @@
             <div class="bp-pc">
               <div ref="hourlyRef" style="width:100%;height:100%"></div>
             </div>
-          </div>
-        </div>
-
-        <!-- 血压区间分布统计 -->
-        <div class="bp-panel bp-panel-zones">
-          <div class="bp-ph">
-            <span class="bp-ph-bar"></span>
-            <span class="bp-ph-title">当前在线人员血压分布</span>
-            <span class="bp-ds-total">共 <em>{{ realtimeList.length }}</em> 人在线</span>
-          </div>
-          <div class="bp-ds-body">
-            <div class="bp-ds-zone" :class="z.cls" v-for="z in bpZones" :key="z.key">
-              <div class="bp-ds-icon" :style="{color: z.color}">{{ z.icon }}</div>
-              <div class="bp-ds-count" :style="{color: z.color}">{{ z.count }}</div>
-              <div class="bp-ds-pct" :style="{color: z.color}">{{ z.pct }}%</div>
-              <div class="bp-ds-label">{{ z.label }}</div>
-              <div class="bp-ds-range">{{ z.range }}</div>
-            </div>
-          </div>
-          <div class="bp-ds-bar-row">
-            <div class="bp-ds-seg" v-for="z in bpZones" :key="z.key"
-              :style="{width: z.pct + '%', background: z.color}"
-              :title="z.label + ': ' + z.count + '人'"></div>
           </div>
         </div>
 
@@ -229,40 +170,6 @@
 
       </main>
 
-      <!-- ─ 右侧：实时血压列表 ─ -->
-      <div class="bp-rtlist">
-        <div class="bp-panel hm-panel-flex">
-          <div class="bp-ph">
-            <span class="bp-ph-bar"></span>
-            <span class="bp-ph-title">实时血压数据</span>
-            <span class="bp-rt-total">{{ realtimeList.length }} 条</span>
-          </div>
-
-          <div class="bp-rt-hd">
-            <span>#</span><span>姓名</span><span>收缩</span><span>舒张</span><span>状态</span>
-          </div>
-
-          <div class="bp-rt-body" ref="listRef">
-            <div
-              class="bp-rt-row"
-              v-for="(item, i) in filteredRealtimeList"
-              :key="i"
-              :class="bpLevel(item)"
-              @click="goToPortrait(item)"
-              style="cursor:pointer"
-            >
-              <span class="bp-rt-idx">{{ i + 1 }}</span>
-              <span class="bp-rt-name">{{ item.userName }}</span>
-              <span class="bp-rt-sys">{{ item.systolic }}</span>
-              <span class="bp-rt-dia">{{ item.diastolic }}</span>
-              <span class="bp-rt-badge" :class="bpLevel(item)">
-                {{ bpLevelLabel(item) }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </section>
   </div>
 </template>
@@ -272,7 +179,6 @@ import dayjs from 'dayjs'
 import {
   getBPOverview,
   getBPTrend,
-  getBPDistribution,
   getBPTopUsers,
   getBPDeptStats,
   getBPRealtime,
@@ -284,7 +190,6 @@ import {
   createHourlySeries,
   fetchMetricData,
   getMetricToday,
-  loadMetricDistribution,
   loadMetricOverview,
   loadMetricRangeChart,
   loadMetricRealtime,
@@ -307,7 +212,6 @@ export default {
         normalRate: 0, abnormalCount: 0,
         detectionCount: 0, elevatedRate: 0, hypertensionRate: 0
       },
-      distLegend: [],
       top5Data: [],
       top5Expanded: false,
       anomalyExpanded: false,
@@ -320,8 +224,6 @@ export default {
         { label: '2级高血压',  range: '≥ 160 / ≥ 100',      color: '#ff5252' }
       ],
       realtimeList: [],
-      currentPage: 1,
-      pageSize: 20,
       activePeriod: 'month',
       periodOptions: PERIOD_OPTIONS,
       charts: {}
@@ -336,20 +238,6 @@ export default {
         { label: '正常率',     val: (o.normalRate   || 0)   + '%',       cls: 'kpi-green'  },
         { label: '异常次数',   val: (o.abnormalCount || 0).toLocaleString(), cls: 'kpi-red' }
       ]
-    },
-    ovCards() {
-      const o = this.overview
-      return [
-        { label: '正常率',    val: o.normalRate      || '--', unit: '%',  color: '#52c41a' },
-        { label: '偏高率',    val: o.elevatedRate    || '--', unit: '%',  color: '#FFB84D' },
-        { label: '高血压率',  val: o.hypertensionRate|| '--', unit: '%',  color: '#ff5252' },
-        { label: '检测人数',  val: o.detectionCount  || '--', unit: ' 人',color: '#7eb8f7' },
-        { label: '异常次数',  val: (o.abnormalCount  || 0).toLocaleString(), unit: ' 次', color: '#ff7043' },
-        { label: '血压范围',  val: o.avgSystolic && o.avgDiastolic ? `${o.avgSystolic}/${o.avgDiastolic}` : '--', unit: '', color: '#a78bfa' }
-      ]
-    },
-    overviewTitle() {
-      return { day: '今日血压概况', week: '近7日血压概况', month: '近30日血压概况' }[this.activePeriod]
     },
     trendTitle() {
       return { day: '今日血压趋势', week: '近7天血压趋势', month: '近30天血压趋势' }[this.activePeriod]
@@ -393,7 +281,6 @@ export default {
   },
   mounted() {
     this.initPage(() => this.loadRealtime())
-    this.initAutoPageSize(27)
   },
   methods: {
     ...bloodPressureChartMethods,
@@ -430,7 +317,6 @@ export default {
         this.loadOverview(),
         this.loadTopUsers(),
         this.loadDept(),
-        this.loadDist(),
         this.loadTrend(),
         this.loadHourly(),
         this.loadRealtime()
@@ -447,10 +333,6 @@ export default {
 
     async loadDept() {
       await loadMetricRangeChart(this, getBPDeptStats, 'initDeptChart')
-    },
-
-    async loadDist() {
-      await loadMetricDistribution(this, getBPDistribution, 'initDistChart')
     },
 
     async loadTrend() {
@@ -471,18 +353,6 @@ export default {
     async loadRealtime() {
       await loadMetricRealtime(this, getBPRealtime)
     },
-
-    bpLevel(item) {
-      if (item.systolic >= 160 || item.diastolic >= 100) return 'danger'
-      if (item.systolic >= 140 || item.diastolic >= 90)  return 'stage1'
-      if (item.systolic >= 120 || item.diastolic >= 80)  return 'pre'
-      return 'normal'
-    },
-    bpLevelLabel(item) {
-      const lv = this.bpLevel(item)
-      return { normal: '正常', pre: '偏高', stage1: '1级', danger: '2级' }[lv]
-    },
-
 
     // setPageSize → chartPageMixin
   }

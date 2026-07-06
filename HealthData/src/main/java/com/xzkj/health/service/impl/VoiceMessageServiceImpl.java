@@ -15,7 +15,7 @@ import java.util.concurrent.Executor;
  *
  * 音频规格：8kHz 采样率，8-bit 有符号 PCM，单声道
  * 每包 1024 字节，以十六进制字符串传输
- * 协议格式：IW*BP28*{IMEI},{watermark},{total},{seq},{size},{hex}#
+ * 协议格式：IWBP28,{IMEI},{watermark},{total},{seq},{size},{hex}#
  */
 @Service
 @Slf4j

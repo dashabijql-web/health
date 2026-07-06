@@ -1,33 +1,28 @@
 <template>
   <header class="rt-hd">
-    <PageHeroHeader
-      class="rt-hd-hero"
-      variant="cockpit"
-      eyebrow="Realtime Watch"
-      title="实时健康监控"
-      description="在线人员状态、预警聚焦与消息广播统一在一处。"
-    >
-      <template #meta>
-        <div class="rt-hd-meta">
-          <span class="rt-live-dot"></span>
-          <span class="rt-hd-meta-label">在线监测</span>
-          <span class="rt-hd-time">{{ currentTime }}</span>
+    <div class="rt-hd-bar">
+      <div class="rt-hd-bar-left">
+        <span class="rt-live-dot"></span>
+        <span class="rt-hd-bar-title">实时健康监控</span>
+        <span class="rt-hd-time">{{ currentTime }}</span>
+      </div>
+      <div class="rt-hd-bar-kpis">
+        <div class="rt-hd-kpi">
+          <span class="rt-hd-kpi-val kpi-primary">{{ totalCount }}</span>
+          <span class="rt-hd-kpi-label">在线</span>
         </div>
-      </template>
-      <template #actions>
-        <div class="rt-hd-right">
-          <div class="rt-hd-stat">
-            <span class="rt-hd-stat-val st-ok">{{ normalCount }}</span>
-            <span class="rt-hd-stat-lbl">正常</span>
-          </div>
-          <div class="rt-hd-sep"></div>
-          <div class="rt-hd-stat">
-            <span class="rt-hd-stat-val st-warn" :class="{ 'val-blink': warningCount > 0 }">{{ warningCount }}</span>
-            <span class="rt-hd-stat-lbl">预警中</span>
-          </div>
+        <div class="rt-hd-kpi-sep"></div>
+        <div class="rt-hd-kpi">
+          <span class="rt-hd-kpi-val kpi-success">{{ normalCount }}</span>
+          <span class="rt-hd-kpi-label">正常</span>
         </div>
-      </template>
-    </PageHeroHeader>
+        <div class="rt-hd-kpi-sep"></div>
+        <div class="rt-hd-kpi">
+          <span class="rt-hd-kpi-val kpi-danger" :class="{ 'val-blink': warningCount > 0 }">{{ warningCount }}</span>
+          <span class="rt-hd-kpi-label">预警</span>
+        </div>
+      </div>
+    </div>
 
     <div class="rt-ticker-wrap">
       <span class="rt-ticker-label">实时预警</span>
@@ -46,19 +41,11 @@
         <span v-else class="rt-ticker-empty">暂无预警人员</span>
       </div>
     </div>
-
-    <MetricStrip
-      class="rt-hd-kpis"
-      :items="headerMetricItems"
-      dense
-    />
   </header>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
-import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 import { getRealtimeIndicator } from '../realtime-helpers'
 
 const props = defineProps({
@@ -70,24 +57,4 @@ const props = defineProps({
 })
 
 const tickerUsers = computed(() => [...props.warningUsers, ...props.warningUsers])
-const headerMetricItems = computed(() => [
-  {
-    label: '在线总数',
-    value: `${props.totalCount} 人`,
-    note: '15 秒自动刷新',
-    tone: 'primary'
-  },
-  {
-    label: '正常状态',
-    value: `${props.normalCount} 人`,
-    note: '实时同步',
-    tone: 'success'
-  },
-  {
-    label: '预警中',
-    value: `${props.warningCount} 人`,
-    note: props.warningCount > 0 ? '优先通知与广播' : '当前无预警',
-    tone: props.warningCount > 0 ? 'danger' : 'success'
-  }
-])
 </script>

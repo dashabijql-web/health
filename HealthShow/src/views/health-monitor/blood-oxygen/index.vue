@@ -68,49 +68,44 @@
       <!-- ─ 中间 ─ -->
       <main class="bo-main">
 
-        <!-- 概况：仪表盘 + KPI卡 + 血氧区间说明 -->
-        <div class="bo-panel bo-overview-panel">
-          <div class="bo-ph">
-            <span class="bo-ph-bar"></span>
-            <span class="bo-ph-title">{{ overviewTitle }}</span>
+        <!-- Hero 区：大仪表盘 + 4 区间卡 -->
+        <div class="bo-hero">
+          <div class="bo-gauge-wrap">
+            <div ref="gaugeRef" class="bo-gauge-chart"></div>
+            <div class="bo-gauge-center">
+              <div class="bo-gauge-val">{{ overview.avgBloodOxygen || '--' }}</div>
+              <div class="bo-gauge-sub">% · 平均血氧</div>
+            </div>
           </div>
-          <div class="bo-overview-body">
-            <div class="bo-gauge-wrap">
-              <div ref="gaugeRef" class="bo-gauge-chart"></div>
-              <div class="bo-gauge-center">
-                <div class="bo-gauge-val">{{ overview.avgBloodOxygen || '--' }}</div>
-                <div class="bo-gauge-sub">% · 平均血氧</div>
-              </div>
-            </div>
-            <div class="bo-kpi-cards">
-              <div class="bo-kpi-card" v-for="c in ovAllCards" :key="c.label">
-                <div class="bo-kpi-card-val" :style="{color: c.color}">{{ c.val }}<span class="bo-kpi-card-unit">{{ c.unit }}</span></div>
-                <div class="bo-kpi-card-label">{{ c.label }}</div>
-              </div>
-            </div>
-            <div class="bo-range-info">
-              <div class="bo-range-title">血氧健康区间</div>
-              <div class="bo-range-item" v-for="r in boRanges" :key="r.label">
-                <span class="bo-range-dot" :style="{background: r.color}"></span>
-                <span class="bo-range-name" :style="{color: r.color}">{{ r.label }}</span>
-                <span class="bo-range-val">{{ r.range }}</span>
+          <div class="bo-zone-cards">
+            <div v-for="z in boZones" :key="z.key" :class="['bo-zone-card', z.cls]">
+              <span class="bo-zone-icon" :style="{color: z.color}">{{ z.icon }}</span>
+              <span class="bo-zone-count" :style="{color: z.color}">{{ z.count }}<em>人</em></span>
+              <span class="bo-zone-label">{{ z.label }}</span>
+              <span class="bo-zone-range">{{ z.range }}</span>
+              <div class="bo-zone-pct-bar">
+                <div class="bo-zone-pct-fill" :style="{ width: z.pct + '%', background: z.color }"></div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 年龄段 + 今日24h波动 + 分布 -->
-        <div class="bo-mid-row">
-          <div class="bo-panel bo-panel-age">
+        <!-- 图表行：趋势 + 小时波动 -->
+        <div class="bo-charts-row">
+          <div class="bo-panel bo-panel-trend">
             <div class="bo-ph">
               <span class="bo-ph-bar"></span>
-              <span class="bo-ph-title">各年龄段平均血氧</span>
+              <span class="bo-ph-title">{{ trendTitle }}</span>
+              <div class="bo-trend-tags">
+                <span class="bo-tag" style="color:#00d4ff;border-color:rgba(0,212,255,0.3)">── 平均血氧</span>
+                <span class="bo-tag" style="color:#FFB84D;border-color:rgba(255,184,77,0.3)">- - 偏低预警(90%)</span>
+                <span class="bo-tag" style="color:#4FC3F7;border-color:rgba(79,195,247,0.3)">- - 正常下限(95%)</span>
+              </div>
             </div>
             <div class="bo-pc">
-              <div ref="ageRef" style="width:100%;height:100%"></div>
+              <div ref="trendRef" style="width:100%;height:100%"></div>
             </div>
           </div>
-
           <div class="bo-panel bo-panel-hourly">
             <div class="bo-ph">
               <span class="bo-ph-bar"></span>
@@ -119,65 +114,6 @@
             <div class="bo-pc">
               <div ref="hourlyRef" style="width:100%;height:100%"></div>
             </div>
-          </div>
-
-          <div class="bo-panel bo-panel-dist">
-            <div class="bo-ph">
-              <span class="bo-ph-bar"></span>
-              <span class="bo-ph-title">血氧区间分布</span>
-            </div>
-            <div class="bo-dist-body">
-              <div ref="distRef" class="bo-dist-chart"></div>
-              <div class="bo-dist-legend">
-                <div class="bo-dist-row" v-for="d in distLegend" :key="d.name">
-                  <div class="bo-dist-dot" :style="{background: d.color}"></div>
-                  <span class="bo-dist-name">{{ d.name }}</span>
-                  <div class="bo-dist-bar-wrap">
-                    <div class="bo-dist-bar" :style="{width: d.value + '%', background: d.color}"></div>
-                  </div>
-                  <span class="bo-dist-pct" :style="{color: d.color}">{{ d.value }}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 趋势 -->
-        <div class="bo-panel bo-panel-trend">
-          <div class="bo-ph">
-            <span class="bo-ph-bar"></span>
-            <span class="bo-ph-title">{{ trendTitle }}</span>
-            <div class="bo-trend-tags">
-              <span class="bo-tag" style="color:#00d4ff;border-color:rgba(0,212,255,0.3)">── 平均血氧</span>
-              <span class="bo-tag" style="color:#FFB84D;border-color:rgba(255,184,77,0.3)">- - 偏低预警(90%)</span>
-              <span class="bo-tag" style="color:#4FC3F7;border-color:rgba(79,195,247,0.3)">- - 正常下限(95%)</span>
-            </div>
-          </div>
-          <div class="bo-pc">
-            <div ref="trendRef" style="width:100%;height:100%"></div>
-          </div>
-        </div>
-
-        <!-- 血氧区间分布统计 -->
-        <div class="bo-panel bo-panel-dist-stat">
-          <div class="bo-ph">
-            <span class="bo-ph-bar"></span>
-            <span class="bo-ph-title">当前在线人员血氧分布</span>
-            <span class="bo-ds-total">共 <em>{{ realtimeList.length }}</em> 人在线</span>
-          </div>
-          <div class="bo-ds-body">
-            <div class="bo-ds-zone" :class="z.cls" v-for="z in boZones" :key="z.key">
-              <div class="bo-ds-icon" :style="{color: z.color}">{{ z.icon }}</div>
-              <div class="bo-ds-count" :style="{color: z.color}">{{ z.count }}</div>
-              <div class="bo-ds-pct" :style="{color: z.color}">{{ z.pct }}%</div>
-              <div class="bo-ds-label">{{ z.label }}</div>
-              <div class="bo-ds-range">{{ z.range }}</div>
-            </div>
-          </div>
-          <div class="bo-ds-bar-row">
-            <div class="bo-ds-seg" v-for="z in boZones" :key="z.key"
-              :style="{width: z.pct + '%', background: z.color}"
-              :title="z.label + ': ' + z.count + '人'"></div>
           </div>
         </div>
 
@@ -218,41 +154,6 @@
 
       </main>
 
-      <!-- ─ 右侧：实时列表 ─ -->
-      <div class="bo-rtlist">
-        <div class="bo-panel hm-panel-flex">
-          <div class="bo-ph">
-            <span class="bo-ph-bar"></span>
-            <span class="bo-ph-title">实时血氧数据</span>
-            <span class="bo-rt-total">{{ realtimeList.length }} 条</span>
-          </div>
-          <div class="bo-rt-hd">
-            <span>#</span><span>姓名</span><span>血氧</span><span>状态</span><span>时间</span>
-          </div>
-          <div class="bo-rt-body" ref="listRef">
-            <div
-              class="bo-rt-row"
-              v-for="(item, i) in filteredRealtimeList"
-              :key="i"
-              :class="boLevel(item.bloodOxygen)"
-              @click="showDetail(item)"
-              style="cursor:pointer"
-            >
-              <span class="bo-rt-idx">{{ i + 1 }}</span>
-              <span class="bo-rt-name">{{ item.userName }}</span>
-              <span class="bo-rt-val">
-                {{ item.bloodOxygen }}%
-                <em v-if="item.bloodOxygen < 90" class="bo-rt-arrow">↓</em>
-              </span>
-              <span class="bo-rt-badge" :class="boLevel(item.bloodOxygen)">
-                {{ item.bloodOxygen < 90 ? '危险' : item.bloodOxygen < 95 ? '偏低' : item.bloodOxygen >= 99 ? '优秀' : '正常' }}
-              </span>
-              <span class="bo-rt-time">{{ fmtRtTime(item.recordTime) }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </section>
 
     <el-dialog v-model="detailVisible" :title="`${detailItem?.userName || ''} 血氧详情`" width="400px" :append-to-body="true">
@@ -283,8 +184,6 @@ import dayjs from 'dayjs'
 import {
   getBloodOxygenOverview,
   getBloodOxygenTrend,
-  getBloodOxygenDistribution,
-  getAgeBloodOxygen,
   getRealtimeBloodOxygen,
   getBloodOxygenTopUsers,
   getBloodOxygenDeptStats,
@@ -297,7 +196,6 @@ import {
   createHourlySeries,
   fetchMetricData,
   getMetricToday,
-  loadMetricDistribution,
   loadMetricOverview,
   loadMetricRangeChart,
   loadMetricRealtime,
@@ -319,18 +217,9 @@ export default {
         avgBloodOxygen: 0, minBloodOxygen: 0, maxBloodOxygen: 0,
         detectionRate: 0, abnormalCount: 0, totalCount: 0
       },
-      distLegend: [],
-      boRanges: [
-        { label: '危险',   range: '< 90%',    color: '#ff5252' },
-        { label: '偏低',   range: '90 – 94%', color: '#FFB84D' },
-        { label: '正常',   range: '95 – 98%', color: '#52c41a' },
-        { label: '优秀',   range: '≥ 99%',    color: '#4FC3F7' }
-      ],
       top5Data: [],
       top5Expanded: false,
       realtimeList: [],
-      currentPage: 1,
-      pageSize: 20,
       activePeriod: 'month',
       periodOptions: PERIOD_OPTIONS,
       charts: {},
@@ -348,20 +237,6 @@ export default {
         { label: '检测率',     val: (o.detectionRate || 0) + '%',      cls: 'kpi-green'   },
         { label: '总记录数',   val: (o.totalCount || 0).toLocaleString(), cls: 'kpi-blue' }
       ]
-    },
-    ovAllCards() {
-      const o = this.overview
-      return [
-        { label: '最低血氧',   val: (o.minBloodOxygen || '--') + '', unit: '%',   color: '#FFB84D' },
-        { label: '最高血氧',   val: (o.maxBloodOxygen || '--') + '', unit: '%',   color: '#4FC3F7' },
-        { label: '血氧检测率', val: o.detectionRate || '--',          unit: '%',   color: '#52c41a' },
-        { label: '异常记录',   val: o.abnormalCount  || '--',         unit: ' 人', color: '#ff5252' },
-        { label: '总记录数',   val: (o.totalCount || 0).toLocaleString(), unit: ' 条', color: '#7eb8f7' },
-        { label: '血氧范围',   val: o.minBloodOxygen != null && o.maxBloodOxygen != null ? `${o.minBloodOxygen}~${o.maxBloodOxygen}` : '--', unit: '%', color: '#a78bfa' }
-      ]
-    },
-    overviewTitle() {
-      return { day: '今日血氧概况', week: '近7日血氧概况', month: '近30日血氧概况' }[this.activePeriod]
     },
     hourlyTitle() {
       return { day: '今日24小时波动', week: '近7日每日均值', month: '近30日每日均值' }[this.activePeriod]
@@ -401,7 +276,6 @@ export default {
   },
   mounted() {
     this.initPage()
-    this.initAutoPageSize(27)
   },
   methods: {
     ...bloodOxygenChartMethods,
@@ -432,10 +306,9 @@ export default {
     },
 
     async fetchData() {
-      // loadTrendAndHourly 合并两个原本各自调用 trend 接口的方法，消除重复请求
       await Promise.allSettled([
         this.loadOverview(), this.loadTopUsers(), this.loadDept(),
-        this.loadAge(), this.loadDist(), this.loadTrendAndHourly(), this.loadRealtime()
+        this.loadTrendAndHourly(), this.loadRealtime()
       ])
     },
 
@@ -448,12 +321,6 @@ export default {
     },
     async loadDept() {
       await loadMetricRangeChart(this, getBloodOxygenDeptStats, 'initDept')
-    },
-    async loadAge() {
-      await loadMetricRangeChart(this, getAgeBloodOxygen, 'initAge')
-    },
-    async loadDist() {
-      await loadMetricDistribution(this, getBloodOxygenDistribution, 'initDist')
     },
     /** 合并 loadTrend + loadHourly，避免在 week/month 模式下发出两次相同的 trend 请求 */
     async loadTrendAndHourly() {
@@ -501,10 +368,6 @@ export default {
     async loadRealtime() {
       await loadMetricRealtime(this, getRealtimeBloodOxygen, 200)
     },
-    fmtRtTime(ts) {
-      return ts ? dayjs(ts).format('HH:mm:ss') : ''
-    },
-
     boLevel: spo2Level,
 
     // setPageSize → chartPageMixin

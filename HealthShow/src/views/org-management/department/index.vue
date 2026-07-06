@@ -1,52 +1,17 @@
 <template>
-  <div class="hm-admin-page page-container">
-    <PageHeroHeader
-      variant="admin"
-      eyebrow="Organization"
-      title="部门管理"
-      description="管理组织架构、负责人、联系电话和部门成员入口。"
-    >
-      <template #meta>
-        <div class="hm-admin-page__hero-meta">
-          <span class="hm-toolbar-chip">部门总数 {{ stats.total }}</span>
-          <span class="hm-toolbar-chip">正常 {{ stats.active }}</span>
-        </div>
-      </template>
-      <template #actions>
-        <div class="hm-admin-page__clock"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-      </template>
-    </PageHeroHeader>
-
-    <!-- Stat Cards -->
-    <el-row :gutter="16" class="mb-16">
-      <el-col :span="8">
-        <div class="stat-card">
-          <div class="stat-icon-wrap primary"><el-icon size="26"><OfficeBuilding /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ stats.total }}</div>
-            <div class="stat-label">部门总数</div>
-          </div>
-        </div>
-      </el-col>
-      <el-col :span="8">
-        <div class="stat-card">
-          <div class="stat-icon-wrap success"><el-icon size="26"><CircleCheck /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ stats.active }}</div>
-            <div class="stat-label">正常部门</div>
-          </div>
-        </div>
-      </el-col>
-      <el-col :span="8">
-        <div class="stat-card">
-          <div class="stat-icon-wrap danger"><el-icon size="26"><CircleClose /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ stats.inactive }}</div>
-            <div class="stat-label">停用部门</div>
-          </div>
-        </div>
-      </el-col>
-    </el-row>
+  <div class="page-container">
+    <header class="dp-hd">
+      <div class="dp-hd-left">
+        <span class="dp-live-dot"></span>
+        <h1 class="dp-hd-title">部门管理</h1>
+      </div>
+      <div class="dp-hd-kpis">
+        <div class="dp-kpi"><span class="dp-kpi-n">{{ stats.total }}</span><span class="dp-kpi-l">部门总数</span></div>
+        <div class="dp-kpi"><span class="dp-kpi-n success">{{ stats.active }}</span><span class="dp-kpi-l">正常</span></div>
+        <div class="dp-kpi"><span class="dp-kpi-n danger">{{ stats.inactive }}</span><span class="dp-kpi-l">停用</span></div>
+      </div>
+      <div class="dp-hd-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
+    </header>
 
     <!-- Data Panel -->
     <div class="panel table-panel">
@@ -184,7 +149,6 @@
 </template>
 
 <script setup>
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { Timer, Search, Plus, Edit, Delete, OfficeBuilding, CircleCheck, CircleClose, User } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -352,25 +316,48 @@ onMounted(() => loadTableData())
   background: $da-bg;
   color: $da-text;
 }
-.page-header { @include da-page-header; flex-shrink: 0; }
-
-.page-header-left { display: flex; align-items: center; gap: 14px; }
-.header-icon {
-  font-size: 36px; color: $da-accent;
-  background: rgba(0, 212, 255, 0.1); border-radius: 10px; padding: 8px;
+.dp-hd {
+  height: 56px; flex-shrink: 0; display: flex; align-items: center;
+  padding: 0 22px; gap: 16px;
+  background: rgba(0, 6, 24, 0.65);
+  border-bottom: 1px solid rgba(0,212,255,0.12);
+  border-radius: 10px; margin-bottom: 16px;
 }
-.main-title { font-size: 22px; font-weight: 700; color: #fff; margin: 0 0 2px; letter-spacing: 1px; }
-.sub-title { font-size: 12px; color: $da-text-dim; margin: 0; }
-.header-time {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 13px; color: $da-text-dim;
-  background: $da-accent-dim; padding: 6px 14px;
-  border-radius: 20px; border: 1px solid $da-accent-hover;
+.dp-hd-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.dp-live-dot {
+  width: 9px; height: 9px; border-radius: 50%; background: #00d4ff;
+  box-shadow: 0 0 8px rgba(0,212,255,0.7);
+  animation: dpPulse 2s ease-in-out infinite;
+}
+@keyframes dpPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.75); }
+}
+.dp-hd-title {
+  font-size: 20px; font-weight: 700; margin: 0; letter-spacing: 2px;
+  background: linear-gradient(90deg, #00d4ff, #4facfe);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.dp-hd-kpis { flex: 1; display: flex; justify-content: center; gap: 0; }
+.dp-kpi {
+  display: flex; flex-direction: column; align-items: center; padding: 0 20px;
+  border-right: 1px solid rgba(0,212,255,0.12);
+  &:first-child { border-left: 1px solid rgba(0,212,255,0.12); }
+}
+.dp-kpi-n {
+  font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1;
+  color: #00d4ff;
+  &.success { color: #38ef7d; }
+  &.danger { color: #ff5252; }
+}
+.dp-kpi-l { font-size: 10px; color: #8ba6c8; margin-top: 2px; white-space: nowrap; }
+.dp-hd-time {
+  flex-shrink: 0; font-size: 12px; color: #8ba6c8;
+  display: flex; align-items: center; gap: 4px;
 }
 
 .mb-16 { margin-bottom: 16px; flex-shrink: 0; }
 
-.stat-card { @include da-stat-card; }
 .stat-icon-wrap {
   @include da-icon-wrap;
   &.primary { background: $da-grad-primary; }

@@ -1,5 +1,5 @@
 import { HR } from '@/constants/health-thresholds'
-import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, ageGrid, barLabel } from '@/utils/echarts-config'
+import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
 import { initChart, gaugeOption, gradH, gradV } from '@/utils/chart-helpers'
 
 export const heartRateChartMethods = {
@@ -44,28 +44,6 @@ export const heartRateChartMethods = {
     c.off('click')
     c.on('click', (params) => {
       this.filterDept = this.filterDept === params.name ? '' : params.name
-    })
-  },
-
-  initAge(data) {
-    const c = initChart(this.charts, 'age', this.$refs.ageRef)
-    if (!c) return
-    const d = data
-    c.setOption({
-      backgroundColor: 'transparent',
-      grid: ageGrid(),
-      xAxis: categoryAxis(d.map(x => x.ageRange)),
-      yAxis: valueAxis({ name: 'bpm', min: v => Math.max(0, v.min - 5), max: v => v.max + 5 }),
-      series: [{
-        type: 'bar',
-        data: d.map(x => x.avgHeartRate),
-        barWidth: '46%',
-        itemStyle: {
-          color: gradV('#00d4ff', 'rgba(0,100,220,0.35)'),
-          borderRadius: [6, 6, 0, 0]
-        },
-        label: { show: true, position: 'top', color: '#00d4ff', fontSize: 11, fontWeight: 'bold' }
-      }]
     })
   },
 

@@ -142,12 +142,18 @@
         {{ mineAiReport.replace(/#+\s*/g, '').slice(0, 120) }}…
         <span class="dm-ai-more">展开全文 ›</span>
       </div>
-      <PageEmptyState
-        v-else
-        compact
-        title="尚未生成 AI 报告"
-        description="点击“生成分析”获取全矿健康摘要。"
-      />
+      <div v-else class="dm-ai-empty">
+        <div class="dm-ai-empty-hint">点击"生成分析"，AI 将综合以下维度生成健康摘要</div>
+        <div class="dm-ai-dims">
+          <span class="dm-ai-dim"><i class="dm-ai-dim-dot" style="background:#38ef7d"></i>体征趋势</span>
+          <span class="dm-ai-dim"><i class="dm-ai-dim-dot" style="background:#ff5252"></i>预警分布</span>
+          <span class="dm-ai-dim"><i class="dm-ai-dim-dot" style="background:#ffd200"></i>异常人员</span>
+          <span class="dm-ai-dim"><i class="dm-ai-dim-dot" style="background:#00c8ff"></i>班前准入</span>
+          <span class="dm-ai-dim"><i class="dm-ai-dim-dot" style="background:#b388ff"></i>设备状态</span>
+          <span class="dm-ai-dim"><i class="dm-ai-dim-dot" style="background:#ff8c00"></i>健康建议</span>
+        </div>
+        <div class="dm-ai-empty-footer">基于 DeepSeek 大模型 · 分析耗时约 10 秒</div>
+      </div>
     </div>
   </aside>
 </template>

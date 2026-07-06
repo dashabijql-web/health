@@ -55,7 +55,7 @@ import java.nio.charset.StandardCharsets;
  * 就直接用 rawMessage，不再重新构建。
  *
  * 如果 rawMessage 为空，根据 protocolCode 和 params 重新组装：
- *   "IW*" + protocolCode + "*" + param1 + "," + param2 + "#"
+     *   "IW" + protocolCode + "," + param1 + "," + param2 + "#"
  *
  * 最终转为 ASCII 字节写入 ByteBuf（协议规定所有字符必须是 ASCII）。
  */
@@ -100,10 +100,11 @@ public class WatchProtocolEncoder extends MessageToByteEncoder<WatchMessage> {
                 }
 
                 StringBuilder sb = new StringBuilder();
-                sb.append("IW*").append(protocolCode).append("*");
+                sb.append("IW").append(protocolCode);
 
                 // 拼接参数（多个参数用逗号分隔）
                 if (msg.getParams() != null && msg.getParams().length > 0) {
+                    sb.append(",");
                     for (int i = 0; i < msg.getParams().length; i++) {
                         if (i > 0) sb.append(",");
                         sb.append(msg.getParams()[i]);
@@ -123,7 +124,7 @@ public class WatchProtocolEncoder extends MessageToByteEncoder<WatchMessage> {
         } catch (Exception e) {
             log.error("编码消息失败", e);
             // 编码失败时发送通用错误响应，防止对方等待超时
-            String errorResponse = "IW*BPER*encode-error#";
+            String errorResponse = "IWBPER,encode-error#";
             out.writeBytes(errorResponse.getBytes(StandardCharsets.US_ASCII));
         }
     }

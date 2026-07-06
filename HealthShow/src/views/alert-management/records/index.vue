@@ -2,11 +2,31 @@
   <div class="page-container">
     <WarningCenterNav />
 
-    <PageHeroHeader class="records-hero" variant="cockpit" eyebrow="Alert History" title="预警记录" description="查看和处理所有健康预警事件">
-      <template #meta>
-        <div class="records-hero-meta"><span class="records-live-dot"></span><span class="records-hero-meta-label">当前时间</span><span class="records-hero-time"><el-icon><Timer /></el-icon>{{ currentTime }}</span></div>
-      </template>
-    </PageHeroHeader>
+    <header class="rc-hd">
+      <div class="rc-hd-left">
+        <span class="rc-live-dot"></span>
+        <h1 class="rc-hd-title">预警记录</h1>
+      </div>
+      <div class="rc-hd-kpis">
+        <div class="rc-kpi">
+          <span class="rc-kpi-n">{{ overview.todayTotal || 0 }}</span>
+          <span class="rc-kpi-l">今日预警</span>
+        </div>
+        <div class="rc-kpi warn">
+          <span class="rc-kpi-n">{{ overview.pending || 0 }}</span>
+          <span class="rc-kpi-l">待处理</span>
+        </div>
+        <div class="rc-kpi danger">
+          <span class="rc-kpi-n">{{ overview.critical || 0 }}</span>
+          <span class="rc-kpi-l">危急</span>
+        </div>
+        <div class="rc-kpi success">
+          <span class="rc-kpi-n">{{ handleRate }}<small>%</small></span>
+          <span class="rc-kpi-l">处理率</span>
+        </div>
+      </div>
+      <div class="rc-hd-time">{{ currentTime }}</div>
+    </header>
 
     <!-- Stat Cards -->
     <el-row :gutter="12" class="mb-16">
@@ -264,7 +284,6 @@
 
 <script setup>
 import WarningCenterNav from '@/components/WarningCenterNav.vue'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Timer, Search, Refresh, Edit, Bell, WarningFilled, WarnTriangleFilled, CircleCheck, Download } from '@element-plus/icons-vue'

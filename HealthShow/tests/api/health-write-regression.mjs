@@ -18,7 +18,7 @@ const ARTIFACT_DIR = path.resolve(process.cwd(), 'tests', 'api', 'artifacts', RU
 const REPORT_JSON = path.join(ARTIFACT_DIR, 'summary.json');
 const REPORT_MD = path.join(ARTIFACT_DIR, 'summary.md');
 
-const SQL_SERVER = process.env.SQL_SERVER || 'localhost,11433';
+const SQL_SERVER = process.env.SQL_SERVER || 'localhost,1433';
 const SQL_USER = process.env.SQL_USER || 'sa';
 const SQL_PASSWORD = process.env.SQL_PASSWORD || '';
 const SQL_DB = process.env.SQL_DB || 'health';

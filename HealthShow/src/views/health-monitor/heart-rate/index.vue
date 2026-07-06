@@ -67,56 +67,47 @@
         </div>
       </aside>
 
-      <!-- ─ 中间：概况(紧凑) + 年龄/分布(中) + 趋势(大) ─ -->
+      <!-- ─ 主区域 ─ -->
       <main class="hr-main">
 
-        <!-- 概况：单行水平布局，8个指标卡 + 仪表盘 -->
-        <div class="hr-panel hr-overview-panel">
-          <div class="hr-ph">
-            <span class="hr-ph-bar"></span>
-            <span class="hr-ph-title">{{ overviewTitle }}</span>
+        <!-- Hero 区：大仪表盘 + 4 区间卡 -->
+        <div class="hr-hero">
+          <div class="hr-gauge-wrap">
+            <div ref="gaugeRef" class="hr-gauge-chart"></div>
+            <div class="hr-gauge-center">
+              <div class="hr-gauge-val">{{ overview.avgHeartRate || '--' }}</div>
+              <div class="hr-gauge-sub">bpm · 平均</div>
+            </div>
           </div>
-          <div class="hr-overview-body">
-            <!-- 仪表盘 -->
-            <div class="hr-gauge-wrap">
-              <div ref="gaugeRef" class="hr-gauge-chart"></div>
-              <div class="hr-gauge-center">
-                <div class="hr-gauge-val">{{ overview.avgHeartRate || '--' }}</div>
-                <div class="hr-gauge-sub">bpm · 平均</div>
-              </div>
-            </div>
-            <!-- 所有指标小卡片 -->
-            <div class="hr-kpi-cards">
-              <div class="hr-kpi-card" v-for="c in ovAllCards" :key="c.label">
-                <div class="hr-kpi-card-val" :style="{color: c.color}">{{ c.val }}<span class="hr-kpi-card-unit">{{ c.unit }}</span></div>
-                <div class="hr-kpi-card-label">{{ c.label }}</div>
-              </div>
-            </div>
-            <!-- 心率区间说明 -->
-            <div class="hr-range-info">
-              <div class="hr-range-title">心率健康区间</div>
-              <div class="hr-range-item" v-for="r in hrRanges" :key="r.label">
-                <span class="hr-range-dot" :style="{background: r.color}"></span>
-                <span class="hr-range-name" :style="{color: r.color}">{{ r.label }}</span>
-                <span class="hr-range-val">{{ r.range }}</span>
+          <div class="hr-zone-cards">
+            <div v-for="z in hrZones" :key="z.key" :class="['hr-zone-card', z.cls]">
+              <span class="hr-zone-icon" :style="{color: z.color}">{{ z.icon }}</span>
+              <span class="hr-zone-count" :style="{color: z.color}">{{ z.count }}<em>人</em></span>
+              <span class="hr-zone-label">{{ z.label }}</span>
+              <span class="hr-zone-range">{{ z.range }}</span>
+              <div class="hr-zone-pct-bar">
+                <div class="hr-zone-pct-fill" :style="{ width: z.pct + '%', background: z.color }"></div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 年龄段 + 每小时波动 + 分布（三列）-->
-        <div class="hr-mid-row">
-          <div class="hr-panel hr-panel-age">
+        <!-- 图表行：趋势 + 小时波动 -->
+        <div class="hr-charts-row">
+          <div class="hr-panel hr-panel-trend">
             <div class="hr-ph">
               <span class="hr-ph-bar"></span>
-              <span class="hr-ph-title">各年龄段平均心率</span>
+              <span class="hr-ph-title">{{ trendTitle }}</span>
+              <div class="hr-trend-tags">
+                <span class="hr-tag" style="color:#00d4ff;border-color:rgba(0,212,255,0.3)">── 平均心率</span>
+                <span class="hr-tag" style="color:#FFB84D;border-color:rgba(255,184,77,0.3)">- - 偏高(120)</span>
+                <span class="hr-tag" style="color:#4FC3F7;border-color:rgba(79,195,247,0.3)">- - 偏低(55)</span>
+              </div>
             </div>
             <div class="hr-pc">
-              <div ref="ageRef" style="width:100%;height:100%"></div>
+              <div ref="trendRef" style="width:100%;height:100%"></div>
             </div>
           </div>
-
-
           <div class="hr-panel hr-panel-hourly">
             <div class="hr-ph">
               <span class="hr-ph-bar"></span>
@@ -126,41 +117,9 @@
               <div ref="hourlyRef" style="width:100%;height:100%"></div>
             </div>
           </div>
-
         </div>
 
-        <!-- 趋势：固定高度 -->
-        <div class="hr-panel hr-panel-trend">
-          <div class="hr-ph">
-            <span class="hr-ph-bar"></span>
-            <span class="hr-ph-title">{{ trendTitle }}</span>
-            <div class="hr-trend-tags">
-              <span class="hr-tag" style="color:#00d4ff;border-color:rgba(0,212,255,0.3)">── 平均心率</span>
-              <span class="hr-tag" style="color:#FFB84D;border-color:rgba(255,184,77,0.3)">- - 偏高(120)</span>
-              <span class="hr-tag" style="color:#4FC3F7;border-color:rgba(79,195,247,0.3)">- - 偏低(55)</span>
-            </div>
-          </div>
-          <div class="hr-pc">
-            <div ref="trendRef" style="width:100%;height:100%"></div>
-          </div>
-        </div>
-
-
-        <!-- 心率区间统计 -->
-        <div class="hr-zone-row">
-          <div v-for="z in hrZones" :key="z.key" :class="['hr-zone-card', z.cls]">
-            <div class="hr-zone-top">
-              <span class="hr-zone-label">{{ z.icon }} {{ z.label }}</span>
-              <span class="hr-zone-range">{{ z.range }}</span>
-            </div>
-            <span class="hr-zone-count">{{ z.count }}<em>人</em></span>
-            <div class="hr-zone-bar">
-              <div class="hr-zone-fill" :style="{ width: z.pct + '%', background: z.color }"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 当前异常心率明细：高度跟内容走，不拉伸 -->
+        <!-- 当前异常心率明细 -->
         <div class="hr-panel hr-panel-anomaly">
           <div class="hr-ph">
             <span class="hr-ph-bar"></span>
@@ -202,46 +161,6 @@
 
       </main>
 
-      <!-- ─ 右侧：实时列表 ─ -->
-      <div class="hr-rtlist">
-        <div class="hr-panel hm-panel-flex">
-          <div class="hr-ph">
-            <span class="hr-ph-bar"></span>
-            <span class="hr-ph-title">实时心率数据</span>
-            <span class="hr-rt-total">{{ realtimeList.length }} 条</span>
-            <button class="hr-export-btn" @click="exportExcel" title="导出Excel">导出</button>
-          </div>
-
-          <div class="hr-rt-hd">
-            <span>#</span><span>姓名</span><span>心率</span><span>状态</span><span>时间</span>
-          </div>
-
-          <div class="hr-rt-body" ref="listRef">
-            <div
-              class="hr-rt-row"
-              v-for="(item, i) in sortedRealtimeList"
-              :key="i"
-              :class="hrLevel(item.heartRate)"
-              @click="showDetail(item)"
-              style="cursor:pointer"
-            >
-              <span class="hr-rt-idx">{{ i + 1 }}</span>
-              <span class="hr-rt-name">{{ item.userName }}</span>
-              <span class="hr-rt-val">
-                {{ item.heartRate }}
-                <em v-if="item.heartRate > 120" class="hr-rt-arrow">↑</em>
-                <em v-else-if="item.heartRate < 55" class="hr-rt-arrow">↓</em>
-              </span>
-              <span class="hr-rt-badge" :class="hrLevel(item.heartRate)">
-                {{ item.heartRate > 120 ? '偏高' : item.heartRate < 55 ? '偏低' : '正常' }}
-              </span>
-              <span class="hr-rt-time">{{ fmtRtTime(item.recordTime) }}</span>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
     </section>
 
     <el-dialog v-model="detailVisible" :title="`${detailItem?.userName || ''} 心率详情`" width="400px" :append-to-body="true">
@@ -271,7 +190,6 @@ import dayjs from 'dayjs'
 import {
   getHeartRateOverview,
   getHeartRateTrend,
-  getAgeHeartRate,
   getRealtimeHeartRate,
   getHeartRateTopUsers,
   getHeartRateDeptStats,
@@ -308,16 +226,7 @@ export default {
       },
       top5Data: [],
       top5Expanded: false,
-
-      hrRanges: [
-        { label: '偏低 (心动过缓)', range: '< 55 次/分',     color: '#4FC3F7' },
-        { label: '正常 (健康范围)', range: '55–120 次/分',   color: '#52c41a' },
-        { label: '偏高 (心动过速)', range: '> 120 次/分',    color: '#FFB84D' },
-        { label: '危险 (需立即处理)', range: '> 150 次/分',  color: '#ff5252' }
-      ],
       realtimeList: [],
-      currentPage: 1,
-      pageSize: 20,
       activePeriod: 'month',
       periodOptions: PERIOD_OPTIONS,
       charts: {},
@@ -338,20 +247,6 @@ export default {
         { label: '总记录数',   val: (o.totalCount    || 0).toLocaleString(), cls: 'kpi-blue' }
       ]
     },
-    ovAllCards() {
-      const o = this.overview
-      return [
-        { label: '最低心率',   val: o.minHeartRate   || '--', unit: ' bpm', color: '#4FC3F7' },
-        { label: '最高心率',   val: o.maxHeartRate   || '--', unit: ' bpm', color: '#FFB84D' },
-        { label: '心率检测率', val: o.detectionRate  || '--', unit: '%',    color: '#52c41a' },
-        { label: '异常记录',   val: o.abnormalCount  || '--', unit: ' 人',  color: '#ff5252' },
-        { label: '总记录数',   val: (o.totalCount || 0).toLocaleString(), unit: ' 条', color: '#7eb8f7' },
-        { label: '心率范围',   val: o.minHeartRate && o.maxHeartRate ? `${o.minHeartRate}~${o.maxHeartRate}` : '--', unit: '', color: '#a78bfa' }
-      ]
-    },
-    overviewTitle() {
-      return { day: '今日心率概况', week: '近7日心率概况', month: '近30日心率概况' }[this.activePeriod]
-    },
     hourlyTitle() {
       return { day: '今日24小时波动', week: '近7日异常人数', month: '近30日异常人数' }[this.activePeriod]
     },
@@ -364,13 +259,6 @@ export default {
     displayedTop5() {
       const limit = this.top5Expanded ? this.top5Data.length : 20
       return this.top5Data.slice(0, limit)
-    },
-    sortedRealtimeList() {
-      return [...this.filteredRealtimeList].sort((a, b) => {
-        const aAbnormal = a.heartRate && (a.heartRate > 120 || a.heartRate < 55) ? 1 : 0
-        const bAbnormal = b.heartRate && (b.heartRate > 120 || b.heartRate < 55) ? 1 : 0
-        return bAbnormal - aAbnormal
-      })
     },
     anomalyList() {
       return this.filteredRealtimeList.filter(x => x.heartRate > 120 || x.heartRate < 55)
@@ -394,7 +282,6 @@ export default {
   mounted() {
     this.initPage()
     this.startTop5Scroll()
-    this.initAutoPageSize(27)
   },
   methods: {
     ...heartRateChartMethods,
@@ -436,7 +323,6 @@ export default {
         this.loadOverview(),
         this.loadTopUsers(),
         this.loadDept(),
-        this.loadAge(),
         this.loadTrend(),
         this.loadHourly(),
         this.loadRealtime()
@@ -452,9 +338,6 @@ export default {
     },
     async loadDept() {
       await loadMetricRangeChart(this, getHeartRateDeptStats, 'initDept')
-    },
-    async loadAge() {
-      await loadMetricRangeChart(this, getAgeHeartRate, 'initAge')
     },
     async loadHourly() {
       if (this.activePeriod === 'day') {
@@ -489,9 +372,7 @@ export default {
       return ts ? dayjs(ts).format('HH:mm:ss') : ''
     },
 
-    hrLevel,
-
-    // setPageSize(27) → chartPageMixin（公式：floor(clientHeight / 27), min 10）
+    hrLevel
   }
 }
 </script>

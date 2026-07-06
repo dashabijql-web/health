@@ -1,38 +1,30 @@
 <template>
-  <div class="hm-page-shell sc-war-room">
-    <PageHeroHeader
-      class="sc-incident-hero"
-      variant="cockpit"
-      eyebrow="Field Command"
-      title="安全指挥中心"
-      :description="safetyHeroDescription"
-    >
-      <template #meta>
-        <div class="sc-hero-meta">
-          <span :class="['sc-live-dot', isSafe ? 'is-safe' : 'is-danger']"></span>
-          <span :class="['hm-status-chip', isSafe ? 'hm-status-chip--success' : 'hm-status-chip--danger']">
-            {{ isSafe ? '现场平稳' : '高危介入' }}
-          </span>
-          <span class="sc-hero-date">{{ currentDate }}</span>
-          <span class="sc-hero-time">{{ currentTime }}</span>
+  <div class="sc-war-room">
+    <header :class="['sc-hd', !isSafe && 'is-danger']">
+      <div class="sc-hd-left">
+        <span :class="['sc-hd-beacon', isSafe ? 'is-safe' : 'is-danger']"></span>
+        <h1 class="sc-hd-title">安全指挥中心</h1>
+        <span :class="['sc-hd-badge', isSafe ? 'tone-safe' : 'tone-danger']">
+          {{ isSafe ? '现场平稳' : '高危介入' }}
+        </span>
+      </div>
+      <div class="sc-hd-kpis">
+        <button v-for="m in safetyMetricItems" :key="m.key" type="button"
+          :class="['sc-hd-kpi', `tone-${m.tone}`]"
+          @click="handleSafetyMetricSelect(m)">
+          <span class="sc-hd-kpi-v">{{ m.value }}</span>
+          <span class="sc-hd-kpi-l">{{ m.label }}</span>
+        </button>
+      </div>
+      <div class="sc-hd-right">
+        <span class="sc-hd-clock">{{ currentDate }} {{ currentTime }}</span>
+        <div class="sc-hd-actions">
+          <button class="sc-hd-btn sc-hd-btn--outline" @click="emergencyCall">呼叫</button>
+          <button class="sc-hd-btn sc-hd-btn--outline" @click="emergencyBroadcast">广播</button>
+          <button class="sc-hd-btn sc-hd-btn--danger" @click="emergencyEvacuate">撤离</button>
         </div>
-      </template>
-      <template #actions>
-        <div class="sc-emergency-actions">
-          <button class="eb eb-o" @click="emergencyCall">呼叫</button>
-          <button class="eb eb-o" @click="emergencyBroadcast">广播</button>
-          <button class="eb eb-r" @click="emergencyEvacuate">撤离</button>
-        </div>
-      </template>
-    </PageHeroHeader>
-
-    <MetricStrip
-      class="sc-command-ribbon"
-      :items="safetyMetricItems"
-      dense
-      clickable
-      @select="handleSafetyMetricSelect"
-    />
+      </div>
+    </header>
 
     <section class="sc-war-grid">
       <div class="sc-situation-stage sc-panel panel-enter" style="--delay:.05s">
@@ -222,8 +214,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
-import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 import RiskPersonPanel from './components/RiskPersonPanel.vue'
 import SafetyCommandSupportGrid from './components/SafetyCommandSupportGrid.vue'
 import SafetyCommandDialogs from './components/SafetyCommandDialogs.vue'
@@ -264,9 +254,6 @@ const {
 // ── Derived KPI ───────────────────────────────────────────────────────────────
 const isSafe = computed(() => stats.value.sos === 0 && stats.value.fall === 0)
 const pendingCount = computed(() => events.value.length)
-const safetyHeroDescription = computed(() =>
-  `当前待处置 ${pendingCount.value} 条，已闭环 ${handledCount.value} 条，手表在线 ${watchStatus.value.online}/${watchStatus.value.total || '--'}。`
-)
 const safetyMetricItems = computed(() => [
   {
     key: 'underground',

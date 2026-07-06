@@ -174,7 +174,7 @@ async function runPreflight(kind) {
 
   checks.push(await checkEnvVar('SQL_PASSWORD', process.env.SQL_PASSWORD || '', true, 'pipeline 写入/回归测试需要 SQL_PASSWORD'))
   checks.push(await checkCommand('sqlcmd', process.env.SQLCMD_BIN || 'sqlcmd', ['-?'], true, '先安装 sqlcmd 或设置 SQLCMD_BIN'))
-  checks.push(await checkTcp('sql-server', parseSqlServerPort(process.env.SQL_SERVER || 'localhost,11433'), true, '启动 SQL Server'))
+  checks.push(await checkTcp('sql-server', parseSqlServerPort(process.env.SQL_SERVER || 'localhost,1433'), true, '启动 SQL Server'))
   checks.push(await checkTcp('tcp-9000', 9000, true, '启动 HealthData 后端 TCP 监听'))
   checks.push(await checkTcp('redis-6379', 6379, true, '启动 Redis 后再跑 pipeline/full'))
   return checks

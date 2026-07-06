@@ -9,57 +9,45 @@
   color: #c8d8e8;
 }
 
-.page-header {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 24px;
-  margin-bottom: 16px;
-  background: linear-gradient(135deg, #0d1b4b 0%, #1a2a6c 50%, #0d1b4b 100%);
-  border: 1px solid #2a3f7a;
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0, 100, 200, 0.2);
+// ── Compact Header ──
+.rm-hd {
+  height: 56px; flex-shrink: 0; display: flex; align-items: center;
+  padding: 0 22px; gap: 16px;
+  background: rgba(0, 6, 24, 0.65);
+  border-bottom: 1px solid rgba(0,212,255,0.12);
+  border-radius: 10px; margin-bottom: 16px;
 }
-
-.page-header-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+.rm-hd-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.rm-live-dot {
+  width: 9px; height: 9px; border-radius: 50%; background: #00d4ff;
+  box-shadow: 0 0 8px rgba(0,212,255,0.7);
+  animation: rmPulse 2s ease-in-out infinite;
 }
-
-.header-icon {
-  font-size: 36px;
+@keyframes rmPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.75); }
+}
+.rm-hd-title {
+  font-size: 20px; font-weight: 700; margin: 0; letter-spacing: 2px;
+  background: linear-gradient(90deg, #00d4ff, #4facfe);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.rm-hd-kpis { flex: 1; display: flex; justify-content: center; gap: 0; }
+.rm-kpi {
+  display: flex; flex-direction: column; align-items: center; padding: 0 20px;
+  border-right: 1px solid rgba(0,212,255,0.12);
+  &:first-child { border-left: 1px solid rgba(0,212,255,0.12); }
+}
+.rm-kpi-n {
+  font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1;
   color: #00d4ff;
-  background: rgba(0, 212, 255, 0.1);
-  border-radius: 10px;
-  padding: 8px;
+  &.success { color: #38ef7d; }
+  &.danger { color: #ff5252; }
 }
-
-.main-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-  margin: 0 0 2px;
-  letter-spacing: 1px;
-}
-
-.sub-title {
-  font-size: 12px;
-  color: #7eb8d4;
-  margin: 0;
-}
-
-.header-time {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #7eb8d4;
-  background: rgba(0, 212, 255, 0.06);
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid rgba(0, 212, 255, 0.2);
+.rm-kpi-l { font-size: 10px; color: #8ba6c8; margin-top: 2px; white-space: nowrap; }
+.rm-hd-time {
+  flex-shrink: 0; font-size: 12px; color: #8ba6c8;
+  display: flex; align-items: center; gap: 4px;
 }
 
 .mb-16 {

@@ -72,42 +72,30 @@
       <!-- ─ 中间 ─ -->
       <main class="ps-main">
 
-        <!-- 概况面板：仪表盘 + KPI cards + 压力等级说明 -->
-        <div class="ps-panel ps-overview-panel">
-          <div class="ps-ph">
-            <span class="ps-ph-bar"></span>
-            <span class="ps-ph-title">{{ overviewTitle }}</span>
+        <!-- Hero 区：大仪表盘 + 4 区间卡 -->
+        <div class="ps-hero">
+          <div class="ps-gauge-wrap">
+            <div ref="gaugeRef" class="ps-gauge-chart"></div>
+            <div class="ps-gauge-center">
+              <div class="ps-gauge-val">{{ overview.avgPressure != null ? overview.avgPressure : '--' }}</div>
+              <div class="ps-gauge-sub">平均压力指数</div>
+            </div>
           </div>
-          <div class="ps-overview-body">
-            <!-- 仪表盘 -->
-            <div class="ps-gauge-wrap">
-              <div ref="gaugeRef" class="ps-gauge-chart"></div>
-              <div class="ps-gauge-center">
-                <div class="ps-gauge-val">{{ overview.avgPressure != null ? overview.avgPressure : '--' }}</div>
-                <div class="ps-gauge-sub">平均压力指数</div>
-              </div>
-            </div>
-            <!-- KPI 小卡片 -->
-            <div class="ps-kpi-cards">
-              <div class="ps-kpi-card" v-for="c in ovAllCards" :key="c.label">
-                <div class="ps-kpi-card-val" :style="{color: c.color}">{{ c.val }}<span class="ps-kpi-card-unit">{{ c.unit }}</span></div>
-                <div class="ps-kpi-card-label">{{ c.label }}</div>
-              </div>
-            </div>
-            <!-- 压力等级说明 -->
-            <div class="ps-range-info">
-              <div class="ps-range-title">压力等级说明</div>
-              <div class="ps-range-item" v-for="r in psRanges" :key="r.label">
-                <span class="ps-range-dot" :style="{background: r.color}"></span>
-                <span class="ps-range-name" :style="{color: r.color}">{{ r.label }}</span>
-                <span class="ps-range-val">{{ r.range }}</span>
+          <div class="ps-zone-cards">
+            <div v-for="z in psZones" :key="z.key" :class="['ps-zone-card', z.cls]">
+              <span class="ps-zone-icon" :style="{color: z.color}">{{ z.icon }}</span>
+              <span class="ps-zone-count" :style="{color: z.color}">{{ z.count }}<em>人</em></span>
+              <span class="ps-zone-label">{{ z.label }}</span>
+              <span class="ps-zone-range">{{ z.range }}</span>
+              <div class="ps-zone-pct-bar">
+                <div class="ps-zone-pct-fill" :style="{ width: z.pct + '%', background: z.color }"></div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 中间行：趋势折线 + 分布饼图 -->
-        <div class="ps-mid-row">
+        <!-- 图表行：趋势 + 分布饼图 -->
+        <div class="ps-charts-row">
           <div class="ps-panel ps-panel-hourly">
             <div class="ps-ph">
               <span class="ps-ph-bar"></span>
@@ -122,7 +110,6 @@
               <div ref="hourlyRef" style="width:100%;height:100%"></div>
             </div>
           </div>
-
           <div class="ps-panel ps-panel-dist">
             <div class="ps-ph">
               <span class="ps-ph-bar"></span>
@@ -141,29 +128,6 @@
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- 实时区间分布面板 -->
-        <div class="ps-panel ps-panel-dist-stat">
-          <div class="ps-ph">
-            <span class="ps-ph-bar"></span>
-            <span class="ps-ph-title">当前在线人员压力分布</span>
-            <span class="ps-ds-total">共 <em>{{ realtimeList.length }}</em> 人在线</span>
-          </div>
-          <div class="ps-ds-body">
-            <div class="ps-ds-zone" :class="z.cls" v-for="z in psZones" :key="z.key">
-              <div class="ps-ds-icon" :style="{color: z.color}">{{ z.icon }}</div>
-              <div class="ps-ds-count" :style="{color: z.color}">{{ z.count }}</div>
-              <div class="ps-ds-pct" :style="{color: z.color}">{{ z.pct }}%</div>
-              <div class="ps-ds-label">{{ z.label }}</div>
-              <div class="ps-ds-range">{{ z.range }}</div>
-            </div>
-          </div>
-          <div class="ps-ds-bar-row">
-            <div class="ps-ds-seg" v-for="z in psZones" :key="z.key"
-              :style="{width: z.pct + '%', background: z.color}"
-              :title="z.label + ': ' + z.count + '人'"></div>
           </div>
         </div>
 
@@ -206,40 +170,6 @@
         </div>
 
       </main>
-
-      <!-- ─ 右侧：实时压力列表 ─ -->
-      <div class="ps-rtlist">
-        <div class="ps-panel hm-panel-flex">
-          <div class="ps-ph">
-            <span class="ps-ph-bar"></span>
-            <span class="ps-ph-title">实时压力数据</span>
-            <span class="ps-rt-total">{{ realtimeList.length }} 条</span>
-          </div>
-
-          <div class="ps-rt-hd">
-            <span>#</span><span>姓名</span><span>压力</span><span>状态</span><span>时间</span>
-          </div>
-
-          <div class="ps-rt-body" ref="listRef">
-            <div
-              class="ps-rt-row"
-              v-for="(item, i) in filteredRealtimeList"
-              :key="i"
-              :class="psLevel(item.pressure)"
-              @click="goToPortrait(item)"
-              style="cursor:pointer"
-            >
-              <span class="ps-rt-idx">{{ i + 1 }}</span>
-              <span class="ps-rt-name">{{ item.userName }}</span>
-              <span class="ps-rt-val">{{ item.pressure }}</span>
-              <span class="ps-rt-badge" :class="psLevel(item.pressure)">
-                {{ item.pressure >= 85 ? '高压' : item.pressure >= 70 ? '偏高' : item.pressure >= 50 ? '正常' : '放松' }}
-              </span>
-              <span class="ps-rt-time">{{ fmtRtTime(item.recordTime) }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
     </section>
   </div>
@@ -288,8 +218,6 @@ export default {
       deptData: [],
       realtimeList: [],
       filterDept: '',
-      currentPage: 1,
-      pageSize: 20,
       activePeriod: 'month',
       periodOptions: PERIOD_OPTIONS,
       _top5ScrollLoop: null,
@@ -311,20 +239,6 @@ export default {
         { label: '偏高次数',     val: o.abnormalCount != null ? o.abnormalCount : 0,                      cls: 'kpi-yellow' },
         { label: '高压次数',     val: o.highCount     != null ? o.highCount : 0,                          cls: 'kpi-red'    }
       ]
-    },
-    ovAllCards() {
-      const o = this.overview
-      return [
-        { label: '平均压力指数', val: o.avgPressure    != null ? o.avgPressure    : '--', unit: '',    color: '#fb923c' },
-        { label: '正常率',       val: o.normalRate     != null ? o.normalRate     : '--', unit: '%',   color: '#52c41a' },
-        { label: '偏高次数',     val: o.abnormalCount  != null ? o.abnormalCount  : '--', unit: ' 次', color: '#FFB84D' },
-        { label: '高压次数',     val: o.highCount      != null ? o.highCount      : '--', unit: ' 次', color: '#ff5252' },
-        { label: '检测人数',     val: o.detectionCount != null ? o.detectionCount : '--', unit: ' 人', color: '#4FC3F7' },
-        { label: '记录总数',     val: o.totalCount     != null ? (o.totalCount).toLocaleString() : '--', unit: ' 条', color: '#7eb8f7' }
-      ]
-    },
-    overviewTitle() {
-      return { day: '今日压力概况', week: '近7日压力概况', month: '近30日压力概况' }[this.activePeriod]
     },
     hourlyTitle() {
       return { day: '今日24小时压力波动', week: '近7日每日均值', month: '近30日每日均值' }[this.activePeriod]
@@ -368,7 +282,6 @@ export default {
   },
   mounted() {
     this.initPage(() => this.loadRealtime())
-    this.initAutoPageSize(27)
   },
   methods: {
     ...pressureChartMethods,

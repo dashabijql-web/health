@@ -1,21 +1,17 @@
 <template>
-  <div class="hm-page-shell rc-page">
-    <PageHeroHeader
-      class="rc-hero"
-      variant="cockpit"
-      eyebrow="Report Center"
-      title="报表中心"
-      description="月度统计 · 部门对比 · 健康趋势"
-    >
-      <template #meta>
-        <div class="rc-hero-meta">
-          <span class="rc-hero-chip">{{ selectedMonth }}</span>
-          <span class="rc-hero-sub">当前查看 {{ activeTab === 'monthly' ? '月度报表' : activeTab === 'dept' ? '部门对比' : '健康趋势' }}</span>
+  <div class="rc-page">
+    <header class="rc-hd">
+      <div class="rc-hd-left">
+        <span class="rc-live-dot"></span>
+        <h1 class="rc-hd-title">报表中心</h1>
+      </div>
+      <div class="rc-hd-kpis">
+        <div class="rc-kpi" v-for="card in reportOverviewCards" :key="card.label">
+          <span class="rc-kpi-n" :class="'kpi-' + card.tone">{{ card.value }}</span>
+          <span class="rc-kpi-l">{{ card.label }}</span>
         </div>
-      </template>
-      <template #actions>
-        <div class="rc-header-right">
-        <!-- 月份选择 -->
+      </div>
+      <div class="rc-hd-actions">
         <el-date-picker
           v-model="selectedMonth"
           type="month"
@@ -28,21 +24,20 @@
         />
         <el-tooltip :content="reportExportState.excelDisabledReason" :disabled="reportExportState.canExportExcel" placement="bottom">
           <span class="rc-export-wrap">
-            <el-button size="small" type="primary" plain @click="exportExcel" :loading="exporting" :disabled="!reportExportState.canExportExcel">
-              导出 Excel
-            </el-button>
+            <button class="rc-action-btn rc-action-btn--primary" @click="exportExcel" :disabled="exporting || !reportExportState.canExportExcel">
+              {{ exporting ? '导出中...' : '导出 Excel' }}
+            </button>
           </span>
         </el-tooltip>
         <el-tooltip :content="reportExportState.pdfDisabledReason" :disabled="reportExportState.canExportPdf" placement="bottom">
           <span class="rc-export-wrap">
-            <el-button size="small" type="warning" plain @click="exportPdf" :loading="exportingPdf" :disabled="!reportExportState.canExportPdf">
-              导出 PDF
-            </el-button>
+            <button class="rc-action-btn rc-action-btn--warning" @click="exportPdf" :disabled="exportingPdf || !reportExportState.canExportPdf">
+              {{ exportingPdf ? '导出中...' : '导出 PDF' }}
+            </button>
           </span>
         </el-tooltip>
-        </div>
-      </template>
-    </PageHeroHeader>
+      </div>
+    </header>
 
     <!-- ══ Tab ══ -->
     <el-tabs v-model="activeTab" class="rc-tabs" @tab-change="onTabChange">
@@ -53,11 +48,6 @@
 
     <!-- ══ 内容区（可导出区域）══ -->
     <div class="rc-content" ref="reportArea" v-loading="loading">
-      <MetricStrip
-        class="rc-overview-row"
-        :items="reportOverviewMetricItems"
-      />
-
       <div class="rc-ai-card">
         <div class="rc-ai-head">
           <span class="rc-ai-title">AI 报表摘要</span>
@@ -176,8 +166,6 @@
 </template>
 
 <script>
-import MetricStrip from '@/components/health-shell/MetricStrip.vue'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { getHtml2Canvas, getJsPDF, getXLSX } from '@/utils/lazy-vendors'
 import {
   mountReportCenterPage,
@@ -206,7 +194,7 @@ import {
 
 export default {
   name: 'ReportCenter',
-  components: { PageHeroHeader, MetricStrip },
+  components: {},
   data() {
     return createReportCenterState()
   },
@@ -223,21 +211,6 @@ export default {
         trendData: this.trendData,
         trendDays: this.trendDays
       })
-    },
-    reportOverviewMetricItems() {
-      return this.reportOverviewCards.map((card) => ({
-        key: card.label,
-        label: card.label,
-        value: card.value,
-        note: card.sub,
-        tone: card.tone === 'danger'
-          ? 'danger'
-          : card.tone === 'warn'
-            ? 'warning'
-            : card.tone === 'info'
-              ? 'success'
-              : 'primary'
-      }))
     },
     reportExportState() {
       return buildReportExportState({

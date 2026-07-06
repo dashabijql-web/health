@@ -33,7 +33,21 @@
           @send-message="handleSendMessage"
           @send-voice="handleSendVoice"
         />
+
+        <div v-if="!isMobile && totalPages > 1" class="rt-pagination">
+          <button class="rt-pg-btn" :disabled="currentPage <= 1" @click="currentPage--">&lsaquo;</button>
+          <span class="rt-pg-info">{{ currentPage }} / {{ totalPages }}</span>
+          <button class="rt-pg-btn" :disabled="currentPage >= totalPages" @click="currentPage++">&rsaquo;</button>
+          <span class="rt-pg-total">共 {{ filteredUserList.length }} 条</span>
+        </div>
       </main>
+
+      <RealtimeWarningSidebar
+        :warning-users="warningUsers"
+        @send-message="handleSendMessage"
+        @send-voice="handleSendVoice"
+        @show-detail="showUserDetail"
+      />
     </section>
 
     <el-dialog
@@ -99,6 +113,8 @@
       v-model:visible="detailVisible"
       :user="detailUser"
       :items="detailItems"
+      @send-message="handleSendMessage"
+      @send-voice="handleSendVoice"
     />
   </div>
 </template>
@@ -113,10 +129,11 @@ import { createRealtimePageState, realtimeComputed } from './realtime-view-model
 import RealtimeDetailDialog from './components/RealtimeDetailDialog.vue'
 import RealtimeHeader from './components/RealtimeHeader.vue'
 import RealtimeUserTable from './components/RealtimeUserTable.vue'
+import RealtimeWarningSidebar from './components/RealtimeWarningSidebar.vue'
 
 export default {
   name: 'RealtimeMonitor',
-  components: { RealtimeDetailDialog, RealtimeHeader, RealtimeUserTable },
+  components: { RealtimeDetailDialog, RealtimeHeader, RealtimeUserTable, RealtimeWarningSidebar },
   setup() {
     const instance = getCurrentInstance()
     const { currentTime, startClock, stopClock } = useClock('HH:mm:ss')

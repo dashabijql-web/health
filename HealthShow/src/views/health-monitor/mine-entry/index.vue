@@ -1,60 +1,43 @@
 <template>
-  <div class="hm-page-shell me-root">
-    <header class="me-shell-head">
-      <PageHeroHeader
-        class="me-hero"
-        variant="cockpit"
-        eyebrow="Mine Entry"
-        title="入井健康准入系统"
-        :description="heroDescription"
-      >
-        <template #meta>
-          <div class="me-hero-meta">
-            <span class="hm-status-chip hm-status-chip--success">
-              <span class="me-live-dot"></span>
-              今日 {{ currentDate }} 班前筛查
-            </span>
-            <span v-if="route.query.empCode" class="hm-status-chip">画像来源 {{ route.query.empCode }}</span>
-          </div>
-        </template>
-        <template #actions>
-          <button v-if="route.query.empCode" type="button" class="hm-action-btn" @click="backToProfile">返回画像</button>
-          <button type="button" class="hm-action-btn hm-action-btn--primary" @click="load">
-            <el-icon><Refresh /></el-icon>
-            刷新
-          </button>
-        </template>
-      </PageHeroHeader>
-      <MetricStrip
-        class="me-summary-strip"
-        :items="summaryMetricItems"
-        dense
-      />
-
-      <div class="hm-filter-toolbar hm-filter-toolbar--dense me-toolbar">
-        <div class="hm-filter-toolbar__group">
-          <el-input
-            v-model="searchText"
-            placeholder="搜索姓名/部门"
-            size="small"
-            clearable
-            class="me-toolbar-input"
-            prefix-icon="Search"
-          />
-          <el-select v-model="filterDept" placeholder="全部部门" size="small" clearable class="me-toolbar-select">
-            <el-option v-for="d in deptOptions" :key="d" :label="d" :value="d" />
-          </el-select>
-          <el-select v-model="filterStatus" placeholder="全部状态" size="small" class="me-toolbar-select me-toolbar-select--status">
-            <el-option label="全部" value="" />
-            <el-option label="准入" value="pass" />
-            <el-option label="禁入" value="fail" />
-          </el-select>
+  <div class="me-root">
+    <header class="me-hd">
+      <div class="me-hd-left">
+        <span class="me-live-dot"></span>
+        <h1 class="me-hd-title">入井健康准入</h1>
+      </div>
+      <div class="me-hd-kpis">
+        <div class="me-kpi">
+          <span class="me-kpi-n primary">{{ summary.totalToday || 0 }}</span>
+          <span class="me-kpi-l">今日检测</span>
         </div>
-        <div class="hm-filter-toolbar__spacer"></div>
-        <div class="hm-filter-toolbar__meta">
-          <span class="hm-toolbar-chip">{{ filteredList.length }} 人</span>
-          <span class="hm-toolbar-chip">{{ failList.length }} 人禁入</span>
+        <div class="me-kpi">
+          <span class="me-kpi-n success">{{ summary.qualifiedCount || 0 }}</span>
+          <span class="me-kpi-l">准入通过</span>
         </div>
+        <div class="me-kpi">
+          <span class="me-kpi-n" :class="summary.failedCount > 0 ? 'danger' : 'success'">{{ summary.failedCount || 0 }}</span>
+          <span class="me-kpi-l">禁止入井</span>
+        </div>
+        <div class="me-kpi">
+          <span class="me-kpi-n" :class="rateClass">{{ summary.preShiftRate !== null ? summary.preShiftRate + '%' : '--' }}</span>
+          <span class="me-kpi-l">达标率</span>
+        </div>
+      </div>
+      <div class="me-hd-time">{{ currentDate }}</div>
+      <div class="me-hd-actions">
+        <el-input v-model="searchText" placeholder="搜索姓名/部门" size="small" clearable class="me-toolbar-input" prefix-icon="Search" />
+        <el-select v-model="filterDept" placeholder="全部部门" size="small" clearable class="me-toolbar-select">
+          <el-option v-for="d in deptOptions" :key="d" :label="d" :value="d" />
+        </el-select>
+        <el-select v-model="filterStatus" placeholder="全部状态" size="small" class="me-toolbar-select">
+          <el-option label="全部" value="" />
+          <el-option label="准入" value="pass" />
+          <el-option label="禁入" value="fail" />
+        </el-select>
+        <button v-if="route.query.empCode" type="button" class="me-back-btn" @click="backToProfile">返回画像</button>
+        <button type="button" class="me-refresh-btn" @click="load" :disabled="loading">
+          <el-icon><Refresh /></el-icon> {{ loading ? '刷新中...' : '刷新' }}
+        </button>
       </div>
     </header>
 
@@ -75,11 +58,9 @@
 
     <div class="me-table-wrap" v-loading="loading">
       <div v-if="!loading && filteredList.length === 0" class="me-empty">
-        <PageEmptyState
-          eyebrow="Access Queue"
-          title="今日暂无检测数据"
-          description="可以等待下一轮班前检测，或切换筛选条件查看其它状态记录。"
-        />
+        <div class="me-empty-icon">MINE</div>
+        <div class="me-empty-title">今日暂无检测数据</div>
+        <div class="me-empty-desc">可以等待下一轮班前检测，或切换筛选条件查看其它状态记录。</div>
       </div>
 
       <div v-if="failList.length && (filterStatus === '' || filterStatus === 'fail')">
@@ -198,9 +179,6 @@ import { getMineEntryList, getPreShiftCompliance } from '@/api/health'
 import dayjs from 'dayjs'
 import { exportToExcel } from '@/utils/export-excel'
 import { useIntervalTask } from '@/composables/useIntervalTask'
-import MetricStrip from '@/components/health-shell/MetricStrip.vue'
-import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import {
   bloodPressureClass,
   mineEntryFailReasons,
@@ -249,37 +227,6 @@ const summary = ref({ totalToday: 0, qualifiedCount: 0, failedCount: 0, preShift
 const rateClass = computed(() => {
   return mineEntryRateClass(summary.value.preShiftRate)
 })
-const heroDescription = computed(() => {
-  const rateText = summary.value.preShiftRate !== null ? `${summary.value.preShiftRate}%` : '--'
-  return `当前共检测 ${summary.value.totalToday || 0} 人，准入通过 ${summary.value.qualifiedCount || 0} 人，禁入 ${summary.value.failedCount || 0} 人，班前达标率 ${rateText}。`
-})
-const summaryMetricItems = computed(() => [
-  {
-    label: '今日检测',
-    value: `${summary.value.totalToday || 0} 人`,
-    note: '班前健康筛查总量',
-    tone: 'primary'
-  },
-  {
-    label: '准入通过',
-    value: `${summary.value.qualifiedCount || 0} 人`,
-    note: '体征符合下井标准',
-    tone: 'success'
-  },
-  {
-    label: '禁止入井',
-    value: `${summary.value.failedCount || 0} 人`,
-    note: '存在异常项需复核',
-    tone: summary.value.failedCount > 0 ? 'danger' : 'success'
-  },
-  {
-    label: '班前达标率',
-    value: summary.value.preShiftRate !== null ? `${summary.value.preShiftRate}%` : '--',
-    note: '当日准入通过占比',
-    tone: summary.value.preShiftRate >= 90 ? 'success' : summary.value.preShiftRate >= 75 ? 'warning' : 'danger'
-  }
-])
-
 const deptOptions = computed(() => {
   const s = new Set(entryList.value.map(e => e.deptName).filter(Boolean))
   return [...s].sort()

@@ -47,7 +47,8 @@ public class WatchDataHandler extends SimpleChannelInboundHandler<WatchMessage> 
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, WatchMessage msg) {
-        WatchMessageHandlerContext context = new WatchMessageHandlerContext(ctx, msg, deviceManager, dataService);
+        WatchMessageHandlerContext context = new WatchMessageHandlerContext(
+                ctx, msg, deviceManager, dataService, rawPacketService);
         try {
             msg.setChannel(ctx.channel());
             String protocolCode = msg.getProtocolCode();

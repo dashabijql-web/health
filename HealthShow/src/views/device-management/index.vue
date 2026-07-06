@@ -1,62 +1,18 @@
 <template>
-  <div class="hm-admin-page device-management-container">
-    <PageHeroHeader
-      variant="admin"
-      eyebrow="Device Control"
-      title="设备管理"
-      description="管理智能手表设备、绑定关系、在线状态和数据缓冲。"
-    >
-      <template #meta>
-        <div class="hm-admin-page__hero-meta">
-          <span class="hm-toolbar-chip">设备总数 {{ deviceStats.total }}</span>
-          <span class="hm-toolbar-chip">在线 {{ deviceStats.online }}</span>
-        </div>
-      </template>
-      <template #actions>
-        <div class="hm-admin-page__clock"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-      </template>
-    </PageHeroHeader>
-
-    <!-- 统计卡片 -->
-    <el-row :gutter="16" class="mb-16" v-loading="loading" element-loading-background="rgba(10,14,39,0.6)">
-      <el-col :span="6">
-        <div class="stat-card">
-          <div class="stat-icon-wrap primary"><el-icon size="26"><Monitor /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ deviceStats.total }}</div>
-            <div class="stat-label">设备总数</div>
-          </div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card">
-          <div class="stat-icon-wrap success"><el-icon size="26"><CircleCheck /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ deviceStats.online }}</div>
-            <div class="stat-label">在线设备</div>
-          </div>
-          <div class="stat-badge">实时</div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card">
-          <div class="stat-icon-wrap warning"><el-icon size="26"><Connection /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ deviceStats.bound }}</div>
-            <div class="stat-label">已绑定</div>
-          </div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card">
-          <div class="stat-icon-wrap info"><el-icon size="26"><Document /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ deviceStats.bufferTotal }}</div>
-            <div class="stat-label">缓冲数据</div>
-          </div>
-        </div>
-      </el-col>
-    </el-row>
+  <div class="device-management-container">
+    <header class="dm-hd">
+      <div class="dm-hd-left">
+        <span class="dm-live-dot"></span>
+        <h1 class="dm-hd-title">设备管理</h1>
+      </div>
+      <div class="dm-hd-kpis">
+        <div class="dm-kpi"><span class="dm-kpi-n">{{ deviceStats.total }}</span><span class="dm-kpi-l">设备总数</span></div>
+        <div class="dm-kpi"><span class="dm-kpi-n success">{{ deviceStats.online }}</span><span class="dm-kpi-l">在线</span></div>
+        <div class="dm-kpi"><span class="dm-kpi-n warning">{{ deviceStats.bound }}</span><span class="dm-kpi-l">已绑定</span></div>
+        <div class="dm-kpi"><span class="dm-kpi-n info">{{ deviceStats.bufferTotal }}</span><span class="dm-kpi-l">缓冲数据</span></div>
+      </div>
+      <div class="dm-hd-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
+    </header>
 
     <!-- 设备列表 -->
     <div class="panel table-panel">
@@ -364,7 +320,6 @@
 </template>
 
 <script setup>
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { Refresh, Monitor, Timer, CircleCheck, Connection, Document, Link, Unlock, Upload, Delete, ChatDotRound, Search } from '@element-plus/icons-vue'
 import { useDeviceManagementPage } from './use-device-management-page'
 

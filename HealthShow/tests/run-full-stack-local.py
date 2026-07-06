@@ -200,7 +200,7 @@ class Runner:
     def get_readiness(self) -> dict[str, Any]:
         stack = self.parse_stack_status()
         return {
-            "sql11433": self.check_port(11433),
+            "sql1433": self.check_port(1433),
             "redis6379": self.check_port(6379),
             "backend8080": self.check_http("http://127.0.0.1:8080/health/actuator/health"),
             "backendTcp9000": self.check_port(9000),
@@ -226,7 +226,7 @@ class Runner:
             [
                 sqlcmd,
                 "-S",
-                "localhost,11433",
+                "localhost,1433",
                 "-U",
                 "sa",
                 "-P",
@@ -428,7 +428,7 @@ class Runner:
                 "HealthData": str(DATA),
                 "frontendUrl": "http://127.0.0.1:9528/",
                 "backendUrl": "http://127.0.0.1:8080/health",
-                "sqlServer": "127.0.0.1:11433",
+                "sqlServer": "127.0.0.1:1433",
                 "redis": "127.0.0.1:6379",
                 "tcp": "127.0.0.1:9000",
             },
@@ -535,7 +535,7 @@ class Runner:
         self.log(f"READINESS {json.dumps(readiness, ensure_ascii=False)}")
         blocked_keys = [
             key
-            for key in ("sql11433", "redis6379", "backend8080", "backendTcp9000", "frontend9528", "sqlPasswordSet")
+            for key in ("sql1433", "redis6379", "backend8080", "backendTcp9000", "frontend9528", "sqlPasswordSet")
             if not readiness[key]
         ]
         if blocked_keys:

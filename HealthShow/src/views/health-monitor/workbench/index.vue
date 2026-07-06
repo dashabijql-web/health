@@ -1,36 +1,45 @@
 <template>
   <div class="wb-page">
-    <PageHeroHeader
-      class="wb-hero"
-      eyebrow="Workbench"
-      title="工作台日历"
-      description="按月查看个人与部门健康轨迹，并支持导出月度 PDF。"
-    >
-      <template #meta>
-        <div class="wb-hero-meta">
-          <span class="wb-hero-chip">{{ yearLabel }}年 {{ monthLabel }}月</span>
-          <span class="wb-hero-sub">{{ summary.totalDays }} 天有数据</span>
+    <header class="wb-hd">
+      <div class="wb-hd-left">
+        <span class="wb-live-dot"></span>
+        <h1 class="wb-hd-title">工作台日历</h1>
+      </div>
+      <div class="wb-hd-kpis">
+        <div class="wb-kpi">
+          <span class="wb-kpi-n">{{ summary.totalDays }}</span>
+          <span class="wb-kpi-l">有数据天数</span>
         </div>
-      </template>
-      <template #actions>
-        <div class="wb-header">
-          <div class="wb-nav">
-            <el-button :icon="ArrowLeft" circle size="small" @click="prevMonth" />
-            <span class="wb-month-label">{{ yearLabel }}年 {{ monthLabel }}月</span>
-            <el-button :icon="ArrowRight" circle size="small" @click="nextMonth" :disabled="isCurrentMonth" />
-          </div>
-          <button v-if="route.query.empCode" class="wb-profile-btn" @click="backToProfile">返回画像</button>
-          <div class="wb-legend">
-            <span class="leg-dot leg-good"></span><span>健康</span>
-            <span class="leg-dot leg-warn"></span><span>有预警</span>
-            <span class="leg-dot leg-empty"></span><span>无数据</span>
-          </div>
-          <el-button class="wb-pdf-btn" :loading="pdfExporting" @click="exportPDF" size="small">
-            {{ pdfExporting ? '生成中...' : '导出月度PDF' }}
-          </el-button>
+        <div class="wb-kpi good">
+          <span class="wb-kpi-n">{{ summary.goodDays }}</span>
+          <span class="wb-kpi-l">健康天数</span>
         </div>
-      </template>
-    </PageHeroHeader>
+        <div class="wb-kpi warn">
+          <span class="wb-kpi-n">{{ summary.warnDays }}</span>
+          <span class="wb-kpi-l">预警天数</span>
+        </div>
+        <div class="wb-kpi danger">
+          <span class="wb-kpi-n">{{ summary.totalWarnings.toLocaleString() }}</span>
+          <span class="wb-kpi-l">月度预警人次</span>
+        </div>
+      </div>
+      <div class="wb-hd-nav">
+        <el-button :icon="ArrowLeft" circle size="small" @click="prevMonth" />
+        <span class="wb-month-label">{{ yearLabel }}年 {{ monthLabel }}月</span>
+        <el-button :icon="ArrowRight" circle size="small" @click="nextMonth" :disabled="isCurrentMonth" />
+      </div>
+      <div class="wb-hd-actions">
+        <div class="wb-legend">
+          <span class="leg-dot leg-good"></span><span>健康</span>
+          <span class="leg-dot leg-warn"></span><span>预警</span>
+          <span class="leg-dot leg-empty"></span><span>无数据</span>
+        </div>
+        <button v-if="route.query.empCode" class="wb-profile-btn" @click="backToProfile">返回画像</button>
+        <el-button class="wb-pdf-btn" :loading="pdfExporting" @click="exportPDF" size="small">
+          {{ pdfExporting ? '生成中...' : '导出月度PDF' }}
+        </el-button>
+      </div>
+    </header>
 
     <!-- 统计卡片 -->
     <div class="wb-stats">
@@ -202,7 +211,6 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { ArrowLeft, ArrowRight, Close } from '@element-plus/icons-vue'
 import { getCalendarData, getDayHeartRateRank, getDayBloodOxygenRank, getDayStepsRank, getDayWarnings } from '@/api/workbench'
 import { getDeptHealthComparison } from '@/api/health'

@@ -3,6 +3,7 @@ package com.xzkj.health.handler.watch;
 import com.xzkj.health.protocol.WatchMessage;
 import com.xzkj.health.service.DataProcessService;
 import com.xzkj.health.service.DeviceManagerService;
+import com.xzkj.health.service.watch.WatchRawPacketService;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -15,15 +16,18 @@ public final class WatchMessageHandlerContext {
     private final WatchMessage message;
     private final DeviceManagerService deviceManager;
     private final DataProcessService dataService;
+    private final WatchRawPacketService rawPacketService;
 
     public WatchMessageHandlerContext(ChannelHandlerContext nettyContext,
                                       WatchMessage message,
                                       DeviceManagerService deviceManager,
-                                      DataProcessService dataService) {
+                                      DataProcessService dataService,
+                                      WatchRawPacketService rawPacketService) {
         this.nettyContext = nettyContext;
         this.message = message;
         this.deviceManager = deviceManager;
         this.dataService = dataService;
+        this.rawPacketService = rawPacketService;
     }
 
     public ChannelHandlerContext nettyContext() {
@@ -73,10 +77,11 @@ public final class WatchMessageHandlerContext {
     public void sendErrorResponse(String error) {
         String protocolCode = message.getProtocolCode();
         String responseCode = protocolCode != null ? protocolCode.replace("AP", "BP") : "BPER";
-        writeRaw("IW*" + responseCode + "*" + error + "#");
+        writeRaw("IW" + responseCode + "," + error + "#");
     }
 
     public void writeAscii(String payload) {
+        rawPacketService.captureOutgoing(payload, imei(), String.valueOf(channel().remoteAddress()));
         ByteBuf buffer = nettyContext.alloc().buffer(payload.length());
         buffer.writeBytes(payload.getBytes(StandardCharsets.US_ASCII));
         nettyContext.writeAndFlush(buffer);

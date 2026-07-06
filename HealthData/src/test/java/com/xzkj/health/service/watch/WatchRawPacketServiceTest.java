@@ -25,6 +25,23 @@ class WatchRawPacketServiceTest {
         assertTrue(page.list().get(0).rawMessage().startsWith("IWAPHP"));
     }
 
+    @Test
+    void capturesOutgoingPacketsAndFiltersByDirection() {
+        WatchRawPacketService service = new WatchRawPacketService();
+
+        service.capture(message("AP00", "861265063894429", "IWAP00861265063894429#"), "861265063894429", "/10.8.138.184:2369");
+        service.captureOutgoing("IWBPXL,861265063894429,123456#", "861265063894429", "/10.8.138.184:2369");
+
+        WatchRawPacketService.RawPacketPage page = service.query("861265063894429", "BPXL", "TX", 10);
+
+        assertEquals(2, page.totalBuffered());
+        assertEquals(1, page.returnedCount());
+        assertEquals("TX", page.list().get(0).direction());
+        assertEquals("BPXL", page.list().get(0).protocolCode());
+        assertEquals(2, page.list().get(0).paramCount());
+        assertEquals("861265063894429", page.list().get(0).params().get(0));
+    }
+
     private WatchMessage message(String protocolCode, String imei, String raw) {
         WatchMessage message = new WatchMessage();
         message.setProtocolCode(protocolCode);

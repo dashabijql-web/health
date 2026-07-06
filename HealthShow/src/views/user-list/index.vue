@@ -1,62 +1,18 @@
 <template>
-  <div class="hm-admin-page user-list-container">
-    <PageHeroHeader
-      variant="admin"
-      eyebrow="User Directory"
-      title="用户管理"
-      description="管理平台注册用户、账户状态、部门归属和健康数据入口。"
-    >
-      <template #meta>
-        <div class="hm-admin-page__hero-meta">
-          <span class="hm-toolbar-chip">总用户 {{ stats.totalUsers }}</span>
-          <span class="hm-toolbar-chip">活跃 {{ stats.activeUsers }}</span>
-        </div>
-      </template>
-      <template #actions>
-        <div class="hm-admin-page__clock"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
-      </template>
-    </PageHeroHeader>
-
-    <!-- 统计卡片 -->
-    <el-row :gutter="16" class="mb-16">
-      <el-col :span="6">
-        <div class="stat-card">
-          <div class="stat-icon-wrap primary"><el-icon size="26"><User /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ stats.totalUsers }}</div>
-            <div class="stat-label">总用户数</div>
-          </div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card">
-          <div class="stat-icon-wrap success"><el-icon size="26"><CircleCheck /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ stats.activeUsers }}</div>
-            <div class="stat-label">活跃用户</div>
-          </div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card">
-          <div class="stat-icon-wrap warning"><el-icon size="26"><Monitor /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ stats.onlineUsers }}</div>
-            <div class="stat-label">在线用户</div>
-          </div>
-          <div class="stat-badge">实时</div>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="stat-card">
-          <div class="stat-icon-wrap info"><el-icon size="26"><TrendCharts /></el-icon></div>
-          <div class="stat-body">
-            <div class="stat-value">{{ stats.onlineRate }}<span class="unit">%</span></div>
-            <div class="stat-label">在线率</div>
-          </div>
-        </div>
-      </el-col>
-    </el-row>
+  <div class="user-list-container">
+    <header class="ul-hd">
+      <div class="ul-hd-left">
+        <span class="ul-live-dot"></span>
+        <h1 class="ul-hd-title">用户管理</h1>
+      </div>
+      <div class="ul-hd-kpis">
+        <div class="ul-kpi"><span class="ul-kpi-n">{{ stats.totalUsers }}</span><span class="ul-kpi-l">总用户</span></div>
+        <div class="ul-kpi"><span class="ul-kpi-n success">{{ stats.activeUsers }}</span><span class="ul-kpi-l">活跃</span></div>
+        <div class="ul-kpi"><span class="ul-kpi-n warning">{{ stats.onlineUsers }}</span><span class="ul-kpi-l">在线</span></div>
+        <div class="ul-kpi"><span class="ul-kpi-n info">{{ stats.onlineRate }}%</span><span class="ul-kpi-l">在线率</span></div>
+      </div>
+      <div class="ul-hd-time"><el-icon><Timer /></el-icon>{{ currentTime }}</div>
+    </header>
 
     <!-- 搜索区 -->
     <div class="panel mb-16">
@@ -309,7 +265,6 @@
 </template>
 
 <script>
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import {
   Search,
   Refresh,
@@ -332,7 +287,7 @@ import { useUserListPage } from './use-user-list-page'
 
 export default {
   name: 'UserList',
-  components: { PageHeroHeader },
+  components: {},
   setup() {
     return {
       CircleCheck,

@@ -127,6 +127,10 @@
   width: 160px;
 }
 
+.wr-direction-select {
+  width: 130px;
+}
+
 .wr-limit-select {
   width: 150px;
 }
@@ -142,6 +146,21 @@
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+}
+
+.wr-direction-tag {
+  width: 48px;
+  justify-content: center;
+}
+
+.wr-protocol-meaning {
+  display: block;
+  color: #d8ecff;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wr-param-tag {
@@ -223,6 +242,7 @@
 
   .wr-imei-input,
   .wr-protocol-select,
+  .wr-direction-select,
   .wr-limit-select {
     width: 100%;
   }

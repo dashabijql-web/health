@@ -2,23 +2,27 @@
   <div class="page-container alert-config-page">
     <WarningCenterNav />
 
-    <PageHeroHeader
-      class="config-hero"
-      variant="admin"
-      eyebrow="Alert Configuration"
-      title="预警阈值配置"
-      description="配置各项生理指标的正常、预警和危险范围，保证岗位风险切换时阈值逻辑可追踪。"
-    >
-      <template #meta>
-        <div class="config-hero-meta">
-          <span class="hm-status-chip">{{ currentRiskLabel }}</span>
-          <span class="hm-status-chip hm-status-chip--success">启用 {{ enabledCount }}</span>
-          <span class="hm-status-chip">当前时间 {{ currentTime }}</span>
+    <header class="ac-hd">
+      <div class="ac-hd-left">
+        <span class="ac-live-dot"></span>
+        <h1 class="ac-hd-title">预警阈值配置</h1>
+      </div>
+      <div class="ac-hd-kpis">
+        <div class="ac-kpi">
+          <span class="ac-kpi-n">{{ configList.length }}</span>
+          <span class="ac-kpi-l">配置总数</span>
         </div>
-      </template>
-    </PageHeroHeader>
-
-    <MetricStrip class="config-summary-strip" :items="summaryStripItems" dense />
+        <div class="ac-kpi success">
+          <span class="ac-kpi-n">{{ enabledCount }}</span>
+          <span class="ac-kpi-l">已启用</span>
+        </div>
+        <div class="ac-kpi">
+          <span class="ac-kpi-n">{{ currentRiskLabel }}</span>
+          <span class="ac-kpi-l">当前视图</span>
+        </div>
+      </div>
+      <div class="ac-hd-time">{{ currentTime }}</div>
+    </header>
 
     <div class="risk-tabs">
       <button v-for="tab in riskTabs" :key="tab.value"
@@ -77,12 +81,10 @@
           <el-button type="primary" size="small" @click="openEdit(item)"><el-icon><Edit /></el-icon> 编辑阈值</el-button>
         </div>
       </div>
-      <div v-if="!loading && filteredConfigList.length === 0" class="config-empty">
-        <PageEmptyState
-          eyebrow="Alert Config"
-          title="该风险等级暂无预警配置"
-          description="可以切换岗位风险标签，或稍后重试以继续核对阈值范围与启用状态。"
-        />
+      <div v-if="!loading && filteredConfigList.length === 0" class="ac-empty">
+        <div class="ac-empty-icon">CFG</div>
+        <div class="ac-empty-title">该风险等级暂无预警配置</div>
+        <div class="ac-empty-desc">可以切换岗位风险标签查看其他配置</div>
       </div>
     </div>
 
@@ -127,9 +129,6 @@
 
 <script setup>
 import WarningCenterNav from '@/components/WarningCenterNav.vue'
-import MetricStrip from '@/components/health-shell/MetricStrip.vue'
-import PageEmptyState from '@/components/health-shell/PageEmptyState.vue'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { Edit } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -161,13 +160,6 @@ const currentRiskLabel = computed(() => {
   const currentTab = riskTabs.find(tab => tab.value === activeRisk.value)
   return currentTab ? currentTab.label : '默认（无工种）'
 })
-const summaryStripItems = computed(() => [
-  { key: 'total', label: '配置总数', value: configList.value.length, note: '所有风险岗位阈值项', tone: 'primary' },
-  { key: 'enabled', label: '已启用', value: enabledCount.value, note: '当前处于生效状态', tone: 'success' },
-  { key: 'disabled', label: '已停用', value: Math.max(configList.value.length - enabledCount.value, 0), note: '已暂停触发告警', tone: 'warning' },
-  { key: 'scope', label: '当前视图', value: filteredConfigList.value.length, note: currentRiskLabel.value, tone: 'primary' }
-])
-
 const loadConfigList = async () => {
   loading.value = true
   try {
@@ -257,20 +249,71 @@ onMounted(() => loadConfigList())
   box-sizing: border-box;
 }
 
-.config-hero {
-  margin-bottom: 0;
-}
-
-.config-hero-meta {
-  display: inline-flex;
+// ── 紧凑 Header ──
+.ac-hd {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  padding: 0 22px;
+  gap: 20px;
+  background: rgba(0, 6, 24, 0.65);
+  border-bottom: 1px solid $da-border;
+  border-radius: 10px;
 }
+.ac-hd-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.ac-live-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: $da-accent;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.7);
+  animation: acPulse 2s ease-in-out infinite;
+}
+@keyframes acPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.7); }
+}
+.ac-hd-title {
+  font-size: 20px; font-weight: 700; color: $da-text-bright; margin: 0;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #00d4ff, #4facfe);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.ac-hd-kpis {
+  flex: 1; display: flex; justify-content: center; gap: 0;
+}
+.ac-kpi {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 24px;
+  border-right: 1px solid $da-border;
+  &:first-child { border-left: 1px solid $da-border; }
+  &.success .ac-kpi-n { color: $da-success; }
+}
+.ac-kpi-n {
+  font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1;
+  color: $da-accent;
+}
+.ac-kpi-l { font-size: 11px; color: $da-text-dim; margin-top: 2px; white-space: nowrap; }
+.ac-hd-time { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: $da-text-dim; }
 
-.config-summary-strip {
-  margin-top: -2px;
+// ── 自定义空状态 ──
+.ac-empty {
+  grid-column: 1 / -1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; padding: 60px 20px;
 }
+.ac-empty-icon {
+  width: 56px; height: 56px; border-radius: 16px;
+  background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: $da-accent;
+  font-family: 'Consolas', monospace; letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.ac-empty-title { font-size: 15px; color: $da-text-bright; font-weight: 600; }
+.ac-empty-desc { font-size: 12px; color: $da-text-dim; }
 
 .risk-tabs { display: flex; gap: 8px; margin-top: 16px; flex-shrink: 0; }
 .risk-tab { padding: 7px 18px; border-radius: 20px; border: 1px solid $da-border-light; background: $da-panel; color: $da-text-dim; font-size: 13px; cursor: pointer; transition: all .2s;
@@ -278,7 +321,6 @@ onMounted(() => loadConfigList())
   &.active { background: $da-accent-dim; border-color: $da-accent; color: $da-accent; font-weight: 600; }
 }
 .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; margin-top: 16px; flex: 1; min-height: 0; overflow-y: auto; align-content: start; }
-.config-empty { grid-column: 1 / -1; min-height: 220px; }
 .config-card { background: $da-panel; border: 1px solid $da-border; border-left: 4px solid $da-success; border-radius: 10px; padding: 20px; transition: transform .25s, box-shadow .25s;
   &:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,212,255,.15); }
   &.is-disabled { border-left-color: #4a5578; opacity: .7; }

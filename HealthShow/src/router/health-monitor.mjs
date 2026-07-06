@@ -278,6 +278,17 @@ const healthMonitorRouter = {
         navGroup: 'monitor',
         navOrder: 27
       }
+    },
+    {
+      path: 'watch-control',
+      name: 'WatchControl',
+      component: () => import('@/views/health-monitor/watch-control/index.vue'),
+      meta: {
+        title: '手表控制',
+        icon: 'Cpu',
+        navGroup: 'monitor',
+        navOrder: 28
+      }
     }
   ]
 }

@@ -1,19 +1,20 @@
 @import '@/styles/hm-vars';
 @import '@/styles/hm-layout';
 $purple: #a78bfa;
+$sky:    #38bdf8;
 
 @include hm-body('bp');
 @include hm-main('bp');
 @include hm-panel('bp');
-@include hm-kpi-cards('bp');
-@include hm-pagination('bp');
-$sky:    #38bdf8;
+@include hm-hero-zone('bp');
+@include hm-zone-cards('bp');
+@include hm-charts-row('bp');
 
-// ── Root：自适应视口高度 ──
+// ── Root ──
 .bp-root {
   width: 100%;
-  height: calc(100vh - 50px) !important; /* 视口高度 - 顶部导航栏 */
-  min-height: 600px; /* 最小高度防止过小 */
+  height: calc(100vh - 50px) !important;
+  min-height: 600px;
   background: $bg;
   background-image:
     radial-gradient(circle at 18% 28%, rgba(167,139,250,0.06) 0%, transparent 48%),
@@ -94,9 +95,7 @@ $sky:    #38bdf8;
   &.is-active { color: $bg; background: $purple; font-weight: 700; }
 }
 
-// ── Body（hm-body mixin） ──
-
-// ── Aside（左侧）──
+// ── Aside ──
 .bp-aside {
   width: 260px; flex-shrink: 0;
   display: flex; flex-direction: column; gap: 10px;
@@ -104,25 +103,36 @@ $sky:    #38bdf8;
 .bp-aside-top { height: 200px; flex-shrink: 0; display: flex; flex-direction: column; }
 .bp-aside-bot { flex: 1; }
 
-// ── Main（hm-main mixin） ──
-.bp-overview-panel { height: 162px; flex-shrink: 0; }
-.bp-mid-row {
-  height: 185px; flex-shrink: 0; display: flex; gap: 10px;
-}
+// ── Main ──
 .bp-panel-trend   { flex: 1; min-width: 0; }
-.bp-panel-dist    { flex: 0 0 250px; }
-.bp-panel-hourly  { flex: 0 0 280px; }
-.bp-panel-zones   { flex-shrink: 0; }
-.bp-panel-anomaly { flex-shrink: 0; }
+.bp-panel-hourly  { flex: 1; min-width: 0; }
+.bp-panel-anomaly { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 
-// ── Right list ──
-.bp-rtlist {
-  width: 272px; flex-shrink: 0;
-  display: flex; flex-direction: column; min-height: 0;
-  .bp-panel { flex: 1; min-height: 0; }
+// ── Hero: dual blood pressure display ──
+.bp-dual-wrap {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  background: rgba(167,139,250,0.04);
+  border: 1px solid rgba(167,139,250,0.12);
+  border-radius: 10px; padding: 10px 16px;
+}
+.bp-dual-item { text-align: center; }
+.bp-dual-val {
+  font-size: 38px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1;
+}
+.bp-dual-label { font-size: 12px; color: $text; margin-top: 4px; }
+.bp-dual-unit  { font-size: 10px; color: $dim; font-weight: normal; }
+.bp-dual-sub   { font-size: 10px; color: $dim; margin-top: 2px; }
+.bp-dual-sep   { font-size: 28px; color: $dim; align-self: center; padding-bottom: 6px; }
+
+// ── Zone card border colors ──
+.bp-zone-card {
+  &.zone-normal { border-color: rgba(82,196,26,0.3); }
+  &.zone-pre    { border-color: rgba(255,184,77,0.3); }
+  &.zone-stage1 { border-color: rgba(255,112,67,0.3); }
+  &.zone-danger { border-color: rgba(255,82,82,0.3); }
 }
 
-// ── Panel（hm-panel mixin + 页面特有） ──
+// ── Panel header ──
 .bp-ph {
   height: 38px; flex-shrink: 0;
   display: flex; align-items: center; gap: 8px; padding: 0 12px;
@@ -135,9 +145,8 @@ $sky:    #38bdf8;
   border-radius: 2px;
   box-shadow: 0 0 6px rgba(167,139,250,0.7);
 }
-// ph-title, rt-total, ph-legend, leg-dot, leg-txt, trend-tags, tag, pc → hm-panel mixin
 
-// ── TOP5 紧凑列表 ──
+// ── TOP5 ──
 .bp-top5-empty { padding: 20px 0; text-align: center; color: rgba(167,139,250,0.5); font-size: 12px; }
 .bp-top5-list {
   flex: 1;
@@ -173,91 +182,7 @@ $sky:    #38bdf8;
   &:hover { background: rgba(167,139,250,0.25); }
 }
 
-// ── 概况面板内容 ──
-.bp-overview-body {
-  flex: 1; min-height: 0;
-  display: flex; align-items: center; padding: 8px 14px; gap: 16px;
-}
-.bp-dual-wrap {
-  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
-  background: rgba(167,139,250,0.04);
-  border: 1px solid rgba(167,139,250,0.12);
-  border-radius: 10px; padding: 10px 16px;
-}
-.bp-dual-item { text-align: center; }
-.bp-dual-val {
-  font-size: 38px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1;
-}
-.bp-dual-label { font-size: 12px; color: $text; margin-top: 4px; }
-.bp-dual-unit  { font-size: 10px; color: $dim; font-weight: normal; }
-.bp-dual-sub   { font-size: 10px; color: $dim; margin-top: 2px; }
-.bp-dual-sep   { font-size: 28px; color: $dim; align-self: center; padding-bottom: 6px; }
-
-// kpi-cards → hm-kpi-cards mixin + purple overrides
-.bp-kpi-card {
-  background: rgba(167,139,250,0.04);
-  border: 1px solid rgba(167,139,250,0.1);
-}
-
-// 血压等级说明
-.bp-grade-info {
-  width: 168px; flex-shrink: 0;
-  background: rgba(167,139,250,0.03);
-  border: 1px solid rgba(167,139,250,0.1);
-  border-radius: 8px;
-  padding: 8px 10px;
-  display: flex; flex-direction: column; gap: 5px;
-}
-.bp-grade-title { font-size: 11px; color: $dim; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.5px; }
-.bp-grade-item  { display: flex; align-items: center; gap: 6px; }
-.bp-grade-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.bp-grade-name  { font-size: 10px; width: 62px; flex-shrink: 0; }
-.bp-grade-val   { font-size: 10px; color: $dim; font-family: 'Consolas', monospace; }
-
-// ── 分布图 ──
-.bp-dist-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
-.bp-dist-chart { width: 110px; height: 110px; flex-shrink: 0; }
-.bp-dist-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
-.bp-dist-row { display: flex; align-items: center; gap: 7px; }
-.bp-dist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.bp-dist-name { font-size: 11px; color: $text; flex-shrink: 0; width: 64px; }
-.bp-dist-bar-wrap { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
-.bp-dist-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; opacity: 0.85; }
-.bp-dist-pct { font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; width: 34px; text-align: right; flex-shrink: 0; }
-
-// ── 血压区间分布统计 ──
-.bp-ds-total {
-  margin-left: auto; font-size: 12px; color: $dim;
-  em { color: #93c5fd; font-style: normal; font-weight: 700; }
-}
-.bp-ds-body {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 8px; padding: 6px 0 8px;
-}
-.bp-ds-zone {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px; padding: 10px 8px 8px;
-  text-align: center; transition: background 0.15s;
-  &:hover { background: rgba(255,255,255,0.07); }
-  &.zone-normal { border-color: rgba(82,196,26,0.2);   }
-  &.zone-pre    { border-color: rgba(255,184,77,0.2);  }
-  &.zone-stage1 { border-color: rgba(255,112,67,0.2);  }
-  &.zone-danger { border-color: rgba(255,82,82,0.2);   }
-}
-.bp-ds-icon  { font-size: 16px; margin-bottom: 4px; }
-.bp-ds-count { font-size: 24px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1; }
-.bp-ds-pct   { font-size: 11px; margin-top: 1px; }
-.bp-ds-label { font-size: 13px; font-weight: 600; color: $white; margin-top: 4px; }
-.bp-ds-range { font-size: 10px; color: $dim; margin-top: 2px; }
-.bp-ds-bar-row {
-  display: flex; height: 6px; border-radius: 3px; overflow: hidden;
-  background: rgba(255,255,255,0.05); margin-bottom: 2px;
-}
-.bp-ds-seg { transition: width 0.4s ease; min-width: 0; }
-
 // ── 异常明细面板 ──
-.bp-panel-anomaly { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .bp-anomaly-count {
   margin-left: auto; font-size: 12px; color: #ff7043;
   em { font-style: normal; font-weight: 700; }
@@ -309,57 +234,5 @@ $sky:    #38bdf8;
   .anom-stage1 & { color: #ff7043; background: rgba(255,112,67,0.12); border: 1px solid rgba(255,112,67,0.25); }
 }
 .ba-time  { font-size: 10px; color: $dim; }
-
-// ── 实时列表 ──
-.bp-rt-hd {
-  display: grid; grid-template-columns: 28px 1fr 40px 40px 80px;
-  gap: 6px; padding: 6px 10px; flex-shrink: 0;
-  background: rgba(167,139,250,0.06);
-  span { font-size: 11px; color: $dim; font-weight: 600; }
-}
-.bp-rt-body {
-  flex: 1; overflow-y: auto; padding: 3px 6px; min-height: 0;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.18); border-radius: 2px; }
-}
-.bp-rt-row {
-  display: grid; grid-template-columns: 28px 1fr 40px 40px 80px;
-  gap: 6px; padding: 6px 4px; margin-bottom: 1px;
-  border-radius: 5px; align-items: center;
-  border-left: 2px solid transparent;
-  transition: background 0.2s;
-  &:hover { background: rgba(167,139,250,0.055); }
-  &.normal { border-left-color: rgba(82,196,26,0.45); }
-  &.pre    { border-left-color: rgba(255,184,77,0.55); }
-  &.stage1 { border-left-color: rgba(255,112,67,0.6); }
-  &.danger { border-left-color: rgba(255,82,82,0.7); }
-}
-.bp-rt-idx  { font-size: 11px; color: $dim; font-family: 'Consolas', monospace; text-align: center; }
-.bp-rt-name { font-size: 12px; color: $white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bp-rt-sys  {
-  font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; color: $purple;
-  .bp-rt-row.danger & { color: #ff5252; }
-  .bp-rt-row.stage1 & { color: #ff7043; }
-  .bp-rt-row.pre    & { color: #FFB84D; }
-}
-.bp-rt-dia  {
-  font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; color: $sky;
-  .bp-rt-row.danger & { color: #ff7043; }
-}
-.bp-rt-badge {
-  font-size: 10px; padding: 1px 4px; border-radius: 3px; text-align: center;
-  &.normal { background: rgba(82,196,26,0.13);  color: #52c41a; border: 1px solid rgba(82,196,26,0.28); }
-  &.pre    { background: rgba(255,184,77,0.13); color: #FFB84D; border: 1px solid rgba(255,184,77,0.28); }
-  &.stage1 { background: rgba(255,112,67,0.13); color: #ff7043; border: 1px solid rgba(255,112,67,0.28); }
-  &.danger { background: rgba(255,82,82,0.13);  color: #ff5252; border: 1px solid rgba(255,82,82,0.28); }
-}
-
-// pagination → hm-pagination mixin + purple overrides
-.bp-pg-btn {
-  background: rgba(167,139,250,0.07); border-color: rgba(167,139,250,0.18);
-  color: $purple;
-  &:hover:not(:disabled) { background: rgba(167,139,250,0.16); }
-}
-.bp-pg-info { font-size: 12px; color: $purple; min-width: 44px; text-align: center; }
 
 @include hm-mobile('bp');

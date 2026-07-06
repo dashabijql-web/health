@@ -1,3 +1,44 @@
+.dm-hd {
+  height: 56px; flex-shrink: 0; display: flex; align-items: center;
+  padding: 0 22px; gap: 16px;
+  background: rgba(0, 6, 24, 0.65);
+  border-bottom: 1px solid rgba(0,212,255,0.12);
+  border-radius: 10px; margin-bottom: 16px;
+}
+.dm-hd-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.dm-live-dot {
+  width: 9px; height: 9px; border-radius: 50%; background: #00d4ff;
+  box-shadow: 0 0 8px rgba(0,212,255,0.7);
+  animation: dmPulse 2s ease-in-out infinite;
+}
+@keyframes dmPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.75); }
+}
+.dm-hd-title {
+  font-size: 20px; font-weight: 700; margin: 0; letter-spacing: 2px;
+  background: linear-gradient(90deg, #00d4ff, #4facfe);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.dm-hd-kpis { flex: 1; display: flex; justify-content: center; gap: 0; }
+.dm-kpi {
+  display: flex; flex-direction: column; align-items: center; padding: 0 20px;
+  border-right: 1px solid rgba(0,212,255,0.12);
+  &:first-child { border-left: 1px solid rgba(0,212,255,0.12); }
+}
+.dm-kpi-n {
+  font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1;
+  color: #00d4ff;
+  &.success { color: #38ef7d; }
+  &.warning { color: #ffa726; }
+  &.info { color: #4facfe; }
+}
+.dm-kpi-l { font-size: 10px; color: #8ba6c8; margin-top: 2px; white-space: nowrap; }
+.dm-hd-time {
+  flex-shrink: 0; font-size: 12px; color: #8ba6c8;
+  display: flex; align-items: center; gap: 4px;
+}
+
 .device-management-container {
   padding: 20px;
   background: #0a0e27;

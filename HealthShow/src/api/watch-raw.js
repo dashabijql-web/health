@@ -8,3 +8,12 @@ export function getWatchRawPackets(params = {}) {
     timeout: 10000
   })
 }
+
+export function sendWatchCommand(data) {
+  return request({
+    url: '/api/watch/command',
+    method: 'post',
+    data,
+    timeout: 10000
+  })
+}

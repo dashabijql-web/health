@@ -38,14 +38,14 @@ export function buildDashboardHeaderKpis({
 
   return [
     {
-      label: '今日监测覆盖率',
+      label: '监测覆盖',
       val: coverageRate !== null ? `${coverageRate}%` : '--',
       cls: coverageRate !== null && coverageRate < 80 ? 'kpi-orange' : 'kpi-teal',
       clickable: false,
       sub: total > 0 ? `已监测 ${monitored} / ${total} 人` : '数据加载中...'
     },
     {
-      label: '今日新增预警',
+      label: '新增预警',
       val: kpiTodayWarnings,
       cls: 'kpi-red',
       clickable: true,
@@ -54,14 +54,15 @@ export function buildDashboardHeaderKpis({
       subCls: delta !== null && delta > 0 ? 'sub-up' : 'sub-down'
     },
     {
-      label: '未处理预警',
-      val: `${kpiUnhandledHigh}高危 ${kpiUnhandledMid}中危`,
-      cls: 'kpi-red',
+      label: '高危待处理',
+      val: kpiUnhandledHigh,
+      cls: kpiUnhandledHigh > 0 ? 'kpi-red' : 'kpi-teal',
       clickable: true,
-      route: '/health-monitor/risk-warning'
+      route: '/health-monitor/risk-warning',
+      sub: `中危 ${kpiUnhandledMid}`
     },
     {
-      label: '异常人员数',
+      label: '异常人员',
       val: abnormalUsers,
       cls: 'kpi-orange',
       clickable: true,
@@ -69,13 +70,13 @@ export function buildDashboardHeaderKpis({
       sub: `${periodLabel}累计`
     },
     {
-      label: '健康达标率',
+      label: '健康达标',
       val: healthPassRate !== null ? `${healthPassRate}%` : '--',
       cls: 'kpi-teal',
       clickable: false
     },
     {
-      label: '班前达标率',
+      label: '班前达标',
       val: preShiftData.preShiftRate !== null ? `${preShiftData.preShiftRate}%` : '--',
       cls: preShiftData.preShiftRate !== null && preShiftData.preShiftRate < 80 ? 'kpi-orange' : 'kpi-teal',
       clickable: true,
@@ -229,12 +230,16 @@ export function buildDashboardDeviceCards({ deviceStats, deviceOnline, deviceOff
   const hasDeviceData = (deviceStats.total > 0) || (deviceStats.boundDevices > 0)
   const showVal = (val) => hasDeviceData ? val : '--'
 
+  const total = deviceStats.boundDevices ?? deviceStats.total
+  const onlineRate = hasDeviceData && total > 0 ? Math.round(deviceOnline / total * 100) + '%' : '--'
+
   return [
-    { label: '设备总数', val: showVal(deviceStats.boundDevices ?? deviceStats.total), cls: 'dc-blue', route: { path: '/admin/device-list' } },
+    { label: '设备总数', val: showVal(total), cls: 'dc-blue', route: { path: '/admin/device-list' } },
     { label: '在线设备', val: showVal(deviceOnline), cls: 'dc-green', route: { path: '/admin/device-list', query: { online: 1 } } },
     { label: '离线设备', val: showVal(deviceOffline), cls: 'dc-gray', route: { path: '/admin/device-list', query: { online: 0 } } },
     { label: '预警设备', val: showVal(deviceWarningCount), cls: 'dc-red', route: { path: '/admin/device-list', query: { filter: 'warning' } } },
-    { label: '电量不足', val: showVal(lowBatteryCount), cls: 'dc-orange', route: { path: '/admin/device-list', query: { filter: 'lowBattery' } } }
+    { label: '电量不足', val: showVal(lowBatteryCount), cls: 'dc-orange', route: { path: '/admin/device-list', query: { filter: 'lowBattery' } } },
+    { label: '在线率', val: onlineRate, cls: 'dc-cyan' }
   ]
 }
 

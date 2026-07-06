@@ -172,12 +172,14 @@ public class WatchProtocolDecoder extends ByteToMessageDecoder {
     /**
      * 将文本帧解析为 WatchMessage 对象
      *
-     * 协议格式：IW*协议号*参数1,参数2,...#
+     * 协议格式：
+     *   1. 文档格式：IW*协议号*参数1,参数2,...#
+     *   2. 实表格式：IW协议号参数1,参数2,...#
      *
      * 解析步骤：
-     *   1. 验证前缀 "IW*" 和后缀 "#"
-     *   2. 去掉首尾后得到 "协议号*参数1,参数2,..."
-     *   3. 按第一个 "*" 分割，得到协议号和参数字符串
+     *   1. 验证前缀 "IW" 和后缀 "#"
+     *   2. 优先按带星号格式解析
+     *   3. 如果没有星号，按实表上报的无星号格式解析
      *   4. 验证协议号格式（AP/BP 开头 + 数字或字母）
      *   5. 按逗号分割参数字符串
      *   6. 从特定位置提取 IMEI
@@ -190,24 +192,16 @@ public class WatchProtocolDecoder extends ByteToMessageDecoder {
         // 去除可能的空白字符（如 \r\n）
         frame = frame.trim();
 
-        // 基本格式验证
-        if (!frame.startsWith("IW*") || !frame.endsWith("#")) {
-            throw new IllegalArgumentException("无效的协议格式，必须以'IW*'开头，以'#'结尾");
+        if (!frame.startsWith("IW") || !frame.endsWith("#")) {
+            throw new IllegalArgumentException("无效的协议格式，必须以'IW'开头，以'#'结尾");
         }
 
-        // 去掉 "IW*"（前3个字符）和 "#"（最后1个字符）
-        // 例如："IW*AP49*72#" → "AP49*72"
-        String content = frame.substring(3, frame.length() - 1);
+        ParsedFrame parsedFrame = frame.startsWith("IW*")
+                ? parseStarFrame(frame)
+                : parseCompactFrame(frame);
 
-        // 按第一个 "*" 分割（最多分2份，防止参数中含 * 被多次分割）
-        // 例如："AP49*72" → ["AP49", "72"]
-        String[] parts = content.split("\\*", 2);
-        if (parts.length != 2) {
-            throw new IllegalArgumentException("缺少协议号或参数部分，必须包含'*'分隔符");
-        }
-
-        String protocolCode = parts[0];  // 协议号：AP49
-        String paramsStr = parts[1];      // 参数串：72 或 36.7,90
+        String protocolCode = parsedFrame.protocolCode();  // 协议号：AP49
+        String paramsStr = parsedFrame.paramsStr();        // 参数串：72 或 36.7,90
 
         // 验证协议号格式（必须 AP/BP 开头，后跟大写字母或数字）
         if (!isValidProtocolCode(protocolCode)) {
@@ -239,6 +233,38 @@ public class WatchProtocolDecoder extends ByteToMessageDecoder {
 
         log.debug("解析消息成功: {}", message);
         return message;
+    }
+
+    private ParsedFrame parseStarFrame(String frame) {
+        // 去掉 "IW*"（前3个字符）和 "#"（最后1个字符）
+        // 例如："IW*AP49*72#" → "AP49*72"
+        String content = frame.substring(3, frame.length() - 1);
+
+        // 按第一个 "*" 分割（最多分2份，防止参数中含 * 被多次分割）
+        // 例如："AP49*72" → ["AP49", "72"]
+        String[] parts = content.split("\\*", 2);
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("缺少协议号或参数部分，必须包含'*'分隔符");
+        }
+        return new ParsedFrame(parts[0], parts[1]);
+    }
+
+    private ParsedFrame parseCompactFrame(String frame) {
+        // 实表上报格式没有星号，例如："IWAP00861265063894429#"。
+        // 当前协议族的命令码均为 4 位（AP00/APHP/BP03/BPER），因此去掉 IW/# 后前 4 位为协议号。
+        String content = frame.substring(2, frame.length() - 1);
+        if (content.length() < 4) {
+            throw new IllegalArgumentException("无星号协议内容过短");
+        }
+        String protocolCode = content.substring(0, 4);
+        String paramsStr = content.substring(4);
+        if (paramsStr.startsWith(",")) {
+            paramsStr = paramsStr.substring(1);
+        }
+        return new ParsedFrame(protocolCode, paramsStr);
+    }
+
+    private record ParsedFrame(String protocolCode, String paramsStr) {
     }
 
     /**
@@ -326,7 +352,7 @@ public class WatchProtocolDecoder extends ByteToMessageDecoder {
      */
     private void sendErrorResponse(ChannelHandlerContext ctx, String error) {
         try {
-            String response = "IW*BPER*" + error + "#";
+            String response = "IWBPER," + error + "#";
             ctx.writeAndFlush(ctx.alloc().buffer()
                     .writeBytes(response.getBytes(StandardCharsets.US_ASCII)));
             log.warn("发送错误响应: {}", response);

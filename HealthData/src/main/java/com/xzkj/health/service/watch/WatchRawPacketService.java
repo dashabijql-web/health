@@ -30,6 +30,7 @@ public class WatchRawPacketService {
         RawPacketView packet = new RawPacketView(
                 sequence.incrementAndGet(),
                 TIME_FORMATTER.format(LocalDateTime.now()),
+                "RX",
                 safe(message.getProtocolCode()),
                 safe(imei),
                 safe(remoteAddress),
@@ -38,25 +39,46 @@ public class WatchRawPacketService {
                 message.getParams() == null ? List.of() : List.of(message.getParams())
         );
 
-        synchronized (lock) {
-            packets.addFirst(packet);
-            while (packets.size() > MAX_PACKETS) {
-                packets.removeLast();
-            }
+        append(packet);
+    }
+
+    public void captureOutgoing(String rawMessage, String imei, String remoteAddress) {
+        if (rawMessage == null || rawMessage.isBlank()) {
+            return;
         }
+
+        ParsedRawPacket parsed = parseRawPacket(rawMessage);
+        RawPacketView packet = new RawPacketView(
+                sequence.incrementAndGet(),
+                TIME_FORMATTER.format(LocalDateTime.now()),
+                "TX",
+                parsed.protocolCode(),
+                safe(imei),
+                safe(remoteAddress),
+                parsed.params().size(),
+                rawMessage,
+                parsed.params()
+        );
+
+        append(packet);
     }
 
     public RawPacketPage query(String imei, String protocolCode, Integer limit) {
+        return query(imei, protocolCode, null, limit);
+    }
+
+    public RawPacketPage query(String imei, String protocolCode, String direction, Integer limit) {
         int safeLimit = clampLimit(limit);
         String imeiFilter = normalize(imei);
         String protocolFilter = normalize(protocolCode);
+        String directionFilter = normalize(direction);
 
         List<RawPacketView> result = new ArrayList<>();
         int total;
         synchronized (lock) {
             total = packets.size();
             for (RawPacketView packet : packets) {
-                if (!matches(packet, imeiFilter, protocolFilter)) {
+                if (!matches(packet, imeiFilter, protocolFilter, directionFilter)) {
                     continue;
                 }
                 result.add(packet);
@@ -69,10 +91,60 @@ public class WatchRawPacketService {
         return new RawPacketPage(result, total, result.size(), safeLimit, MAX_PACKETS);
     }
 
-    private boolean matches(RawPacketView packet, String imeiFilter, String protocolFilter) {
+    private void append(RawPacketView packet) {
+        synchronized (lock) {
+            packets.addFirst(packet);
+            while (packets.size() > MAX_PACKETS) {
+                packets.removeLast();
+            }
+        }
+    }
+
+    private boolean matches(RawPacketView packet, String imeiFilter, String protocolFilter, String directionFilter) {
         boolean imeiMatched = imeiFilter == null || packet.imei().contains(imeiFilter);
         boolean protocolMatched = protocolFilter == null || packet.protocolCode().contains(protocolFilter);
-        return imeiMatched && protocolMatched;
+        boolean directionMatched = directionFilter == null || packet.direction().equals(directionFilter);
+        return imeiMatched && protocolMatched && directionMatched;
+    }
+
+    private ParsedRawPacket parseRawPacket(String rawMessage) {
+        String body = rawMessage.trim();
+        if (body.startsWith("IW")) {
+            body = body.substring(2);
+        }
+        if (body.endsWith("#")) {
+            body = body.substring(0, body.length() - 1);
+        }
+        if (body.startsWith("*")) {
+            body = body.substring(1);
+        }
+
+        String protocolCode;
+        String paramText = "";
+        int delimiterIndex = firstDelimiterIndex(body.indexOf('*'), body.indexOf(','));
+        if (delimiterIndex >= 0) {
+            protocolCode = body.substring(0, delimiterIndex);
+            paramText = body.substring(delimiterIndex + 1);
+        } else if (body.length() >= 4) {
+            protocolCode = body.substring(0, 4);
+        } else {
+            protocolCode = body;
+        }
+
+        List<String> params = paramText.isEmpty()
+                ? List.of()
+                : List.of(paramText.split(",", -1));
+        return new ParsedRawPacket(safe(protocolCode), params);
+    }
+
+    private int firstDelimiterIndex(int starIndex, int commaIndex) {
+        if (starIndex < 0) {
+            return commaIndex;
+        }
+        if (commaIndex < 0) {
+            return starIndex;
+        }
+        return Math.min(starIndex, commaIndex);
     }
 
     private int clampLimit(Integer limit) {
@@ -106,6 +178,7 @@ public class WatchRawPacketService {
     public record RawPacketView(
             long sequence,
             String receiveTime,
+            String direction,
             String protocolCode,
             String imei,
             String remoteAddress,
@@ -116,5 +189,8 @@ public class WatchRawPacketService {
         public RawPacketView {
             params = params == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(params));
         }
+    }
+
+    private record ParsedRawPacket(String protocolCode, List<String> params) {
     }
 }

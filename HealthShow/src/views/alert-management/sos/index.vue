@@ -1,8 +1,28 @@
 <template>
-  <div class="sos-page">
+  <div class="sos-root">
+
+    <!-- ══ 紧凑 Header ══ -->
+    <header class="sos-hd">
+      <div class="sos-hd-left">
+        <span class="sos-alarm-dot" :class="{ 'is-active': hasCritical }"></span>
+        <h1 class="sos-hd-title">SOS 紧急救援</h1>
+      </div>
+      <div class="sos-hd-kpis">
+        <div class="sos-kpi" v-for="s in kpiItems" :key="s.label">
+          <span class="sos-kpi-n" :class="s.cls">{{ s.value }}</span>
+          <span class="sos-kpi-l">{{ s.label }}</span>
+        </div>
+      </div>
+      <div class="sos-hd-time">{{ lastUpdateTime }}</div>
+      <button class="sos-refresh-btn" :disabled="loading" @click="fetchAll">
+        {{ loading ? '刷新中...' : '刷新' }}
+      </button>
+    </header>
+
+    <!-- ══ 导航 ══ -->
     <WarningCenterNav />
 
-    <!-- ══ 顶部大警报栏 ══ -->
+    <!-- ══ 报警条 ══ -->
     <div :class="['sos-alarm-bar', hasCritical ? 'sos-alarm-bar--active' : '']">
       <span class="sos-alarm-icon">SOS</span>
       <span class="sos-alarm-text">
@@ -11,26 +31,25 @@
           : '当前无危险级预警，系统正常' }}
       </span>
       <span v-if="hasCritical" class="sos-alarm-blink">紧急处置</span>
-      <div class="sos-last-update">最后更新：{{ lastUpdateTime }}</div>
     </div>
 
-    <!-- ══ 统计卡片 ══ -->
+    <!-- ══ 紧凑 KPI 卡片 ══ -->
     <div class="sos-kpi-row">
-      <div class="sos-kpi sos-kpi--red">
-        <div class="sos-kpi-val">{{ criticalCount }}</div>
-        <div class="sos-kpi-label">危险未处理</div>
+      <div class="sos-kpi-card sos-kpi-card--red">
+        <div class="sos-kpi-card-val">{{ criticalCount }}</div>
+        <div class="sos-kpi-card-label">危险未处理</div>
       </div>
-      <div class="sos-kpi sos-kpi--yellow">
-        <div class="sos-kpi-val">{{ todayTotal }}</div>
-        <div class="sos-kpi-label">今日触发总计</div>
+      <div class="sos-kpi-card sos-kpi-card--orange">
+        <div class="sos-kpi-card-val">{{ todayTotal }}</div>
+        <div class="sos-kpi-card-label">今日触发总计</div>
       </div>
-      <div class="sos-kpi sos-kpi--green">
-        <div class="sos-kpi-val">{{ todayHandled }}</div>
-        <div class="sos-kpi-label">今日已处置</div>
+      <div class="sos-kpi-card sos-kpi-card--green">
+        <div class="sos-kpi-card-val">{{ todayHandled }}</div>
+        <div class="sos-kpi-card-label">今日已处置</div>
       </div>
-      <div class="sos-kpi sos-kpi--blue">
-        <div class="sos-kpi-val">{{ affectedPersons }}</div>
-        <div class="sos-kpi-label">涉及人员数</div>
+      <div class="sos-kpi-card sos-kpi-card--blue">
+        <div class="sos-kpi-card-val">{{ affectedPersons }}</div>
+        <div class="sos-kpi-card-label">涉及人员数</div>
       </div>
     </div>
 
@@ -41,7 +60,9 @@
       <span class="sos-st-sub">（{{ criticalCount }} 条待处理，按时间倒序）</span>
     </div>
 
-    <div class="sos-list" v-loading="loading">
+    <div class="sos-list" v-loading="loading"
+         element-loading-text="数据加载中..."
+         element-loading-background="rgba(10,20,40,0.7)">
       <div
         v-for="item in criticalList"
         :key="item.id"
@@ -129,6 +150,14 @@ export default {
   computed: {
     hasCritical() {
       return this.criticalCount > 0
+    },
+    kpiItems() {
+      return [
+        { label: '危险未处理', value: this.criticalCount,   cls: 'kpi-red' },
+        { label: '今日触发',   value: this.todayTotal,      cls: 'kpi-orange' },
+        { label: '今日已处置', value: this.todayHandled,     cls: 'kpi-green' },
+        { label: '涉及人员',   value: this.affectedPersons,  cls: 'kpi-blue' }
+      ]
     }
   },
   mounted() {
@@ -200,89 +229,165 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.sos-page {
-  height: 100%;
+// ── Root ──
+.sos-root {
+  width: 100%;
+  height: calc(100vh - 50px) !important;
+  min-height: 600px;
+  background: #0a1628;
+  background-image:
+    radial-gradient(circle at 18% 28%, rgba(255,82,82,0.04) 0%, transparent 48%),
+    radial-gradient(circle at 82% 72%, rgba(42,82,152,0.07) 0%, transparent 48%);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: #0a1628;
-  padding: 16px;
-  gap: 12px;
-  overflow-y: auto;
+  font-family: 'Microsoft YaHei', sans-serif;
+  color: #c8d8e8;
 }
 
-/* ── 顶部警报栏 ── */
+// ── Header ──
+.sos-hd {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 22px;
+  gap: 20px;
+  background: rgba(0, 6, 24, 0.65);
+  border-bottom: 1px solid rgba(255,82,82,0.12);
+}
+.sos-hd-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+.sos-alarm-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #666;
+  transition: all 0.3s;
+  &.is-active {
+    background: #ff5252;
+    box-shadow: 0 0 12px rgba(255,82,82,0.8);
+    animation: sosPulse 1s ease-in-out infinite;
+  }
+}
+@keyframes sosPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+.sos-hd-title {
+  font-size: 20px; font-weight: 700; margin: 0;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #ff5252, #ff9800);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 8px rgba(255,82,82,0.5));
+}
+
+.sos-hd-kpis { flex: 1; display: flex; justify-content: center; }
+.sos-kpi {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 28px;
+  border-right: 1px solid rgba(255,82,82,0.12);
+  &:first-child { border-left: 1px solid rgba(255,82,82,0.12); }
+}
+.sos-kpi-n {
+  font-size: 20px; font-weight: 700; font-family: 'Consolas', monospace; line-height: 1.1;
+  &.kpi-red    { color: #ff5252; text-shadow: 0 0 10px rgba(255,82,82,0.4); }
+  &.kpi-orange { color: #ff9800; text-shadow: 0 0 10px rgba(255,152,0,0.4); }
+  &.kpi-green  { color: #52c41a; text-shadow: 0 0 10px rgba(82,196,26,0.35); }
+  &.kpi-blue   { color: #00d4ff; text-shadow: 0 0 10px rgba(0,212,255,0.4); }
+}
+.sos-kpi-l { font-size: 11px; color: #8ba6c8; margin-top: 2px; white-space: nowrap; }
+.sos-hd-time { flex-shrink: 0; font-family: 'Consolas', monospace; font-size: 13px; color: #8ba6c8; }
+.sos-refresh-btn {
+  padding: 6px 16px; border-radius: 6px;
+  background: rgba(255,82,82,0.08); border: 1px solid rgba(255,82,82,0.25);
+  color: #ff5252; font-size: 12px; cursor: pointer;
+  transition: all 0.2s;
+  &:hover:not(:disabled) { background: rgba(255,82,82,0.15); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+// ── 报警条 ──
 .sos-alarm-bar {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 20px;
-  border-radius: 10px;
+  padding: 10px 20px;
+  margin: 0 10px;
+  flex-shrink: 0;
+  border-radius: 8px;
   background: rgba(0, 212, 255, 0.06);
   border: 1px solid rgba(0, 212, 255, 0.15);
-  position: relative;
   transition: all .4s;
 
   &--active {
     background: rgba(255, 40, 40, 0.12);
     border-color: rgba(255, 40, 40, 0.4);
-    animation: sos-pulse 2s infinite;
+    animation: sos-bar-pulse 2s infinite;
   }
 
-  .sos-alarm-icon { font-size: 28px; }
-
+  .sos-alarm-icon { font-size: 22px; font-weight: 800; }
   .sos-alarm-text {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
     color: #c8d8e8;
     flex: 1;
   }
-
   &--active .sos-alarm-text { color: #ff5252; }
 
   .sos-alarm-blink {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: #fff;
     background: #ff2828;
-    padding: 4px 14px;
+    padding: 3px 12px;
     border-radius: 20px;
     animation: blink-bg 1s infinite;
   }
-
-  .sos-last-update {
-    font-size: 11px;
-    color: #4a6080;
-    position: absolute;
-    right: 20px;
-    bottom: 6px;
-  }
 }
 
-/* ── KPI 卡片 ── */
+// ── 紧凑 KPI 卡片 4 列 ──
 .sos-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 0 10px;
+}
+.sos-kpi-card {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(255,255,255,0.03);
+  transition: background 0.2s, transform 0.15s;
+  &:hover { background: rgba(255,255,255,0.06); transform: translateY(-1px); }
 
-  .sos-kpi {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 16px 8px;
-    border-radius: 10px;
-    border: 1px solid transparent;
+  .sos-kpi-card-val { font-size: 26px; font-weight: 800; font-family: 'Consolas', monospace; line-height: 1.1; }
+  .sos-kpi-card-label { font-size: 11px; color: #8ba6c8; margin-top: 4px; }
 
-    .sos-kpi-val   { font-size: 32px; font-weight: 800; }
-    .sos-kpi-label { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 4px; }
-
-    &--red    { background: rgba(255,82,82,0.12);   border-color: rgba(255,82,82,0.2);  .sos-kpi-val { color: #ff5252; } }
-    &--yellow { background: rgba(255,210,0,0.10);   border-color: rgba(255,210,0,0.2);  .sos-kpi-val { color: #ffd200; } }
-    &--green  { background: rgba(76,175,80,0.10);   border-color: rgba(76,175,80,0.2);  .sos-kpi-val { color: #4CAF50; } }
-    &--blue   { background: rgba(0,212,255,0.08);   border-color: rgba(0,212,255,0.15); .sos-kpi-val { color: #00d4ff; } }
+  &--red {
+    border-color: rgba(255,82,82,0.25);
+    .sos-kpi-card-val { color: #ff5252; text-shadow: 0 0 10px rgba(255,82,82,0.3); }
+  }
+  &--orange {
+    border-color: rgba(255,152,0,0.25);
+    .sos-kpi-card-val { color: #ff9800; text-shadow: 0 0 10px rgba(255,152,0,0.3); }
+  }
+  &--green {
+    border-color: rgba(82,196,26,0.25);
+    .sos-kpi-card-val { color: #52c41a; text-shadow: 0 0 10px rgba(82,196,26,0.25); }
+  }
+  &--blue {
+    border-color: rgba(0,212,255,0.2);
+    .sos-kpi-card-val { color: #00d4ff; text-shadow: 0 0 10px rgba(0,212,255,0.3); }
   }
 }
 
-/* ── 章节标题 ── */
+// ── 章节标题 ──
 .sos-section-title {
   font-size: 14px;
   font-weight: 700;
@@ -290,36 +395,45 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+  padding: 0 10px;
 
   .sos-st-bar {
     width: 3px; height: 16px;
     background: #ff5252;
     border-radius: 2px;
   }
-
   .sos-st-sub { font-size: 12px; color: #4a6080; font-weight: 400; }
 }
 
-/* ── 列表 ── */
+// ── 预警列表（内部滚动） ──
 .sos-list {
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 0 10px;
+  min-height: 0;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,82,82,0.25); border-radius: 2px; }
+  &::-webkit-scrollbar-track { background: rgba(255,82,82,0.05); }
 
   .sos-item {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 14px 18px;
+    padding: 12px 18px;
     border-radius: 10px;
     border: 1px solid transparent;
     transition: all .2s;
+    flex-shrink: 0;
 
     &--active {
       background: rgba(255, 40, 40, 0.08);
       border-color: rgba(255, 40, 40, 0.25);
-
       &:hover { background: rgba(255, 40, 40, 0.12); }
     }
 
@@ -332,8 +446,9 @@ export default {
 
   .sos-item-level {
     .sos-level-icon {
-      font-size: 24px;
+      font-size: 20px;
       line-height: 1;
+      font-weight: 700;
     }
   }
 
@@ -345,52 +460,68 @@ export default {
       align-items: center;
       gap: 12px;
     }
+    .sos-item-row1 { margin-bottom: 4px; }
 
-    .sos-item-row1 { margin-bottom: 6px; }
-
-    .sos-name   { font-size: 16px; font-weight: 700; color: #fff; }
-    .sos-dept   { font-size: 12px; color: #8ba6c8; background: rgba(0,212,255,0.08); padding: 1px 8px; border-radius: 10px; }
-    .sos-code   { font-size: 11px; color: #4a6080; }
+    .sos-name   { font-size: 15px; font-weight: 700; color: #fff; }
+    .sos-dept   { font-size: 11px; color: #8ba6c8; background: rgba(255,82,82,0.08); padding: 1px 8px; border-radius: 10px; }
+    .sos-code   { font-size: 11px; color: #4a6080; font-family: 'Consolas', monospace; }
     .sos-metric { font-size: 13px; color: #8ba6c8; }
-    .sos-value  { font-size: 18px; font-weight: 800; color: #ff5252; }
-    .sos-time   { font-size: 12px; color: #4a6080; }
+    .sos-value  { font-size: 17px; font-weight: 800; color: #ff5252; }
+    .sos-time   { font-size: 12px; color: #4a6080; font-family: 'Consolas', monospace; }
   }
 
   .sos-item-actions {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
   }
 
   .sos-handled-tag {
     font-size: 12px;
-    color: #4CAF50;
+    color: #52c41a;
     padding: 3px 10px;
-    border: 1px solid #4CAF5030;
+    border: 1px solid rgba(82,196,26,0.3);
     border-radius: 4px;
   }
 }
 
 .sos-empty {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 60px 0;
+  gap: 10px;
+  padding: 40px 0;
   color: #4a6080;
 
-  .sos-empty-icon { font-size: 48px; }
+  .sos-empty-icon {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(82,196,26,0.1); border: 1px solid rgba(82,196,26,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #52c41a;
+  }
 }
 
-/* ── 分页 ── */
+// ── 分页 ──
 .sos-pagination {
   display: flex;
   justify-content: center;
+  flex-shrink: 0;
+  padding: 6px 0;
+
+  :deep(.el-pagination) {
+    --el-pagination-bg-color: rgba(13,40,71,0.6);
+    --el-pagination-button-bg-color: rgba(13,40,71,0.6);
+    --el-pagination-text-color: #8ba6c8;
+    --el-pagination-hover-color: #ff5252;
+    --el-pagination-button-disabled-bg-color: rgba(13,40,71,0.3);
+  }
 }
 
-/* ── 动画 ── */
-@keyframes sos-pulse {
+// ── 动画 ──
+@keyframes sos-bar-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255,40,40,0.3); }
   50%       { box-shadow: 0 0 20px 4px rgba(255,40,40,0.15); }
 }
@@ -398,5 +529,47 @@ export default {
 @keyframes blink-bg {
   0%, 100% { background: #ff2828; }
   50%       { background: #cc0000; }
+}
+
+// ── 间距 ──
+.sos-root > * + * { margin-top: 8px; }
+.sos-root > .sos-hd { margin-top: 0; }
+
+// ── Mobile ──
+@media (max-width: 768px) {
+  .sos-root {
+    height: auto !important;
+    min-height: calc(100vh - 50px);
+    overflow-y: auto !important;
+    padding-bottom: 64px;
+  }
+  .sos-hd {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  .sos-hd-kpis {
+    order: 3; width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+  }
+  .sos-kpi { padding: 4px 12px; }
+  .sos-hd-time { display: none; }
+  .sos-kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .sos-alarm-bar { margin: 0 6px; padding: 8px 14px; }
+  .sos-list {
+    overflow: visible !important;
+    padding: 0 6px;
+  }
+  .sos-item {
+    flex-wrap: wrap;
+  }
+  .sos-item-actions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 6px;
+  }
 }
 </style>

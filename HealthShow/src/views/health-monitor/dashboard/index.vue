@@ -1,57 +1,42 @@
 <template>
-  <div class="hm-page-shell db-control-system" ref="dmScale" @transitionend.stop @animationend.stop>
+  <div class="db-control-system" ref="dmScale" @transitionend.stop @animationend.stop>
 
-    <header class="db-duty-hero">
-      <PageHeroHeader
-        class="db-duty-hero__header"
-        variant="cockpit"
-        eyebrow="Duty Closure"
-        title="统一管控"
-        :description="dashboardHeroDescription"
-      >
-        <template #meta>
-          <div class="dm-hd-meta">
-            <span class="dm-live-dot"></span>
-            <span class="dm-hd-meta-label">实时运行</span>
-            <span class="dm-hd-time">{{ currentTime }}</span>
-            <button type="button" class="dm-refresh-info" @click="fetchData(true)" title="点击立即刷新">
-              <span class="dm-refresh-icon" :class="{ 'is-spinning': isRefreshing }">↻</span>
-              <span class="dm-refresh-time">{{ lastRefreshText }}</span>
-            </button>
-          </div>
-        </template>
-        <template #actions>
-          <div class="dm-period-tabs">
-            <button
-              v-for="p in periodOptions"
-              type="button"
-              :key="p.value"
-              :class="['dm-period-tab', activePeriod === p.value ? 'is-active' : '']"
-              @click="switchPeriod(p.value)"
-            >{{ p.label }}</button>
-          </div>
-          <button
-            type="button"
-            class="dm-fullscreen-btn"
-            @click="toggleFullscreen"
-            :title="isFullscreen ? '退出全屏' : '全屏展示'"
-          >
-            <span>{{ isFullscreen ? '⊡' : '⛶' }}</span>
+    <header class="db-hd">
+      <div class="db-hd-left">
+        <span class="db-hd-beacon"></span>
+        <h1 class="db-hd-title">统一管控</h1>
+      </div>
+      <div class="db-hd-kpis">
+        <button v-for="item in headerMetricStripItems" :key="item.key" type="button"
+          :class="['db-hd-kpi', `tone-${item.tone}`]"
+          @click="onHeaderMetricSelect(item)">
+          <span class="db-hd-kpi-v">{{ item.value }}</span>
+          <span class="db-hd-kpi-l">{{ item.label }}</span>
+        </button>
+      </div>
+      <div class="db-hd-right">
+        <div class="db-hd-time">
+          <span class="db-hd-clock">{{ currentTime }}</span>
+          <button type="button" class="db-hd-refresh" @click="fetchData(true)" title="点击立即刷新">
+            <span :class="['db-hd-refresh-icon', isRefreshing && 'is-spinning']">&#x21BB;</span>
+            <span class="db-hd-refresh-text">{{ lastRefreshText }}</span>
           </button>
-        </template>
-      </PageHeroHeader>
-
-      <MetricStrip
-        class="db-command-ribbon"
-        :items="headerMetricStripItems"
-        dense
-        @select="onHeaderMetricSelect"
-      />
+        </div>
+        <div class="db-hd-period">
+          <button v-for="p in periodOptions" :key="p.value" type="button"
+            :class="['db-hd-period-tab', activePeriod === p.value && 'is-active']"
+            @click="switchPeriod(p.value)">{{ p.label }}</button>
+        </div>
+        <button type="button" class="db-hd-fs" @click="toggleFullscreen"
+          :title="isFullscreen ? '退出全屏' : '全屏展示'">
+          {{ isFullscreen ? '⊑' : '⛶' }}
+        </button>
+      </div>
     </header>
 
     <div class="db-control-body dm-bd" ref="dmBody">
-      <section class="db-control-grid">
-        <aside class="db-health-rail">
+      <section class="db-main-grid">
+        <aside class="db-col-health">
           <div class="db-panel db-duty-snapshot db-panel--interactive" @click="openDeptPersonModal">
             <div class="db-track">
               <span class="db-track-title">{{ periodLabel }}检测人数</span>
@@ -138,13 +123,53 @@
           </div>
 
           <DashboardDevicePanel
-            class="db-device-rail"
+            class="db-panel db-col-device"
             :device-cards="deviceCards"
             @go-device="goToDeviceList"
           />
         </aside>
 
-        <main class="db-governance-workspace">
+        <main class="db-col-decision">
+          <div class="db-panel db-ops-preshift db-panel--interactive" @click="$router.push('/health-monitor/mine-entry')">
+            <div class="db-track">
+              <span class="db-track-title">班前健康准入</span>
+              <span class="db-track-sub">{{ (preShiftData?.failedCount || 0) > 0 ? `${preShiftData.failedCount} 人需复核` : '当前准入平稳' }}</span>
+            </div>
+            <div class="dm-preshift-body">
+              <div class="dm-ps-ring-wrap">
+                <svg viewBox="0 0 96 96" class="dm-ps-ring">
+                  <circle cx="48" cy="48" r="38" fill="none" stroke="#1a2a4d" stroke-width="7"/>
+                  <circle cx="48" cy="48" r="38" fill="none"
+                    :stroke="(preShiftData?.preShiftRate || 0) >= 90 ? '#38ef7d' : (preShiftData?.preShiftRate || 0) >= 70 ? '#ffd200' : '#ff5252'"
+                    stroke-width="7" stroke-linecap="round"
+                    :stroke-dasharray="`${(preShiftData?.preShiftRate || 0) * 2.388} 239`"
+                    stroke-dashoffset="60"
+                  />
+                </svg>
+                <div class="dm-ps-ring-inner">
+                  <div :class="['dm-ps-rate', (preShiftData?.preShiftRate || 0) >= 90 ? 'tone-success' : (preShiftData?.preShiftRate || 0) >= 70 ? 'tone-warning' : 'tone-danger']">
+                    {{ preShiftData?.preShiftRate != null ? preShiftData.preShiftRate + '%' : '--' }}
+                  </div>
+                  <div class="dm-ps-rate-label">达标率</div>
+                </div>
+              </div>
+              <div class="dm-ps-stats">
+                <div class="dm-ps-stat">
+                  <span class="dm-ps-stat-val">{{ preShiftData?.totalToday || 0 }}</span>
+                  <span class="dm-ps-stat-label">今日检测</span>
+                </div>
+                <div class="dm-ps-stat dm-ps-ok">
+                  <span class="dm-ps-stat-val">{{ preShiftData?.qualifiedCount || 0 }}</span>
+                  <span class="dm-ps-stat-label">准入通过</span>
+                </div>
+                <div class="dm-ps-stat dm-ps-fail">
+                  <span class="dm-ps-stat-val">{{ preShiftData?.failedCount || 0 }}</span>
+                  <span class="dm-ps-stat-label">禁止入井</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <section class="db-panel db-closure-lane">
             <div class="db-track">
               <span class="db-track-title">闭环指挥线</span>
@@ -195,10 +220,11 @@
             />
           </div>
         </main>
+
       </section>
 
-      <section class="db-intel-band">
-        <div class="db-panel dm-main-model db-trend-command">
+      <section class="db-analysis-band">
+        <div class="db-panel db-analysis-trends dm-main-model db-trend-command">
           <div class="db-track">
             <span class="db-track-title">趋势研判</span>
             <span class="db-track-sub">{{ trendBlockTitle }} / {{ hourDistTitle }}</span>
@@ -211,14 +237,12 @@
               </div>
               <div ref="unifiedTrendChart" class="dm-chart-flex"></div>
             </div>
-
             <div class="dm-data-block">
               <div class="dm-block-hd">
                 <span class="dm-block-title">{{ hourDistTitle }}</span>
               </div>
               <div id="hourDistChart" class="dm-chart-flex"></div>
             </div>
-
             <div class="dm-data-block">
               <div class="dm-block-hd">
                 <span class="dm-block-title">预警类型</span>
@@ -245,8 +269,8 @@
         </div>
 
         <DashboardRightSidebar
-          class="db-insight-sidebar dm-monitor-sidebar"
-          mode="secondary"
+          class="db-analysis-sidebar"
+          mode="full"
           :period-label="periodLabel"
           :top5-display-data="top5DisplayData"
           :top5-max="top5Max"
@@ -261,34 +285,6 @@
           @toggle-ai="toggleMineAiPanel"
           @show-ai="mineAiDialogVisible = true"
         />
-      </section>
-
-      <section class="dm-support-band db-support-band">
-        <DashboardRightSidebar
-          class="db-support-sidebar dm-command-sidebar"
-          mode="primary"
-          :period-label="periodLabel"
-          :top5-display-data="top5DisplayData"
-          :top5-max="top5Max"
-          :warning-rate-list="warningRateList"
-          :pre-shift-data="preShiftData"
-          :mine-ai-report="mineAiReport"
-          :mine-ai-loading="mineAiLoading"
-          :latest-danger-event="latestDangerEvent"
-          :kpi-unhandled-high="kpiUnhandledHigh"
-          :focus-warning-count="focusWarningEvents.length"
-          @open-employee="openEmployeeDrawer"
-          @toggle-ai="toggleMineAiPanel"
-          @show-ai="mineAiDialogVisible = true"
-        />
-
-        <div class="db-panel dm-main-env">
-          <div class="db-track">
-            <span class="db-track-title">环境健康关联</span>
-            <span class="db-track-sub">CO浓度/粉尘 vs 血氧趋势（模拟）</span>
-          </div>
-          <div ref="envChartRef" class="dm-env-chart"></div>
-        </div>
       </section>
 
     </div>
@@ -310,7 +306,7 @@
     :submit-handle="submitHandle"
   />
 
-  </div><!-- /hm-page-shell -->
+  </div>
 
 </template>
 
@@ -327,22 +323,16 @@ import DashboardRightSidebar from './components/DashboardRightSidebar.vue'
 import DashboardDevicePanel from './components/DashboardDevicePanel.vue'
 import DashboardDialogs from './components/DashboardDialogs.vue'
 import DashboardWarningStream from './components/DashboardWarningStream.vue'
-import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
-import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 
 export default {
   name: 'HealthDashboard',
-  components: { DashboardDispatchPanel, DashboardRightSidebar, DashboardDevicePanel, DashboardDialogs, DashboardWarningStream, PageHeroHeader, MetricStrip },
+  components: { DashboardDispatchPanel, DashboardRightSidebar, DashboardDevicePanel, DashboardDialogs, DashboardWarningStream },
   data() {
     return createDashboardPageState()
   },
 
   computed: {
     ...dashboardComputed,
-    dashboardHeroDescription() {
-      const pending = (this.warningEvents || []).filter((item) => !item.handled).length
-      return `${this.periodLabel}重点关注 ${pending} 条待处理预警、班前准入和趋势变化。`
-    },
     headerMetricStripItems() {
         return (this.headerKpis || []).map((item, index) => ({
           key: `${item.label}-${index}`,
