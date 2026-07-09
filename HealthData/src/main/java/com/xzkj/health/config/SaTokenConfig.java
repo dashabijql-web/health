@@ -1,8 +1,9 @@
 package com.xzkj.health.config;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
-import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpUtil;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -104,14 +105,29 @@ public class SaTokenConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new SaInterceptor(handler -> {
-            // 路由规则：拦截所有路径，但排除登录/退出/错误页
-            SaRouter
-                    .match("/**")                                    // 匹配所有路径
-                    .notMatch("/auth/login", "/auth/logout", "/error")  // 白名单（不需要登录）
-                    .check(r -> StpUtil.checkLogin());               // 执行登录校验
+            if (handler instanceof HttpServletRequest request && shouldCheckLogin(request)) {
+                StpUtil.checkLogin();
+            }
         }))
         .addPathPatterns("/**")       // 此拦截器拦截所有路径
         .excludePathPatterns("/error"); // 排除 Spring 内置错误处理路径
+    }
+
+    boolean shouldCheckLogin(HttpServletRequest request) {
+        DispatcherType dispatcherType = request.getDispatcherType();
+        if (dispatcherType == DispatcherType.ASYNC || dispatcherType == DispatcherType.ERROR) {
+            return false;
+        }
+
+        String path = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        if (contextPath != null && !contextPath.isBlank() && path.startsWith(contextPath)) {
+            path = path.substring(contextPath.length());
+        }
+
+        return !"/auth/login".equals(path)
+                && !"/auth/logout".equals(path)
+                && !"/error".equals(path);
     }
 
     /**
