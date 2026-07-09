@@ -324,6 +324,7 @@ public class DeepSeekClient {
         String userHome = trimToNull(System.getProperty("user.home"));
         if (userHome != null) {
             candidates.add(Path.of(userHome, "Desktop", "deepseek-key.txt"));
+            candidates.add(Path.of(userHome, "Desktop", "deepseek_key.txt"));
         }
 
         String[] userNames = {
@@ -334,6 +335,7 @@ public class DeepSeekClient {
         for (String userName : userNames) {
             if (userName != null) {
                 candidates.add(Path.of("/mnt/c/Users", userName, "Desktop", "deepseek-key.txt"));
+                candidates.add(Path.of("/mnt/c/Users", userName, "Desktop", "deepseek_key.txt"));
             }
         }
 
