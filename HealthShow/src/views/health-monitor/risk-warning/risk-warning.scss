@@ -184,6 +184,7 @@
 .rw-list-pg { height:36px; flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:5px; border-top:1px solid rgba(0,212,255,.1); }
 .rw-pg-btn { height:22px; padding:0 7px; background:rgba(0,212,255,.07); border:1px solid rgba(0,212,255,.18); border-radius:3px; color:$accent; font-size:12px; cursor:pointer; transition:background .2s; &:hover:not(:disabled){background:rgba(0,212,255,.16);} &:disabled{opacity:.28;cursor:not-allowed;} }
 .rw-pg-info { font-size:12px; color:$accent; min-width:44px; text-align:center; }
+.rw-pg-total { font-size:11px; color:$dim; min-width:80px; text-align:center; }
 
 /* 其他 */
 .rw-period-tabs {
@@ -377,8 +378,13 @@
   .rw-center-nav { padding:4px 10px 0; }
   .rw-period-tabs { width:100%; overflow-x:auto; }
   .rw-period-tab { flex:0 0 auto; }
-  .rw-bd { overflow:visible; height:auto!important; }
+  .rw-bd {
+    grid-template-columns:minmax(0, 1fr);
+    overflow:visible;
+    height:auto!important;
+  }
   .rw-aside { display:none; }
+  .rw-main { width:100%; }
   .rw-panel-trend { display:none; }
   .rw-panel-list { min-height:0; height:auto; max-height:none; }
   .rw-list-wrap { overflow:visible; }
@@ -393,4 +399,3 @@
   .rw-export-btn,
   .rw-batch-btn { flex:0 0 auto; }
 }
-

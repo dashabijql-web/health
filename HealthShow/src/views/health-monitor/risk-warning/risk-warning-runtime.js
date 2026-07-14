@@ -1,6 +1,6 @@
 import * as echarts from '@/utils/echarts-setup'
 import dayjs from 'dayjs'
-import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getDeptWarningStats, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
+import { getRiskWarningOverview, getRiskWarningList, getRiskWarningTrend, getRiskWarningTypeDistribution, getDeptWarningStats, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
 import { exportToExcel } from '@/utils/export-excel'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, barLabel } from '@/utils/echarts-config'
 import { initChart, gradV } from '@/utils/chart-helpers'
@@ -11,7 +11,7 @@ export const riskWarningPageRuntime = {
   mounted() { this.initPage() },
   methods: {
     async fetchData() {
-      await Promise.allSettled([this.loadStats(), this.loadTrend(), this.loadDept(), this.loadList()])
+      await Promise.allSettled([this.loadStats(), this.loadTrend(), this.loadDept(), this.loadTypes(), this.loadList()])
       this.$nextTick(() => this.initDonutChart())
     },
     async loadStats() {
@@ -52,9 +52,40 @@ export const riskWarningPageRuntime = {
     },
     async loadList() {
       try {
-        const r = await getRiskWarningList({page:1,size:10000,level:'',handled:null})
-        if (r.code===200 && r.data) this.warningList=r.data.list||r.data||[]
+        const { startDate, endDate } = this.periodRange
+        const r = await getRiskWarningList({
+          page: this.currentPage,
+          size: this.pageSize,
+          keyword: this.filterName.trim() || undefined,
+          level: this.filterLevel || undefined,
+          warningType: this.filterType || undefined,
+          handled: null,
+          startDate,
+          endDate
+        })
+        if (r.code===200 && r.data) {
+          this.warningList = r.data.list || []
+          this.totalWarnings = Number(r.data.total || 0)
+          this.selectedKeys = []
+        }
       } catch {}
+    },
+    async loadTypes() {
+      try {
+        const r = await getRiskWarningTypeDistribution()
+        if (r.code === 200 && Array.isArray(r.data)) {
+          this.warningTypeOptions = r.data.map(item => item.type).filter(Boolean)
+        }
+      } catch {}
+    },
+    applyListFilters() {
+      this.currentPage = 1
+      this.loadList()
+    },
+    switchPeriod(period) {
+      this.activePeriod = period
+      this.currentPage = 1
+      this.fetchData()
     },
     initTrendChart() {
       const c=initChart(this.charts,'trend',this.$refs.trendRef); if(!c) return
@@ -347,10 +378,14 @@ export const riskWarningPageRuntime = {
       if (!this.detailRow || this.handling) return
       this.handling = true
       try {
-        const res = await handleRiskWarning(this.detailRow.id, { handleRemark: this.handleNote || '已确认处理', handleBy: 'admin' })
+        const res = await handleRiskWarning(this.detailRow.id, {
+          handleRemark: this.handleNote || '已确认处理',
+          handleBy: 'admin',
+          createTime: this.detailRow.createTime
+        })
         if (res.code === 200) {
-          // 更新本地列表状态
-          const row = this.warningList.find(r => r.id === this.detailRow.id)
+          const detailKey = this.warningLocatorKey(this.detailRow)
+          const row = this.warningList.find(r => this.warningLocatorKey(r) === detailKey)
           if (row) { row.handled = true; row.handleNote = this.handleNote || '已确认处理' }
           this.detailRow = { ...this.detailRow, handled: true, handleNote: this.handleNote || '已确认处理' }
           this.$message?.success('处理成功') || alert('处理成功')
@@ -365,8 +400,11 @@ export const riskWarningPageRuntime = {
     },
 
     // FIX ①③: 翻页同步重置滚动，不打架
-    jumpPage(page) {
-      this.currentPage=page
+    async jumpPage(page) {
+      const nextPage = Math.max(1, Math.min(page, this.totalPages))
+      if (nextPage === this.currentPage) return
+      this.currentPage = nextPage
+      await this.loadList()
       this.$nextTick(()=>{ const el=this.$refs.listRef; if(el){el.scrollTop=0;this.scrollTop=0} })
     },
 
@@ -382,7 +420,6 @@ export const riskWarningPageRuntime = {
           this.scrollTop = el.scrollTop
         },
         onReachEnd: () => {
-          this.currentPage = this.currentPage < this.totalPages ? this.currentPage + 1 : 1
           this.$nextTick(() => {
             const el = this.$refs.listRef
             if (el) el.scrollTop = 0
@@ -430,7 +467,7 @@ export const riskWarningPageRuntime = {
       ]
       const data = this.filteredList.map((row, i) => ({
         ...row,
-        _idx: i + 1,
+        _idx: (this.currentPage - 1) * this.pageSize + i + 1,
         _status: row.handled ? '已处理' : '待处理',
         _time: row.createTime ? new Date(row.createTime).toLocaleString('zh-CN') : '--',
         empCode: row.empCode || row.userCode || '--'
@@ -438,33 +475,38 @@ export const riskWarningPageRuntime = {
       exportToExcel(data, cols, '风险预警记录')
     },
 
+    warningLocatorKey(item) {
+      return `${item?.id ?? ''}@@${item?.createTime ?? ''}`
+    },
+
     toggleSelectAll(e) {
       if (e.target.checked) {
-        this.selectedIds = [...new Set([...this.selectedIds, ...this.pendingInFiltered.map(x => x.id)])]
+        this.selectedKeys = [...new Set([...this.selectedKeys, ...this.pendingInFiltered.map(item => this.warningLocatorKey(item))])]
       } else {
-        const pendingIds = new Set(this.pendingInFiltered.map(x => x.id))
-        this.selectedIds = this.selectedIds.filter(id => !pendingIds.has(id))
+        const pendingKeys = new Set(this.pendingInFiltered.map(item => this.warningLocatorKey(item)))
+        this.selectedKeys = this.selectedKeys.filter(key => !pendingKeys.has(key))
       }
     },
-    toggleSelect(id) {
-      if (this.selectedIds.includes(id)) {
-        this.selectedIds = this.selectedIds.filter(x => x !== id)
+    toggleSelect(item) {
+      const key = this.warningLocatorKey(item)
+      if (this.selectedKeys.includes(key)) {
+        this.selectedKeys = this.selectedKeys.filter(x => x !== key)
       } else {
-        this.selectedIds = [...this.selectedIds, id]
+        this.selectedKeys = [...this.selectedKeys, key]
       }
     },
     async batchHandle() {
-      if (!this.selectedIds.length || this.batchHandling) return
+      if (!this.selectedKeys.length || this.batchHandling) return
       this.batchHandling = true
       try {
-        const res = await handleBatchRiskWarning(this.selectedIds)
+        const selectedSet = new Set(this.selectedKeys)
+        const selectedRows = this.warningList.filter(row => selectedSet.has(this.warningLocatorKey(row)))
+        const locators = selectedRows.map(row => ({ warningId: row.id, occurredAt: row.createTime }))
+        const res = await handleBatchRiskWarning(locators)
         if (res.code === 200) {
-          this.selectedIds.forEach(id => {
-            const row = this.warningList.find(r => r.id === id)
-            if (row) { row.handled = true; row.handleNote = '批量处理' }
-          })
-          this.$message?.success(`已处理 ${this.selectedIds.length} 条预警`) || alert(`已处理 ${this.selectedIds.length} 条预警`)
-          this.selectedIds = []
+          this.$message?.success(`已处理 ${locators.length} 条预警`) || alert(`已处理 ${locators.length} 条预警`)
+          this.selectedKeys = []
+          await this.loadList()
         } else {
           this.$message?.error(res.message || '批量处理失败') || alert('批量处理失败')
         }

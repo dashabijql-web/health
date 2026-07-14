@@ -158,7 +158,10 @@ public interface RiskWarningMapper {
             "wr.indicator_value AS warningValue, " +
             "wr.indicator_name  AS indicatorName, " +
             "wr.is_handled AS handled, " +
-            "wr.create_time AS createTime " +
+            "wr.create_time AS createTime, " +
+            "wr.handle_by AS handleBy, " +
+            "wr.handle_time AS handleTime, " +
+            "wr.remark AS handleNote " +
             "FROM v_warning_record wr " +
             "LEFT JOIN employee e ON wr.user_code = e.emp_code " +
             "LEFT JOIN department d ON e.dept_id = d.id " +
@@ -174,6 +177,11 @@ public interface RiskWarningMapper {
             "</if> " +
             "<if test='userCode != null and userCode != \"\"'> " +
             "AND wr.user_code = #{userCode} " +
+            "</if> " +
+            "<if test='keyword != null and keyword != \"\"'> " +
+            "AND (e.emp_name LIKE '%' + #{keyword} + '%' " +
+            "OR wr.user_code LIKE '%' + #{keyword} + '%' " +
+            "OR d.dept_name LIKE '%' + #{keyword} + '%') " +
             "</if> " +
             "<if test='level != null and level != \"\"'> " +
             "AND wr.warning_level = #{level} " +
@@ -191,6 +199,7 @@ public interface RiskWarningMapper {
             @Param("level") String level,
             @Param("handled") Boolean handled,
             @Param("userCode") String userCode,
+            @Param("keyword") String keyword,
             @Param("warningType") String warningType,
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
@@ -198,35 +207,138 @@ public interface RiskWarningMapper {
             @Param("size") int size);
 
     /**
-     * 获取预警总数（查 v_warning_record 视图）
+     * Query warnings in an exact timestamp window for the command-center incident feed.
+     * The end boundary is exclusive so adjacent windows never duplicate an incident.
      */
     @Select("<script>" +
+            "SELECT " +
+            "wr.id, " +
+            "ISNULL(e.emp_name, wr.user_code) AS userName, " +
+            "wr.user_code AS userCode, " +
+            "ISNULL(d.dept_name, '未知部门') AS deptName, " +
+            "e.gender AS gender, " +
+            "CASE WHEN e.birth_date IS NOT NULL THEN DATEDIFF(YEAR, e.birth_date, GETDATE()) ELSE NULL END AS age, " +
+            "wr.warning_type AS warningType, " +
+            "wr.warning_level AS warningLevel, " +
+            "wr.indicator_value AS warningValue, " +
+            "wr.indicator_name AS indicatorName, " +
+            "wr.is_handled AS handled, " +
+            "wr.create_time AS createTime, " +
+            "wr.handle_by AS handleBy, " +
+            "wr.handle_time AS handleTime, " +
+            "wr.remark AS handleNote " +
+            "FROM v_warning_record wr " +
+            "LEFT JOIN employee e ON wr.user_code = e.emp_code " +
+            "LEFT JOIN department d ON e.dept_id = d.id " +
+            "WHERE wr.create_time &gt;= CONVERT(DATETIME, #{startAt}) " +
+            "AND wr.create_time &lt; CONVERT(DATETIME, #{endAt}) " +
+            "<if test='level != null and level != \"\"'> " +
+            "AND wr.warning_level = #{level} " +
+            "</if> " +
+            "<if test='handled != null'> " +
+            "AND wr.is_handled = #{handled} " +
+            "</if> " +
+            "ORDER BY wr.create_time DESC " +
+            "OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY" +
+            "</script>")
+    List<Map<String, Object>> getWarningListByTimeWindow(
+            @Param("level") String level,
+            @Param("handled") Boolean handled,
+            @Param("startAt") String startAt,
+            @Param("endAt") String endAt,
+            @Param("offset") int offset,
+            @Param("size") int size);
+
+    /** Count warnings in the same exact timestamp window as the incident feed. */
+    @Select("<script>" +
             "SELECT COUNT(*) FROM v_warning_record " +
-            "WHERE 1=1 " +
-            "<if test='startDate != null and startDate != \"\"'> " +
-            "AND create_time >= CONVERT(DATETIME, #{startDate}) " +
-            "</if> " +
-            "<if test='startDate == null or startDate == \"\"'> " +
-            "AND create_time >= DATEADD(DAY, -30, GETDATE()) " +
-            "</if> " +
-            "<if test='endDate != null and endDate != \"\"'> " +
-            "AND create_time &lt; DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
-            "</if> " +
-            "<if test='userCode != null and userCode != \"\"'> " +
-            "AND user_code = #{userCode} " +
-            "</if> " +
+            "WHERE create_time &gt;= CONVERT(DATETIME, #{startAt}) " +
+            "AND create_time &lt; CONVERT(DATETIME, #{endAt}) " +
             "<if test='level != null and level != \"\"'> " +
             "AND warning_level = #{level} " +
             "</if> " +
-            "<if test='warningType != null and warningType != \"\"'> " +
-            "AND warning_type LIKE '%' + #{warningType} + '%' " +
-            "</if> " +
             "<if test='handled != null'> " +
             "AND is_handled = #{handled} " +
+            "</if> " +
+            "</script>")
+    int countWarningsByTimeWindow(
+            @Param("level") String level,
+            @Param("handled") Boolean handled,
+            @Param("startAt") String startAt,
+            @Param("endAt") String endAt);
+
+    /**
+     * Warning ids can repeat across monthly tables, so callers should supply createTime
+     * whenever they address a specific incident.
+     */
+    @Select("<script>" +
+            "SELECT TOP 1 " +
+            "wr.id, " +
+            "ISNULL(e.emp_name, wr.user_code) AS userName, " +
+            "wr.user_code AS userCode, " +
+            "ISNULL(d.dept_name, '未知部门') AS deptName, " +
+            "e.gender AS gender, " +
+            "CASE WHEN e.birth_date IS NOT NULL THEN DATEDIFF(YEAR, e.birth_date, GETDATE()) ELSE NULL END AS age, " +
+            "wr.warning_type AS warningType, " +
+            "wr.warning_level AS warningLevel, " +
+            "wr.indicator_value AS warningValue, " +
+            "wr.indicator_name AS indicatorName, " +
+            "wr.is_handled AS handled, " +
+            "wr.create_time AS createTime, " +
+            "wr.handle_by AS handleBy, " +
+            "wr.handle_time AS handleTime, " +
+            "wr.remark AS handleNote " +
+            "FROM v_warning_record wr " +
+            "LEFT JOIN employee e ON wr.user_code = e.emp_code " +
+            "LEFT JOIN department d ON e.dept_id = d.id " +
+            "WHERE wr.id = #{id} " +
+            "<if test='createTime != null and createTime != \"\"'> " +
+            "AND wr.create_time = CONVERT(DATETIME, #{createTime}) " +
+            "</if> " +
+            "ORDER BY wr.create_time DESC" +
+            "</script>")
+    Map<String, Object> getWarningDetail(
+            @Param("id") Long id,
+            @Param("createTime") String createTime);
+
+    /**
+     * 获取预警总数（查 v_warning_record 视图）
+     */
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM v_warning_record wr " +
+            "LEFT JOIN employee e ON wr.user_code = e.emp_code " +
+            "LEFT JOIN department d ON e.dept_id = d.id " +
+            "WHERE 1=1 " +
+            "<if test='startDate != null and startDate != \"\"'> " +
+            "AND wr.create_time >= CONVERT(DATETIME, #{startDate}) " +
+            "</if> " +
+            "<if test='startDate == null or startDate == \"\"'> " +
+            "AND wr.create_time >= DATEADD(DAY, -30, GETDATE()) " +
+            "</if> " +
+            "<if test='endDate != null and endDate != \"\"'> " +
+            "AND wr.create_time &lt; DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
+            "</if> " +
+            "<if test='userCode != null and userCode != \"\"'> " +
+            "AND wr.user_code = #{userCode} " +
+            "</if> " +
+            "<if test='keyword != null and keyword != \"\"'> " +
+            "AND (e.emp_name LIKE '%' + #{keyword} + '%' " +
+            "OR wr.user_code LIKE '%' + #{keyword} + '%' " +
+            "OR d.dept_name LIKE '%' + #{keyword} + '%') " +
+            "</if> " +
+            "<if test='level != null and level != \"\"'> " +
+            "AND wr.warning_level = #{level} " +
+            "</if> " +
+            "<if test='warningType != null and warningType != \"\"'> " +
+            "AND wr.warning_type LIKE '%' + #{warningType} + '%' " +
+            "</if> " +
+            "<if test='handled != null'> " +
+            "AND wr.is_handled = #{handled} " +
             "</if>" +
             "</script>")
     int countWarnings(@Param("level") String level, @Param("handled") Boolean handled,
-                      @Param("userCode") String userCode, @Param("warningType") String warningType,
+                      @Param("userCode") String userCode, @Param("keyword") String keyword,
+                      @Param("warningType") String warningType,
                       @Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**

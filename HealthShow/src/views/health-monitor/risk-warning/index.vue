@@ -84,24 +84,24 @@
             <div class="rw-ph">
               <span class="rw-ph-bar"></span>
               <span class="rw-ph-title">当天预警数据</span>
-              <span class="rw-rt-total">{{ filteredList.length }} 条</span>
+              <span class="rw-rt-total">共 {{ totalWarnings }} 条</span>
               <div class="rw-filter-bar">
-                <input v-model="filterName" class="rw-filter-input" placeholder="搜索姓名…" @input="currentPage=1" />
-                <select v-model="filterLevel" class="rw-filter-select" @change="currentPage=1">
+                <input v-model="filterName" class="rw-filter-input" placeholder="姓名/工号/部门" @keyup.enter="applyListFilters" />
+                <select v-model="filterLevel" class="rw-filter-select" @change="applyListFilters">
                   <option value="">全部级别</option>
-                  <option value="高">高</option><option value="中">中</option><option value="低">低</option>
-                  <option value="危险">危险</option><option value="警告">警告</option><option value="提醒">提醒</option>
+                  <option value="高危">高危</option><option value="中危">中危</option><option value="低危">低危</option>
                 </select>
-                <select v-model="filterType" class="rw-filter-select" @change="currentPage=1">
+                <select v-model="filterType" class="rw-filter-select" @change="applyListFilters">
                   <option value="">全部类型</option>
                   <option v-for="t in warningTypes" :key="t" :value="t">{{ t }}</option>
                 </select>
+                <button class="rw-scroll-btn" @click="applyListFilters">查询</button>
                 <button class="rw-scroll-btn" @click="toggleAutoScroll">
                   {{ autoScrollPaused ? '继续滚动' : '暂停滚动' }}
                 </button>
-                <button class="rw-export-btn" @click="exportWarnings" title="导出Excel">导出 Excel</button>
-                <button class="rw-batch-btn" v-if="selectedIds.length > 0" @click="batchHandle" :disabled="batchHandling">
-                  {{ batchHandling ? '处理中...' : `批量处理 (${selectedIds.length})` }}
+                <button class="rw-export-btn" @click="exportWarnings" title="导出本页Excel">导出本页</button>
+                <button class="rw-batch-btn" v-if="selectedKeys.length > 0" @click="batchHandle" :disabled="batchHandling">
+                  {{ batchHandling ? '处理中...' : `批量处理 (${selectedKeys.length})` }}
                 </button>
               </div>
             </div>
@@ -109,8 +109,8 @@
             <div class="rw-mobile-cards">
               <div
                 v-for="(item, i) in filteredList"
-                :key="item.id || `${item.userName || 'warning'}_${i}`"
-                :class="['rw-mobile-card', warnClass(item.warningLevel), selectedIds.includes(item.id) ? 'is-selected' : '']"
+                :key="warningLocatorKey(item) || `${item.userName || 'warning'}_${i}`"
+                :class="['rw-mobile-card', warnClass(item.warningLevel), selectedKeys.includes(warningLocatorKey(item)) ? 'is-selected' : '']"
                 role="button"
                 tabindex="0"
                 @click="openDetail(item)"
@@ -119,7 +119,7 @@
               >
                 <div class="rw-mobile-card-head">
                   <label class="rw-mobile-check" @click.stop>
-                    <input type="checkbox" v-if="!item.handled" :checked="selectedIds.includes(item.id)" @change="toggleSelect(item.id)" />
+                    <input type="checkbox" v-if="!item.handled" :checked="selectedKeys.includes(warningLocatorKey(item))" @change="toggleSelect(item)" />
                   </label>
                   <div class="rw-mobile-person">
                     <span class="rw-mobile-name">{{ item.userName || '--' }}</span>
@@ -146,13 +146,13 @@
             <div class="rw-list-body" ref="listRef"
               @mouseenter="pauseAutoScroll"
               @mouseleave="resumeAutoScroll">
-              <div class="rw-list-row" v-for="(item, i) in filteredList" :key="i"
-                :class="[warnClass(item.warningLevel), selectedIds.includes(item.id) ? 'is-selected' : '']"
+              <div class="rw-list-row" v-for="(item, i) in filteredList" :key="warningLocatorKey(item)"
+                :class="[warnClass(item.warningLevel), selectedKeys.includes(warningLocatorKey(item)) ? 'is-selected' : '']"
                 @click="openDetail(item)">
                 <span class="rw-list-chk-cell" @click.stop>
-                  <input type="checkbox" v-if="!item.handled" :checked="selectedIds.includes(item.id)" @change="toggleSelect(item.id)" />
+                  <input type="checkbox" v-if="!item.handled" :checked="selectedKeys.includes(warningLocatorKey(item))" @change="toggleSelect(item)" />
                 </span>
-                <span class="rw-list-idx">{{ i + 1 }}</span>
+                <span class="rw-list-idx">{{ (currentPage - 1) * pageSize + i + 1 }}</span>
                 <span class="rw-list-name">{{ item.userName || '--' }}</span>
                 <span class="rw-list-code">{{ item.empCode || item.userCode || '--' }}</span>
                 <span class="rw-list-dept">{{ item.deptName || '--' }}</span>
@@ -164,6 +164,13 @@
                 <span class="rw-list-time">{{ fmtTime(item.createTime) }}</span>
               </div>
               <div v-if="filteredList.length===0" class="rw-list-empty">暂无匹配数据</div>
+            </div>
+
+            <div class="rw-list-pg" v-if="totalWarnings > 0">
+              <button class="rw-pg-btn" :disabled="currentPage <= 1" @click="jumpPage(currentPage - 1)">上一页</button>
+              <span class="rw-pg-info">{{ currentPage }} / {{ totalPages }}</span>
+              <span class="rw-pg-total">共 {{ totalWarnings }} 条</span>
+              <button class="rw-pg-btn" :disabled="currentPage >= totalPages" @click="jumpPage(currentPage + 1)">下一页</button>
             </div>
 
           </div>

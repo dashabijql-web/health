@@ -11,8 +11,10 @@ export default {
         { label: '压力预警', value: 0, color: '#00d4ff' }
       ],
       warningList: [],
+      totalWarnings: 0,
+      warningTypeOptions: [],
       currentPage: 1,
-      pageSize: 20,
+      pageSize: 50,
       filterName: '',
       filterLevel: '',
       filterType: '',
@@ -23,7 +25,7 @@ export default {
       charts: {},
       detailVisible: false, detailRow: null,
       handleNote: '', handling: false,
-      selectedIds: [], batchHandling: false,
+      selectedKeys: [], batchHandling: false,
       autoScrollPaused: false,
       scrollTop: 0,
       // 体征曲线

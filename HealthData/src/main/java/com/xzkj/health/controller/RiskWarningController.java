@@ -6,6 +6,7 @@ import com.xzkj.health.common.exception.BusinessException;
 import com.xzkj.health.dto.riskwarning.RiskWarningDeptStatView;
 import com.xzkj.health.dto.riskwarning.RiskWarningOverviewView;
 import com.xzkj.health.dto.riskwarning.RiskWarningPageView;
+import com.xzkj.health.dto.riskwarning.RiskWarningLocatorRequest;
 import com.xzkj.health.dto.riskwarning.RiskWarningTrendView;
 import com.xzkj.health.dto.riskwarning.RiskWarningTypeCountView;
 import com.xzkj.health.service.RiskWarningService;
@@ -40,13 +41,15 @@ public class RiskWarningController {
             @RequestParam(required = false) String level,
             @RequestParam(required = false) Boolean handled,
             @RequestParam(required = false) String userCode,
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String warningType,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
         size = DateParamUtil.clampSize(size);
-        return Result.ok("获取成功", riskWarningService.getWarningList(level, handled, userCode, warningType, startDate, endDate, page, size));
+        return Result.ok("获取成功", riskWarningService.getWarningList(
+                level, handled, userCode, keyword, warningType, startDate, endDate, Math.max(1, page), size));
     }
 
     /** 获取预警趋势（按类型分组） */
@@ -92,8 +95,8 @@ public class RiskWarningController {
 
     /** 批量处理预警 */
     @PostMapping("/handle-batch")
-    public Result<String> handleBatch(@RequestBody List<Long> ids) {
-        boolean success = riskWarningService.handleBatch(ids, "system");
+    public Result<String> handleBatch(@RequestBody List<RiskWarningLocatorRequest> locators) {
+        boolean success = riskWarningService.handleBatch(locators, "system");
         if (!success) {
             throw new BusinessException("批量处理失败");
         }

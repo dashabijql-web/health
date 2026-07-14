@@ -3,6 +3,7 @@ package com.xzkj.health.service;
 import com.xzkj.health.dto.riskwarning.RiskWarningDeptStatView;
 import com.xzkj.health.dto.riskwarning.RiskWarningOverviewView;
 import com.xzkj.health.dto.riskwarning.RiskWarningPageView;
+import com.xzkj.health.dto.riskwarning.RiskWarningLocatorRequest;
 import com.xzkj.health.dto.riskwarning.RiskWarningTrendView;
 import com.xzkj.health.dto.riskwarning.RiskWarningTypeCountView;
 import com.xzkj.health.mapper.RiskWarningMapper;
@@ -47,9 +48,9 @@ class RiskWarningServiceTest {
                         "dangerCount", 7,
                         "warningCount", 13
                 ));
-        when(riskWarningMapper.getWarningList(null, null, null, null, "2026-05-01", "2026-05-07", 0, 10))
+        when(riskWarningMapper.getWarningList(null, null, null, null, null, "2026-05-01", "2026-05-07", 0, 10))
                 .thenReturn(List.of(warningRow()));
-        when(riskWarningMapper.countWarnings(null, null, null, null, "2026-05-01", "2026-05-07"))
+        when(riskWarningMapper.countWarnings(null, null, null, null, null, "2026-05-01", "2026-05-07"))
                 .thenReturn(1);
         when(riskWarningMapper.getWarningTrendByType(7))
                 .thenReturn(List.of(Map.of(
@@ -74,7 +75,7 @@ class RiskWarningServiceTest {
                 .thenReturn(List.of(Map.of("type", "心率异常", "count", 9)));
 
         RiskWarningOverviewView overview = riskWarningService.getWarningStats("2026-05-01", "2026-05-07");
-        RiskWarningPageView page = riskWarningService.getWarningList(null, null, null, null, "2026-05-01", "2026-05-07", 1, 10);
+        RiskWarningPageView page = riskWarningService.getWarningList(null, null, null, null, null, "2026-05-01", "2026-05-07", 1, 10);
         RiskWarningTrendView trend = riskWarningService.getWarningTrend(7);
         List<RiskWarningDeptStatView> deptStats = riskWarningService.getDeptWarningStats("2026-05-01", "2026-05-07");
         List<RiskWarningTypeCountView> typeDistribution = riskWarningService.getTypeDistribution();
@@ -86,6 +87,21 @@ class RiskWarningServiceTest {
         assertEquals("05-07", trend.dates().get(0));
         assertEquals(15, deptStats.get(0).total());
         assertEquals(9, typeDistribution.get(0).count());
+    }
+
+    @Test
+    void batchHandlingUsesTimestampSafeLocators() {
+        Map<String, Object> row = warningRow();
+        when(riskWarningMapper.getWarningDetail(1L, "2026-05-07 10:00:00"))
+                .thenReturn(row);
+        when(riskWarningMapper.handleWarningInTable(
+                "warning_record_202605", 1L, "system", "批量处理"))
+                .thenReturn(1);
+
+        boolean handled = riskWarningService.handleBatch(
+                List.of(new RiskWarningLocatorRequest(1L, "2026-05-07 10:00:00")), "system");
+
+        assertEquals(true, handled);
     }
 
     private Map<String, Object> warningRow() {

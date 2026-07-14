@@ -32,19 +32,14 @@ export const riskWarningPageViewModel = {
     statMax() { return Math.max(1, ...this.warningStats.map(x => x.value)) },
     // FIX ⑤: 筛选
     filteredList() {
-      return this.warningList.filter(item => {
-        const nameOk  = !this.filterName  || (item.userName||'').includes(this.filterName)
-        const levelOk = !this.filterLevel || item.warningLevel === this.filterLevel
-        const typeOk  = !this.filterType  || item.warningType  === this.filterType
-        return nameOk && levelOk && typeOk
-      })
+      return this.warningList
     },
-    pagedList()   { const s=(this.currentPage-1)*this.pageSize; return this.filteredList.slice(s,s+this.pageSize) },
-    totalPages()  { return Math.max(1, Math.ceil(this.filteredList.length/this.pageSize)) },
-    warningTypes(){ return [...new Set(this.warningList.map(x=>x.warningType).filter(Boolean))] },
+    pagedList()   { return this.warningList },
+    totalPages()  { return Math.max(1, Math.ceil(this.totalWarnings / this.pageSize)) },
+    warningTypes(){ return this.warningTypeOptions },
     pendingInFiltered() { return this.filteredList.filter(x => !x.handled) },
-    allPendingSelected() { return this.pendingInFiltered.length > 0 && this.pendingInFiltered.every(x => this.selectedIds.includes(x.id)) },
-    somePendingSelected() { return this.pendingInFiltered.some(x => this.selectedIds.includes(x.id)) },
+    allPendingSelected() { return this.pendingInFiltered.length > 0 && this.pendingInFiltered.every(x => this.selectedKeys.includes(this.warningLocatorKey(x))) },
+    somePendingSelected() { return this.pendingInFiltered.some(x => this.selectedKeys.includes(this.warningLocatorKey(x))) },
 
     // 右侧面板：体征均值卡
     vitalAvg() {
@@ -75,10 +70,6 @@ export const riskWarningPageViewModel = {
     },
 
   },
-  watch: {
-    filteredList() {
-      this.$nextTick(() => { const el=this.$refs.listRef; if(el){ el.scrollTop=0; this.scrollTop=0 } })
-    }
-  },
+  watch: {},
 }
 

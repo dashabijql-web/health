@@ -4,6 +4,7 @@ import com.xzkj.health.common.MapValueUtil;
 import com.xzkj.health.config.datasource.HealthDataSourceContext;
 import com.xzkj.health.dto.riskwarning.RiskWarningDeptStatView;
 import com.xzkj.health.dto.riskwarning.RiskWarningItemView;
+import com.xzkj.health.dto.riskwarning.RiskWarningLocatorRequest;
 import com.xzkj.health.dto.riskwarning.RiskWarningOverviewView;
 import com.xzkj.health.dto.riskwarning.RiskWarningPageView;
 import com.xzkj.health.dto.riskwarning.RiskWarningTrendSeriesView;
@@ -18,6 +19,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.util.*;
 
 /**
@@ -33,7 +36,12 @@ import java.util.*;
 @Service
 public class RiskWarningService {
 
-    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DT_FMT = new DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd HH:mm:ss")
+            .optionalStart()
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+            .optionalEnd()
+            .toFormatter();
 
     @Autowired
     private RiskWarningMapper riskWarningMapper;
@@ -63,12 +71,42 @@ public class RiskWarningService {
         );
     }
 
-    public RiskWarningPageView getWarningList(String level, Boolean handled, String userCode, String warningType, String startDate, String endDate, int page, int size) {
+    public RiskWarningPageView getWarningList(String level, Boolean handled, String userCode, String keyword,
+                                              String warningType, String startDate, String endDate,
+                                              int page, int size) {
         int offset = (page - 1) * size;
-        List<Map<String, Object>> list = riskWarningMapper.getWarningList(level, handled, userCode, warningType, startDate, endDate, offset, size);
-        int total = riskWarningMapper.countWarnings(level, handled, userCode, warningType, startDate, endDate);
+        List<Map<String, Object>> list = riskWarningMapper.getWarningList(
+                level, handled, userCode, keyword, warningType, startDate, endDate, offset, size);
+        int total = riskWarningMapper.countWarnings(
+                level, handled, userCode, keyword, warningType, startDate, endDate);
 
         return new RiskWarningPageView(toItemViews(list), total, page, size);
+    }
+
+    /**
+     * Command-center queries require exact timestamp windows. The existing list API is
+     * date-oriented, so keep this path separate rather than silently widening realtime
+     * incidents to a whole calendar day.
+     */
+    public RiskWarningPageView getWarningListByTimeWindow(
+            String level, Boolean handled, String startAt, String endAt, int page, int size) {
+        int offset = (page - 1) * size;
+        List<Map<String, Object>> list = riskWarningMapper.getWarningListByTimeWindow(
+                level, handled, startAt, endAt, offset, size);
+        int total = riskWarningMapper.countWarningsByTimeWindow(level, handled, startAt, endAt);
+        return new RiskWarningPageView(toItemViews(list), total, page, size);
+    }
+
+    /**
+     * Looks up one warning by its monthly-table-safe locator: id plus createTime.
+     * A bare id is retained only as a backward-compatible fallback for legacy callers.
+     */
+    public RiskWarningItemView getWarningDetail(Long id, String createTime) {
+        Map<String, Object> row = riskWarningMapper.getWarningDetail(id, createTime);
+        if (row == null || row.isEmpty()) {
+            return null;
+        }
+        return toItemViews(List.of(row)).get(0);
     }
 
     public RiskWarningTrendView getWarningTrend(int days) {
@@ -232,53 +270,26 @@ public class RiskWarningService {
      *   2. 按月份表分组
      *   3. 对每个月份表执行一次批量 UPDATE
      */
-    public boolean handleBatch(List<Long> ids, String handleBy) {
-        if (ids == null || ids.isEmpty()) return false;
+    public boolean handleBatch(List<RiskWarningLocatorRequest> locators, String handleBy) {
+        if (locators == null || locators.isEmpty()) return false;
 
-        List<Map<String, Object>> records = riskWarningMapper.selectCreateTimesByIds(ids);
-        if (records.isEmpty()) {
-            log.warn("[分表] handleBatch: 未找到任何预警记录，ids={}", ids);
-            return false;
-        }
-
-        // 按月份表分组
-        Map<String, List<Long>> tableToIds = new HashMap<>();
-        for (Map<String, Object> rec : records) {
-            Long recId = MapValueUtil.toLong(rec.get("id"));
-            if (recId == null) continue;
-            LocalDateTime createTime = parseDateTime(rec.get("create_time"));
-            if (createTime == null) continue;
-            String tableName = TableNameUtil.warningRecordTable(createTime);
-            tableToIds.computeIfAbsent(tableName, k -> new ArrayList<>()).add(recId);
-        }
-
-        int totalUpdated = 0;
-        // 收集月份表里找不到的 id，最后在原始表里兜底更新
-        List<Long> notFoundIds = new ArrayList<>(ids);
-
-        for (Map.Entry<String, List<Long>> entry : tableToIds.entrySet()) {
-            try {
-                int rows = riskWarningMapper.handleBatchInTable(entry.getKey(), entry.getValue(), handleBy);
-                totalUpdated += rows;
-                if (rows == entry.getValue().size()) {
-                    notFoundIds.removeAll(entry.getValue());
-                }
-            } catch (Exception e) {
-                log.error("[分表] handleBatch 更新 {} 失败: {}", entry.getKey(), e.getMessage(), e);
+        for (RiskWarningLocatorRequest locator : locators) {
+            if (locator == null || locator.warningId() == null
+                    || locator.occurredAt() == null || locator.occurredAt().isBlank()) {
+                throw new IllegalArgumentException("批量处理必须提供 warningId 和 occurredAt");
+            }
+            if (getWarningDetail(locator.warningId(), locator.occurredAt()) == null) {
+                throw new IllegalArgumentException("预警不存在或定位时间不匹配");
             }
         }
 
-        // 回退：在原始 warning_record 表里更新分表前的历史数据
-        if (!notFoundIds.isEmpty()) {
-            try {
-                int rows = riskWarningMapper.handleBatchOriginal(notFoundIds, handleBy);
-                totalUpdated += rows;
-            } catch (Exception e) {
-                log.error("[分表] handleBatch 原始表回退失败: {}", e.getMessage(), e);
+        int updated = 0;
+        for (RiskWarningLocatorRequest locator : locators) {
+            if (handleWarning(locator.warningId(), handleBy, "批量处理", locator.occurredAt())) {
+                updated++;
             }
         }
-
-        return totalUpdated > 0;
+        return updated == locators.size();
     }
 
     // ─── 私有工具 ────────────────────────────────────────────────────

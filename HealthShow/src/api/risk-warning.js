@@ -65,6 +65,13 @@ export function getRiskWarningTrend(days = 30) {
   })
 }
 
+export function getRiskWarningTypeDistribution() {
+  return request({
+    url: '/risk-warning/type-distribution',
+    method: 'get'
+  })
+}
+
 /**
  * 获取各部门预警统计
  */
@@ -91,12 +98,12 @@ export function handleRiskWarning(id, data) {
 
 /**
  * 批量处理预警
- * @param {Array} ids 预警ID列表
+ * @param {Array} locators warningId + occurredAt 复合定位列表
  */
-export function handleBatchRiskWarning(ids) {
+export function handleBatchRiskWarning(locators) {
   return request({
     url: '/risk-warning/handle-batch',
     method: 'post',
-    data: ids
+    data: locators
   })
 }
