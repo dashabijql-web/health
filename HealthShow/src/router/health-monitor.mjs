@@ -273,10 +273,11 @@ const healthMonitorRouter = {
       name: 'WatchRawPackets',
       component: () => import('@/views/health-monitor/watch-raw/index.vue'),
       meta: {
-        title: '原始数据',
+        title: '设备原始报文',
         icon: 'Document',
-        navGroup: 'monitor',
-        navOrder: 27
+        permCode: 'device:list',
+        navGroup: 'admin',
+        navOrder: 56
       }
     },
     {
@@ -286,8 +287,9 @@ const healthMonitorRouter = {
       meta: {
         title: '手表控制',
         icon: 'Cpu',
-        navGroup: 'monitor',
-        navOrder: 28
+        permCode: 'device:list',
+        navGroup: 'admin',
+        navOrder: 57
       }
     }
   ]

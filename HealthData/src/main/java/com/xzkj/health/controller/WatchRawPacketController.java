@@ -1,6 +1,8 @@
 package com.xzkj.health.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.xzkj.health.common.Result;
+import com.xzkj.health.config.security.DeviceDiagnosticsAuthorizer;
 import com.xzkj.health.service.DeviceManagerService;
 import com.xzkj.health.service.watch.WatchRawPacketService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,11 +20,14 @@ public class WatchRawPacketController {
 
     private final WatchRawPacketService rawPacketService;
     private final DeviceManagerService deviceManagerService;
+    private final DeviceDiagnosticsAuthorizer diagnosticsAuthorizer;
 
     public WatchRawPacketController(WatchRawPacketService rawPacketService,
-                                    DeviceManagerService deviceManagerService) {
+                                    DeviceManagerService deviceManagerService,
+                                    DeviceDiagnosticsAuthorizer diagnosticsAuthorizer) {
         this.rawPacketService = rawPacketService;
         this.deviceManagerService = deviceManagerService;
+        this.diagnosticsAuthorizer = diagnosticsAuthorizer;
     }
 
     @GetMapping("/raw-packets")
@@ -31,11 +36,13 @@ public class WatchRawPacketController {
             @RequestParam(required = false) String protocolCode,
             @RequestParam(required = false) String direction,
             @RequestParam(defaultValue = "200") Integer limit) {
+        diagnosticsAuthorizer.checkUser(StpUtil.getLoginIdAsLong());
         return Result.ok("获取成功", rawPacketService.query(imei, protocolCode, direction, limit));
     }
 
     @PostMapping("/command")
     public Result<WatchCommandResult> sendWatchCommand(@RequestBody WatchCommandRequest request) {
+        diagnosticsAuthorizer.checkUser(StpUtil.getLoginIdAsLong());
         if (request == null || isBlank(request.imei()) || isBlank(request.protocolCode())) {
             return Result.error(400, "IMEI 和协议号不能为空");
         }
