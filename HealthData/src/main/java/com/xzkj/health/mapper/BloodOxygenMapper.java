@@ -180,9 +180,9 @@ public interface BloodOxygenMapper {
     @Select("SELECT " +
             "d.dept_name AS dept_name, " +
             "CAST(AVG(CAST(hr.blood_oxygen AS FLOAT)) AS INT) AS avg_blood_oxygen, " +
-            "SUM(CASE WHEN hr.blood_oxygen < 95 THEN 1 ELSE 0 END) AS low_count, " +
-            "SUM(CASE WHEN hr.blood_oxygen >= 99 THEN 1 ELSE 0 END) AS high_count, " +
-            "COUNT(*) AS total_count " +
+            "COUNT(DISTINCT CASE WHEN hr.blood_oxygen < 95 THEN hr.user_code END) AS low_count, " +
+            "COUNT(DISTINCT CASE WHEN hr.blood_oxygen >= 99 THEN hr.user_code END) AS high_count, " +
+            "COUNT(DISTINCT hr.user_code) AS total_count " +
             "FROM v_health_record hr " +
             "INNER JOIN employee e ON hr.user_code = e.emp_code " +
             "INNER JOIN department d ON e.dept_id = d.id " +

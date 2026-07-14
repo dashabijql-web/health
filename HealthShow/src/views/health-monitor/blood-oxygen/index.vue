@@ -49,11 +49,11 @@
         <div class="bo-panel bo-aside-bot">
           <div class="bo-ph">
             <span class="bo-ph-bar"></span>
-            <span class="bo-ph-title">部门血氧异常统计</span>
+            <span class="bo-ph-title">部门异常人员分布</span>
             <span v-if="filterDept" class="bo-dept-tag" @click="filterDept=''" title="点击取消筛选">{{ filterDept }} ×</span>
             <div class="bo-ph-legend">
-              <span class="bo-leg-dot" style="background:#FFB84D"></span><span class="bo-leg-txt">偏低</span>
-              <span class="bo-leg-dot" style="background:#4FC3F7"></span><span class="bo-leg-txt">优秀</span>
+              <span class="bo-leg-dot" style="background:#FFB84D"></span><span class="bo-leg-txt">偏低人数</span>
+              <span class="bo-leg-dot" style="background:#4FC3F7"></span><span class="bo-leg-txt">优秀人数</span>
             </div>
           </div>
           <div class="bo-pc">
@@ -68,7 +68,7 @@
         <!-- 当前人员口径 + 4 区间卡 -->
         <div class="bo-hero">
           <div class="bo-scope-card">
-            <span class="bo-scope-label">当前覆盖人员</span>
+            <span class="bo-scope-label">实时覆盖</span>
             <strong class="bo-scope-value">{{ realtimeList.length }}<em>人</em></strong>
             <span class="bo-scope-note">近2小时每人最新一条</span>
             <span class="bo-scope-time">更新于 {{ latestRealtimeText }}</span>
@@ -225,10 +225,10 @@ export default {
     headerKpis() {
       const o = this.overview
       return [
-        { label: '平均血氧',   val: (o.avgBloodOxygen || '--') + '%', cls: 'kpi-cyan'   },
-        { label: '异常人数',   val: o.abnormalCount || 0,              cls: 'kpi-orange'  },
-        { label: '检测率',     val: (o.detectionRate || 0) + '%',      cls: 'kpi-green'   },
-        { label: '检测人数',   val: (o.totalCount || 0).toLocaleString(), cls: 'kpi-blue' }
+        { label: '周期平均',   val: (o.avgBloodOxygen || '--') + '%', cls: 'kpi-cyan'   },
+        { label: '周期最低',   val: (o.minBloodOxygen || '--') + '%', cls: 'kpi-orange' },
+        { label: '异常人数',   val: o.abnormalCount || 0,             cls: 'kpi-orange' },
+        { label: '周期覆盖',   val: (o.totalCount || 0).toLocaleString(), cls: 'kpi-blue' }
       ]
     },
     hourlyTitle() {

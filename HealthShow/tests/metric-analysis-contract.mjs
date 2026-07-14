@@ -20,9 +20,12 @@ test('blood oxygen metrics share the same abnormal threshold and person semantic
   const page = read('src', 'views', 'health-monitor', 'blood-oxygen', 'index.vue')
   assert.match(mapper, /COUNT\(\*\) \* 100 \/ NULLIF\(\(SELECT COUNT\(\*\) FROM employee\), 0\)/)
   assert.match(mapper, /WHERE hr\.blood_oxygen < 95/)
-  assert.match(mapper, /SUM\(CASE WHEN hr\.blood_oxygen < 95 THEN 1 ELSE 0 END\) AS low_count/)
+  assert.match(mapper, /COUNT\(DISTINCT CASE WHEN hr\.blood_oxygen < 95 THEN hr\.user_code END\) AS low_count/)
+  assert.match(mapper, /COUNT\(DISTINCT hr\.user_code\) AS total_count/)
   assert.match(page, /异常人数/)
-  assert.match(page, /检测人数/)
+  assert.match(page, /周期覆盖/)
+  assert.match(page, /实时覆盖/)
+  assert.doesNotMatch(page, /label: '检测率'/)
   assert.doesNotMatch(page, /ref="hourlyRef"/)
 })
 
@@ -30,7 +33,7 @@ test('metric pages use top ten rankings and current-person scope cards', () => {
   for (const pageName of ['heart-rate', 'pressure', 'blood-pressure', 'blood-oxygen']) {
     const source = read('src', 'views', 'health-monitor', pageName, 'index.vue')
     assert.match(source, /slice\(0, 10\)/)
-    assert.match(source, /当前覆盖人员/)
+    assert.match(source, pageName === 'blood-oxygen' ? /实时覆盖/ : /当前覆盖人员/)
     assert.match(source, /近2小时每人最新一条/)
     assert.doesNotMatch(source, /ref="gaugeRef"/)
   }
