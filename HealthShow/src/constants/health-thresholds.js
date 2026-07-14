@@ -8,7 +8,7 @@ export const SPO2 = { DANGER: 90, LOW: 95, EXCELLENT: 99 }
 export const TEMP = { LOW: 36.0, HIGH: 37.3, DANGER: 38.5 }
 export const BP_SYS = { NORMAL: 120, PRE: 140 }
 export const BP_DIA = { NORMAL: 80, PRE: 90 }
-export const PRESSURE = { RELAXED: 30, NORMAL_MAX: 60, HIGH: 80 }
+export const PRESSURE = { RELAXED: 50, ELEVATED: 70, HIGH: 85 }
 
 /** 心率等级：low / normal / high */
 export function hrLevel(v) { return v > HR.HIGH ? 'high' : v < HR.LOW ? 'low' : 'normal' }
@@ -30,8 +30,8 @@ export function bpLevel(sys) {
 
 /** 压力等级：relaxed / normal / elevated / high */
 export function pressureLevel(v) {
-  return v < PRESSURE.RELAXED ? 'relaxed' : v <= PRESSURE.NORMAL_MAX ? 'normal'
-    : v <= PRESSURE.HIGH ? 'elevated' : 'high'
+  return v < PRESSURE.RELAXED ? 'relaxed' : v < PRESSURE.ELEVATED ? 'normal'
+    : v < PRESSURE.HIGH ? 'elevated' : 'high'
 }
 
 /** 通用等级→颜色映射 */

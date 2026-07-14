@@ -7,6 +7,7 @@ $sky:    #38bdf8;
 @include hm-main('bp');
 @include hm-panel('bp');
 @include hm-hero-zone('bp');
+@include hm-scope-card('bp');
 @include hm-zone-cards('bp');
 @include hm-charts-row('bp');
 
@@ -171,7 +172,7 @@ $sky:    #38bdf8;
 .bp-top5-name { font-size: 12px; color: $white; width: 56px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bp-top5-bar-wrap { flex: 1; height: 6px; background: rgba(167,139,250,0.08); border-radius: 3px; overflow: hidden; }
 .bp-top5-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, $purple, #7c3aed); transition: width 0.8s ease; }
-.bp-top5-val { font-size: 13px; font-weight: 700; color: $purple; font-family: 'Consolas', monospace; width: 28px; text-align: right; flex-shrink: 0; }
+.bp-top5-val { font-size: 12px; font-weight: 700; color: $purple; font-family: 'Consolas', monospace; width: 52px; text-align: right; flex-shrink: 0; }
 .bp-top5-more { text-align: center; font-size: 11px; color: $purple; padding: 6px 0; cursor: pointer; opacity: 0.7; &:hover { opacity: 1; } }
 
 // 部门筛选标签

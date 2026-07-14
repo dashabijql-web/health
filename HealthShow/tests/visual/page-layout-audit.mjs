@@ -23,6 +23,10 @@ const DEFAULT_ROUTES = [
   { slug: 'dashboard', path: '/health-monitor/dashboard' },
   { slug: 'workbench', path: '/health-monitor/workbench' },
   { slug: 'real-time', path: '/health-monitor/real-time' },
+  { slug: 'heart-rate', path: '/health-monitor/heart-rate', canvasRoot: '.hr-root', mobileCanvasMinimum: 3 },
+  { slug: 'pressure', path: '/health-monitor/pressure', canvasRoot: '.ps-root', mobileCanvasMinimum: 2 },
+  { slug: 'blood-pressure', path: '/health-monitor/blood-pressure', canvasRoot: '.bp-root', mobileCanvasMinimum: 3 },
+  { slug: 'blood-oxygen', path: '/health-monitor/blood-oxygen', canvasRoot: '.bo-root', mobileCanvasMinimum: 2 },
   { slug: 'risk-warning', path: '/health-monitor/risk-warning' },
   { slug: 'employee-profile', path: '/health-monitor/employee-profile' },
   { slug: 'mine-entry', path: '/health-monitor/mine-entry' },
@@ -64,7 +68,13 @@ function selectedRoutes() {
       .filter(Boolean)
   );
   if (filter.size === 0) return DEFAULT_ROUTES;
-  return DEFAULT_ROUTES.filter((route) => filter.has(route.slug));
+  const routes = DEFAULT_ROUTES.filter((route) => filter.has(route.slug));
+  if (routes.length !== filter.size) {
+    const known = new Set(routes.map((route) => route.slug));
+    const unknown = Array.from(filter).filter((slug) => !known.has(slug));
+    throw new Error(`Unknown VISUAL_ROUTES: ${unknown.join(', ')}`);
+  }
+  return routes;
 }
 
 const summary = {
@@ -271,6 +281,18 @@ async function collectLayoutIssues(page, route, viewport) {
           });
         }
       });
+    }
+
+    if (viewport.isMobile && route.mobileCanvasMinimum) {
+      const canvases = Array.from(document.querySelectorAll(`${route.canvasRoot} canvas`))
+        .map((element) => element.getBoundingClientRect())
+        .filter((rect) => rect.width >= 100 && rect.height >= 100);
+      if (canvases.length < route.mobileCanvasMinimum) {
+        issues.push({
+          type: 'mobile_chart_missing',
+          message: `expected at least ${route.mobileCanvasMinimum} mobile charts, found ${canvases.length}`
+        });
+      }
     }
 
     const actionButtons = Array.from(document.querySelectorAll('button,.el-button,[role="button"]')).filter(isVisible);

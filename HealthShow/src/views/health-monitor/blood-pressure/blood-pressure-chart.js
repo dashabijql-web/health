@@ -1,5 +1,5 @@
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
-import { initChart, distOption, gradH, gradV } from '@/utils/chart-helpers'
+import { initChart, gradH, gradV } from '@/utils/chart-helpers'
 
 export const bloodPressureChartMethods = {
   initDeptChart(data) {
@@ -43,11 +43,6 @@ export const bloodPressureChartMethods = {
       if (!name) return
       this.filterDept = this.filterDept === name ? '' : name
     })
-  },
-
-  initDistChart(data) {
-    const c = initChart(this.charts, 'dist', this.$refs.distRef)
-    if (c) c.setOption(distOption(data))
   },
 
   initTrendChart(dates, sysVals, diaVals) {

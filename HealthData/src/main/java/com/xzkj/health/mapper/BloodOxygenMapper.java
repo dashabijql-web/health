@@ -56,7 +56,7 @@ public interface BloodOxygenMapper {
             "SUM(CASE WHEN _agg.has_normal  = 1 THEN 1 ELSE 0 END) AS normal_count, " +
             "SUM(CASE WHEN _agg.has_abnormal = 1 THEN 1 ELSE 0 END) AS abnormal_count, " +
             "COUNT(*) AS total_count, " +
-            "ISNULL(SUM(CASE WHEN _agg.has_normal = 1 THEN 1 ELSE 0 END) * 100 / NULLIF(COUNT(*), 0), 0) AS detection_rate " +
+            "ISNULL(COUNT(*) * 100 / NULLIF((SELECT COUNT(*) FROM employee), 0), 0) AS detection_rate " +
             "FROM ( " +
             "  SELECT user_code, " +
             "    AVG(CAST(blood_oxygen AS FLOAT)) AS avg_bo, " +
@@ -166,7 +166,7 @@ public interface BloodOxygenMapper {
             "COUNT(*) AS count " +
             "FROM v_health_record hr " +
             "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
-            "WHERE hr.blood_oxygen < 90 " +
+            "WHERE hr.blood_oxygen < 95 " +
             "AND hr.blood_oxygen IS NOT NULL " +
             "AND hr.record_time >= CONVERT(DATETIME, #{startDate}) " +
             "AND hr.record_time < DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
@@ -180,7 +180,7 @@ public interface BloodOxygenMapper {
     @Select("SELECT " +
             "d.dept_name AS dept_name, " +
             "CAST(AVG(CAST(hr.blood_oxygen AS FLOAT)) AS INT) AS avg_blood_oxygen, " +
-            "SUM(CASE WHEN hr.blood_oxygen < 90 THEN 1 ELSE 0 END) AS low_count, " +
+            "SUM(CASE WHEN hr.blood_oxygen < 95 THEN 1 ELSE 0 END) AS low_count, " +
             "SUM(CASE WHEN hr.blood_oxygen >= 99 THEN 1 ELSE 0 END) AS high_count, " +
             "COUNT(*) AS total_count " +
             "FROM v_health_record hr " +
@@ -252,18 +252,20 @@ public interface BloodOxygenMapper {
             "ORDER BY hour")
     List<BloodOxygenHourlyRow> getHourlyStats(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
-    /** 实时血氧列表（近2小时最新记录，按时间倒序） */
-    @Select("SELECT TOP (#{limit}) " +
-            "hr.user_code AS user_code, " +
-            "ISNULL(e.emp_name, hr.user_code) AS user_name, " +
-            "ISNULL(d.dept_name, '') AS dept_name, " +
-            "hr.blood_oxygen AS blood_oxygen, " +
-            "hr.record_time AS record_time " +
-            "FROM v_health_record hr " +
-            "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
-            "LEFT JOIN department d ON e.dept_id = d.id " +
-            "WHERE hr.blood_oxygen IS NOT NULL AND hr.blood_oxygen > 0 " +
-            "AND hr.record_time >= DATEADD(HOUR, -2, GETDATE()) " +
-            "ORDER BY hr.record_time DESC")
+    /** 实时血氧列表（近2小时每人最新一条，按时间倒序） */
+    @Select("SELECT TOP (#{limit}) user_code, user_name, dept_name, blood_oxygen, record_time " +
+            "FROM (" +
+            "  SELECT hr.user_code AS user_code, " +
+            "    ISNULL(e.emp_name, hr.user_code) AS user_name, " +
+            "    ISNULL(d.dept_name, '') AS dept_name, " +
+            "    hr.blood_oxygen AS blood_oxygen, " +
+            "    hr.record_time AS record_time, " +
+            "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
+            "  FROM v_health_record hr " +
+            "  LEFT JOIN employee e ON hr.user_code = e.emp_code " +
+            "  LEFT JOIN department d ON e.dept_id = d.id " +
+            "  WHERE hr.blood_oxygen IS NOT NULL AND hr.blood_oxygen > 0 " +
+            "  AND hr.record_time >= DATEADD(HOUR, -2, GETDATE())" +
+            ") latest WHERE rn = 1 ORDER BY record_time DESC")
     List<BloodOxygenRealtimeRow> getRealtime(@Param("limit") int limit);
 }

@@ -38,7 +38,7 @@
           </div>
           <div class="ps-top5-list" ref="top5ScrollRef">
             <div v-if="!top5Data.length" class="ps-top5-empty">暂无高压力数据</div>
-            <div class="ps-top5-row" v-for="(item, i) in displayedTop5" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
+            <div class="ps-top5-row" v-for="(item, i) in displayedTop5" :key="i" role="button" tabindex="0" @click="goToPortrait(item)" @keydown.enter="goToPortrait(item)" style="cursor:pointer">
               <span class="ps-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="ps-top5-name">{{ item.userName }}</span>
               <div class="ps-top5-bar-wrap">
@@ -49,9 +49,6 @@
                   }"></div>
               </div>
               <span class="ps-top5-val" :style="{ color: top5ValColor(item.avgPressure) }">{{ item.avgPressure }}</span>
-            </div>
-            <div v-if="top5Data.length > 20" class="ps-top5-more" @click="top5Expanded = !top5Expanded">
-              {{ top5Expanded ? '▲ 收起' : `▼ 展开全部 (${top5Data.length} 条)` }}
             </div>
           </div>
         </div>
@@ -72,14 +69,13 @@
       <!-- ─ 中间 ─ -->
       <main class="ps-main">
 
-        <!-- Hero 区：大仪表盘 + 4 区间卡 -->
+        <!-- 当前人员口径 + 4 区间卡 -->
         <div class="ps-hero">
-          <div class="ps-gauge-wrap">
-            <div ref="gaugeRef" class="ps-gauge-chart"></div>
-            <div class="ps-gauge-center">
-              <div class="ps-gauge-val">{{ overview.avgPressure != null ? overview.avgPressure : '--' }}</div>
-              <div class="ps-gauge-sub">平均压力指数</div>
-            </div>
+          <div class="ps-scope-card">
+            <span class="ps-scope-label">当前覆盖人员</span>
+            <strong class="ps-scope-value">{{ realtimeList.length }}<em>人</em></strong>
+            <span class="ps-scope-note">近2小时每人最新一条</span>
+            <span class="ps-scope-time">更新于 {{ latestRealtimeText }}</span>
           </div>
           <div class="ps-zone-cards">
             <div v-for="z in psZones" :key="z.key" :class="['ps-zone-card', z.cls]">
@@ -113,10 +109,9 @@
           <div class="ps-panel ps-panel-dist">
             <div class="ps-ph">
               <span class="ps-ph-bar"></span>
-              <span class="ps-ph-title">压力区间分布</span>
+              <span class="ps-ph-title">{{ metricPeriodLabel }}记录区间分布</span>
             </div>
             <div class="ps-dist-body">
-              <div ref="distRef" class="ps-dist-chart"></div>
               <div class="ps-dist-legend">
                 <div class="ps-dist-row" v-for="d in distLegend" :key="d.name">
                   <div class="ps-dist-dot" :style="{background: d.color}"></div>
@@ -135,7 +130,7 @@
         <div class="ps-panel ps-panel-anomaly">
           <div class="ps-ph">
             <span class="ps-ph-bar"></span>
-            <span class="ps-ph-title">当前异常压力明细{{ filterDept ? ' — ' + filterDept : '' }}</span>
+            <span class="ps-ph-title">当前异常压力人员{{ filterDept ? ' — ' + filterDept : '' }}</span>
             <span class="ps-anomaly-count" v-if="psAnomalyList.length">
               共 <em>{{ psAnomalyList.length }}</em> 人异常
             </span>
@@ -152,8 +147,11 @@
                 class="ps-anomaly-row"
                 v-for="(item, i) in displayedAnomalyList"
                 :key="i"
+                role="button"
+                tabindex="0"
                 :class="item.pressure >= 85 ? 'anom-high' : 'anom-elevated'"
                 @click="goToPortrait(item)"
+                @keydown.enter="goToPortrait(item)"
                 style="cursor:pointer"
               >
                 <span class="pa-name">{{ item.userName }}</span>
@@ -213,7 +211,6 @@ export default {
       overview: {},
       distLegend: [],
       top5Data: [],
-      top5Expanded: false,
       anomalyExpanded: false,
       deptData: [],
       realtimeList: [],
@@ -247,11 +244,11 @@ export default {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.avgPressure || 0)) : 1
     },
     displayedTop5() {
-      return this.top5Data.slice(0, this.top5Expanded ? this.top5Data.length : 20)
+      return this.top5Data.slice(0, 10)
     },
     top5Title() {
       const p = { day: '今日', week: '近7日', month: '近30日' }[this.activePeriod]
-      return p + '高压力排行'
+      return p + '高压力 Top 10'
     },
     filteredRealtimeList() {
       if (!this.filterDept) return this.realtimeList
@@ -324,7 +321,6 @@ export default {
 
     async loadOverview() {
       await loadMetricOverview(this, getPressureOverview, {})
-      this.$nextTick(() => this.initGauge())
     },
 
     async loadTopUsers() {
@@ -336,7 +332,7 @@ export default {
     },
 
     async loadDist() {
-      await loadMetricDistribution(this, getPressureDistribution, 'initDist')
+      await loadMetricDistribution(this, getPressureDistribution)
     },
 
     async loadHourly() {

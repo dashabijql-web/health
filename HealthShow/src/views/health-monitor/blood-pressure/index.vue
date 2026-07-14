@@ -38,16 +38,13 @@
           </div>
           <div class="bp-top5-list" ref="top5ScrollRef">
             <div v-if="!top5Data.length" class="bp-top5-empty">暂无高收缩压人员数据</div>
-            <div class="bp-top5-row" v-for="(item, i) in displayedTop5" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
+            <div class="bp-top5-row" v-for="(item, i) in displayedTop5" :key="i" role="button" tabindex="0" @click="goToPortrait(item)" @keydown.enter="goToPortrait(item)" style="cursor:pointer">
               <span class="bp-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="bp-top5-name">{{ item.userName }}</span>
               <div class="bp-top5-bar-wrap">
                 <div class="bp-top5-bar" :style="{width: (item.avgSystolic / top5Max * 100) + '%'}"></div>
               </div>
-              <span class="bp-top5-val">{{ item.avgSystolic }}</span>
-            </div>
-            <div v-if="top5Data.length > 20" class="bp-top5-more" @click="top5Expanded = !top5Expanded">
-              {{ top5Expanded ? '▲ 收起' : '▼ 展开全部 (' + top5Data.length + '条)' }}
+              <span class="bp-top5-val">{{ item.avgSystolic }}/{{ item.avgDiastolic }}</span>
             </div>
           </div>
         </div>
@@ -72,20 +69,13 @@
       <!-- ─ 中间主体 ─ -->
       <main class="bp-main">
 
-        <!-- Hero 区：大号血压双值 + 4 区间卡 -->
+        <!-- 当前人员口径 + 4 区间卡 -->
         <div class="bp-hero">
-          <div class="bp-dual-wrap">
-            <div class="bp-dual-item">
-              <div class="bp-dual-val" style="color:#a78bfa">{{ overview.avgSystolic || '--' }}</div>
-              <div class="bp-dual-label">收缩压 <span class="bp-dual-unit">mmHg</span></div>
-              <div class="bp-dual-sub">正常 90~139</div>
-            </div>
-            <div class="bp-dual-sep">/</div>
-            <div class="bp-dual-item">
-              <div class="bp-dual-val" style="color:#38bdf8">{{ overview.avgDiastolic || '--' }}</div>
-              <div class="bp-dual-label">舒张压 <span class="bp-dual-unit">mmHg</span></div>
-              <div class="bp-dual-sub">正常 60~89</div>
-            </div>
+          <div class="bp-scope-card">
+            <span class="bp-scope-label">当前覆盖人员</span>
+            <strong class="bp-scope-value">{{ realtimeList.length }}<em>人</em></strong>
+            <span class="bp-scope-note">近2小时每人最新一条</span>
+            <span class="bp-scope-time">更新于 {{ latestRealtimeText }}</span>
           </div>
           <div class="bp-zone-cards">
             <div v-for="z in bpZones" :key="z.key" :class="['bp-zone-card', z.cls]">
@@ -130,7 +120,7 @@
         <div class="bp-panel bp-panel-anomaly">
           <div class="bp-ph">
             <span class="bp-ph-bar"></span>
-            <span class="bp-ph-title">当前异常血压明细{{ filterDept ? ' — ' + filterDept : '' }}</span>
+            <span class="bp-ph-title">当前异常血压人员{{ filterDept ? ' — ' + filterDept : '' }}</span>
             <span class="bp-anomaly-count" v-if="bpAnomalyList.length">
               共 <em>{{ bpAnomalyList.length }}</em> 人异常
             </span>
@@ -147,8 +137,11 @@
                 class="bp-anomaly-row"
                 v-for="(item, i) in displayedBpAnomalyList"
                 :key="i"
+                role="button"
+                tabindex="0"
                 :class="item.systolic >= 160 || item.diastolic >= 100 ? 'anom-danger' : 'anom-stage1'"
                 @click="goToPortrait(item)"
+                @keydown.enter="goToPortrait(item)"
                 style="cursor:pointer"
               >
                 <span class="ba-name">{{ item.userName }}</span>
@@ -213,7 +206,6 @@ export default {
         detectionCount: 0, elevatedRate: 0, hypertensionRate: 0
       },
       top5Data: [],
-      top5Expanded: false,
       anomalyExpanded: false,
       filterDept: '',
       _top5ScrollLoop: null,
@@ -246,11 +238,11 @@ export default {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.avgSystolic || 0), 160) : 160
     },
     displayedTop5() {
-      return this.top5Expanded ? this.top5Data : this.top5Data.slice(0, 20)
+      return this.top5Data.slice(0, 10)
     },
     top5Title() {
       const p = { day: '今日', week: '近7日', month: '近30日' }[this.activePeriod]
-      return p + '高收缩压排行'
+      return p + '高血压风险 Top 10'
     },
     filteredRealtimeList() {
       if (!this.filterDept) return this.realtimeList

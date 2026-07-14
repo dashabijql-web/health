@@ -126,19 +126,20 @@ public interface PressureMapper {
             "AND record_time >= DATEADD(DAY, -30, GETDATE())")
     int countAbnormalRecords();
 
-    /** 实时压力列表（近2小时最新记录） */
-    @Select("SELECT TOP (#{limit}) " +
-            "hr.user_code AS user_code, " +
-            "ISNULL(e.emp_name, hr.user_code) AS user_name, " +
-            "ISNULL(d.dept_name, '') AS dept_name, " +
-            "hr.pressure, " +
-            "hr.record_time AS record_time " +
-            "FROM v_health_record hr " +
-            "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
-            "LEFT JOIN department d ON e.dept_id = d.id " +
-            "WHERE hr.pressure IS NOT NULL AND hr.pressure > 0 " +
-            "AND hr.record_time >= DATEADD(HOUR, -2, GETDATE()) " +
-            "ORDER BY hr.record_time DESC")
+    /** 实时压力列表（近2小时每人最新一条） */
+    @Select("SELECT TOP (#{limit}) user_code, user_name, dept_name, pressure, record_time " +
+            "FROM (" +
+            "  SELECT hr.user_code AS user_code, " +
+            "    ISNULL(e.emp_name, hr.user_code) AS user_name, " +
+            "    ISNULL(d.dept_name, '') AS dept_name, " +
+            "    hr.pressure, hr.record_time AS record_time, " +
+            "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
+            "  FROM v_health_record hr " +
+            "  LEFT JOIN employee e ON hr.user_code = e.emp_code " +
+            "  LEFT JOIN department d ON e.dept_id = d.id " +
+            "  WHERE hr.pressure IS NOT NULL AND hr.pressure > 0 " +
+            "  AND hr.record_time >= DATEADD(HOUR, -2, GETDATE())" +
+            ") latest WHERE rn = 1 ORDER BY record_time DESC")
     List<PressureRealtimeRow> getRealtime(@Param("limit") int limit);
 
     /** 指定日期的每小时均值 */

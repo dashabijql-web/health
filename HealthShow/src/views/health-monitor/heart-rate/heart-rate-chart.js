@@ -1,17 +1,8 @@
 import { HR } from '@/constants/health-thresholds'
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, trendGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
-import { initChart, gaugeOption, gradH, gradV } from '@/utils/chart-helpers'
+import { initChart, gradH, gradV } from '@/utils/chart-helpers'
 
 export const heartRateChartMethods = {
-  initGauge() {
-    const c = initChart(this.charts, 'gauge', this.$refs.gaugeRef)
-    if (c) c.setOption(gaugeOption(this.overview.avgHeartRate || 0, {
-      min: 0,
-      max: 160,
-      colors: [[0.34, '#4FC3F7'], [0.75, '#52c41a'], [1, '#FFB84D']]
-    }))
-  },
-
   initDept(data) {
     const c = initChart(this.charts, 'dept', this.$refs.deptRef)
     if (!c) return

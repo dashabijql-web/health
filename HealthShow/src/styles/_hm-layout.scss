@@ -156,6 +156,7 @@
     .#{$p}-hd-kpis {
       order: 3;
       width: 100%;
+      flex: 0 0 100% !important;
       overflow-x: auto;
       justify-content: flex-start;
       padding-bottom: 2px;
@@ -181,6 +182,7 @@
       width: 100% !important;
       height: auto;
       gap: 8px;
+      order: 4;
     }
     .#{$p}-aside-top { height: auto !important; min-height: 180px; }
     .#{$p}-aside-bot { flex: none; }
@@ -190,6 +192,7 @@
     .#{$p}-main {
       overflow: visible !important;
       height: auto;
+      order: 1;
     }
 
     /* Hero 区域竖向 */
@@ -205,7 +208,20 @@
     .#{$p}-charts-row {
       flex-direction: column !important;
       height: auto !important;
+      order: 3;
     }
+
+    .#{$p}-hero { order: 2; }
+    .#{$p}-panel-anomaly { order: 1; min-height: 300px; }
+    .#{$p}-panel-trend,
+    .#{$p}-panel-hourly {
+      flex: none !important;
+      height: 220px;
+      min-height: 220px;
+    }
+    .#{$p}-panel-trend .#{$p}-pc,
+    .#{$p}-panel-hourly .#{$p}-pc { height: 180px; }
+    .#{$p}-scope-card { width: 100%; min-height: 104px; }
 
     /* 弹窗宽度 */
     :deep(.el-dialog) { width: 95% !important; }
@@ -226,6 +242,32 @@
     backdrop-filter: blur(8px);
     flex-shrink: 0;
   }
+}
+
+@mixin hm-scope-card($p) {
+  .#{$p}-scope-card {
+    width: 180px;
+    min-height: 126px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 14px 16px;
+    border: 1px solid rgba(0,212,255,0.16);
+    border-radius: 8px;
+    background: rgba(0,212,255,0.035);
+  }
+  .#{$p}-scope-label { font-size: 11px; color: $dim; }
+  .#{$p}-scope-value {
+    margin-top: 4px;
+    font-size: 30px;
+    line-height: 1;
+    font-family: 'Consolas', monospace;
+    color: $accent;
+    em { margin-left: 3px; font-size: 12px; font-style: normal; color: $dim; }
+  }
+  .#{$p}-scope-note { margin-top: 8px; font-size: 10px; color: $dim; line-height: 1.5; }
+  .#{$p}-scope-time { margin-top: 3px; font-size: 10px; color: $accent; }
 }
 
 @mixin hm-zone-cards($p) {
@@ -270,7 +312,7 @@
     height: 100%;
     border-radius: 2px;
     transition: width 0.6s ease;
-    min-width: 3px;
+    min-width: 0;
   }
 }
 

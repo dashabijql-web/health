@@ -7,6 +7,7 @@
 @include hm-panel('hr');
 @include hm-overview('hr');
 @include hm-hero-zone('hr');
+@include hm-scope-card('hr');
 @include hm-zone-cards('hr');
 @include hm-charts-row('hr');
 
@@ -198,6 +199,10 @@
   &::-webkit-scrollbar-thumb { background: rgba(255,184,77,0.25); border-radius: 2px; }
   &::-webkit-scrollbar-thumb:hover { background: rgba(255,184,77,0.5); }
 }
+.hr-anomaly-more {
+  width: 100%; padding: 6px 0; border: 0; background: transparent;
+  color: $accent; font-size: 11px; cursor: pointer;
+}
 .hr-anomaly-row {
   display: grid; grid-template-columns: 58px 68px 1fr 80px 76px 54px 88px;
   gap: 6px; padding: 7px 6px; margin-bottom: 2px;
@@ -283,6 +288,7 @@
   .hr-hd-kpis {
     order: 3;
     width: 100%;
+    flex: 0 0 100% !important;
     overflow-x: auto;
     justify-content: flex-start;
     padding-bottom: 2px;
@@ -308,6 +314,7 @@
     width: 100% !important;
     height: auto;
     gap: 8px;
+    order: 4;
   }
   .hr-aside-top { height: auto; min-height: 180px; }
   .hr-aside-bot { flex: none; }
@@ -317,11 +324,13 @@
   .hr-main {
     overflow: visible !important;
     height: auto;
+    order: 1;
   }
   /* Hero 区域竖向 */
   .hr-hero {
     flex-direction: column !important;
     align-items: stretch !important;
+    order: 2;
   }
   .hr-zone-cards {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -330,6 +339,7 @@
   .hr-charts-row {
     flex-direction: column !important;
     height: auto !important;
+    order: 3;
   }
   .hr-panel-hourly {
     flex: none !important;
@@ -341,7 +351,8 @@
   .hr-panel-dist-stat .hr-ds-body {
     grid-template-columns: repeat(2, 1fr);
   }
-  .hr-panel-anomaly { min-height: 300px; }
+  .hr-panel-anomaly { min-height: 300px; order: 1; }
+  .hr-scope-card { width: 100%; min-height: 104px; }
   /* 异常明细表格隐藏不重要的列 */
   .hr-anomaly-hd   { grid-template-columns: 60px 1fr 60px 54px; }
   .hr-anomaly-row  { grid-template-columns: 60px 1fr 60px 54px; }

@@ -1,16 +1,7 @@
 import { emptyOption, chartTooltip, categoryAxis, valueAxis, deptGrid, hourlyGrid, barLabel } from '@/utils/echarts-config'
-import { initChart, distOption, gaugeOption, gradH, gradV } from '@/utils/chart-helpers'
+import { initChart, gradH, gradV } from '@/utils/chart-helpers'
 
 export const pressureChartMethods = {
-  initGauge() {
-    const c = initChart(this.charts, 'gauge', this.$refs.gaugeRef)
-    if (c) c.setOption(gaugeOption(this.overview.avgPressure || 0, {
-      max: 100,
-      pointer: '#fb923c',
-      colors: [[0.50, '#4FC3F7'], [0.70, '#52c41a'], [0.85, '#FFB84D'], [1, '#ff5252']]
-    }))
-  },
-
   initDept(data) {
     const c = initChart(this.charts, 'dept', this.$refs.deptRef)
     if (!c) return
@@ -52,11 +43,6 @@ export const pressureChartMethods = {
       if (!name) return
       this.filterDept = this.filterDept === name ? '' : name
     })
-  },
-
-  initDist(data) {
-    const c = initChart(this.charts, 'dist', this.$refs.distRef)
-    if (c) c.setOption(distOption(data))
   },
 
   renderHourly(vals) {

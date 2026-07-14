@@ -19,7 +19,18 @@ test('visual audit default route inventory includes warning lifecycle records ro
   assert.match(auditSource, /path:\s*'\/health-monitor\/mine-entry'/)
   assert.match(auditSource, /slug:\s*'trend-warning'/)
   assert.match(auditSource, /path:\s*'\/health-monitor\/trend-warning'/)
+  for (const slug of ['heart-rate', 'pressure', 'blood-pressure', 'blood-oxygen']) {
+    assert.match(auditSource, new RegExp(`slug:\\s*'${slug}'`))
+  }
 })
+
+test('visual audit rejects unknown route filters and checks mobile metric canvases', () => {
+  assert.match(auditSource, /Unknown VISUAL_ROUTES/)
+  assert.match(auditSource, /mobileCanvasMinimum/)
+  assert.match(auditSource, /mobile_chart_missing/)
+})
+
+await import('./metric-analysis-contract.mjs')
 
 test('visual audit writes route-level artifact summaries', () => {
   assert.match(auditSource, /summary\.routeSummaries\s*=/)

@@ -31,6 +31,17 @@ export default {
     }
   },
   computed: {
+    metricPeriodLabel() {
+      return { day: '当日', week: '近7日', month: '近30日' }[this.activePeriod] || '当前周期'
+    },
+    latestRealtimeText() {
+      const latest = (this.realtimeList || [])
+        .map(item => item.recordTime)
+        .filter(Boolean)
+        .sort()
+        .at(-1)
+      return latest ? dayjs(latest).format('HH:mm') : '--'
+    },
     periodRange() {
       const today = dayjs().format('YYYY-MM-DD')
       if (this.activePeriod === 'day') return { startDate: today, endDate: today }

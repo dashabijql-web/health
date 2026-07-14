@@ -35,16 +35,13 @@
           </div>
           <div class="bo-top5-list" ref="top5ScrollRef">
             <div v-if="!top5Data.length" class="bo-top5-empty">暂无异常频次数据</div>
-            <div class="bo-top5-row" v-for="(item, i) in displayedTop5" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
+            <div class="bo-top5-row" v-for="(item, i) in displayedTop5" :key="i" role="button" tabindex="0" @click="goToPortrait(item)" @keydown.enter="goToPortrait(item)" style="cursor:pointer">
               <span class="bo-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="bo-top5-name">{{ item.userName }}</span>
               <div class="bo-top5-bar-wrap">
                 <div class="bo-top5-bar" :style="{width: (item.count / top5Max * 100) + '%'}"></div>
               </div>
               <span class="bo-top5-val">{{ item.count }}</span>
-            </div>
-            <div v-if="top5Data.length > 20" class="bo-top5-more" @click="top5Expanded = !top5Expanded">
-              {{ top5Expanded ? '▲ 收起' : '▼ 展开全部 (' + top5Data.length + '条)' }}
             </div>
           </div>
         </div>
@@ -56,7 +53,7 @@
             <span v-if="filterDept" class="bo-dept-tag" @click="filterDept=''" title="点击取消筛选">{{ filterDept }} ×</span>
             <div class="bo-ph-legend">
               <span class="bo-leg-dot" style="background:#FFB84D"></span><span class="bo-leg-txt">偏低</span>
-              <span class="bo-leg-dot" style="background:#4FC3F7"></span><span class="bo-leg-txt">偏高</span>
+              <span class="bo-leg-dot" style="background:#4FC3F7"></span><span class="bo-leg-txt">优秀</span>
             </div>
           </div>
           <div class="bo-pc">
@@ -68,14 +65,13 @@
       <!-- ─ 中间 ─ -->
       <main class="bo-main">
 
-        <!-- Hero 区：大仪表盘 + 4 区间卡 -->
+        <!-- 当前人员口径 + 4 区间卡 -->
         <div class="bo-hero">
-          <div class="bo-gauge-wrap">
-            <div ref="gaugeRef" class="bo-gauge-chart"></div>
-            <div class="bo-gauge-center">
-              <div class="bo-gauge-val">{{ overview.avgBloodOxygen || '--' }}</div>
-              <div class="bo-gauge-sub">% · 平均血氧</div>
-            </div>
+          <div class="bo-scope-card">
+            <span class="bo-scope-label">当前覆盖人员</span>
+            <strong class="bo-scope-value">{{ realtimeList.length }}<em>人</em></strong>
+            <span class="bo-scope-note">近2小时每人最新一条</span>
+            <span class="bo-scope-time">更新于 {{ latestRealtimeText }}</span>
           </div>
           <div class="bo-zone-cards">
             <div v-for="z in boZones" :key="z.key" :class="['bo-zone-card', z.cls]">
@@ -90,7 +86,7 @@
           </div>
         </div>
 
-        <!-- 图表行：趋势 + 小时波动 -->
+        <!-- 趋势图 -->
         <div class="bo-charts-row">
           <div class="bo-panel bo-panel-trend">
             <div class="bo-ph">
@@ -106,22 +102,13 @@
               <div ref="trendRef" style="width:100%;height:100%"></div>
             </div>
           </div>
-          <div class="bo-panel bo-panel-hourly">
-            <div class="bo-ph">
-              <span class="bo-ph-bar"></span>
-              <span class="bo-ph-title">{{ hourlyTitle }}</span>
-            </div>
-            <div class="bo-pc">
-              <div ref="hourlyRef" style="width:100%;height:100%"></div>
-            </div>
-          </div>
         </div>
 
         <!-- 当前异常血氧明细 -->
         <div class="bo-panel bo-panel-anomaly">
           <div class="bo-ph">
             <span class="bo-ph-bar"></span>
-            <span class="bo-ph-title">当前异常血氧明细{{ filterDept ? ' — ' + filterDept : '' }}</span>
+            <span class="bo-ph-title">当前异常血氧人员{{ filterDept ? ' — ' + filterDept : '' }}</span>
             <span class="bo-anomaly-count" v-if="boAnomalyList.length">
               共 <em>{{ boAnomalyList.length }}</em> 人异常
             </span>
@@ -136,10 +123,13 @@
             <div class="bo-anomaly-list">
               <div
                 class="bo-anomaly-row"
-                v-for="(item, i) in boAnomalyList"
+                v-for="(item, i) in displayedBoAnomalyList"
                 :key="i"
+                role="button"
+                tabindex="0"
                 :class="item.bloodOxygen < 90 ? 'anom-danger' : 'anom-low'"
                 @click="showDetail(item)"
+                @keydown.enter="showDetail(item)"
                 style="cursor:pointer"
               >
                 <span class="ba-name">{{ item.userName }}</span>
@@ -148,6 +138,9 @@
                 <span class="ba-type">{{ item.bloodOxygen < 90 ? '危险↓↓' : '偏低↓' }}</span>
                 <span class="ba-time">{{ fmtTime(item.recordTime) }}</span>
               </div>
+              <button v-if="boAnomalyList.length > 20" class="bo-anomaly-more" @click="anomalyExpanded = !anomalyExpanded">
+                {{ anomalyExpanded ? '收起' : `展开全部 (${boAnomalyList.length} 人)` }}
+              </button>
             </div>
           </div>
         </div>
@@ -218,7 +211,7 @@ export default {
         detectionRate: 0, abnormalCount: 0, totalCount: 0
       },
       top5Data: [],
-      top5Expanded: false,
+      anomalyExpanded: false,
       realtimeList: [],
       activePeriod: 'month',
       periodOptions: PERIOD_OPTIONS,
@@ -233,9 +226,9 @@ export default {
       const o = this.overview
       return [
         { label: '平均血氧',   val: (o.avgBloodOxygen || '--') + '%', cls: 'kpi-cyan'   },
-        { label: '异常人次',   val: o.abnormalCount || 0,              cls: 'kpi-orange'  },
+        { label: '异常人数',   val: o.abnormalCount || 0,              cls: 'kpi-orange'  },
         { label: '检测率',     val: (o.detectionRate || 0) + '%',      cls: 'kpi-green'   },
-        { label: '总记录数',   val: (o.totalCount || 0).toLocaleString(), cls: 'kpi-blue' }
+        { label: '检测人数',   val: (o.totalCount || 0).toLocaleString(), cls: 'kpi-blue' }
       ]
     },
     hourlyTitle() {
@@ -248,11 +241,11 @@ export default {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.count)) : 1
     },
     displayedTop5() {
-      return this.top5Expanded ? this.top5Data : this.top5Data.slice(0, 20)
+      return this.top5Data.slice(0, 10)
     },
     top5Title() {
       const p = { day: '今日', week: '近7日', month: '近30日' }[this.activePeriod]
-      return p + '异常频次排行'
+      return p + '异常频次 Top 10'
     },
     /* pagedList / totalPages / filteredRealtimeList from chartPageMixin */
     boZones() {
@@ -272,6 +265,9 @@ export default {
     },
     boAnomalyList() {
       return this.filteredRealtimeList.filter(x => x.bloodOxygen < 95)
+    },
+    displayedBoAnomalyList() {
+      return this.anomalyExpanded ? this.boAnomalyList : this.boAnomalyList.slice(0, 20)
     }
   },
   mounted() {
@@ -308,50 +304,18 @@ export default {
     async fetchData() {
       await Promise.allSettled([
         this.loadOverview(), this.loadTopUsers(), this.loadDept(),
-        this.loadTrendAndHourly(), this.loadRealtime()
+        this.loadTrend(), this.loadRealtime()
       ])
     },
 
     async loadOverview() {
       await loadMetricOverview(this, getBloodOxygenOverview, this.overview)
-      this.$nextTick(() => this.initGauge())
     },
     async loadTopUsers() {
       await loadMetricTopUsers(this, getBloodOxygenTopUsers)
     },
     async loadDept() {
       await loadMetricRangeChart(this, getBloodOxygenDeptStats, 'initDept')
-    },
-    /** 合并 loadTrend + loadHourly，避免在 week/month 模式下发出两次相同的 trend 请求 */
-    async loadTrendAndHourly() {
-      if (this.activePeriod === 'day') {
-        const today = getMetricToday()
-        const rows = await fetchMetricData(() => getHourlyBloodOxygen(today, today), [])
-        const vals = createHourlySeries(rows, 'avgBloodOxygen')
-        this.$nextTick(() => { this.initTrendDay(vals); this.renderHourly(vals) })
-      } else {
-        const days = metricDaysForPeriod(this.activePeriod)
-        const d = await fetchMetricData(() => getBloodOxygenTrend(days), {})
-        this.$nextTick(() => {
-          this.initTrend(d)
-          this.renderHourlyDaily(d.dates || [], d.values || [])
-        })
-      }
-    },
-    // 保留单独方法供 switchPeriod 等按需调用
-    async loadHourly() {
-      if (this.activePeriod === 'day') {
-        const today = getMetricToday()
-        const rows = await fetchMetricData(() => getHourlyBloodOxygen(today, today), [])
-        const vals = createHourlySeries(rows, 'avgBloodOxygen')
-        this.$nextTick(() => this.renderHourly(vals))
-      } else {
-        const days = metricDaysForPeriod(this.activePeriod)
-        const d = await fetchMetricData(() => getBloodOxygenTrend(days), {})
-        const dates = d.dates || []
-        const vals = d.values || []
-        this.$nextTick(() => this.renderHourlyDaily(dates, vals))
-      }
     },
     async loadTrend() {
       if (this.activePeriod === 'day') {
@@ -366,7 +330,7 @@ export default {
       }
     },
     async loadRealtime() {
-      await loadMetricRealtime(this, getRealtimeBloodOxygen, 200)
+      await loadMetricRealtime(this, getRealtimeBloodOxygen)
     },
     boLevel: spo2Level,
 

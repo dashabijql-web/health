@@ -6,6 +6,7 @@
 @include hm-panel('bo');
 @include hm-overview('bo');
 @include hm-hero-zone('bo');
+@include hm-scope-card('bo');
 @include hm-zone-cards('bo');
 @include hm-charts-row('bo');
 
@@ -150,6 +151,10 @@
   flex: 1; overflow-y: auto;
   &::-webkit-scrollbar { width: 3px; }
   &::-webkit-scrollbar-thumb { background: rgba(255,184,77,0.2); border-radius: 2px; }
+}
+.bo-anomaly-more {
+  width: 100%; padding: 6px 0; border: 0; background: transparent;
+  color: $accent; font-size: 11px; cursor: pointer;
 }
 .bo-anomaly-row {
   display: grid; grid-template-columns: 1.2fr 1.5fr 0.9fr 0.9fr 1.4fr;

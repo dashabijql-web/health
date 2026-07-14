@@ -34,12 +34,12 @@
         <div class="hr-panel hr-aside-top">
           <div class="hr-ph">
             <span class="hr-ph-bar"></span>
-            <span class="hr-ph-title">异常频次排行</span>
+            <span class="hr-ph-title">{{ metricPeriodLabel }}异常频次 Top 10</span>
           </div>
           <div class="hr-top5-list" ref="top5ScrollRef"
                @mouseenter="_top5Paused=true" @mouseleave="_top5Paused=false">
             <div v-if="!top5Data.length" class="hr-top5-empty">暂无异常频次数据</div>
-            <div class="hr-top5-row" v-for="(item, i) in displayedTop5" :key="i" @click="goToPortrait(item)" style="cursor:pointer">
+            <div class="hr-top5-row" v-for="(item, i) in displayedTop5" :key="i" role="button" tabindex="0" @click="goToPortrait(item)" @keydown.enter="goToPortrait(item)" style="cursor:pointer">
               <span class="hr-top5-rank" :class="i < 3 ? 'rank-'+(i+1) : 'rank-n'">{{ i+1 }}</span>
               <span class="hr-top5-name">{{ item.userName }}</span>
               <div class="hr-top5-bar-wrap">
@@ -47,9 +47,6 @@
               </div>
               <span class="hr-top5-val">{{ item.count }}</span>
               <span class="hr-top5-days" v-if="item.anomalyDays">{{ item.anomalyDays }}天</span>
-            </div>
-            <div v-if="top5Data.length > 20" class="hr-top5-more" @click="top5Expanded = !top5Expanded">
-              {{ top5Expanded ? '▲ 收起' : `▼ 展开全部 (${top5Data.length} 条)` }}
             </div>
           </div>
         </div>
@@ -70,14 +67,13 @@
       <!-- ─ 主区域 ─ -->
       <main class="hr-main">
 
-        <!-- Hero 区：大仪表盘 + 4 区间卡 -->
+        <!-- 当前人员口径 + 4 区间卡 -->
         <div class="hr-hero">
-          <div class="hr-gauge-wrap">
-            <div ref="gaugeRef" class="hr-gauge-chart"></div>
-            <div class="hr-gauge-center">
-              <div class="hr-gauge-val">{{ overview.avgHeartRate || '--' }}</div>
-              <div class="hr-gauge-sub">bpm · 平均</div>
-            </div>
+          <div class="hr-scope-card">
+            <span class="hr-scope-label">当前覆盖人员</span>
+            <strong class="hr-scope-value">{{ realtimeList.length }}<em>人</em></strong>
+            <span class="hr-scope-note">近2小时每人最新一条</span>
+            <span class="hr-scope-time">更新于 {{ latestRealtimeText }}</span>
           </div>
           <div class="hr-zone-cards">
             <div v-for="z in hrZones" :key="z.key" :class="['hr-zone-card', z.cls]">
@@ -108,7 +104,7 @@
               <div ref="trendRef" style="width:100%;height:100%"></div>
             </div>
           </div>
-          <div class="hr-panel hr-panel-hourly">
+          <div v-if="activePeriod !== 'day'" class="hr-panel hr-panel-hourly">
             <div class="hr-ph">
               <span class="hr-ph-bar"></span>
               <span class="hr-ph-title">{{ hourlyTitle }}</span>
@@ -123,7 +119,7 @@
         <div class="hr-panel hr-panel-anomaly">
           <div class="hr-ph">
             <span class="hr-ph-bar"></span>
-            <span class="hr-ph-title">当前异常心率明细</span>
+            <span class="hr-ph-title">当前异常心率人员</span>
             <span class="hr-anomaly-count" v-if="anomalyList.length">
               共 <em>{{ anomalyList.length }}</em> 人异常
             </span>
@@ -138,10 +134,13 @@
             <div class="hr-anomaly-list">
               <div
                 class="hr-anomaly-row"
-                v-for="(item, i) in anomalyList"
+                v-for="(item, i) in displayedAnomalyList"
                 :key="i"
+                role="button"
+                tabindex="0"
                 :class="item.heartRate > 120 ? 'anom-high' : 'anom-low'"
                 @click="showDetail(item)"
+                @keydown.enter="showDetail(item)"
                 style="cursor:pointer"
               >
                 <span class="ha-name">{{ item.userName }}</span>
@@ -155,6 +154,9 @@
                 <span class="ha-type">{{ item.heartRate > 120 ? '偏高↑' : '偏低↓' }}</span>
                 <span class="ha-time">{{ fmtTime(item.recordTime) }}</span>
               </div>
+              <button v-if="anomalyList.length > 20" class="hr-anomaly-more" @click="anomalyExpanded = !anomalyExpanded">
+                {{ anomalyExpanded ? '收起' : `展开全部 (${anomalyList.length} 人)` }}
+              </button>
             </div>
           </div>
         </div>
@@ -225,7 +227,7 @@ export default {
         detectionRate: 0, abnormalCount: 0, totalCount: 0
       },
       top5Data: [],
-      top5Expanded: false,
+      anomalyExpanded: false,
       realtimeList: [],
       activePeriod: 'month',
       periodOptions: PERIOD_OPTIONS,
@@ -257,11 +259,13 @@ export default {
       return this.top5Data.length ? Math.max(...this.top5Data.map(x => x.count)) : 1
     },
     displayedTop5() {
-      const limit = this.top5Expanded ? this.top5Data.length : 20
-      return this.top5Data.slice(0, limit)
+      return this.top5Data.slice(0, 10)
     },
     anomalyList() {
       return this.filteredRealtimeList.filter(x => x.heartRate > 120 || x.heartRate < 55)
+    },
+    displayedAnomalyList() {
+      return this.anomalyExpanded ? this.anomalyList : this.anomalyList.slice(0, 20)
     },
     hrZones() {
       const list = this.realtimeList
@@ -324,14 +328,13 @@ export default {
         this.loadTopUsers(),
         this.loadDept(),
         this.loadTrend(),
-        this.loadHourly(),
+        this.activePeriod === 'day' ? Promise.resolve() : this.loadHourly(),
         this.loadRealtime()
       ])
     },
 
     async loadOverview() {
       await loadMetricOverview(this, getHeartRateOverview, this.overview)
-      this.$nextTick(() => this.initGauge())
     },
     async loadTopUsers() {
       await loadMetricTopUsers(this, getHeartRateTopUsers)
@@ -340,18 +343,11 @@ export default {
       await loadMetricRangeChart(this, getHeartRateDeptStats, 'initDept')
     },
     async loadHourly() {
-      if (this.activePeriod === 'day') {
-        const today = getMetricToday()
-        const rows = await fetchMetricData(() => getHourlyHeartRate(today, today), [])
-        const vals = createHourlySeries(rows, 'avgHeartRate')
-        this.$nextTick(() => this.renderHourly(vals))
-      } else {
-        const { startDate, endDate } = this.periodRange
-        const rows = await fetchMetricData(() => getDailyAnomalyHeartRate(startDate, endDate), [])
-        const dates = rows.map(x => x.date)
-        const counts = rows.map(x => x.anomalyCount)
-        this.$nextTick(() => this.renderDailyAnomaly(dates, counts))
-      }
+      const { startDate, endDate } = this.periodRange
+      const rows = await fetchMetricData(() => getDailyAnomalyHeartRate(startDate, endDate), [])
+      const dates = rows.map(x => x.date)
+      const counts = rows.map(x => x.anomalyCount)
+      this.$nextTick(() => this.renderDailyAnomaly(dates, counts))
     },
     async loadTrend() {
       if (this.activePeriod === 'day') {

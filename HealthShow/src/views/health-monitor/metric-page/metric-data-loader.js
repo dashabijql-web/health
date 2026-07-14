@@ -21,7 +21,7 @@ export async function loadMetricOverview(page, fetcher, fallback = {}) {
   page.overview = await fetchMetricData(() => fetcher(startDate, endDate), fallback)
 }
 
-export async function loadMetricTopUsers(page, fetcher, limit = 1000) {
+export async function loadMetricTopUsers(page, fetcher, limit = 10) {
   const { startDate, endDate } = page.periodRange
   page.top5Data = await fetchMetricData(() => fetcher(limit, startDate, endDate), [])
   page.$nextTick(() => page.startTop5Scroll())
@@ -39,11 +39,18 @@ export async function loadMetricDistribution(page, fetcher, renderMethod) {
   const data = await fetchMetricData(() => fetcher(startDate, endDate), [])
   const filtered = (data || []).filter(item => item.name && item.value > 0)
   page.distLegend = filtered
-  page.$nextTick(() => page[renderMethod](filtered))
+  if (renderMethod) page.$nextTick(() => page[renderMethod](filtered))
 }
 
 export async function loadMetricRealtime(page, fetcher, limit = 1000) {
-  page.realtimeList = await fetchMetricData(() => fetcher(limit), [])
+  const rows = await fetchMetricData(() => fetcher(limit), [])
+  const seen = new Set()
+  page.realtimeList = rows.filter((row) => {
+    const key = row.userCode || row.empCode || row.userName
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 export function createHourlySeries(rows, valueKey) {

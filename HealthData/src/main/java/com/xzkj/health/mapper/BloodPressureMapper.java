@@ -32,8 +32,8 @@ public interface BloodPressureMapper {
             "COALESCE(MAX(blood_pressure_low),  0) AS max_diastolic, " +
             "COUNT(DISTINCT user_code) AS detection_count, " +
             "COUNT(*) AS total_count, " +
-            "COALESCE(CAST(SUM(CASE WHEN blood_pressure_high BETWEEN 90 AND 139 " +
-            "  AND blood_pressure_low BETWEEN 60 AND 89 THEN 1 ELSE 0 END) * 100.0 / " +
+            "COALESCE(CAST(SUM(CASE WHEN blood_pressure_high BETWEEN 90 AND 119 " +
+            "  AND blood_pressure_low BETWEEN 60 AND 79 THEN 1 ELSE 0 END) * 100.0 / " +
             "  NULLIF(COUNT(*), 0) AS INT), 0) AS normal_rate, " +
             "COALESCE(SUM(CASE WHEN blood_pressure_high > 139 OR blood_pressure_low > 89 THEN 1 ELSE 0 END), 0) AS abnormal_count, " +
             "COALESCE(CAST(SUM(CASE WHEN (blood_pressure_high BETWEEN 120 AND 139) " +
@@ -116,7 +116,8 @@ public interface BloodPressureMapper {
             "AND hr.record_time >= CONVERT(DATETIME, #{startDate}) " +
             "AND hr.record_time <  DATEADD(DAY, 1, CONVERT(DATETIME, #{endDate})) " +
             "GROUP BY hr.user_code, e.emp_name, d.dept_name " +
-            "ORDER BY avg_systolic DESC")
+            "ORDER BY MAX(CASE WHEN hr.blood_pressure_high >= 160 OR hr.blood_pressure_low >= 100 THEN 2 ELSE 1 END) DESC, " +
+            "avg_systolic DESC, avg_diastolic DESC")
     List<BloodPressureTopUserRow> getTopUsers(@Param("limit") int limit,
                                               @Param("startDate") String startDate,
                                               @Param("endDate") String endDate);
@@ -166,20 +167,22 @@ public interface BloodPressureMapper {
             "AND record_time >= DATEADD(DAY, -30, GETDATE())")
     int countAbnormalRecords();
 
-    /** 实时血压列表（近2小时最新记录，按时间倒序） */
-    @Select("SELECT TOP (#{limit}) " +
-            "hr.user_code AS user_code, " +
-            "ISNULL(e.emp_name, hr.user_code) AS user_name, " +
-            "ISNULL(d.dept_name, '') AS dept_name, " +
-            "hr.blood_pressure_high AS systolic, " +
-            "hr.blood_pressure_low  AS diastolic, " +
-            "hr.record_time AS record_time " +
-            "FROM v_health_record hr " +
-            "LEFT JOIN employee e ON hr.user_code = e.emp_code " +
-            "LEFT JOIN department d ON e.dept_id = d.id " +
-            "WHERE hr.blood_pressure_high IS NOT NULL AND hr.blood_pressure_high > 0 " +
-            "AND hr.record_time >= DATEADD(HOUR, -2, GETDATE()) " +
-            "ORDER BY hr.record_time DESC")
+    /** 实时血压列表（近2小时每人最新一条，按时间倒序） */
+    @Select("SELECT TOP (#{limit}) user_code, user_name, dept_name, systolic, diastolic, record_time " +
+            "FROM (" +
+            "  SELECT hr.user_code AS user_code, " +
+            "    ISNULL(e.emp_name, hr.user_code) AS user_name, " +
+            "    ISNULL(d.dept_name, '') AS dept_name, " +
+            "    hr.blood_pressure_high AS systolic, " +
+            "    hr.blood_pressure_low AS diastolic, " +
+            "    hr.record_time AS record_time, " +
+            "    ROW_NUMBER() OVER (PARTITION BY hr.user_code ORDER BY hr.record_time DESC) AS rn " +
+            "  FROM v_health_record hr " +
+            "  LEFT JOIN employee e ON hr.user_code = e.emp_code " +
+            "  LEFT JOIN department d ON e.dept_id = d.id " +
+            "  WHERE hr.blood_pressure_high IS NOT NULL AND hr.blood_pressure_high > 0 " +
+            "  AND hr.record_time >= DATEADD(HOUR, -2, GETDATE())" +
+            ") latest WHERE rn = 1 ORDER BY record_time DESC")
     List<BloodPressureRealtimeRow> getRealtime(@Param("limit") int limit);
 
     /** 指定日期的每小时均值（收缩压 + 舒张压） */

@@ -27,11 +27,24 @@ export function initChart(charts, key, refEl) {
   if (charts[key]) charts[key].dispose()
   const rect = refEl.getBoundingClientRect()
   const style = window.getComputedStyle(refEl)
-  const width = rect.width || parseFloat(style.width)
-  const height = rect.height || parseFloat(style.height)
-  if (!width || !height) return null
+  const width = rect.width || parseFloat(style.width) || 1
+  const height = rect.height || parseFloat(style.height) || 1
   const c = echarts.init(refEl, null, { width, height })
   charts[key] = c
+
+  if (rect.width === 0 || rect.height === 0) {
+    let attempts = 0
+    const resizeWhenReady = () => {
+      if (c.isDisposed()) return
+      const next = refEl.getBoundingClientRect()
+      if (next.width > 0 && next.height > 0) {
+        c.resize({ width: next.width, height: next.height })
+      } else if (attempts++ < 10) {
+        window.requestAnimationFrame(resizeWhenReady)
+      }
+    }
+    window.requestAnimationFrame(resizeWhenReady)
+  }
   return c
 }
 
