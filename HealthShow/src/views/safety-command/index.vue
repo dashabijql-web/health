@@ -155,6 +155,7 @@
       :department="currentDepartment"
       :events="events"
       @show-event="openEventFromDepartment"
+      @handle-event="queueDepartmentEventHandling"
       @show-profile="openEmployeeProfile"
     />
 
@@ -176,7 +177,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getCommandCenterIncident } from '@/api/command-center'
 import RiskPersonPanel from './components/RiskPersonPanel.vue'
@@ -221,6 +222,8 @@ const activeEventFilter = ref('all')
 const activeEventFilterLabel = ref('全部开放事件')
 const departmentDrawerVisible = ref(false)
 const currentDepartment = ref(null)
+const queuedDepartmentEvent = ref(null)
+let departmentDrawerTransitionTimer = null
 
 // ── Derived KPI ───────────────────────────────────────────────────────────────
 const isSafe = computed(() => Number(commandSummary.value.warning?.criticalPending || 0) === 0)
@@ -319,6 +322,7 @@ const trendChange = computed(() => buildTrendChange(warningTrend.value))
 
 const {
   currentEvent,
+  incidentDrawerVisible,
   onHandleEvent,
   onShowPerson,
   onShowPersonFromEvent,
@@ -364,8 +368,21 @@ function openDepartment(department) {
 }
 
 function openEventFromDepartment(event) {
+  queueDepartmentEventHandling(event)
+}
+
+function queueDepartmentEventHandling(event) {
+  queuedDepartmentEvent.value = event
   departmentDrawerVisible.value = false
-  showEventDetail(event)
+  if (departmentDrawerTransitionTimer) window.clearTimeout(departmentDrawerTransitionTimer)
+  // Wait for Element Plus to remove the first drawer before opening the next overlay.
+  departmentDrawerTransitionTimer = window.setTimeout(() => {
+    if (!queuedDepartmentEvent.value) return
+    const queuedEvent = queuedDepartmentEvent.value
+    queuedDepartmentEvent.value = null
+    showEventDetail(queuedEvent)
+    departmentDrawerTransitionTimer = null
+  }, 420)
 }
 
 function openEmployeeProfile(event) {
@@ -380,6 +397,10 @@ function openEmployeeProfile(event) {
     }
   })
 }
+
+onUnmounted(() => {
+  if (departmentDrawerTransitionTimer) window.clearTimeout(departmentDrawerTransitionTimer)
+})
 
 function returnToDashboard() {
   router.push({

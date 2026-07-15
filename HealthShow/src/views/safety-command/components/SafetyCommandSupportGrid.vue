@@ -118,7 +118,7 @@
       <EventPanel
         :key="eventListTitle"
         :events="events"
-        :title="event-list-title"
+        :title="eventListTitle"
         :trend-data="[]"
         @showDetail="emit('show-event', $event)"
         @showPerson="emit('show-person-from-event', $event)"

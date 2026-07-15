@@ -26,7 +26,7 @@
             <span>{{ event.location || '未接入定位' }} · {{ event.slaStatus === 'OVERDUE' ? '已超时' : '处置中' }}</span>
           </button>
           <button type="button" class="dept-incident-person" @click="$emit('show-profile', event)">健康画像</button>
-          <button type="button" class="dept-incident-handle" @click="$emit('show-event', event)">处置</button>
+          <button type="button" class="dept-incident-handle" @click="$emit('handle-event', event)">处置</button>
         </article>
       </div>
       <el-empty v-else :image-size="64" description="当前已加载范围内无该部门开放事件" />
@@ -43,7 +43,7 @@ const props = defineProps({
   events: { type: Array, default: () => [] }
 })
 
-defineEmits(['update:visible', 'show-event', 'show-profile'])
+defineEmits(['update:visible', 'show-event', 'handle-event', 'show-profile'])
 
 const departmentName = computed(() => typeof props.department === 'string'
   ? props.department
