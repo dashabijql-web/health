@@ -147,8 +147,7 @@ async function prepareRoute(page, route) {
   await cards.first().waitFor({ state: 'visible', timeout: 15000 });
   await cards.first().click();
   await page.waitForFunction(() => window.location.hash.includes('/health-monitor/employee-profile'), null, { timeout: 15000 });
-  await page.locator('.ep-quickbar').first().waitFor({ state: 'visible', timeout: 10000 });
-  await page.locator('.ep-ai-summary').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.ep-vitals-panel').first().waitFor({ state: 'visible', timeout: 10000 });
   await page.waitForTimeout(600);
 }
 

@@ -8,8 +8,12 @@ export function resetEmployeeProfileState(state) {
   state.vitals.value = {}
   state.exercise.value = { todaySteps: 0, todayCalories: 0 }
   state.warnings.value = []
+  state.warningTotal.value = 0
+  state.pendingTotal.value = 0
+  state.warning7Total.value = 0
   state.isOnline.value = false
   state.lastUpdate.value = '--'
+  state.freshnessStatus.value = 'no_data'
   state.trend7.value = { avgHr: 0, avgSpo2: 0, avgTemp: 0 }
   state.portraitTrend.value = null
   state.aiReportVisible.value = false
@@ -22,8 +26,9 @@ export function applyEmployeePortrait(payload, state) {
   const data = payload || {}
   state.vitals.value = data.vitals || {}
   state.exercise.value = data.exercise || { todaySteps: 0, todayCalories: 0 }
-  state.isOnline.value = true
-  state.lastUpdate.value = new Date().toLocaleString('zh-CN')
+  state.isOnline.value = Boolean(data.vitals?.online)
+  state.lastUpdate.value = data.vitals?.recordTime || '--'
+  state.freshnessStatus.value = data.vitals?.freshnessStatus || 'no_data'
 
   const nextTrend = { avgHr: 0, avgSpo2: 0, avgTemp: 0 }
   if (data.trend) {

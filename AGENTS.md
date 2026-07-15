@@ -354,6 +354,15 @@ sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; 
 - 页面已移除重复预警跑马灯；移动端不再重复显示异常侧栏。右侧“当前异常体征”只是实时读数队列，不等同于预警事件生命周期；真正的确认、分派、处理和误报仍进入预警中心/统一事件处置链路。
 - 刷新失败必须保留上次数据并显示失败或缓存状态。后端 `stale=true` 不得在前端归一化时丢弃。
 
+## 2026-07-15 职工健康画像信息治理护栏
+
+- `/health-monitor/employee-profile` 只保留人员身份与处置、当前体征及逐指标采集时间、数据新鲜度、7日趋势、今日活动和权威预警轨迹。禁止恢复装饰性人体热区、同一体征多处重复展示或前端自行生成的医学风险百分比。
+- 页面不得把接口请求成功时间当作设备采集时间，也不得把“任意上报在线”和“体征数据新鲜”混成一个口径。画像接口按 `HEALTH_REALTIME_ONLINE_WINDOW_MINUTES` 判断在线，按 `HEALTH_REALTIME_FRESHNESS_MINUTES` 判断体征新鲜度，并返回每个体征的最近采集时间。
+- 页面不得把分页列表长度冒充近30日、近7日或待处理预警总数；三个数量必须使用 `/risk-warning/list` 对应过滤条件返回的 `total`。最近列表只表示已加载记录。
+- `HeartRateWave` 是根据心率生成的动画示意，不是真实 ECG 数据；职工健康画像禁止将其标为“实时心电图”。只有后端接入真实 ECG 波形及采集时间后才允许恢复心电模块。
+- 规则模板必须明确标为“规则提示”，不得冒充 AI 结论；AI 诊断报告继续作为用户主动触发的二级能力。
+- 信息治理回归入口为 `npm run test:employee-profile-governance`。页面布局改动继续运行 `node scripts/with-env.mjs VISUAL_ROUTES=employee-profile -- npm run audit:visual` 并检查五档截图。2026-07-15 本轮五档结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T07-40-13-080Z/layout-summary.md`。
+
 ## 当前验证基线
 
 2026-05-08 目标态收口后验证：

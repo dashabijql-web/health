@@ -54,6 +54,10 @@ class HealthPortraitServiceTest {
         assertEquals(82, result.vitals().heartRate());
         assertEquals(97, result.vitals().bloodOxygen());
         assertEquals(36.5, result.vitals().temperature());
+        assertEquals("2026-07-15 10:11:43.000", result.vitals().recordTime());
+        assertEquals("fresh", result.vitals().freshnessStatus());
+        assertEquals(true, result.vitals().online());
+        assertEquals("2026-07-15 10:11:43.000", result.vitals().heartRateTime());
         assertEquals(2, result.trend().dates().size());
         assertEquals(80, result.trend().heartRates().get(0));
         assertEquals(97.2, result.trend().bloodOxygens().get(0));
@@ -81,6 +85,8 @@ class HealthPortraitServiceTest {
         HealthPortraitView result = service.getPortrait("EMP1002");
 
         assertNull(result.vitals().heartRate());
+        assertEquals("no_data", result.vitals().freshnessStatus());
+        assertEquals(false, result.vitals().online());
         assertNull(result.exercise().todaySteps());
         assertEquals(0, result.trend().dates().size());
         assertEquals(0, result.warnings().size());
@@ -141,6 +147,11 @@ class HealthPortraitServiceTest {
         row.setPressure(45);
         row.setSteps(4321);
         row.setCalories(320);
+        row.setRecordTime("2026-07-15 10:11:43.000");
+        row.setDataAgeSeconds(120L);
+        row.setReportTime("2026-07-15 10:12:00.000");
+        row.setReportAgeSeconds(103L);
+        row.setHeartRateTime("2026-07-15 10:11:43.000");
         return row;
     }
 

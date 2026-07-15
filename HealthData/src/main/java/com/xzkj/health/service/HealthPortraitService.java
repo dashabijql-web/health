@@ -15,6 +15,7 @@ import com.xzkj.health.dto.portrait.PortraitWarningRow;
 import com.xzkj.health.dto.portrait.PortraitWarningView;
 import com.xzkj.health.mapper.HealthPortraitMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -28,6 +29,12 @@ public class HealthPortraitService {
 
     private final HealthPortraitMapper healthPortraitMapper;
     private final HealthAsyncQueryExecutor asyncQueryExecutor;
+
+    @Value("${health.realtime.online-window-minutes:15}")
+    private int onlineWindowMinutes = 15;
+
+    @Value("${health.realtime.freshness-minutes:5}")
+    private int freshnessMinutes = 5;
 
     public HealthPortraitService(HealthPortraitMapper healthPortraitMapper,
                                  HealthAsyncQueryExecutor asyncQueryExecutor) {
@@ -81,6 +88,12 @@ public class HealthPortraitService {
     }
 
     private PortraitVitalsView toPortraitVitalsView(PortraitVitalsRow row) {
+        Long ageSeconds = row == null ? null : row.getDataAgeSeconds();
+        Long reportAgeSeconds = row == null ? null : row.getReportAgeSeconds();
+        boolean online = reportAgeSeconds != null && reportAgeSeconds <= Math.max(1, onlineWindowMinutes) * 60L;
+        String freshnessStatus = ageSeconds == null ? "no_data"
+                : ageSeconds <= Math.max(1, freshnessMinutes) * 60L ? "fresh"
+                : online ? "stale" : "offline";
         return new PortraitVitalsView(
                 row == null ? null : intValue(row.getHeartRate()),
                 row == null ? null : intValue(row.getBloodOxygen()),
@@ -89,7 +102,18 @@ public class HealthPortraitService {
                 row == null ? null : intValue(row.getDiastolic()),
                 row == null ? null : intValue(row.getPressure()),
                 row == null ? null : intValue(row.getSteps()),
-                row == null ? null : intValue(row.getCalories())
+                row == null ? null : intValue(row.getCalories()),
+                row == null ? "" : stringValue(row.getRecordTime()),
+                ageSeconds,
+                row == null ? "" : stringValue(row.getReportTime()),
+                reportAgeSeconds,
+                row == null ? "" : stringValue(row.getHeartRateTime()),
+                row == null ? "" : stringValue(row.getBloodOxygenTime()),
+                row == null ? "" : stringValue(row.getTemperatureTime()),
+                row == null ? "" : stringValue(row.getBloodPressureTime()),
+                row == null ? "" : stringValue(row.getPressureTime()),
+                online,
+                freshnessStatus
         );
     }
 

@@ -48,7 +48,21 @@ public interface HealthPortraitMapper {
             "  MAX(CASE WHEN rn_bpl = 1 AND blood_pressure_low  IS NOT NULL AND blood_pressure_low  > 0 THEN blood_pressure_low  END) AS diastolic, " +
             "  MAX(CASE WHEN rn_pr  = 1 AND pressure IS NOT NULL THEN pressure END) AS pressure, " +
             "  MAX(CASE WHEN rn_st  = 1 AND steps    IS NOT NULL THEN steps    END) AS steps, " +
-            "  MAX(CASE WHEN rn_cal = 1 AND calories IS NOT NULL THEN calories END) AS calories " +
+            "  MAX(CASE WHEN rn_cal = 1 AND calories IS NOT NULL THEN calories END) AS calories, " +
+            "  CONVERT(varchar(23), MAX(CASE WHEN heart_rate IS NOT NULL OR blood_oxygen IS NOT NULL " +
+            "    OR temperature IS NOT NULL OR blood_pressure_high IS NOT NULL OR blood_pressure_low IS NOT NULL " +
+            "    OR pressure IS NOT NULL THEN record_time END), 121) AS recordTime, " +
+            "  DATEDIFF(SECOND, MAX(CASE WHEN heart_rate IS NOT NULL OR blood_oxygen IS NOT NULL " +
+            "    OR temperature IS NOT NULL OR blood_pressure_high IS NOT NULL OR blood_pressure_low IS NOT NULL " +
+            "    OR pressure IS NOT NULL THEN record_time END), GETDATE()) AS dataAgeSeconds " +
+            ", CONVERT(varchar(23), MAX(record_time), 121) AS reportTime " +
+            ", DATEDIFF(SECOND, MAX(record_time), GETDATE()) AS reportAgeSeconds " +
+            ", CONVERT(varchar(23), MAX(CASE WHEN rn_hr = 1 AND heart_rate IS NOT NULL AND heart_rate > 0 THEN record_time END), 121) AS heartRateTime " +
+            ", CONVERT(varchar(23), MAX(CASE WHEN rn_bo = 1 AND blood_oxygen IS NOT NULL AND blood_oxygen > 0 THEN record_time END), 121) AS bloodOxygenTime " +
+            ", CONVERT(varchar(23), MAX(CASE WHEN rn_tp = 1 AND temperature IS NOT NULL AND temperature > 0 THEN record_time END), 121) AS temperatureTime " +
+            ", CONVERT(varchar(23), MAX(CASE WHEN (rn_bph = 1 AND blood_pressure_high IS NOT NULL AND blood_pressure_high > 0) " +
+            "    OR (rn_bpl = 1 AND blood_pressure_low IS NOT NULL AND blood_pressure_low > 0) THEN record_time END), 121) AS bloodPressureTime " +
+            ", CONVERT(varchar(23), MAX(CASE WHEN rn_pr = 1 AND pressure IS NOT NULL THEN record_time END), 121) AS pressureTime " +
             "FROM Base")
     PortraitVitalsRow getLatestVitals(@Param("empCode") String empCode);
 

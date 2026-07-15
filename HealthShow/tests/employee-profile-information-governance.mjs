@@ -1,0 +1,35 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const source = (relativePath) => readFileSync(resolve(__dirname, '..', relativePath), 'utf8')
+
+test('employee profile keeps only factual health and action surfaces', () => {
+  const page = source('src/views/health-monitor/employee-profile/index.vue')
+
+  assert.doesNotMatch(page, /HeartRateWave|实时心电图|ep-miner|miner-worker|健康风险评估|riskItems/)
+  assert.match(page, /当前体征/)
+  assert.match(page, /7日体征趋势/)
+  assert.match(page, /近期预警轨迹/)
+  assert.match(page, /联系与处置/)
+  assert.match(page, /<EmployeeProfileCommandLayer/)
+  assert.match(page, /每项取最近一次非空读数/)
+  assert.match(page, /heartRateTime/)
+})
+
+test('employee profile uses backend freshness and authoritative warning totals', () => {
+  const runtime = source('src/views/health-monitor/employee-profile/employee-profile-runtime.js')
+  const composable = source('src/views/health-monitor/employee-profile/use-employee-profile-page.js')
+
+  assert.match(runtime, /data\.vitals\?\.online/)
+  assert.match(runtime, /data\.vitals\?\.recordTime/)
+  assert.doesNotMatch(runtime, /isOnline\.value = true/)
+  assert.doesNotMatch(runtime, /lastUpdate\.value = new Date/)
+  assert.match(composable, /warningTotal\.value = Number\(warnRes\.value\.data\.total\)/)
+  assert.match(composable, /pendingTotal\.value = Number\(pendingRes\.value\.data\.total\)/)
+  assert.match(composable, /warning7Total\.value = Number\(warn7Res\.value\.data\.total\)/)
+  assert.doesNotMatch(composable, /warnings\.value\.length/)
+})

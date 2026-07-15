@@ -10,20 +10,9 @@ import { useTimeoutTask } from '@/composables/useTimeoutTask'
 import {
   buildNextActionSummary,
   buildProfileInsightLines,
-  buildProfileRiskSummary,
   buildProfileSummaryCards,
-  buildRiskItems,
-  buildHrItems,
-  buildSpo2Items,
-  buildVitalItems,
-  buildWarnItems,
   calcAge,
-  fmtTemp,
-  fmtTime,
-  hrClass,
-  pressClass,
-  spo2Class,
-  tempClass
+  fmtTime
 } from './employee-profile-view-model'
 import {
   applyEmployeePortrait,
@@ -48,12 +37,19 @@ export function useEmployeeProfilePage() {
   const vitals = ref({})
   const exercise = ref({ todaySteps: 0, todayCalories: 0 })
   const warnings = ref([])
+  const warningTotal = ref(0)
+  const pendingTotal = ref(0)
+  const warning7Total = ref(0)
   const isOnline = ref(false)
   const lastUpdate = ref('--')
+  const freshnessStatus = ref('no_data')
   const trendRef = ref(null)
   const printWindowRef = ref(null)
   const trend7 = ref({ avgHr: 0, avgSpo2: 0, avgTemp: 0 })
   const portraitTrend = ref(null)
+  const personCommandVisible = ref(false)
+  const incidentDrawerVisible = ref(false)
+  const currentIncidentEvent = ref(null)
   let trendChart = null
 
   const aiReportVisible = ref(false)
@@ -63,15 +59,9 @@ export function useEmployeeProfilePage() {
 
   const { start: startPrintTask } = useTimeoutTask(() => printWindowRef.value?.print(), 600)
 
-  const warnCount = computed(() => warnings.value.length)
-  const pendCount = computed(() => warnings.value.filter((w) => !w.handled).length)
-  const warn7Count = computed(() => {
-    const cutoff = Date.now() - 7 * 86400000
-    return warnings.value.filter((w) => {
-      const t = new Date(w.createTime || w.time || 0).getTime()
-      return t > cutoff
-    }).length
-  })
+  const warnCount = computed(() => warningTotal.value)
+  const pendCount = computed(() => pendingTotal.value)
+  const warn7Count = computed(() => warning7Total.value)
 
   const isHrAbnormal = computed(() => {
     const v = vitals.value.heartRate
@@ -115,51 +105,16 @@ export function useEmployeeProfilePage() {
   })
 
   const profileInsightLines = computed(() => buildProfileInsightLines({
-    vitals: vitals.value,
     pendCount: pendCount.value,
     warnCount: warnCount.value,
     warn7Count: warn7Count.value
   }))
 
-  const hrItems = computed(() => buildHrItems({
-    vitals: vitals.value,
-    trend7: trend7.value,
-    warnings: warnings.value,
-    warn7Count: warn7Count.value
-  }))
-  const spo2Items = computed(() => buildSpo2Items({
-    vitals: vitals.value,
-    trend7: trend7.value,
-    warnings: warnings.value,
-    warnCount: warnCount.value,
-    pendCount: pendCount.value
-  }))
-  const vitalItems = computed(() => buildVitalItems({
-    vitals: vitals.value,
-    exercise: exercise.value
-  }))
-  const warnItems = computed(() => buildWarnItems({
-    warnings: warnings.value,
-    warnCount: warnCount.value,
-    pendCount: pendCount.value,
-    warn7Count: warn7Count.value
-  }))
-  const riskItems = computed(() => buildRiskItems({
-    vitals: vitals.value,
-    warnCount: warnCount.value
-  }))
-  const profileRiskSummary = computed(() => buildProfileRiskSummary({
-    pendCount: pendCount.value,
-    warn7Count: warn7Count.value,
-    vitals: vitals.value
-  }))
   const nextActionSummary = computed(() => buildNextActionSummary({
     pendCount: pendCount.value,
-    isOnline: isOnline.value,
-    vitals: vitals.value
+    isOnline: isOnline.value
   }))
   const profileSummaryCards = computed(() => buildProfileSummaryCards({
-    profileRiskSummary: profileRiskSummary.value,
     pendCount: pendCount.value,
     warnCount: warnCount.value,
     isOnline: isOnline.value,
@@ -208,8 +163,12 @@ export function useEmployeeProfilePage() {
       vitals,
       exercise,
       warnings,
+      warningTotal,
+      pendingTotal,
+      warning7Total,
       isOnline,
       lastUpdate,
+      freshnessStatus,
       trend7,
       portraitTrend,
       aiReportVisible,
@@ -223,9 +182,15 @@ export function useEmployeeProfilePage() {
     const code = empInfo.value.empCode
     if (!code) return
 
-    const [portraitRes, warnRes] = await Promise.allSettled([
+    const now = new Date()
+    const endDate = now.toISOString().slice(0, 10)
+    const start30 = new Date(now.getTime() - 29 * 86400000).toISOString().slice(0, 10)
+    const start7 = new Date(now.getTime() - 6 * 86400000).toISOString().slice(0, 10)
+    const [portraitRes, warnRes, pendingRes, warn7Res] = await Promise.allSettled([
       getHealthPortrait(code),
-      getRiskWarningList({ userCode: code, page: 1, size: 20 })
+      getRiskWarningList({ userCode: code, startDate: start30, endDate, page: 1, size: 4 }),
+      getRiskWarningList({ userCode: code, handled: false, startDate: start30, endDate, page: 1, size: 1 }),
+      getRiskWarningList({ userCode: code, startDate: start7, endDate, page: 1, size: 1 })
     ])
 
     if (portraitRes.status === 'fulfilled' && portraitRes.value?.data) {
@@ -234,6 +199,7 @@ export function useEmployeeProfilePage() {
         exercise,
         isOnline,
         lastUpdate,
+        freshnessStatus,
         trend7,
         portraitTrend
       })
@@ -241,6 +207,13 @@ export function useEmployeeProfilePage() {
 
     if (warnRes.status === 'fulfilled' && warnRes.value?.data) {
       warnings.value = normalizeEmployeeWarnings(warnRes.value.data)
+      warningTotal.value = Number(warnRes.value.data.total) || 0
+    }
+    if (pendingRes.status === 'fulfilled' && pendingRes.value?.data) {
+      pendingTotal.value = Number(pendingRes.value.data.total) || 0
+    }
+    if (warn7Res.status === 'fulfilled' && warn7Res.value?.data) {
+      warning7Total.value = Number(warn7Res.value.data.total) || 0
     }
 
     await nextTick()
@@ -325,6 +298,21 @@ export function useEmployeeProfilePage() {
     })
   }
 
+  function openPersonCommand() {
+    if (!empInfo.value.empCode) return
+    personCommandVisible.value = true
+  }
+
+  function openEmergency(event) {
+    if (!event?.id || !event?.occurredAt) return
+    currentIncidentEvent.value = event
+    incidentDrawerVisible.value = true
+  }
+
+  async function handleIncidentUpdated() {
+    await refresh()
+  }
+
   onMounted(async () => {
     await loadProfilePage()
     startProfileRefresh()
@@ -347,22 +335,16 @@ export function useEmployeeProfilePage() {
     calcAge,
     empInfo,
     fmtTime,
-    fmtTemp,
     goArchive,
     goMineEntry,
     goReportCenter,
     goWorkbench,
-    hrClass,
-    hrPct: (v) => {
-      if (!v) return 0
-      return Math.min(100, Math.max(0, ((v - 40) / 100) * 100))
-    },
-    hrItems,
     isBpAbnormal,
     isBpDanger,
     isHrAbnormal,
     isHrDanger,
     isOnline,
+    freshnessStatus,
     isPressureHigh,
     isSpo2Abnormal,
     isSpo2Danger,
@@ -372,35 +354,25 @@ export function useEmployeeProfilePage() {
     loading,
     nextActionSummary,
     openAiReport,
+    openEmergency,
+    openPersonCommand,
     pendCount,
     printAiReport,
     profileInsightLines,
     profileSummaryCards,
+    personCommandVisible,
+    incidentDrawerVisible,
+    currentIncidentEvent,
+    handleIncidentUpdated,
     recentWarnings,
     recentWarningSummary,
     recentWarningFootnote,
-    pressClass,
     refresh,
-    riskItems,
-    spo2Class,
-    spo2Pct: (v) => {
-      if (!v) return 0
-      return Math.min(100, Math.max(0, ((v - 80) / 20) * 100))
-    },
-    spo2Items,
-    tempClass,
-    tempPct: (v) => {
-      if (!v) return 0
-      const t = v > 100 ? v / 10 : v
-      return Math.min(100, Math.max(0, ((t - 35) / 5) * 100))
-    },
     trendStats,
     trendRef,
-    vitalItems,
     vitals,
     warn7Count,
     warnCount,
-    warnItems,
     warnings,
     exercise,
     goWarningCenter

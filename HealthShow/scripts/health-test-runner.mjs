@@ -23,6 +23,7 @@ const PROFILES = {
     commands: [
       command('npm', ['run', 'test:warning-semantics'], { env: { TZ: 'UTC' } }),
       command('npm', ['run', 'test:realtime-detail']),
+      command('npm', ['run', 'test:employee-profile-governance']),
       command('npm', ['run', 'test:report-center-export']),
       command('npm', ['run', 'test:ai-chat-layout']),
       command('npm', ['run', 'test:visual-audit-summary']),
@@ -35,6 +36,7 @@ const PROFILES = {
     preflight: 'frontend',
     commands: [
       command('npm', ['run', 'test:warning-semantics'], { env: { TZ: 'UTC' } }),
+      command('npm', ['run', 'test:employee-profile-governance']),
       command('npm', ['run', 'audit:structure']),
       command('npm', ['run', 'build'])
     ]

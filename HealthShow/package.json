@@ -23,6 +23,7 @@
     "audit:all": "npm run test:integration",
     "test:warning-lifecycle": "node --test tests/dashboard-dialogs-level.mjs tests/dashboard-runtime-imports.mjs tests/dashboard-runtime-handled.mjs tests/dashboard-summary.mjs tests/dashboard-warning-level.mjs tests/dashboard-warn-curve.mjs tests/warning-lifecycle.mjs",
     "test:realtime-detail": "node --test tests/realtime-detail-dialog.mjs",
+    "test:employee-profile-governance": "node --test tests/employee-profile-information-governance.mjs",
     "test:report-center-export": "node --test tests/report-center-export-state.mjs",
     "test:ai-chat-layout": "node --test tests/ai-chat-layout.mjs",
     "test:frontend-beautification": "node --test tests/frontend-beautification.mjs",
