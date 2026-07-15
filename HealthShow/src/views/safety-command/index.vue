@@ -9,18 +9,19 @@
         </span>
       </div>
       <div class="sc-hd-kpis">
-        <div v-for="m in safetyMetricItems" :key="m.key"
+        <button v-for="m in safetyMetricItems" :key="m.key" type="button"
           :class="['sc-hd-kpi', `tone-${m.tone}`]"
-          :title="m.note">
+          @click="handleSafetyMetricSelect(m)">
           <span class="sc-hd-kpi-v">{{ m.value }}</span>
           <span class="sc-hd-kpi-l">{{ m.label }}</span>
-        </div>
+        </button>
       </div>
       <div class="sc-hd-right">
-        <span class="sc-hd-clock">数据更新 {{ dataAsOfLabel }}</span>
+        <span class="sc-hd-clock">{{ currentDate }} {{ currentTime }}</span>
         <div class="sc-hd-actions">
-          <button class="sc-hd-btn sc-hd-btn--outline" @click="openPriorityIncident">最高危事件</button>
-          <button class="sc-hd-btn sc-hd-btn--outline" @click="goToDashboard">统一管控</button>
+          <button class="sc-hd-btn sc-hd-btn--outline" @click="emergencyCall">呼叫</button>
+          <button class="sc-hd-btn sc-hd-btn--outline" @click="emergencyBroadcast">广播</button>
+          <button class="sc-hd-btn sc-hd-btn--danger" @click="emergencyEvacuate">撤离</button>
         </div>
       </div>
     </header>
@@ -29,82 +30,96 @@
       <div class="sc-situation-stage sc-panel panel-enter" style="--delay:.05s">
         <div class="sc-panel-head">
           <div>
-            <span class="sc-panel-kicker">重点态势</span>
+            <span class="sc-panel-kicker">SITUATION STAGE</span>
             <h2>{{ incidentTitle }}</h2>
           </div>
           <span :class="['sc-stage-severity', incidentTone]">{{ incidentStatus }}</span>
         </div>
 
         <div class="sc-stage-canvas">
-          <div class="sc-stage-section-head">
-            <strong>重点部门</strong>
-            <span>按今日预警量排序</span>
-          </div>
-
-          <div class="sc-stage-operational-grid" aria-label="重点部门风险">
+          <div class="sc-stage-intel">
             <button
-              v-for="node in stageNodes"
-              :key="node.key"
+              v-for="item in stageIntelItems"
+              :key="item.key"
               type="button"
-              :class="['sc-stage-zone', `tone-${node.tone}`]"
-              @click="node.dept ? showDeptDetail(node.dept) : showAreaDetail(node.area)"
+              :class="['sc-stage-intel-card', `tone-${item.tone}`]"
+              @click="showInfoDialog(item.label, item.note)"
             >
-              <span class="sc-stage-zone-head">
-                <span class="sc-node-pulse"></span>
-                <span class="sc-node-name">{{ node.label }}</span>
-                <strong>{{ node.value }}</strong>
-              </span>
-              <span class="sc-stage-node-meta">{{ node.meta }}</span>
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <em>{{ item.note }}</em>
             </button>
           </div>
 
-          <article v-if="priorityEvent" :class="['sc-priority-incident', `tone-${priorityEvent.tone}`]">
-            <div class="sc-priority-incident__heading">
-              <span>当前优先事件</span>
-              <strong>{{ priorityEvent.statusLabel }}</strong>
+          <div class="sc-stage-radar">
+            <span class="sc-radar-ring ring-1"></span>
+            <span class="sc-radar-ring ring-2"></span>
+            <span class="sc-radar-ring ring-3"></span>
+            <div class="sc-stage-core">
+              <span>井下态势</span>
+              <strong>{{ stats.underground || 0 }}</strong>
+              <em>人在线作业</em>
             </div>
-            <div class="sc-priority-incident__main">
-              <strong>{{ priorityEvent.user || '未知人员' }} · {{ priorityEvent.type || '风险预警' }}</strong>
-              <span>{{ priorityEvent.location || priorityEvent.dept || '未接入定位' }} / {{ priorityEvent.time || '刚刚' }}</span>
-            </div>
-            <div class="sc-priority-incident__meta">
-              <span>责任：{{ priorityEvent.owner || '未分派' }}</span>
-              <span>SLA：{{ priorityEvent.sla || '未配置' }}</span>
-            </div>
-            <button type="button" @click="showEventDetail(priorityEvent)">进入处置</button>
-          </article>
-          <div v-else class="sc-priority-incident sc-priority-incident--safe">
-            <strong>当前无待处置事件</strong>
-            <span>继续关注部门预警变化和设备例外状态。</span>
           </div>
+          <button
+            v-for="node in stageNodes"
+            :key="node.key"
+            type="button"
+            :class="['sc-stage-node', `tone-${node.tone}`]"
+            :style="{ '--node-x': node.x + '%', '--node-y': node.y + '%' }"
+            @click="node.dept ? showDeptDetail(node.dept) : showAreaDetail(node.area)"
+          >
+            <span class="sc-node-pulse"></span>
+            <span class="sc-node-main">
+              <span class="sc-node-name">{{ node.label }}</span>
+              <span class="sc-stage-node-meta">{{ node.meta }}</span>
+            </span>
+            <span class="sc-node-score">
+              <strong>{{ node.value }}</strong>
+              <em>{{ node.status }}</em>
+            </span>
+          </button>
+
+          <div class="sc-stage-action-strip">
+            <button
+              v-for="action in stageActionItems"
+              :key="action.key"
+              type="button"
+              :class="['sc-stage-action-cell', `tone-${action.tone}`]"
+              @click="action.key === 'broadcast' ? emergencyBroadcast() : showInfoDialog(action.label, action.note)"
+            >
+              <span>{{ action.label }}</span>
+              <strong>{{ action.value }}</strong>
+              <em>{{ action.note }}</em>
+            </button>
+          </div>
+        </div>
+
+        <div class="sc-stage-telemetry">
+          <button
+            v-for="item in commandTelemetry"
+            :key="item.key"
+            type="button"
+            :class="['sc-telemetry-item', `tone-${item.tone}`]"
+            @click="item.key === 'watch' ? handleKpiDetail('watch') : showInfoDialog(item.label, item.note)"
+          >
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <em>{{ item.note }}</em>
+          </button>
         </div>
       </div>
 
       <aside class="sc-response-queue sc-panel panel-enter" style="--delay:.1s">
         <div class="sc-panel-head">
           <div>
+            <span class="sc-panel-kicker">RESPONSE QUEUE</span>
             <h2>现场处置队列</h2>
-            <span class="sc-panel-subtitle">展示前50条开放事件，按风险优先</span>
           </div>
-          <div class="sc-queue-head-meta">
-            <div class="sc-queue-filters" aria-label="事件筛选">
-              <button
-                v-for="filter in queueFilterItems"
-                :key="filter.key"
-                type="button"
-                :class="['sc-queue-filter', { active: queueFilter === filter.key }]"
-                @click="queueFilter = filter.key"
-              >{{ filter.label }} {{ filter.count }}</button>
-            </div>
-            <span class="sc-queue-count">展示 {{ loadedQueueCount }} / 待办 {{ pendingCount }}</span>
-          </div>
+          <span class="sc-queue-count">{{ pendingCount }}</span>
         </div>
 
         <div class="sc-queue-list">
-          <div v-if="commandQueue.length === 0" class="sc-queue-empty">
-            <strong>{{ queueFilter === 'all' ? '当前无开放事件' : '当前筛选无事件' }}</strong>
-            <button v-if="queueFilter !== 'all'" type="button" @click="queueFilter = 'all'">查看全部</button>
-          </div>
           <article
             v-for="(item, index) in commandQueue"
             :key="item.id"
@@ -115,35 +130,44 @@
             <div class="sc-queue-main">
               <strong>{{ item.title }}</strong>
               <span>{{ item.meta }}</span>
-              <em>{{ item.context }}</em>
             </div>
             <button
               type="button"
               class="sc-queue-action"
-              @click.stop="item.event ? showEventDetail(item.event) : showInfoDialog('当前无事件上下文', '请选择具体事件后再执行呼叫、广播或撤离动作。')"
+              @click.stop="item.event ? onHandleEvent(item.event) : emergencyBroadcast()"
             >{{ item.action }}</button>
           </article>
         </div>
+
+        <RiskPersonPanel
+          class="sc-risk-lane"
+          :persons="top5Persons"
+          @callAll="emergencyCall"
+          @showPerson="onShowPerson"
+        />
       </aside>
     </section>
 
-    <SafetyCommandIntelligenceGrid
-      :device-coverage="deviceCoverage"
-      :event-type-items="eventTypeItems"
-      :loaded-count="loadedQueueCount"
-      :risk-persons="riskPersons"
-      :workflow-signals="workflowSignals"
-      @show-person="onShowPerson"
-    />
-
     <SafetyCommandSupportGrid
+      :areas="areas"
+      :depts-sorted="deptsSorted"
+      :donut-segments="donutSegments"
+      :events="events"
       :handled-count="handledCount"
       :pending-count="pendingCount"
       :trend7day-total="trend7dayTotal"
       :trend-change="trendChange"
       :trend-path="trendPath"
+      :type-handle-progress="typeHandleProgress"
+      :vitals-rows="vitalsRows"
       :warning-handled-rate="warningHandledRate"
+      :warning-total="warningTotal"
       :warning-trend="warningTrend"
+      @show-dept="showDeptDetail"
+      @show-area="showAreaDetail"
+      @show-event="showEventDetail"
+      @show-person-from-event="onShowPersonFromEvent"
+      @handle-event="onHandleEvent"
     />
 
     <SafetyCommandDialogs
@@ -179,112 +203,114 @@
       v-model:visible="personDrawerVisible"
       :userCode="personDrawerUserCode"
       :userName="personDrawerUserName"
-      @emergency="showEventDetail"
+      @call="(code) => showInfoDialog('呼叫', `正在呼叫 ${code}...`)"
+      @notify="(code) => showInfoDialog('通知', `正在通知 ${code}...`)"
+      @viewRecord="(code) => showInfoDialog('完整档案', `加载 ${code} 健康档案...`)"
     />
 
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getCommandCenterIncident } from '@/api/command-center'
+import RiskPersonPanel from './components/RiskPersonPanel.vue'
 import SafetyCommandSupportGrid from './components/SafetyCommandSupportGrid.vue'
-import SafetyCommandIntelligenceGrid from './components/SafetyCommandIntelligenceGrid.vue'
 import SafetyCommandDialogs from './components/SafetyCommandDialogs.vue'
 import IncidentCommandDrawer from './components/IncidentCommandDrawer.vue'
 import PersonDetailDrawer from './components/PersonDetailDrawer.vue'
 import {
   buildDeptRankData,
-  buildDeviceCoverage,
-  buildLoadedEventTypeItems,
-  buildLoadedWorkflowSignals,
+  buildDonutSegments,
+  buildStageActionItems,
+  buildStageIntelItems,
   buildStageNodes,
+  buildTop5RiskPersons,
   buildTrendChange,
   buildTrendPath,
   buildTrend7dayTotal,
+  buildTypeHandleProgress,
+  buildVitalsRows,
   mapWarningToEvent,
 } from './safety-command-view-model'
 import { useSafetyCommandInteractions } from './safety-command-interactions'
 import { useSafetyCommandPageData } from './use-safety-command-page-data'
-import {
-  buildDashboardReturnQuery,
-  buildSafetyCommandQueue,
-  buildSafetyPriorityEvent
-} from './safety-command-workflow'
+import { buildDashboardReturnQuery } from './safety-command-workflow'
 
 const {
-  commandSummary,
-  dataAsOf,
+  areas,
+  currentDate,
+  currentTime,
   departments,
   events,
   fetchAllData,
   handledCount,
-  pendingWarnings,
-  criticalWarnings,
+  processWarningData,
   riskPersons,
+  stats,
+  vitalAvg,
+  vitalsHistory,
+  watchStatus,
   warningTrend
-} = useSafetyCommandPageData()
+} = useSafetyCommandPageData({ legacy: true })
 
 const route = useRoute()
 const router = useRouter()
 
-const summaryWarning = computed(() => commandSummary.value?.warning || {})
-const pendingCount = computed(() => Number(summaryWarning.value.pendingTotal ?? pendingWarnings.value ?? events.value.length))
-const highRiskCount = computed(() => Number(summaryWarning.value.criticalPending ?? criticalWarnings.value ?? 0))
-const overdueCount = computed(() => Number(summaryWarning.value.overdueTotal || 0))
-const isSafe = computed(() => highRiskCount.value === 0 && overdueCount.value === 0)
-const dataAsOfLabel = computed(() => {
-  const value = dataAsOf.value || commandSummary.value?.dataAsOf || ''
-  return value ? String(value).replace('T', ' ').slice(11, 19) : '--:--:--'
-})
+// ── Derived KPI ───────────────────────────────────────────────────────────────
+const isSafe = computed(() => stats.value.sos === 0 && stats.value.fall === 0)
+const pendingCount = computed(() => events.value.length)
 const safetyMetricItems = computed(() => [
   {
-    key: 'today',
-    label: '今日新增',
-    value: Number(summaryWarning.value.todayNew || 0),
-    note: '今日产生的全部预警',
+    key: 'underground',
+    label: '井下人数',
+    value: stats.value.underground,
+    note: `正常 ${stats.value.normal} / 总数 ${stats.value.total}`,
     tone: 'primary'
   },
   {
-    key: 'critical',
-    label: '高危待办',
-    value: highRiskCount.value,
-    note: '今日尚未处置的高危预警',
-    tone: highRiskCount.value > 0 ? 'danger' : 'success'
+    key: 'sos',
+    label: 'SOS 求救',
+    value: stats.value.sos,
+    note: stats.value.sos > 0 ? '立即处置' : '无紧急求救',
+    tone: stats.value.sos > 0 ? 'danger' : 'success'
   },
   {
-    key: 'pending',
-    label: '待办总数',
-    value: pendingCount.value,
-    note: '今日全部开放事件',
-    tone: pendingCount.value > 0 ? 'warning' : 'success'
+    key: 'fall',
+    label: '跌倒检测',
+    value: stats.value.fall,
+    note: stats.value.fall > 0 ? '需要复核' : '无跌倒事件',
+    tone: stats.value.fall > 0 ? 'danger' : 'success'
   },
   {
-    key: 'unassigned',
-    label: '未分派',
-    value: Number(summaryWarning.value.unassignedTotal || 0),
-    note: '尚未指定责任人的开放事件',
-    tone: summaryWarning.value.unassignedTotal > 0 ? 'warning' : 'success'
+    key: 'alerts',
+    label: '其他预警',
+    value: stats.value.static + stats.value.abnormal,
+    note: `静止 ${stats.value.static} / 异常 ${stats.value.abnormal}`,
+    tone: stats.value.static + stats.value.abnormal > 0 ? 'warning' : 'primary'
   },
   {
-    key: 'overdue',
-    label: '已超时',
-    value: overdueCount.value,
-    note: '已超过已配置 SLA 的开放事件',
-    tone: overdueCount.value > 0 ? 'danger' : 'success'
+    key: 'watch',
+    label: '手表状态',
+    value: `${watchStatus.value.online}/${watchStatus.value.total || '--'}`,
+    note: `离线 ${watchStatus.value.offline} / 低电 ${watchStatus.value.lowBattery}`,
+    tone: watchStatus.value.offline > 20 || watchStatus.value.lowBattery > 30 ? 'warning' : 'success'
   }
 ])
+// 优先用 watchStatus.online（来自 getStatistics().onlineUsers）
 const warningHandledRate = computed(() => {
   const total = pendingCount.value + handledCount.value
   return total > 0 ? Math.round(handledCount.value / total * 100) : 0
 })
+const warningTotal = computed(() => pendingCount.value + handledCount.value)
+const handleSafetyMetricSelect = (item) => handleKpiDetail(item.key)
 
+// ── Dept ranking ──────────────────────────────────────────────────────────────
 const deptsSorted = computed(() => buildDeptRankData(departments.value))
-const priorityEvent = computed(() => buildSafetyPriorityEvent(events.value))
 
 const incidentTone = computed(() => {
-  if (highRiskCount.value > 0 || overdueCount.value > 0) return 'danger'
+  if (stats.value.sos > 0 || stats.value.fall > 0) return 'danger'
   if (pendingCount.value > 0) return 'warning'
   return 'safe'
 })
@@ -296,37 +322,96 @@ const incidentStatus = computed(() => ({
 }[incidentTone.value]))
 
 const incidentTitle = computed(() => {
-  const event = priorityEvent.value
-  if (!event) return '全矿态势稳定，保持值守'
-  return `${event.location || event.dept || '现场'} · ${event.type || '风险预警'}`
+  const first = events.value[0]
+  if (!first) return '全矿态势稳定，保持值守'
+  return `${first.location || first.dept || '现场'} · ${first.type || '风险预警'}`
 })
 
+const commandTelemetry = computed(() => [
+  {
+    key: 'online',
+    label: '井下在线',
+    value: `${stats.value.underground || 0}/${stats.value.total || 0}`,
+    note: `正常 ${stats.value.normal || 0}`,
+    tone: 'primary'
+  },
+  {
+    key: 'closure',
+    label: '闭环率',
+    value: `${warningHandledRate.value}%`,
+    note: `已闭环 ${handledCount.value}`,
+    tone: warningHandledRate.value >= 80 ? 'success' : 'warning'
+  },
+  {
+    key: 'watch',
+    label: '手表在线',
+    value: `${watchStatus.value.online || 0}/${watchStatus.value.total || 0}`,
+    note: `离线 ${watchStatus.value.offline || 0}`,
+    tone: watchStatus.value.offline > 0 ? 'warning' : 'success'
+  },
+  {
+    key: 'temperature',
+    label: '平均体温',
+    value: vitalAvg.value.temperature > 0 ? vitalAvg.value.temperature.toFixed(1) : '--',
+    note: vitalAvg.value.bloodOxygen > 0 ? `血氧 ${Math.round(vitalAvg.value.bloodOxygen)}%` : '等待体征',
+    tone: 'primary'
+  }
+])
+
+const stageIntelItems = computed(() => buildStageIntelItems({
+  stats: stats.value,
+  watchStatus: watchStatus.value,
+  pendingCount: pendingCount.value,
+  handledCount: handledCount.value,
+  warningHandledRate: warningHandledRate.value,
+  deptsSorted: deptsSorted.value
+}))
+const stageActionItems = computed(() => buildStageActionItems({
+  stats: stats.value,
+  watchStatus: watchStatus.value,
+  pendingCount: pendingCount.value,
+  handledCount: handledCount.value,
+  warningHandledRate: warningHandledRate.value
+}))
 const stageNodes = computed(() => buildStageNodes({
   deptsSorted: deptsSorted.value,
-  areas: [],
+  areas: areas.value,
   departments: departments.value
 }))
 
-const queueFilter = ref('all')
-const queueFilterItems = computed(() => [
-  { key: 'all', label: '全部', count: events.value.length },
-  { key: 'sos', label: 'SOS', count: events.value.filter((event) => event.eventType === 'sos').length },
-  { key: 'fall', label: '跌倒', count: events.value.filter((event) => event.eventType === 'fall').length },
-  { key: 'other', label: '其他', count: events.value.filter((event) => !['sos', 'fall'].includes(event.eventType)).length }
-])
-const filteredQueueEvents = computed(() => {
-  if (queueFilter.value === 'all') return events.value
-  if (queueFilter.value === 'other') return events.value.filter((event) => !['sos', 'fall'].includes(event.eventType))
-  return events.value.filter((event) => event.eventType === queueFilter.value)
-})
-const commandQueue = computed(() => filteredQueueEvents.value.length
-  ? buildSafetyCommandQueue(filteredQueueEvents.value)
-  : [])
-const loadedQueueCount = computed(() => events.value.length)
-const deviceCoverage = computed(() => buildDeviceCoverage(commandSummary.value?.device))
-const eventTypeItems = computed(() => buildLoadedEventTypeItems(events.value))
-const workflowSignals = computed(() => buildLoadedWorkflowSignals(events.value))
+const commandQueue = computed(() => {
+  const queue = (events.value || []).slice(0, 5).map((event) => ({
+    id: event.id || `${event.user}-${event.time}-${event.type}`,
+    title: `${event.user || '未知人员'} · ${event.type || '预警'}`,
+    meta: `${event.dept || event.location || '未知区域'} / ${event.time || '刚刚'}`,
+    action: '处理',
+    tone: event.eventType === 'sos' || event.eventType === 'fall' ? 'danger' : 'warning',
+    event
+  }))
 
+  if (queue.length) return queue
+
+  return [{
+    id: 'safe-duty',
+    title: '当前无紧急事件',
+    meta: '保持在线巡查，关注设备离线和低电量变化',
+    action: '广播',
+    tone: 'safe',
+    event: null
+  }]
+})
+
+// ── TOP5 ──────────────────────────────────────────────────────────────────────
+const top5Persons = computed(() => buildTop5RiskPersons(riskPersons.value))
+
+// ── Donut ─────────────────────────────────────────────────────────────────────
+const donutSegments = computed(() => buildDonutSegments(events.value))
+
+// ── Handling progress per type ────────────────────────────────────────────────
+const typeHandleProgress = computed(() => buildTypeHandleProgress(events.value, handledCount.value))
+const vitalsRows = computed(() => buildVitalsRows(vitalAvg.value, vitalsHistory))
+
+// ── 7-day trend ───────────────────────────────────────────────────────────────
 const trendPath = computed(() => buildTrendPath(warningTrend.value))
 const trend7dayTotal = computed(() => buildTrend7dayTotal(warningTrend.value))
 const trendChange = computed(() => buildTrendChange(warningTrend.value))
@@ -345,12 +430,16 @@ const {
   deptAiReport,
   deptAiTime,
   deptDialogVisible,
+  emergencyBroadcast,
+  emergencyCall,
+  emergencyEvacuate,
   handleDeptAi,
-  incidentDrawerVisible,
+  handleKpiDetail,
   infoDialogContent,
   infoDialogTitle,
   infoDialogVisible,
   onDeptDialogOpen,
+  onHandleEvent,
   onShowPerson,
   onShowPersonFromEvent,
   personDrawerUserCode,
@@ -360,25 +449,15 @@ const {
   showDeptDetail,
   showEventDetail,
   showInfoDialog
-} = useSafetyCommandInteractions()
-
-function openPriorityIncident() {
-  if (priorityEvent.value) {
-    showEventDetail(priorityEvent.value)
-    return
-  }
-  showInfoDialog('当前无待处置事件', '请继续关注部门预警变化和设备例外状态。')
-}
-
-function goToDashboard() {
-  router.push('/health-monitor/dashboard')
-}
+} = useSafetyCommandInteractions({
+  statsRef: stats,
+  watchStatusRef: watchStatus
+})
 
 function returnToDashboard() {
-  const event = currentEvent.value || priorityEvent.value
   router.push({
     path: '/health-monitor/dashboard',
-    query: buildDashboardReturnQuery(event)
+    query: buildDashboardReturnQuery(currentEvent.value || events.value[0])
   })
 }
 
@@ -391,11 +470,9 @@ watch(
     routeIncidentKey = nextKey
     try {
       const response = await getCommandCenterIncident(warningId, occurredAt)
-      if (response.code === 200 && response.data) {
-        showEventDetail(mapWarningToEvent(response.data))
-      }
+      if (response.code === 200 && response.data) showEventDetail(mapWarningToEvent(response.data))
     } catch {
-      // The target incident can disappear after a data-source switch or retention cleanup.
+      // The incident may no longer exist after switching data sources.
     }
   },
   { immediate: true }

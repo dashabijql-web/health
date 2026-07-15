@@ -154,68 +154,79 @@ test('A+C command pages avoid self-amplifying stretch layouts', () => {
   )
 })
 
-test('safety command uses one filterable incident queue', () => {
-  const safetyPage = src('src/views/safety-command/index.vue')
-  const supportGrid = src('src/views/safety-command/components/SafetyCommandSupportGrid.vue')
-  const intelligenceGrid = src('src/views/safety-command/components/SafetyCommandIntelligenceGrid.vue')
+test('safety command emergency list uses dense incident columns', () => {
+  const eventPanel = src('src/views/safety-command/components/EventPanel.vue')
 
-  assert.match(safetyPage, /class="sc-queue-filters"/)
-  assert.match(safetyPage, /展示前50条开放事件，按风险优先/)
-  assert.doesNotMatch(safetyPage, /<RiskPersonPanel/)
-  assert.doesNotMatch(supportGrid, /EventPanel|RiskPersonPanel/)
-  assert.doesNotMatch(intelligenceGrid, /EventPanel|RiskPersonPanel/)
-  assert.match(intelligenceGrid, /基于已加载 \{\{ loadedCount \}\} 条开放事件/)
+  assert.match(
+    eventPanel,
+    /class="ev-main"/,
+    'emergency event rows should expose a main grid shell instead of a sparse two-column row'
+  )
+  assert.match(
+    eventPanel,
+    /class="ev-field ev-person"/,
+    'emergency event rows should include a dedicated person field'
+  )
+  assert.match(
+    eventPanel,
+    /class="ev-field ev-dept"/,
+    'emergency event rows should include a dedicated department field'
+  )
+  assert.match(
+    eventPanel,
+    /class="ev-field ev-location"/,
+    'emergency event rows should include a dedicated location field'
+  )
+  assert.match(
+    eventPanel,
+    /class="ev-field ev-duration"/,
+    'emergency event rows should include a dedicated response-duration field'
+  )
+  assert.match(
+    eventPanel,
+    /class="ev-field ev-stage"/,
+    'emergency event rows should include a dedicated response-stage field'
+  )
+  assert.match(
+    eventPanel,
+    /\.ev-main\s*\{[\s\S]*grid-template-columns:\s*minmax\(180px,\s*1\.35fr\)\s+minmax\(112px,\s*\.78fr\)\s+minmax\(124px,\s*\.9fr\)\s+minmax\(132px,\s*1fr\)\s+minmax\(82px,\s*\.52fr\)\s+minmax\(104px,\s*\.72fr\)\s+minmax\(84px,\s*\.48fr\);/,
+    'emergency event rows should render as a seven-column incident matrix on desktop'
+  )
 })
 
-test('safety command operational intelligence uses stable responsive tracks', () => {
+test('safety command situation stage carries layered operational density', () => {
+  const safetyPage = src('src/views/safety-command/index.vue')
   const safetyStyle = src('src/views/safety-command/safety-command.scss')
 
   assert.match(
-    safetyStyle,
-    /\.sc-intelligence-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(300px,\s*\.9fr\)\s+minmax\(320px,\s*1fr\)\s+minmax\(380px,\s*1\.12fr\);/,
-    'desktop operational intelligence should use three deliberate tracks'
-  )
-  assert.match(
-    safetyStyle,
-    /@media\s*\(max-width:\s*980px\)\s*\{[\s\S]*\.sc-intelligence-grid,[\s\S]*grid-template-columns:\s*1fr;/,
-    'operational intelligence should collapse before content becomes cramped'
-  )
-})
-
-test('safety command situation stage exposes regional relations and an actionable incident', () => {
-  const safetyPage = src('src/views/safety-command/index.vue')
-  const safetyStyle = src('src/views/safety-command/safety-command.scss')
-
-  assert.match(
     safetyPage,
-    /class="sc-stage-section-head"/,
-    'situation stage should label the single authoritative department matrix'
-  )
-  assert.doesNotMatch(safetyPage, /class="sc-stage-intel"/)
-  assert.match(
-    safetyPage,
-    /class="sc-stage-operational-grid"/,
-    'situation stage should render a concrete regional relation matrix'
+    /class="sc-stage-intel"/,
+    'situation stage should add an in-map operational intelligence rail instead of leaving the radar canvas empty'
   )
   assert.match(
     safetyPage,
-    /sc-priority-incident/,
-    'situation stage should expose the current priority incident with a direct action'
+    /class="sc-stage-node-meta"/,
+    'situation stage nodes should expose second-line department incident composition'
   )
   assert.match(
     safetyPage,
-    /责任：\{\{ priorityEvent\.owner \|\| '未分派' \}\}/,
-    'priority incident should expose its owner instead of a decorative status only'
+    /class="sc-stage-action-strip"/,
+    'situation stage should add a compact response-chain strip inside the canvas'
   )
   assert.match(
     safetyPage,
-    /SLA：\{\{ priorityEvent\.sla \|\| '未配置' \}\}/,
-    'priority incident should make missing SLA configuration explicit'
+    /const stageIntelItems = computed/,
+    'situation stage density should be derived from live page data, not static markup'
   )
   assert.match(
     safetyStyle,
-    /\.sc-stage-operational-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
-    'regional relation matrix should have deliberate stable tracks'
+    /\.sc-stage-intel\s*\{[\s\S]*position:\s*absolute;[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
+    'situation stage intelligence rail should be an absolute two-column matrix over the map'
+  )
+  assert.match(
+    safetyStyle,
+    /\.sc-stage-action-strip\s*\{[\s\S]*position:\s*absolute;[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);/,
+    'situation stage response chain should fill the lower canvas with four balanced cells'
   )
 })
 
@@ -224,7 +235,7 @@ test('safety command response queue is bounded so support grid does not leave a 
 
   assert.match(
     safetyStyle,
-    /\.sc-response-queue\s*\{[\s\S]*height:\s*clamp\(440px,\s*25vw,\s*500px\);[\s\S]*max-height:\s*clamp\(440px,\s*25vw,\s*500px\);/,
+    /\.sc-response-queue\s*\{[\s\S]*height:\s*clamp\(700px,\s*calc\(38vw\s*\+\s*198px\),\s*735px\);[\s\S]*max-height:\s*clamp\(700px,\s*calc\(38vw\s*\+\s*198px\),\s*735px\);/,
     'desktop response queue should be bounded to the stage panel height so the next support row starts without a left-side blank gap'
   )
   assert.match(
@@ -232,5 +243,9 @@ test('safety command response queue is bounded so support grid does not leave a 
     /\.sc-queue-list\s*\{[\s\S]*flex:\s*1\s+1\s+auto;[\s\S]*overflow-y:\s*auto;/,
     'response queue cards should scroll internally instead of increasing the whole grid row height'
   )
-  assert.doesNotMatch(safetyStyle, /\.sc-risk-lane\s*\{/)
+  assert.match(
+    safetyStyle,
+    /\.sc-risk-lane\s*\{[\s\S]*height:\s*clamp\(150px,\s*14vw,\s*210px\);/,
+    'high-risk people lane should be compact enough that it does not push the support grid downward'
+  )
 })
