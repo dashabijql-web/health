@@ -13,11 +13,24 @@ test('employee profile keeps only factual health and action surfaces', () => {
   assert.doesNotMatch(page, /HeartRateWave|实时心电图|ep-miner|miner-worker|健康风险评估|riskItems/)
   assert.match(page, /当前体征/)
   assert.doesNotMatch(page, /7日体征趋势/)
-  assert.match(page, /近期预警轨迹/)
+  assert.doesNotMatch(page, /近期预警轨迹/)
   assert.match(page, /联系与处置/)
   assert.match(page, /<EmployeeProfileCommandLayer/)
   assert.match(page, /每项取最近一次非空读数/)
   assert.match(page, /heartRateTime/)
+})
+
+test('employee profile keeps one actionable warning summary without duplicate status cards', () => {
+  const page = source('src/views/health-monitor/employee-profile/index.vue')
+  const viewModel = source('src/views/health-monitor/employee-profile/employee-profile-view-model.js')
+
+  assert.match(page, /@select="openWarningDetails"/)
+  assert.match(page, /近30日预警明细/)
+  assert.match(page, /查看全部预警/)
+  assert.match(page, /openWarningIncident\(\{ \.\.\.warning, occurredAt:/)
+  assert.match(viewModel, /label: '预警闭环'/)
+  assert.match(viewModel, /clickable: true/)
+  assert.doesNotMatch(viewModel, /label: '实时在线'|label: '建议动作'/)
 })
 
 test('employee profile uses backend freshness and authoritative warning totals', () => {

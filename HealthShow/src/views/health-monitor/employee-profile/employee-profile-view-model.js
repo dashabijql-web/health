@@ -18,16 +18,6 @@ export const calcAge = (birthDate) => {
   return age > 0 && age < 100 ? `${age}岁` : '--'
 }
 
-export function buildNextActionSummary({ pendCount, isOnline }) {
-  if (pendCount > 0) {
-    return { value: '预警处置', sub: '先处理未闭环预警，再回看画像趋势' }
-  }
-  if (!isOnline) {
-    return { value: '设备核查', sub: '当前离线，先确认设备在线和数据回传状态' }
-  }
-  return { value: '趋势观察', sub: '保持观察近7日变化和预警频次' }
-}
-
 export function buildProfileInsightLines({ pendCount, warnCount, warn7Count }) {
   const lines = []
 
@@ -48,25 +38,15 @@ export function buildProfileInsightLines({ pendCount, warnCount, warn7Count }) {
   return lines
 }
 
-export function buildProfileSummaryCards({ pendCount, warnCount, isOnline, lastUpdate, nextActionSummary }) {
+export function buildProfileSummaryCards({ pendCount, warnCount }) {
   return [
     {
+      key: 'warning-closure',
       label: '预警闭环',
       value: `${pendCount} / ${warnCount}`,
-      sub: warnCount ? '待处理 / 近30日总预警' : '近30日暂无预警记录',
-      tone: pendCount > 0 ? 'danger' : warnCount > 0 ? 'info' : 'safe'
-    },
-    {
-      label: '实时在线',
-      value: isOnline ? '在线监测' : '离线待核查',
-      sub: lastUpdate && lastUpdate !== '--' ? `最近更新 ${lastUpdate}` : '等待最新体征数据',
-      tone: isOnline ? 'accent' : 'muted'
-    },
-    {
-      label: '建议动作',
-      value: nextActionSummary.value,
-      sub: nextActionSummary.sub,
-      tone: 'accent'
+      sub: warnCount ? '待处理 / 近30日总预警 · 点击查看明细' : '近30日暂无预警记录 · 点击查看明细',
+      tone: pendCount > 0 ? 'danger' : warnCount > 0 ? 'info' : 'safe',
+      clickable: true
     }
   ]
 }

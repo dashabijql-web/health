@@ -27,7 +27,36 @@
       </template>
     </PageHeroHeader>
 
-    <MetricStrip class="ep-summary-strip" :items="summaryMetricItems" />
+    <MetricStrip class="ep-summary-strip" :items="summaryMetricItems" @select="openWarningDetails" />
+
+    <el-dialog v-model="warningDetailVisible" title="近30日预警明细" width="760px" class="ep-warning-dialog">
+      <div class="ep-warning-dialog-summary">
+        <div v-for="item in recentWarningSummary" :key="item.key" :class="[`tone-${item.tone}`]">
+          <span>{{ item.label }}</span><strong>{{ item.value }}</strong>
+        </div>
+      </div>
+      <p class="ep-warning-dialog-note">{{ recentWarningFootnote }}</p>
+      <div v-if="recentWarnings.length === 0" class="ep-empty-warn">该员工近30日暂无预警记录</div>
+      <div v-else class="ep-warning-dialog-list">
+        <article v-for="(warning, index) in recentWarnings" :key="(warning.id || warning.createTime) + '_' + index" class="ep-warning-dialog-item">
+          <div>
+            <strong>{{ warning.warningType || warning.type || '--' }}</strong>
+            <span>{{ fmtTime(warning.occurredAt || warning.createTime || warning.time) }}</span>
+          </div>
+          <em :class="warning.handled ? 'done' : 'pend'">{{ warning.handled ? '已处理' : '待处理' }}</em>
+          <el-button
+            v-if="!warning.handled && warning.id && (warning.occurredAt || warning.createTime || warning.time)"
+            type="danger"
+            link
+            @click="openWarningIncident({ ...warning, occurredAt: warning.occurredAt || warning.createTime || warning.time })"
+          >处置</el-button>
+        </article>
+      </div>
+      <template #footer>
+        <el-button @click="warningDetailVisible = false">关闭</el-button>
+        <el-button type="primary" @click="goWarningCenter">查看全部预警</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="aiReportVisible" :title="'AI 健康诊断报告 - ' + empInfo.empName" width="820px" :close-on-click-modal="false">
       <div v-if="aiReportLoading" class="ep-report-loading">
@@ -114,28 +143,6 @@
       :employee-name="empInfo.empName"
     />
 
-    <section class="ep-panel ep-warning-band">
-      <div class="ep-ph">
-        <span class="ep-ph-bar"></span>近期预警轨迹
-        <button type="button" class="ep-text-action" @click="goWarningCenter">查看全部</button>
-      </div>
-      <div class="ep-warning-layout">
-        <div class="ep-warn-summary">
-          <div v-for="item in recentWarningSummary" :key="item.key" :class="['ep-warn-pill', `tone-${item.tone}`]">
-            <span>{{ item.label }}</span><strong>{{ item.value }}</strong>
-          </div>
-          <p>{{ recentWarningFootnote }}</p>
-        </div>
-        <div v-if="recentWarnings.length === 0" class="ep-empty-warn">暂无预警记录</div>
-        <div v-else class="ep-warn-list">
-          <div v-for="(warning, index) in recentWarnings" :key="(warning.id || warning.createTime) + '_' + index" class="ep-warn-item">
-            <span :class="['ep-wdot', warning.handled ? 'done' : 'pend']"></span>
-            <div><strong>{{ warning.warningType || warning.type || '--' }}</strong><span>{{ fmtTime(warning.createTime || warning.time) }}</span></div>
-            <em :class="warning.handled ? 'done' : 'pend'">{{ warning.handled ? '已处理' : '待处理' }}</em>
-          </div>
-        </div>
-      </div>
-    </section>
   </div>
 </template>
 
@@ -154,9 +161,9 @@ const {
   currentIncidentEvent, empInfo, exercise, fmtTime, freshnessStatus,
   handleIncidentUpdated, incidentDrawerVisible, isOnline, lastUpdate, loading,
   openAiReport, openEmergency, openPersonCommand, personCommandVisible,
-  nextRefreshSeconds, printAiReport, profileInsightLines, profileSummaryCards, recentWarnings,
+  openWarningDetails, openWarningIncident, nextRefreshSeconds, printAiReport, profileInsightLines, profileSummaryCards, recentWarnings,
   recentWarningFootnote, recentWarningSummary, refresh,
-  vitals, goWarningCenter
+  vitals, warningDetailVisible, goWarningCenter
 } = page
 
 const summaryMetricItems = computed(() => profileSummaryCards.value.map((card) => ({
@@ -164,7 +171,8 @@ const summaryMetricItems = computed(() => profileSummaryCards.value.map((card) =
   label: card.label,
   value: card.value,
   note: card.sub,
-  tone: card.tone === 'danger' ? 'danger' : card.tone === 'warn' ? 'warning' : card.tone === 'safe' ? 'success' : 'primary'
+  tone: card.tone === 'danger' ? 'danger' : card.tone === 'warn' ? 'warning' : card.tone === 'safe' ? 'success' : 'primary',
+  clickable: card.clickable
 })))
 
 const freshnessLabel = computed(() => ({ fresh: '数据新鲜', stale: '数据陈旧', offline: '当前离线', no_data: '暂无数据' }[freshnessStatus.value] || '暂无数据'))

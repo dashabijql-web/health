@@ -367,6 +367,7 @@ sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; 
 - 历史区必须始终显示员工姓名、工号、起止日期、聚合粒度、完整样本数和明细总数；曲线与明细都继续遵循 `X-Health-Data-Source` 双库路由。
 - 本轮历史区五档滚动视觉审计通过，结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T08-21-43-765Z/layout-summary.md`；真实交互守护为 `node tests/e2e/employee-profile-history-check.mjs`。
 - 当前体征每30秒自动刷新，标题栏必须显示动态秒级倒计时；自动刷新、手动刷新和切换员工后倒计时都从30秒重新开始，且不得并发发起重复刷新请求。
+- 画像页头部摘要只保留一个可点击的“预警闭环”入口；在线状态由页头和当前体征负责，建议动作由规则提示和联系处置负责，禁止恢复重复的“实时在线/建议动作”卡片。点击预警闭环后展示权威统计和具体预警记录，不再在页面底部重复铺设另一套近期预警轨迹。
 
 ## 当前验证基线
 

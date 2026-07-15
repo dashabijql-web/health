@@ -7,7 +7,6 @@ import { renderMarkdown } from '@/utils/lazy-vendors'
 import { useIntervalTask } from '@/composables/useIntervalTask'
 import { useTimeoutTask } from '@/composables/useTimeoutTask'
 import {
-  buildNextActionSummary,
   buildProfileInsightLines,
   buildProfileSummaryCards,
   calcAge,
@@ -49,6 +48,7 @@ export function useEmployeeProfilePage() {
   const personCommandVisible = ref(false)
   const incidentDrawerVisible = ref(false)
   const currentIncidentEvent = ref(null)
+  const warningDetailVisible = ref(false)
   let refreshInFlight = false
 
   const aiReportVisible = ref(false)
@@ -109,16 +109,9 @@ export function useEmployeeProfilePage() {
     warn7Count: warn7Count.value
   }))
 
-  const nextActionSummary = computed(() => buildNextActionSummary({
-    pendCount: pendCount.value,
-    isOnline: isOnline.value
-  }))
   const profileSummaryCards = computed(() => buildProfileSummaryCards({
     pendCount: pendCount.value,
-    warnCount: warnCount.value,
-    isOnline: isOnline.value,
-    lastUpdate: lastUpdate.value,
-    nextActionSummary: nextActionSummary.value
+    warnCount: warnCount.value
   }))
   const trendStats = computed(() => [
     {
@@ -145,6 +138,7 @@ export function useEmployeeProfilePage() {
   ])
   const recentWarningSummary = computed(() => [
     { key: 'pending', label: '未处理', value: pendCount.value, tone: pendCount.value > 0 ? 'danger' : 'safe' },
+    { key: 'handled', label: '已处理', value: Math.max(0, warnCount.value - pendCount.value), tone: 'safe' },
     { key: 'warn7', label: '近7日', value: warn7Count.value, tone: warn7Count.value > 0 ? 'warning' : 'muted' },
     { key: 'warn30', label: '近30日', value: warnCount.value, tone: warnCount.value > 0 ? 'accent' : 'muted' }
   ])
@@ -299,10 +293,19 @@ export function useEmployeeProfilePage() {
     personCommandVisible.value = true
   }
 
+  function openWarningDetails() {
+    warningDetailVisible.value = true
+  }
+
   function openEmergency(event) {
     if (!event?.id || !event?.occurredAt) return
     currentIncidentEvent.value = event
     incidentDrawerVisible.value = true
+  }
+
+  function openWarningIncident(event) {
+    warningDetailVisible.value = false
+    openEmergency(event)
   }
 
   async function handleIncidentUpdated() {
@@ -344,11 +347,12 @@ export function useEmployeeProfilePage() {
     isTempDanger,
     lastUpdate,
     loading,
-    nextActionSummary,
     nextRefreshSeconds,
     openAiReport,
     openEmergency,
     openPersonCommand,
+    openWarningDetails,
+    openWarningIncident,
     pendCount,
     printAiReport,
     profileInsightLines,
@@ -366,6 +370,7 @@ export function useEmployeeProfilePage() {
     warn7Count,
     warnCount,
     warnings,
+    warningDetailVisible,
     exercise,
     goWarningCenter
   }

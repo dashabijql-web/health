@@ -23,6 +23,16 @@ try {
   await card.click()
   await page.locator('.ep-history-chart canvas').waitFor({ state: 'visible', timeout: 15000 })
 
+  const summaryCards = page.locator('.ep-summary-strip .hm-metric-strip__item')
+  if (await summaryCards.count() !== 1) throw new Error(`expected one profile summary card, found ${await summaryCards.count()}`)
+  await summaryCards.first().click()
+  const warningDialog = page.getByRole('dialog', { name: '近30日预警明细' })
+  await warningDialog.waitFor({ state: 'visible', timeout: 5000 })
+  if (await warningDialog.locator('.ep-warning-dialog-summary > div').count() !== 4) {
+    throw new Error('warning detail summary is incomplete')
+  }
+  await warningDialog.getByRole('button', { name: '关闭', exact: true }).click()
+
   const countdown = page.locator('.ep-refresh-countdown')
   await countdown.waitFor({ state: 'visible', timeout: 5000 })
   const readCountdown = async () => Number((await countdown.textContent())?.match(/(\d+)\s*秒/)?.[1])
