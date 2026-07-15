@@ -43,4 +43,8 @@ test('department nodes open a scoped incident drawer without health-rate filler'
   assert.match(drawer, /已超时/)
   assert.match(drawer, /show-event/)
   assert.doesNotMatch(drawer, /在线\/总数|健康率|AI 部门健康分析/)
+  assert.match(drawer, /\.department-incident-drawer\.el-drawer/)
+  assert.match(drawer, /\.department-incident-drawer \.el-drawer__header/)
+  assert.match(drawer, /\.department-incident-drawer \.el-drawer__body/)
+  assert.match(drawer, /background: #071426/)
 })

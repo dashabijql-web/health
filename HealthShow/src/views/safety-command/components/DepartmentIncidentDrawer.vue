@@ -5,6 +5,7 @@
     direction="rtl"
     size="min(620px, 100vw)"
     class="department-incident-drawer"
+    style="--el-bg-color:#071426;--el-fill-color-blank:#071426;--el-text-color-primary:#e8f4ff;--el-text-color-regular:#9ab5ce;--el-border-color:#183754"
     :title="`${departmentName} · 部门事件`"
   >
     <div class="dept-incident-body">
@@ -71,6 +72,38 @@ const overdueCount = computed(() => departmentEvents.value.filter((event) => eve
 .dept-incident-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #dff0ff; font-weight: 700; }
 .dept-incident-person, .dept-incident-handle { min-height: 32px; padding: 0 10px; border-radius: 5px; border: 1px solid rgba(0,200,255,.28); background: rgba(0,200,255,.07); color: #00c8ff; cursor: pointer; }
 .dept-incident-handle { border-color: rgba(255,140,0,.3); color: #ff8c00; background: rgba(255,140,0,.08); }
+:global(.department-incident-drawer.el-drawer) {
+  --el-bg-color: #071426;
+  --el-fill-color-blank: #071426;
+  --el-text-color-primary: #e8f4ff;
+  --el-text-color-regular: #9ab5ce;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.025), transparent 180px),
+    #071426;
+  border-left: 1px solid rgba(0, 200, 255, .24);
+  box-shadow: -18px 0 48px rgba(0, 0, 0, .56);
+}
+:global(.department-incident-drawer .el-drawer__header) {
+  min-height: 62px;
+  margin-bottom: 0;
+  padding: 16px 22px;
+  border-bottom: 1px solid rgba(0, 200, 255, .18);
+  background: #081a30;
+  color: #e8f4ff;
+}
+:global(.department-incident-drawer .el-drawer__title) {
+  color: #e8f4ff;
+  font-size: 16px;
+  font-weight: 700;
+}
+:global(.department-incident-drawer .el-drawer__close-btn) { color: #82a8c8; }
+:global(.department-incident-drawer .el-drawer__close-btn:hover) { color: #00c8ff; }
+:global(.department-incident-drawer .el-drawer__body) {
+  padding: 18px;
+  background: #071426;
+  color: #dceeff;
+}
+:global(.department-incident-drawer .el-empty__description p) { color: #6e94b0; }
 @media (max-width: 520px) {
   .dept-incident-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dept-incident-item { grid-template-columns: minmax(0, 1fr) auto; }
