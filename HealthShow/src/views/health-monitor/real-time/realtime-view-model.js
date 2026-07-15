@@ -1,18 +1,28 @@
-import {
-  buildRealtimeDetailItems,
-  filterRealtimeUsers,
-  sortWarningUsers
-} from './realtime-helpers'
+import dayjs from 'dayjs'
 
 export function createRealtimePageState() {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 992
   return {
-    onlineUsers: { list: [], total: 0 },
+    onlineUsers: {
+      list: [],
+      total: 0,
+      summary: {
+        onlineCount: 0,
+        normalCount: 0,
+        warningCount: 0,
+        staleCount: 0,
+        noDataCount: 0,
+        onlineWindowMinutes: 15,
+        freshnessMinutes: 5
+      },
+      departments: [],
+      warningPreview: []
+    },
     searchForm: { name: '', dept: '', status: '' },
-    hrFilter: null,
-    deptList: [],
     currentPage: 1,
-    pageSize: 50,
-    autoScrollEnabled: true,
+    pageSize: isMobile ? 20 : 50,
+    viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1440,
+    autoScrollEnabled: false,
     scrollPaused: false,
     detailUser: null,
     detailVisible: false,
@@ -24,6 +34,10 @@ export function createRealtimePageState() {
     voiceTemplateId: '',
     voiceTemplates: [],
     isLoading: false,
+    isRefreshing: false,
+    refreshError: '',
+    isStale: false,
+    lastSuccessfulRefresh: '',
     tblHeadStyle: {
       background: 'rgba(0,40,90,0.9)',
       color: '#00d4ff',
@@ -45,33 +59,28 @@ export function createRealtimePageState() {
 
 export const realtimeComputed = {
   isMobile() {
-    return window.innerWidth < 992
+    return this.viewportWidth < 992
   },
   allUsers() {
     return this.onlineUsers.list || []
   },
+  summary() {
+    return this.onlineUsers.summary || {}
+  },
   warningUsers() {
-    return sortWarningUsers(this.allUsers)
+    return this.onlineUsers.warningPreview || []
   },
-  normalCount() {
-    return this.allUsers.filter(u => u.status === 'normal').length
-  },
-  warningCount() {
-    return this.warningUsers.length
-  },
-  filteredUserList() {
-    return filterRealtimeUsers(this.allUsers, this.searchForm, this.hrFilter)
-  },
-  paginatedUserList() {
-    if (this.isMobile) return this.filteredUserList
-    const start = (this.currentPage - 1) * this.pageSize
-    return this.filteredUserList.slice(start, start + this.pageSize)
+  dataIssueCount() {
+    return Number(this.summary.staleCount || 0) + Number(this.summary.noDataCount || 0)
   },
   totalPages() {
-    if (this.isMobile) return 1
-    return Math.max(1, Math.ceil(this.filteredUserList.length / this.pageSize))
+    return Math.max(1, Math.ceil((this.onlineUsers.total || 0) / this.pageSize))
   },
-  detailItems() {
-    return buildRealtimeDetailItems(this.detailUser)
+  refreshLabel() {
+    if (this.refreshError) return this.refreshError
+    if (!this.lastSuccessfulRefresh) return '正在加载实时数据'
+    const time = dayjs(this.lastSuccessfulRefresh)
+    if (!time.isValid()) return '已更新'
+    return `${time.format('HH:mm:ss')} 更新`
   }
 }

@@ -111,6 +111,9 @@ health:
       allow-credentials: ${HEALTH_CORS_ALLOW_CREDENTIALS:true}
   observability:
     slow-query-threshold-ms: ${HEALTH_SLOW_QUERY_THRESHOLD_MS:500}
+  realtime:
+    online-window-minutes: ${HEALTH_REALTIME_ONLINE_WINDOW_MINUTES:15}
+    freshness-minutes: ${HEALTH_REALTIME_FRESHNESS_MINUTES:5}
 
 # ================================
 # MyBatis-Plus

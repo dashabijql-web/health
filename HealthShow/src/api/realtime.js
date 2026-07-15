@@ -3,9 +3,7 @@
  *
  * 对应后端 Controller：RealtimeController（/health/realtime/...）
  *
- * 数据来源：
- *   后端通过 Netty TCP 接收手表设备上报的实时数据，
- *   存入 Redis（realtime:user:{imei} 键），此模块的接口从 Redis 读取。
+ * 数据来源：后端从按月健康记录表聚合最近上报快照，并按数据源隔离。
  *
  * 主要用途：
  *   - health-monitor/real-time 实时监控页（在线人员列表）
@@ -39,14 +37,19 @@ export function getRealtimeOverview() {
  *   { empCode, empName, deptName, heartRate, bloodOxygen, temperature,
  *     steps, sleepHours, lastUpdateTime, warningLevel }
  *
- * @param {Number} page 页码（从 1 开始）
- * @param {Number} size 每页条数，默认 20
+ * @param {Object} params 分页与筛选参数
  */
-export function getOnlineUsers(page = 1, size = 20, timeout = 15000) {
+export function getOnlineUsers(params = {}, timeout = 15000) {
   return request({
     url: '/realtime/online-users',
     method: 'get',
-    params: { page, size },
+    params: {
+      page: params.page || 1,
+      size: params.size || 50,
+      name: params.name || undefined,
+      dept: params.dept || undefined,
+      status: params.status || undefined
+    },
     timeout
   })
 }

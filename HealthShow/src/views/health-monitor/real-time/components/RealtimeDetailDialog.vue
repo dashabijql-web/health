@@ -16,6 +16,10 @@
         <span v-if="user.imei" class="rt-detail-user-imei">{{ user.imei }}</span>
       </div>
 
+      <div v-if="user.warningReasons?.length" class="rt-detail-reasons">
+        <span v-for="reason in user.warningReasons" :key="reason">{{ reason }}</span>
+      </div>
+
       <div v-for="group in groupedItems" :key="group.title" class="rt-detail-group">
         <div class="rt-detail-group-title">{{ group.title }}</div>
         <div class="rt-detail-grid">
@@ -39,10 +43,10 @@
             <el-icon><ChatDotRound /></el-icon> 发送消息
           </el-button>
           <el-button size="small" type="warning" @click="$emit('sendVoice', user)">
-            <el-icon><Bell /></el-icon> 语音广播
+            <el-icon><Bell /></el-icon> 语音提醒
           </el-button>
         </div>
-        <el-button type="primary" @click="$emit('update:visible', false)">关闭</el-button>
+        <el-button type="primary" autofocus aria-label="关闭实时体征详情" @click="$emit('update:visible', false)">关闭</el-button>
       </div>
     </template>
   </el-dialog>
@@ -52,19 +56,15 @@
 import { computed } from 'vue'
 import { Bell, ChatDotRound } from '@element-plus/icons-vue'
 import {
-  classifyHeartRate,
-  classifyBloodOxygen,
-  classifyTemperature,
-  classifySystolic,
-  classifyDiastolic,
-  classifyPressure,
-  formatRealtimeTime
+  formatRealtimeAge,
+  formatRealtimeTime,
+  getMetricClass,
+  getRealtimeStatusLabel
 } from '../realtime-helpers'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  user: { type: Object, default: null },
-  items: { type: Array, default: () => [] }
+  user: { type: Object, default: null }
 })
 
 defineEmits(['update:visible', 'sendMessage', 'sendVoice'])
@@ -92,12 +92,12 @@ const groupedItems = computed(() => {
   const u = props.user
   if (!u) return []
 
-  const hrCls = classifyHeartRate(u.heartRate)
-  const spo2Cls = classifyBloodOxygen(u.bloodOxygen)
-  const bpHCls = classifySystolic(u.bloodPressureHigh)
-  const bpLCls = classifyDiastolic(u.bloodPressureLow)
-  const tempCls = classifyTemperature(u.temperature)
-  const presCls = classifyPressure(u.pressure)
+  const hrCls = getMetricClass(u, 'heartRate')
+  const spo2Cls = getMetricClass(u, 'bloodOxygen')
+  const bpHCls = getMetricClass(u, 'bloodPressureHigh')
+  const bpLCls = getMetricClass(u, 'bloodPressureLow')
+  const tempCls = getMetricClass(u, 'temperature')
+  const presCls = getMetricClass(u, 'pressure')
 
   return [
     {
@@ -153,19 +153,12 @@ const groupedItems = computed(() => {
       ]
     },
     {
-      title: '运动 & 设备',
+      title: '活动与数据',
       items: [
         {
           label: '步数',
           value: hasValue(u.steps) ? `${u.steps} 步` : '--',
           color: '#22c55e',
-          status: '',
-          tag: '', tagCls: ''
-        },
-        {
-          label: '卡路里',
-          value: hasValue(u.calories) ? `${u.calories} kcal` : '--',
-          color: '#f97316',
           status: '',
           tag: '', tagCls: ''
         },
@@ -177,8 +170,10 @@ const groupedItems = computed(() => {
           tag: '', tagCls: ''
         },
         {
-          label: '性别 / 年龄',
-          value: `${u.gender === 1 ? '男' : u.gender === 2 ? '女' : '--'} / ${u.age != null ? u.age + '岁' : '--'}`,
+          label: '数据状态',
+          value: u.status === 'stale'
+            ? `${formatRealtimeAge(u.dataAgeSeconds)}未更新`
+            : getRealtimeStatusLabel(u.status),
           color: '#a8c5e6',
           status: '',
           tag: '', tagCls: ''
@@ -200,6 +195,22 @@ const groupedItems = computed(() => {
   background: rgba(0, 212, 255, 0.06);
   border: 1px solid rgba(0, 212, 255, 0.15);
   border-radius: 8px;
+}
+
+.rt-detail-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -4px 0 14px;
+}
+
+.rt-detail-reasons span {
+  padding: 3px 8px;
+  border: 1px solid rgba(245, 108, 108, 0.35);
+  border-radius: 4px;
+  background: rgba(245, 108, 108, 0.1);
+  color: #ff8a8a;
+  font-size: 12px;
 }
 
 .rt-detail-user-name {

@@ -1,15 +1,5 @@
 import dayjs from 'dayjs'
 
-function hasValue(value) {
-  return value !== null && value !== undefined && value !== ''
-}
-
-function colorFromStatusClass(statusClass, okColor) {
-  if (statusClass.includes('danger')) return '#ff5252'
-  if (statusClass.includes('warn')) return '#ffd200'
-  return okColor
-}
-
 export function classifyHeartRate(value) {
   if (!value) return 'c-dim'
   if (value < 50 || value > 120) return 'c-danger'
@@ -33,7 +23,7 @@ export function classifyTemperature(value) {
 
 export function classifySystolic(value) {
   if (!value) return 'c-dim'
-  if (value >= 160) return 'c-danger'
+  if (value >= 180) return 'c-danger'
   if (value >= 140 || value < 90) return 'c-warn'
   return 'c-bp'
 }
@@ -47,131 +37,88 @@ export function classifyDiastolic(value) {
 
 export function classifyPressure(value) {
   if (value === null || value === undefined) return 'c-dim'
-  if (value >= 85) return 'c-danger'
-  if (value >= 70) return 'c-warn'
+  if (value >= 90) return 'c-danger'
+  if (value >= 85) return 'c-warn'
   return 'c-pressure'
 }
 
-export function getRealtimeIndicator(user) {
-  if (user.heartRate && (user.heartRate < 50 || user.heartRate > 120)) return `心率 ${user.heartRate}`
-  if (user.bloodOxygen && user.bloodOxygen < 90) return `血氧 ${user.bloodOxygen}%`
-  if (user.temperature && (user.temperature < 35 || user.temperature > 38)) return `体温 ${user.temperature}°`
-  if (user.bloodPressureHigh && user.bloodPressureHigh >= 160) return `血压 ${user.bloodPressureHigh}`
-  if (user.pressure && user.pressure >= 85) return `压力 ${user.pressure}`
-  return '体征异常'
+const fallbackClassifiers = {
+  heartRate: classifyHeartRate,
+  bloodOxygen: classifyBloodOxygen,
+  temperature: classifyTemperature,
+  bloodPressureHigh: classifySystolic,
+  bloodPressureLow: classifyDiastolic,
+  pressure: classifyPressure
 }
 
-export function getRealtimeRowClass(row) {
-  if (row.status !== 'warning') return ''
-  const isDanger = (row.heartRate && (row.heartRate < 45 || row.heartRate > 130))
-    || (row.bloodOxygen && row.bloodOxygen < 88)
-    || (row.temperature && (row.temperature < 34.5 || row.temperature > 39))
-    || (row.bloodPressureHigh && row.bloodPressureHigh >= 180)
-    || (row.pressure && row.pressure >= 90)
-  return isDanger ? 'row-danger' : 'row-warning'
+export function getMetricClass(user, key) {
+  const state = user?.indicatorStates?.[key]
+  if (state === 'danger') return 'c-danger'
+  if (state === 'warning') return 'c-warn'
+  const classifier = fallbackClassifiers[key]
+  return classifier ? classifier(user?.[key]) : 'c-dim'
+}
+
+export function getRealtimeIndicator(user) {
+  if (user?.warningReasons?.length) return user.warningReasons[0]
+  if (user?.status === 'stale') return `数据已 ${formatRealtimeAge(user.dataAgeSeconds)} 未更新`
+  if (user?.status === 'no_data') return '暂无有效体征'
+  return '体征正常'
+}
+
+export function getRealtimeStatusLabel(status) {
+  if (status === 'warning') return '异常'
+  if (status === 'stale') return '陈旧'
+  if (status === 'no_data') return '待补'
+  return '正常'
+}
+
+export function getRealtimeRowClass({ row } = {}) {
+  if (row?.status === 'stale' || row?.status === 'no_data') return 'row-stale'
+  if (row?.status !== 'warning') return ''
+  return row.severity === 'danger' ? 'row-danger' : 'row-warning'
 }
 
 export function formatRealtimeTime(value) {
   if (!value) return '--'
-  return dayjs(value).format('HH:mm:ss')
+  const time = dayjs(value)
+  if (!time.isValid()) return '--'
+  return time.isSame(dayjs(), 'day') ? time.format('HH:mm:ss') : time.format('MM-DD HH:mm')
 }
 
-export function buildRealtimeDetailItems(user) {
-  if (!user) return []
+export function formatRealtimeFullTime(value) {
+  if (!value) return '--'
+  const time = dayjs(value)
+  return time.isValid() ? time.format('YYYY-MM-DD HH:mm:ss') : '--'
+}
 
-  return [
-    {
-      label: '心率',
-      value: hasValue(user.heartRate) ? `${user.heartRate} bpm` : '--',
-      color: colorFromStatusClass(classifyHeartRate(user.heartRate), '#52c41a')
-    },
-    {
-      label: '血氧',
-      value: hasValue(user.bloodOxygen) ? `${user.bloodOxygen}%` : '--',
-      color: colorFromStatusClass(classifyBloodOxygen(user.bloodOxygen), '#52c41a')
-    },
-    {
-      label: '体温',
-      value: hasValue(user.temperature) ? `${user.temperature}°C` : '--',
-      color: colorFromStatusClass(classifyTemperature(user.temperature), '#52c41a')
-    },
-    {
-      label: '步数',
-      value: hasValue(user.steps) ? `${user.steps} 步` : '--',
-      color: '#22c55e'
-    },
-    {
-      label: '收缩压',
-      value: hasValue(user.bloodPressureHigh) ? `${user.bloodPressureHigh} mmHg` : '--',
-      color: colorFromStatusClass(classifySystolic(user.bloodPressureHigh), '#a78bfa')
-    },
-    {
-      label: '舒张压',
-      value: hasValue(user.bloodPressureLow) ? `${user.bloodPressureLow} mmHg` : '--',
-      color: colorFromStatusClass(classifyDiastolic(user.bloodPressureLow), '#a78bfa')
-    },
-    {
-      label: '压力指数',
-      value: hasValue(user.pressure) ? user.pressure : '--',
-      color: colorFromStatusClass(classifyPressure(user.pressure), '#fb923c')
-    },
-    {
-      label: '最近上报',
-      value: formatRealtimeTime(user.lastUpdate),
-      color: '#38bdf8'
-    },
-    {
-      label: '手表IMEI',
-      value: user.imei || '--',
-      color: '#38bdf8'
-    },
-    { label: '部门', value: user.deptName || '--', color: '#a8c5e6' },
-    { label: '工号', value: user.userCode || '--', color: '#a8c5e6' }
-  ]
+export function formatRealtimeAge(seconds) {
+  const safe = Math.max(0, Number(seconds) || 0)
+  if (safe < 60) return `${Math.round(safe)} 秒`
+  if (safe < 3600) return `${Math.floor(safe / 60)} 分钟`
+  if (safe < 86400) return `${Math.floor(safe / 3600)} 小时`
+  return `${Math.floor(safe / 86400)} 天`
 }
 
 export function normalizeRealtimeUsersResponse(data) {
-  const list = data?.list ? data.list : (Array.isArray(data) ? data : [])
-  const total = data?.total ?? list.length
-  return { list, total }
-}
-
-export function resolveRealtimeFetchSize(width) {
-  return width < 992 ? 200 : 1000
-}
-
-export function sortWarningUsers(users) {
-  return [...users]
-    .filter((user) => user.status === 'warning')
-    .sort((a, b) => new Date(b.lastUpdate) - new Date(a.lastUpdate))
-}
-
-export function filterRealtimeUsers(users, searchForm, hrFilter) {
-  let list = [...users]
-
-  if (searchForm.name) {
-    const query = searchForm.name.trim().toLowerCase()
-    list = list.filter((user) =>
-      (user.userName || '').toLowerCase().includes(query)
-      || (user.userCode || '').toLowerCase().includes(query)
-    )
+  const list = Array.isArray(data?.list) ? data.list : (Array.isArray(data) ? data : [])
+  return {
+    list,
+    total: data?.total ?? list.length,
+    page: data?.page ?? 1,
+    size: data?.size ?? list.length,
+    stale: Boolean(data?.stale),
+    refreshedAt: data?.refreshedAt || '',
+    summary: data?.summary || {
+      onlineCount: data?.total ?? list.length,
+      normalCount: list.filter((user) => user.status === 'normal').length,
+      warningCount: list.filter((user) => user.status === 'warning').length,
+      staleCount: list.filter((user) => user.status === 'stale').length,
+      noDataCount: list.filter((user) => user.status === 'no_data').length,
+      onlineWindowMinutes: 15,
+      freshnessMinutes: 5
+    },
+    departments: Array.isArray(data?.departments) ? data.departments : [],
+    warningPreview: Array.isArray(data?.warningPreview) ? data.warningPreview : []
   }
-
-  if (searchForm.dept) {
-    list = list.filter((user) => user.deptName === searchForm.dept)
-  }
-
-  if (searchForm.status) {
-    list = list.filter((user) => user.status === searchForm.status)
-  }
-
-  if (hrFilter) {
-    list = list.filter((user) => user.heartRate >= hrFilter.min && user.heartRate <= hrFilter.max)
-  }
-
-  return list.sort((a, b) => {
-    if (a.status === 'warning' && b.status !== 'warning') return -1
-    if (a.status !== 'warning' && b.status === 'warning') return 1
-    return 0
-  })
 }

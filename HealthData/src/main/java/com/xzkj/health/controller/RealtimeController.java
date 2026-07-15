@@ -32,8 +32,11 @@ public class RealtimeController {
     @GetMapping("/online-users")
     public Result<RealtimeUserPageView> getOnlineUsers(
             @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10000") Integer size) {
-        return Result.ok("获取成功", realtimeService.getOnlineUsers(page, size));
+            @RequestParam(defaultValue = "50") Integer size,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String dept,
+            @RequestParam(required = false) String status) {
+        return Result.ok("获取成功", realtimeService.getOnlineUsers(page, size, name, dept, status));
     }
 
     /** 获取单个用户实时数据 */

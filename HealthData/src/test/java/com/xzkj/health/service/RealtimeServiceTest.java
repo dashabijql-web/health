@@ -1,7 +1,6 @@
 package com.xzkj.health.service;
 
 import com.xzkj.health.common.exception.BusinessException;
-import com.xzkj.health.config.datasource.HealthCacheKeys;
 import com.xzkj.health.dto.realtime.RealtimeAlertRow;
 import com.xzkj.health.dto.realtime.RealtimeAlertView;
 import com.xzkj.health.dto.realtime.RealtimeOverviewRow;
@@ -21,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 
@@ -29,8 +29,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,6 +41,9 @@ class RealtimeServiceTest {
 
     @Mock
     private RealtimeMapper realtimeMapper;
+
+    @Mock
+    private AlertConfigService alertConfigService;
 
     @InjectMocks
     private RealtimeService realtimeService;
@@ -67,7 +71,7 @@ class RealtimeServiceTest {
     }
 
     @Test
-    void getOnlineUsersMapsRowsAndSkipsCountOnShortPage() {
+    void getOnlineUsersBuildsSummaryAndUnifiedWarningReasons() {
         List<RealtimeUserRow> rows = new ArrayList<>();
         RealtimeUserRow row = new RealtimeUserRow();
         row.setId(1L);
@@ -76,7 +80,7 @@ class RealtimeServiceTest {
         row.setGender(1);
         row.setAge(32);
         row.setDeptName("机电队");
-        row.setHeartRate(78);
+        row.setHeartRate(122);
         row.setBloodOxygen(97);
         row.setSteps(5432);
         row.setCalories(320);
@@ -85,14 +89,15 @@ class RealtimeServiceTest {
         row.setBloodPressureHigh(126);
         row.setBloodPressureLow(82);
         row.setPressure(45);
-        row.setStatus("normal");
         row.setLastUpdate("2026-05-07 10:30:00");
+        row.setDataAgeSeconds(30L);
         row.setImei("359456780012345");
         rows.add(row);
 
-        when(realtimeMapper.getOnlineUsersDirect(anyString(), anyInt(), anyInt())).thenReturn(rows);
+        when(alertConfigService.getConfigMap(nullable(Integer.class))).thenReturn(Collections.emptyMap());
+        when(realtimeMapper.getActiveUsersDirect(anyString(), eq(15))).thenReturn(rows);
 
-        RealtimeUserPageView result = realtimeService.getOnlineUsers(1, 20);
+        RealtimeUserPageView result = realtimeService.getOnlineUsers(1, 20, null, null, null);
 
         assertEquals(1, result.total());
         assertEquals(1, result.list().size());
@@ -100,39 +105,61 @@ class RealtimeServiceTest {
         assertEquals("E001", result.list().get(0).userCode());
         assertEquals(36.5, result.list().get(0).temperature(), 0.001);
         assertEquals(6.4, result.list().get(0).sleepHours(), 0.001);
-        verify(realtimeMapper, times(0)).countOnlineUsersDirect(anyString());
+        assertEquals("warning", result.list().get(0).status());
+        assertEquals(List.of("心率 122 bpm"), result.list().get(0).warningReasons());
+        assertEquals("danger", result.list().get(0).indicatorStates().get("heartRate"));
+        assertEquals(1, result.summary().onlineCount());
+        assertEquals(1, result.summary().warningCount());
+        assertEquals(15, result.summary().onlineWindowMinutes());
+        assertEquals(5, result.summary().freshnessMinutes());
     }
 
     @Test
-    void getOnlineUsersReturnsStaleCacheOnFailureForCachedFullRequest() {
-        List<RealtimeUserRow> rows = new ArrayList<>();
-        RealtimeUserRow row = new RealtimeUserRow();
-        row.setUserCode("E001");
-        row.setUserName("张三");
-        row.setStatus("warning");
-        rows.add(row);
+    void getOnlineUsersFiltersAcrossSnapshotBeforePaging() {
+        RealtimeUserRow warning = realtimeRow("E001", "张三", "机电队", 122, 30L);
+        RealtimeUserRow normal = realtimeRow("E002", "李四", "运输队", 78, 30L);
 
-        when(realtimeMapper.getOnlineUsersDirect(anyString(), anyInt(), anyInt()))
+        when(alertConfigService.getConfigMap(nullable(Integer.class))).thenReturn(Collections.emptyMap());
+        when(realtimeMapper.getActiveUsersDirect(anyString(), eq(15))).thenReturn(List.of(warning, normal));
+
+        RealtimeUserPageView result = realtimeService.getOnlineUsers(1, 1, null, null, "warning");
+
+        assertEquals(1, result.total());
+        assertEquals("E001", result.list().get(0).userCode());
+        assertEquals(2, result.summary().onlineCount());
+        assertEquals(1, result.summary().warningCount());
+        assertEquals(List.of("机电队", "运输队"), result.departments());
+        assertEquals(1, result.warningPreview().size());
+    }
+
+    @Test
+    void getOnlineUsersReturnsStaleCacheOnFailure() {
+        List<RealtimeUserRow> rows = new ArrayList<>();
+        rows.add(realtimeRow("E001", "张三", "机电队", 122, 30L));
+
+        when(alertConfigService.getConfigMap(nullable(Integer.class))).thenReturn(Collections.emptyMap());
+        when(realtimeMapper.getActiveUsersDirect(anyString(), eq(15)))
                 .thenReturn(rows)
                 .thenThrow(new RuntimeException("db down"));
 
-        RealtimeUserPageView first = realtimeService.getOnlineUsers(1, 200);
-        forceOnlineUsersCacheExpired(first, 1, 200);
-        RealtimeUserPageView second = realtimeService.getOnlineUsers(1, 200);
+        RealtimeUserPageView first = realtimeService.getOnlineUsers(1, 20, null, null, null);
+        forceSnapshotCacheExpired();
+        RealtimeUserPageView second = realtimeService.getOnlineUsers(1, 20, null, null, null);
 
         assertFalse(first.stale());
         assertTrue(second.stale());
-        assertSame(first.list(), second.list());
+        assertEquals(first.list(), second.list());
+        assertEquals(first.refreshedAt(), second.refreshedAt());
     }
 
     @Test
     void getOnlineUsersThrowsBusinessExceptionWhenNoStaleCacheExists() {
-        when(realtimeMapper.getOnlineUsersDirect(anyString(), anyInt(), anyInt()))
+        when(realtimeMapper.getActiveUsersDirect(anyString(), eq(15)))
                 .thenThrow(new RuntimeException("db down"));
 
         BusinessException ex = assertThrows(
                 BusinessException.class,
-                () -> realtimeService.getOnlineUsers(1, 200)
+                () -> realtimeService.getOnlineUsers(1, 20, null, null, null)
         );
 
         assertEquals(503, ex.getCode());
@@ -199,19 +226,39 @@ class RealtimeServiceTest {
         assertFalse(result.get(0).handled());
     }
 
+    private RealtimeUserRow realtimeRow(String code, String name, String dept, int heartRate, long ageSeconds) {
+        RealtimeUserRow row = new RealtimeUserRow();
+        row.setId((long) code.hashCode());
+        row.setUserCode(code);
+        row.setUserName(name);
+        row.setDeptName(dept);
+        row.setHeartRate(heartRate);
+        row.setBloodOxygen(97);
+        row.setTemperature(36.5);
+        row.setBloodPressureHigh(126);
+        row.setBloodPressureLow(82);
+        row.setPressure(45);
+        row.setLastUpdate("2026-05-07 10:30:00");
+        row.setDataAgeSeconds(ageSeconds);
+        return row;
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private void forceOnlineUsersCacheExpired(RealtimeUserPageView cachedPage, int page, int size) {
+    private void forceSnapshotCacheExpired() {
         try {
-            Field cacheField = RealtimeService.class.getDeclaredField("onlineUsersCache");
+            Field cacheField = RealtimeService.class.getDeclaredField("snapshotCache");
             cacheField.setAccessible(true);
             ConcurrentHashMap cache = (ConcurrentHashMap) cacheField.get(realtimeService);
+            Object key = cache.keySet().iterator().next();
+            Object oldEntry = cache.get(key);
+            Field valueField = oldEntry.getClass().getDeclaredField("value");
+            valueField.setAccessible(true);
+            Object snapshot = valueField.get(oldEntry);
 
             Class<?> entryClass = Class.forName("com.xzkj.health.service.RealtimeService$CacheEntry");
             Constructor<?> constructor = entryClass.getDeclaredConstructor(Object.class, long.class);
             constructor.setAccessible(true);
-            Object expiredEntry = constructor.newInstance(cachedPage, 0L);
-
-            cache.put(HealthCacheKeys.key("online-users", page, size), expiredEntry);
+            cache.put(key, constructor.newInstance(snapshot, 0L));
         } catch (ReflectiveOperationException ex) {
             throw new AssertionError("failed to expire realtime cache for test", ex);
         }

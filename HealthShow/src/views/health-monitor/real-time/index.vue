@@ -1,29 +1,29 @@
 <template>
   <div class="hm-page-shell rt-root">
     <RealtimeHeader
-      :warning-users="warningUsers"
-      :total-count="allUsers.length"
-      :normal-count="normalCount"
-      :warning-count="warningCount"
-      :current-time="currentTime"
+      :summary="summary"
+      :data-issue-count="dataIssueCount"
+      :refresh-label="refreshLabel"
+      :refresh-error="refreshError"
+      :stale="isStale"
+      :loading="isRefreshing"
+      @refresh="manualRefresh"
     />
 
     <section class="rt-bd">
       <main class="rt-main">
         <RealtimeUserTable
           v-model:search-form="searchForm"
-          :filtered-count="filteredUserList.length"
-          :hr-filter="hrFilter"
-          :dept-list="deptList"
+          :total-count="onlineUsers.total"
+          :dept-list="onlineUsers.departments"
           :auto-scroll-enabled="autoScrollEnabled"
           :is-mobile="isMobile"
-          :paginated-user-list="paginatedUserList"
+          :paginated-user-list="allUsers"
           :is-loading="isLoading"
           :current-page="currentPage"
           :page-size="pageSize"
           :tbl-head-style="tblHeadStyle"
           :tbl-cell-style="tblCellStyle"
-          @clear-hr-filter="clearHrFilter"
           @search="handleSearch"
           @reset="handleReset"
           @toggle-auto-scroll="toggleAutoScroll"
@@ -34,19 +34,22 @@
           @send-voice="handleSendVoice"
         />
 
-        <div v-if="!isMobile && totalPages > 1" class="rt-pagination">
-          <button class="rt-pg-btn" :disabled="currentPage <= 1" @click="currentPage--">&lsaquo;</button>
+        <div v-if="totalPages > 1" class="rt-pagination">
+          <button class="rt-pg-btn" :disabled="currentPage <= 1" aria-label="上一页" @click="goToPage(currentPage - 1)">&lsaquo;</button>
           <span class="rt-pg-info">{{ currentPage }} / {{ totalPages }}</span>
-          <button class="rt-pg-btn" :disabled="currentPage >= totalPages" @click="currentPage++">&rsaquo;</button>
-          <span class="rt-pg-total">共 {{ filteredUserList.length }} 条</span>
+          <button class="rt-pg-btn" :disabled="currentPage >= totalPages" aria-label="下一页" @click="goToPage(currentPage + 1)">&rsaquo;</button>
+          <span class="rt-pg-total">共 {{ onlineUsers.total }} 条</span>
         </div>
       </main>
 
       <RealtimeWarningSidebar
         :warning-users="warningUsers"
+        :warning-count="summary.warningCount || 0"
         @send-message="handleSendMessage"
         @send-voice="handleSendVoice"
         @show-detail="showUserDetail"
+        @show-all="showAllWarnings"
+        @open-warning-center="openWarningCenter"
       />
     </section>
 
@@ -80,7 +83,7 @@
 
     <el-dialog
       v-model="voiceDialogVisible"
-      title="语音广播到手表"
+      title="发送语音提醒"
       class="rt-dialog"
       width="400px"
       :append-to-body="true"
@@ -104,7 +107,7 @@
       <template #footer>
         <el-button @click="voiceDialogVisible = false">取消</el-button>
         <el-button type="warning" :disabled="!voiceTemplateId" @click="confirmSendVoice">
-          立即播报
+          发送提醒
         </el-button>
       </template>
     </el-dialog>
@@ -112,7 +115,6 @@
     <RealtimeDetailDialog
       v-model:visible="detailVisible"
       :user="detailUser"
-      :items="detailItems"
       @send-message="handleSendMessage"
       @send-voice="handleSendVoice"
     />
@@ -121,7 +123,6 @@
 
 <script>
 import { getCurrentInstance } from 'vue'
-import { useClock } from '@/composables/useClock'
 import { useIntervalTask } from '@/composables/useIntervalTask'
 import { createEventBinding } from '@/utils/task-timer'
 import { realtimeRuntimeMethods } from './realtime-runtime'
@@ -136,11 +137,10 @@ export default {
   components: { RealtimeDetailDialog, RealtimeHeader, RealtimeUserTable, RealtimeWarningSidebar },
   setup() {
     const instance = getCurrentInstance()
-    const { currentTime, startClock, stopClock } = useClock('HH:mm:ss')
     const { start: startRefreshTask, stop: stopRefreshTask } = useIntervalTask(() => {
       instance?.proxy?.fetchOnlineUsers?.()
     }, 15000)
-    return { currentTime, startClock, stopClock, startRefreshTask, stopRefreshTask }
+    return { startRefreshTask, stopRefreshTask }
   },
   data() {
     return createRealtimePageState()
@@ -151,18 +151,18 @@ export default {
   mounted() {
     this.fetchOnlineUsers()
     this.startRefreshTask()
-    this.startClock()
-    if (!this.isMobile) {
-      this.startAutoScroll()
-    }
+    this.startAutoScroll()
     this._visibilityBinding = createEventBinding(() => document, 'visibilitychange', this.onVisibilityChange)
     this._visibilityBinding.start()
+    this._resizeBinding = createEventBinding(() => window, 'resize', this.onViewportResize)
+    this._resizeBinding.start()
   },
   beforeUnmount() {
     this.stopRefreshTask()
-    this.stopClock()
+    window.clearTimeout(this._searchTimer)
     this._autoScrollLoop?.stop()
     this._visibilityBinding?.stop()
+    this._resizeBinding?.stop()
   },
   methods: {
     ...realtimeRuntimeMethods

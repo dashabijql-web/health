@@ -7,6 +7,10 @@ public record RealtimeUserPageView(
         int total,
         int page,
         int size,
-        boolean stale
+        boolean stale,
+        String refreshedAt,
+        RealtimeMonitorSummaryView summary,
+        List<String> departments,
+        List<RealtimeUserView> warningPreview
 ) {
 }

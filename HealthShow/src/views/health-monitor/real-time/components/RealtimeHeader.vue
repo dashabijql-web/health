@@ -4,57 +4,58 @@
       <div class="rt-hd-bar-left">
         <span class="rt-live-dot"></span>
         <span class="rt-hd-bar-title">实时健康监控</span>
-        <span class="rt-hd-time">{{ currentTime }}</span>
+        <span class="rt-hd-scope">最近 {{ summary.onlineWindowMinutes || 15 }} 分钟有上报</span>
       </div>
+
       <div class="rt-hd-bar-kpis">
         <div class="rt-hd-kpi">
-          <span class="rt-hd-kpi-val kpi-primary">{{ totalCount }}</span>
-          <span class="rt-hd-kpi-label">在线</span>
+          <span class="rt-hd-kpi-val kpi-primary">{{ summary.onlineCount || 0 }}</span>
+          <span class="rt-hd-kpi-label">在线人员</span>
         </div>
         <div class="rt-hd-kpi-sep"></div>
         <div class="rt-hd-kpi">
-          <span class="rt-hd-kpi-val kpi-success">{{ normalCount }}</span>
-          <span class="rt-hd-kpi-label">正常</span>
+          <span class="rt-hd-kpi-val kpi-danger">{{ summary.warningCount || 0 }}</span>
+          <span class="rt-hd-kpi-label">当前异常</span>
         </div>
         <div class="rt-hd-kpi-sep"></div>
         <div class="rt-hd-kpi">
-          <span class="rt-hd-kpi-val kpi-danger" :class="{ 'val-blink': warningCount > 0 }">{{ warningCount }}</span>
-          <span class="rt-hd-kpi-label">预警</span>
+          <span class="rt-hd-kpi-val kpi-warning">{{ dataIssueCount }}</span>
+          <span class="rt-hd-kpi-label">数据待补</span>
         </div>
+      </div>
+
+      <div class="rt-hd-refresh" :class="{ 'is-error': refreshError, 'is-stale': stale }">
+        <button
+          type="button"
+          class="rt-icon-btn"
+          :disabled="loading"
+          title="立即刷新"
+          aria-label="立即刷新实时数据"
+          @click="$emit('refresh')"
+        >
+          <el-icon :class="{ 'is-spinning': loading }"><Refresh /></el-icon>
+        </button>
+        <span>{{ refreshLabel }}</span>
       </div>
     </div>
 
-    <div class="rt-ticker-wrap">
-      <span class="rt-ticker-label">实时预警</span>
-      <div class="rt-ticker-scroll">
-        <template v-if="warningUsers.length">
-          <div class="rt-ticker-inner">
-            <span
-              v-for="(user, index) in tickerUsers"
-              :key="`${user.userCode || user.imei || 'warning'}_${index}`"
-              class="rt-ticker-tag"
-            >
-              {{ user.userName }} <em>{{ getRealtimeIndicator(user) }}</em>
-            </span>
-          </div>
-        </template>
-        <span v-else class="rt-ticker-empty">暂无预警人员</span>
-      </div>
+    <div v-if="refreshError || stale" class="rt-data-notice" role="status">
+      {{ refreshError || '数据服务异常，当前显示缓存' }}
     </div>
   </header>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { getRealtimeIndicator } from '../realtime-helpers'
+import { Refresh } from '@element-plus/icons-vue'
 
-const props = defineProps({
-  warningUsers: { type: Array, default: () => [] },
-  totalCount: { type: Number, default: 0 },
-  normalCount: { type: Number, default: 0 },
-  warningCount: { type: Number, default: 0 },
-  currentTime: { type: String, default: '' }
+defineProps({
+  summary: { type: Object, default: () => ({}) },
+  dataIssueCount: { type: Number, default: 0 },
+  refreshLabel: { type: String, default: '' },
+  refreshError: { type: String, default: '' },
+  stale: { type: Boolean, default: false },
+  loading: { type: Boolean, default: false }
 })
 
-const tickerUsers = computed(() => [...props.warningUsers, ...props.warningUsers])
+defineEmits(['refresh'])
 </script>

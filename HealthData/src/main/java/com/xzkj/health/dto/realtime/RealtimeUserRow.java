@@ -10,6 +10,7 @@ public class RealtimeUserRow {
     private Integer gender;
     private Integer age;
     private String deptName;
+    private Integer riskLevel;
     private Integer heartRate;
     private Integer bloodOxygen;
     private Integer steps;
@@ -21,5 +22,6 @@ public class RealtimeUserRow {
     private Integer pressure;
     private String status;
     private String lastUpdate;
+    private Long dataAgeSeconds;
     private String imei;
 }

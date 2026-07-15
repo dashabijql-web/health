@@ -1,5 +1,8 @@
 package com.xzkj.health.dto.realtime;
 
+import java.util.List;
+import java.util.Map;
+
 public record RealtimeUserView(
         Long id,
         String userCode,
@@ -17,7 +20,11 @@ public record RealtimeUserView(
         Integer bloodPressureLow,
         Integer pressure,
         String status,
+        String severity,
+        List<String> warningReasons,
+        Map<String, String> indicatorStates,
         String lastUpdate,
+        Long dataAgeSeconds,
         String imei
 ) {
 }

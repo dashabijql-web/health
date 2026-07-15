@@ -17,7 +17,7 @@ import java.util.Map;
 
 /**
  * 实时监控Mapper
- * 使用近7天数据（168小时），避免因手表数据同步延迟导致页面空白
+ * 概览与历史统计保留近7天口径；实时人员列表使用可配置的短时上报窗口。
  */
 @Mapper
 public interface RealtimeMapper {
@@ -41,116 +41,65 @@ public interface RealtimeMapper {
     RealtimeOverviewRow getTodayAvgData();
 
     /**
-     * 获取活跃用户列表(近7天有健康记录，取每人最新一条)
+     * 获取短时活跃人员快照。每个指标取在线窗口内最新的非空值，避免最新心跳包把其余体征覆盖成空。
      */
-    @Select("SELECT " +
-            "e.id, " +
-            "e.emp_code AS userCode, " +
-            "e.emp_name AS userName, " +
-            "e.gender, " +
-            "CASE WHEN e.birth_date IS NOT NULL THEN FLOOR(DATEDIFF(day, e.birth_date, GETDATE()) / 365.25) ELSE NULL END AS age, " +
-            "d.dept_name AS deptName, " +
-            "hr.heart_rate AS heartRate, " +
-            "hr.blood_oxygen AS bloodOxygen, " +
-            "hr.steps, " +
-            "hr.calories, " +
-            "hr.temperature / 10.0 AS temperature, " +
-            "hr.sleep_minutes / 60.0 AS sleepHours, " +
-            "hr.blood_pressure_high AS bloodPressureHigh, " +
-            "hr.blood_pressure_low AS bloodPressureLow, " +
-            "hr.pressure, " +
-            "CASE " +
-            "    WHEN hr.heart_rate < 60 OR hr.heart_rate > 100 THEN 'warning' " +
-            "    WHEN hr.blood_oxygen < 95 THEN 'warning' " +
-            "    WHEN hr.temperature < 360 OR hr.temperature > 375 THEN 'warning' " +
-            "    WHEN hr.blood_pressure_high > 139 OR hr.blood_pressure_low > 89 THEN 'warning' " +
-            "    WHEN hr.pressure > 84 THEN 'warning' " +
-            "    ELSE 'normal' " +
-            "END AS status, " +
-            "CONVERT(varchar(19), hr.record_time, 120) AS lastUpdate, " +
-            "dv.imei AS imei " +
-            "FROM employee e " +
-            "LEFT JOIN department d ON e.dept_id = d.id " +
-            "LEFT JOIN device_user du ON du.emp_id = e.id AND du.unbind_time IS NULL " +
-            "LEFT JOIN device dv ON dv.id = du.device_id " +
-            "INNER JOIN ( " +
-            "    SELECT user_code, heart_rate, blood_oxygen, temperature, steps, calories, sleep_minutes, " +
-            "           blood_pressure_high, blood_pressure_low, pressure, record_time, " +
-            "           ROW_NUMBER() OVER (PARTITION BY user_code ORDER BY record_time DESC) AS rn " +
-            "    FROM v_health_record " +
-            "    WHERE record_time >= DATEADD(HOUR, -168, GETDATE()) " +
-            ") hr ON e.emp_code = hr.user_code AND hr.rn = 1 " +
-            "WHERE (e.status IS NULL OR e.status = 0) " +
-            "ORDER BY hr.record_time DESC " +
-            "OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY")
-    List<Map<String, Object>> getOnlineUsers(@Param("offset") int offset, @Param("size") int size);
+    @SelectProvider(type = RealtimeOnlineSqlProvider.class, method = "getActiveUsers")
+    List<RealtimeUserRow> getActiveUsersDirect(@Param("tableSource") String tableSource,
+                                               @Param("onlineWindowMinutes") int onlineWindowMinutes);
 
-    /**
-     * 获取活跃用户总数（近7天有记录的用户数）
-     */
-    @Select("SELECT COUNT(DISTINCT user_code) FROM v_health_record WHERE record_time >= DATEADD(HOUR, -168, GETDATE())")
-    int countOnlineUsers();
+    class RealtimeOnlineSqlProvider {
+        public String getActiveUsers(Map<String, Object> params) {
+            String source = String.valueOf(params.get("tableSource"));
+            if (!source.matches("health_record_\\d{6}|\\(SELECT [a-zA-Z0-9_, ]+ FROM health_record_\\d{6} UNION ALL SELECT [a-zA-Z0-9_, ]+ FROM health_record_\\d{6}\\)")) {
+                throw new IllegalArgumentException("Invalid realtime table source");
+            }
 
-    /**
-     * 获取活跃用户列表 — 直接查分区表，避免扫 UNION ALL 视图
-     * 当168h跨月时 tableSource = "(SELECT ... FROM t1 UNION ALL SELECT ... FROM t2) AS _rt"
-     * 当168h在当月时 tableSource = "health_record_YYYYMM"
-     *
-     * 用 CROSS APPLY TOP 1 按员工取最新记录，利用 (user_code, record_time) 索引做 seek。
-     * 这比 GROUP BY MAX(record_time) 自连接更稳定，也避免同一员工同一 record_time 多条记录时重复出人。
-     */
-    @Select("SELECT " +
-            "e.id, " +
-            "e.emp_code AS userCode, " +
-            "e.emp_name AS userName, " +
-            "e.gender, " +
-            "CASE WHEN e.birth_date IS NOT NULL THEN FLOOR(DATEDIFF(day, e.birth_date, GETDATE()) / 365.25) ELSE NULL END AS age, " +
-            "d.dept_name AS deptName, " +
-            "hr.heart_rate AS heartRate, " +
-            "hr.blood_oxygen AS bloodOxygen, " +
-            "hr.steps, " +
-            "hr.calories, " +
-            "hr.temperature / 10.0 AS temperature, " +
-            "hr.sleep_minutes / 60.0 AS sleepHours, " +
-            "hr.blood_pressure_high AS bloodPressureHigh, " +
-            "hr.blood_pressure_low AS bloodPressureLow, " +
-            "hr.pressure, " +
-            "CASE " +
-            "    WHEN hr.heart_rate < 60 OR hr.heart_rate > 100 THEN 'warning' " +
-            "    WHEN hr.blood_oxygen < 95 THEN 'warning' " +
-            "    WHEN hr.temperature < 360 OR hr.temperature > 375 THEN 'warning' " +
-            "    WHEN hr.blood_pressure_high > 139 OR hr.blood_pressure_low > 89 THEN 'warning' " +
-            "    WHEN hr.pressure > 84 THEN 'warning' " +
-            "    ELSE 'normal' " +
-            "END AS status, " +
-            "hr.record_time AS lastUpdate, " +
-            "dv.imei AS imei " +
-            "FROM employee e " +
-            "LEFT JOIN department d ON e.dept_id = d.id " +
-            "LEFT JOIN device_user du ON du.emp_id = e.id AND du.unbind_time IS NULL " +
-            "LEFT JOIN device dv ON dv.id = du.device_id " +
-            "CROSS APPLY ( " +
-            "    SELECT TOP 1 t.user_code, t.heart_rate, t.blood_oxygen, t.temperature, t.steps, t.calories, " +
-            "           t.sleep_minutes, t.blood_pressure_high, t.blood_pressure_low, t.pressure, " +
-            "           t.record_time, t.id " +
-            "    FROM ${tableSource} AS t " +
-            "    WHERE t.user_code = e.emp_code " +
-            "      AND t.record_time >= DATEADD(HOUR, -168, GETDATE()) " +
-            "    ORDER BY t.record_time DESC, t.id DESC " +
-            ") hr " +
-            "WHERE (e.status IS NULL OR e.status = 0) " +
-            "ORDER BY hr.record_time DESC " +
-            "OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY")
-    List<RealtimeUserRow> getOnlineUsersDirect(@Param("tableSource") String tableSource,
-                                               @Param("offset") int offset,
-                                               @Param("size") int size);
+            String recent = "SELECT t.*, " +
+                    "ROW_NUMBER() OVER (PARTITION BY t.user_code, CASE WHEN t.heart_rate IS NOT NULL AND t.heart_rate > 0 THEN 1 ELSE 0 END ORDER BY t.record_time DESC, t.id DESC) AS rn_hr, " +
+                    "ROW_NUMBER() OVER (PARTITION BY t.user_code, CASE WHEN t.blood_oxygen IS NOT NULL AND t.blood_oxygen > 0 THEN 1 ELSE 0 END ORDER BY t.record_time DESC, t.id DESC) AS rn_bo, " +
+                    "ROW_NUMBER() OVER (PARTITION BY t.user_code, CASE WHEN t.temperature IS NOT NULL AND t.temperature > 0 THEN 1 ELSE 0 END ORDER BY t.record_time DESC, t.id DESC) AS rn_tp, " +
+                    "ROW_NUMBER() OVER (PARTITION BY t.user_code, CASE WHEN t.blood_pressure_high IS NOT NULL AND t.blood_pressure_high > 0 THEN 1 ELSE 0 END ORDER BY t.record_time DESC, t.id DESC) AS rn_bph, " +
+                    "ROW_NUMBER() OVER (PARTITION BY t.user_code, CASE WHEN t.blood_pressure_low IS NOT NULL AND t.blood_pressure_low > 0 THEN 1 ELSE 0 END ORDER BY t.record_time DESC, t.id DESC) AS rn_bpl, " +
+                    "ROW_NUMBER() OVER (PARTITION BY t.user_code, CASE WHEN t.pressure IS NOT NULL THEN 1 ELSE 0 END ORDER BY t.record_time DESC, t.id DESC) AS rn_pr, " +
+                    "ROW_NUMBER() OVER (PARTITION BY t.user_code, CASE WHEN t.steps IS NOT NULL THEN 1 ELSE 0 END ORDER BY t.record_time DESC, t.id DESC) AS rn_st, " +
+                    "ROW_NUMBER() OVER (PARTITION BY t.user_code, CASE WHEN t.calories IS NOT NULL THEN 1 ELSE 0 END ORDER BY t.record_time DESC, t.id DESC) AS rn_cal, " +
+                    "ROW_NUMBER() OVER (PARTITION BY t.user_code, CASE WHEN t.sleep_minutes IS NOT NULL THEN 1 ELSE 0 END ORDER BY t.record_time DESC, t.id DESC) AS rn_sl " +
+                    "FROM " + source + " AS t " +
+                    "WHERE t.record_time >= DATEADD(MINUTE, -#{onlineWindowMinutes}, GETDATE())";
 
-    /**
-     * 活跃用户总数 — 直接查分区表
-     * 注意：${tableSource} 是裸子查询时 SQL Server 要求必须有别名，故包一层 AS _cnt
-     */
-    @Select("SELECT COUNT(DISTINCT user_code) FROM ${tableSource} AS _cnt WHERE record_time >= DATEADD(HOUR, -168, GETDATE())")
-    int countOnlineUsersDirect(@Param("tableSource") String tableSource);
+            String snapshot = "SELECT x.user_code, " +
+                    "MAX(CASE WHEN x.rn_hr = 1 AND x.heart_rate IS NOT NULL AND x.heart_rate > 0 THEN x.heart_rate END) AS heart_rate, " +
+                    "MAX(CASE WHEN x.rn_bo = 1 AND x.blood_oxygen IS NOT NULL AND x.blood_oxygen > 0 THEN x.blood_oxygen END) AS blood_oxygen, " +
+                    "MAX(CASE WHEN x.rn_tp = 1 AND x.temperature IS NOT NULL AND x.temperature > 0 THEN x.temperature END) AS temperature, " +
+                    "MAX(CASE WHEN x.rn_bph = 1 AND x.blood_pressure_high IS NOT NULL AND x.blood_pressure_high > 0 THEN x.blood_pressure_high END) AS blood_pressure_high, " +
+                    "MAX(CASE WHEN x.rn_bpl = 1 AND x.blood_pressure_low IS NOT NULL AND x.blood_pressure_low > 0 THEN x.blood_pressure_low END) AS blood_pressure_low, " +
+                    "MAX(CASE WHEN x.rn_pr = 1 AND x.pressure IS NOT NULL THEN x.pressure END) AS pressure, " +
+                    "MAX(CASE WHEN x.rn_st = 1 AND x.steps IS NOT NULL THEN x.steps END) AS steps, " +
+                    "MAX(CASE WHEN x.rn_cal = 1 AND x.calories IS NOT NULL THEN x.calories END) AS calories, " +
+                    "MAX(CASE WHEN x.rn_sl = 1 AND x.sleep_minutes IS NOT NULL THEN x.sleep_minutes END) AS sleep_minutes, " +
+                    "MAX(x.record_time) AS report_time, " +
+                    "MAX(CASE WHEN x.heart_rate IS NOT NULL OR x.blood_oxygen IS NOT NULL OR x.temperature IS NOT NULL " +
+                    "OR x.blood_pressure_high IS NOT NULL OR x.blood_pressure_low IS NOT NULL OR x.pressure IS NOT NULL " +
+                    "THEN x.record_time END) AS vital_record_time " +
+                    "FROM (" + recent + ") AS x GROUP BY x.user_code";
+
+            return "SELECT e.id, e.emp_code AS userCode, e.emp_name AS userName, e.gender, " +
+                    "CASE WHEN e.birth_date IS NOT NULL THEN FLOOR(DATEDIFF(day, e.birth_date, GETDATE()) / 365.25) ELSE NULL END AS age, " +
+                    "d.dept_name AS deptName, j.risk_level AS riskLevel, " +
+                    "hr.heart_rate AS heartRate, hr.blood_oxygen AS bloodOxygen, hr.steps, hr.calories, " +
+                    "hr.temperature / 10.0 AS temperature, hr.sleep_minutes / 60.0 AS sleepHours, " +
+                    "hr.blood_pressure_high AS bloodPressureHigh, hr.blood_pressure_low AS bloodPressureLow, hr.pressure, " +
+                    "CONVERT(varchar(23), hr.vital_record_time, 121) AS lastUpdate, " +
+                    "DATEDIFF(SECOND, hr.vital_record_time, GETDATE()) AS dataAgeSeconds, dv.imei AS imei " +
+                    "FROM employee e " +
+                    "LEFT JOIN department d ON e.dept_id = d.id " +
+                    "LEFT JOIN job_type j ON e.job_type_id = j.id " +
+                    "LEFT JOIN device_user du ON du.emp_id = e.id AND du.unbind_time IS NULL " +
+                    "LEFT JOIN device dv ON dv.id = du.device_id " +
+                    "INNER JOIN (" + snapshot + ") AS hr ON e.emp_code = hr.user_code " +
+                    "WHERE (e.status IS NULL OR e.status = 0) ORDER BY hr.report_time DESC";
+        }
+    }
 
     /**
      * 获取实时统计数据（近7天口径）— 直接查分区表版本

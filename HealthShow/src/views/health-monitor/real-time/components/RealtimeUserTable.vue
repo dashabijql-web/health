@@ -3,11 +3,8 @@
     <div class="rt-ph">
       <div class="rt-ph-left">
         <span class="rt-ph-dot"></span>
-        <span class="rt-ph-title">在线用户实时状态</span>
-        <span class="rt-badge-online">{{ filteredCount }} 人在线</span>
-        <span v-if="hrFilter" class="rt-badge-filter" @click="$emit('clearHrFilter')">
-          心率: {{ hrFilter.label }} &times;
-        </span>
+        <span class="rt-ph-title">在线人员状态</span>
+        <span class="rt-badge-online">{{ totalCount }} 人</span>
       </div>
       <div class="rt-ph-right">
         <el-input
@@ -16,6 +13,7 @@
           clearable
           class="rt-inp"
           @clear="$emit('search')"
+          @input="$emit('search')"
           @keyup.enter="$emit('search')"
         />
         <el-select
@@ -34,12 +32,11 @@
           class="rt-sel-sm"
           @change="$emit('search')"
         >
-          <el-option label="仅正常" value="normal" />
-          <el-option label="仅预警" value="warning" />
+          <el-option label="当前异常" value="warning" />
+          <el-option label="状态正常" value="normal" />
+          <el-option label="数据陈旧" value="stale" />
+          <el-option label="体征待补" value="no_data" />
         </el-select>
-        <button class="rt-btn" @click="$emit('search')">
-          <el-icon><Search /></el-icon> 查询
-        </button>
         <button class="rt-btn rt-btn-g" title="重置" @click="$emit('reset')">
           <el-icon><RefreshLeft /></el-icon>
         </button>
@@ -65,7 +62,7 @@
           :key="row.imei || row.userCode || row.userName"
           role="button"
           tabindex="0"
-          :class="['rt-mobile-card', row.status === 'normal' ? 'is-normal' : 'is-warning']"
+          :class="['rt-mobile-card', `is-${row.status || 'normal'}`]"
           @click="$emit('showUserDetail', row)"
           @keydown.enter.prevent="$emit('showUserDetail', row)"
           @keydown.space.prevent="$emit('showUserDetail', row)"
@@ -75,17 +72,32 @@
             <span class="rt-mobile-meta">{{ row.deptName || '未分组' }} · {{ row.userCode || '无工号' }}</span>
           </span>
           <span class="rt-mobile-vitals">
-            <span :class="classifyHeartRate(row.heartRate)">心率 {{ row.heartRate || '--' }}</span>
-            <span :class="classifyTemperature(row.temperature)">体温 {{ row.temperature ? `${row.temperature}°` : '--' }}</span>
-            <span :class="['rt-status', row.status === 'normal' ? 'st-ok' : 'st-warn']">
-              {{ row.status === 'normal' ? '正常' : '预警' }}
+            <template v-if="row.status === 'warning' && row.warningReasons?.length">
+              <span
+                v-for="reason in row.warningReasons.slice(0, 2)"
+                :key="reason"
+                :class="row.severity === 'danger' ? 'c-danger' : 'c-warn'"
+              >{{ reason }}</span>
+            </template>
+            <template v-else-if="row.status === 'stale'">
+              <span class="c-warn">{{ formatRealtimeAge(row.dataAgeSeconds) }}未更新</span>
+            </template>
+            <template v-else-if="row.status === 'no_data'">
+              <span class="c-dim">暂无有效体征</span>
+            </template>
+            <template v-else>
+              <span :class="getMetricClass(row, 'heartRate')">心率 {{ row.heartRate || '--' }}</span>
+              <span :class="getMetricClass(row, 'bloodOxygen')">血氧 {{ row.bloodOxygen ? `${row.bloodOxygen}%` : '--' }}</span>
+            </template>
+            <span :class="['rt-status', `st-${row.status || 'normal'}`]">
+              {{ getRealtimeStatusLabel(row.status) }}
             </span>
           </span>
           <span class="rt-mobile-actions" v-if="row.imei">
             <button class="rt-msg-btn" title="文字消息" aria-label="发送文字消息" @click.stop="$emit('sendMessage', row)">
               <el-icon><ChatDotRound /></el-icon>
             </button>
-            <button class="rt-msg-btn rt-voice-btn" title="语音广播" aria-label="语音广播" @click.stop="$emit('sendVoice', row)">
+            <button class="rt-msg-btn rt-voice-btn" title="语音提醒" aria-label="发送语音提醒" @click.stop="$emit('sendVoice', row)">
               <el-icon><Bell /></el-icon>
             </button>
           </span>
@@ -124,7 +136,7 @@
             <el-tooltip v-if="!row.heartRate" content="设备暂未上报该项数据" placement="top" :show-after="500">
               <span class="c-na">--</span>
             </el-tooltip>
-            <span v-else :class="classifyHeartRate(row.heartRate)">{{ row.heartRate }}</span>
+            <span v-else :class="getMetricClass(row, 'heartRate')">{{ row.heartRate }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="bloodOxygen" label="血氧(%)" width="76" align="center">
@@ -132,7 +144,7 @@
             <el-tooltip v-if="!row.bloodOxygen" content="设备暂未上报该项数据" placement="top" :show-after="500">
               <span class="c-na">--</span>
             </el-tooltip>
-            <span v-else :class="classifyBloodOxygen(row.bloodOxygen)">{{ row.bloodOxygen }}%</span>
+            <span v-else :class="getMetricClass(row, 'bloodOxygen')">{{ row.bloodOxygen }}%</span>
           </template>
         </el-table-column>
         <el-table-column prop="temperature" label="体温(°C)" width="80" align="center">
@@ -140,15 +152,15 @@
             <el-tooltip v-if="!row.temperature" content="设备暂未上报该项数据" placement="top" :show-after="500">
               <span class="c-na">--</span>
             </el-tooltip>
-            <span v-else :class="classifyTemperature(row.temperature)">{{ row.temperature }}°</span>
+            <span v-else :class="getMetricClass(row, 'temperature')">{{ row.temperature }}°</span>
           </template>
         </el-table-column>
         <el-table-column label="血压" width="90" align="center">
           <template #default="{ row }">
             <template v-if="row.bloodPressureHigh || row.bloodPressureLow">
-              <span :class="classifySystolic(row.bloodPressureHigh)">{{ row.bloodPressureHigh || '--' }}</span>
+              <span :class="getMetricClass(row, 'bloodPressureHigh')">{{ row.bloodPressureHigh || '--' }}</span>
               <span class="c-bp-sep">/</span>
-              <span :class="classifyDiastolic(row.bloodPressureLow)">{{ row.bloodPressureLow || '--' }}</span>
+              <span :class="getMetricClass(row, 'bloodPressureLow')">{{ row.bloodPressureLow || '--' }}</span>
             </template>
             <el-tooltip v-else content="设备暂未上报该项数据" placement="top" :show-after="500">
               <span class="c-na">--</span>
@@ -160,19 +172,21 @@
             <el-tooltip v-if="row.pressure == null" content="设备暂未上报该项数据" placement="top" :show-after="500">
               <span class="c-na">--</span>
             </el-tooltip>
-            <span v-else :class="classifyPressure(row.pressure)">{{ row.pressure }}</span>
+            <span v-else :class="getMetricClass(row, 'pressure')">{{ row.pressure }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="68" align="center">
           <template #default="{ row }">
-            <span :class="['rt-status', row.status === 'normal' ? 'st-ok' : 'st-warn']">
-              {{ row.status === 'normal' ? '正常' : '预警' }}
+            <span :class="['rt-status', `st-${row.status || 'normal'}`]">
+              {{ getRealtimeStatusLabel(row.status) }}
             </span>
           </template>
         </el-table-column>
         <el-table-column prop="lastUpdate" label="时间" width="88" align="center">
           <template #default="{ row }">
-            <span class="c-time">{{ formatRealtimeTime(row.lastUpdate) }}</span>
+            <el-tooltip :content="formatRealtimeFullTime(row.lastUpdate)" placement="top" :show-after="400">
+              <span class="c-time">{{ formatRealtimeTime(row.lastUpdate) }}</span>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
@@ -186,24 +200,20 @@ import {
   Bell,
   ChatDotRound,
   RefreshLeft,
-  Search,
   VideoPause,
   VideoPlay
 } from '@element-plus/icons-vue'
 import {
-  classifyBloodOxygen,
-  classifyDiastolic,
-  classifyHeartRate,
-  classifyPressure,
-  classifySystolic,
-  classifyTemperature,
+  formatRealtimeAge,
+  formatRealtimeFullTime,
   formatRealtimeTime,
-  getRealtimeRowClass
+  getMetricClass,
+  getRealtimeRowClass,
+  getRealtimeStatusLabel
 } from '../realtime-helpers'
 
 const props = defineProps({
-  filteredCount: { type: Number, default: 0 },
-  hrFilter: { type: Object, default: null },
+  totalCount: { type: Number, default: 0 },
   deptList: { type: Array, default: () => [] },
   searchForm: { type: Object, required: true },
   autoScrollEnabled: { type: Boolean, default: true },
@@ -218,7 +228,6 @@ const props = defineProps({
 
 const emit = defineEmits([
   'update:searchForm',
-  'clearHrFilter',
   'search',
   'reset',
   'toggleAutoScroll',
