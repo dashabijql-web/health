@@ -3,7 +3,7 @@
     <article class="sc-panel sc-coverage-panel panel-enter" style="--delay:.14s">
       <div class="sc-panel-head">
         <div>
-          <h2>人员与设备覆盖</h2>
+          <h2>设备监测覆盖</h2>
           <span class="sc-panel-subtitle">指挥摘要实时口径</span>
         </div>
         <strong>{{ deviceCoverage.onlineRate ?? '--' }}{{ deviceCoverage.onlineRate == null ? '' : '%' }}</strong>

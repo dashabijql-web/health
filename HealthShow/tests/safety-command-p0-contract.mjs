@@ -59,7 +59,7 @@ test('safety command restores high-value operational intelligence with explicit 
   const intelligence = source('src/views/safety-command/components/SafetyCommandIntelligenceGrid.vue')
 
   assert.match(view, /<SafetyCommandIntelligenceGrid/)
-  assert.match(intelligence, /人员与设备覆盖/)
+  assert.match(intelligence, /设备监测覆盖/)
   assert.match(intelligence, /开放事件按人员去重/)
   assert.match(intelligence, /类型和状态只描述当前队列样本；权威待办总数以页头为准/)
   assert.doesNotMatch(intelligence, /EventPanel|全部呼叫|体征均值走势|各类型处理率/)
