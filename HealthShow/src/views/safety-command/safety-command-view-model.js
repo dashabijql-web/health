@@ -236,7 +236,7 @@ export function buildDeptRankData(departments) {
         ...dept,
         warnings,
         level,
-        statusText: warnings > 0 ? '有预警' : '正常'
+        statusText: warnings > 0 ? '条预警' : '正常'
       }
     })
     .sort((a, b) => b.warnings - a.warnings)
@@ -393,71 +393,61 @@ export function buildWatchStatus(realtimeStats) {
   }
 }
 
-export function buildStageIntelItems({ stats, watchStatus, pendingCount, handledCount, criticalCount, warningHandledRate, deptsSorted }) {
-  const statData = stats || {}
-  const watchData = watchStatus || {}
-  const topDept = (deptsSorted || [])[0]
-  const currentCriticalCount = criticalCount ?? ((statData.sos || 0) + (statData.fall || 0))
-  const onlineRate = watchData.total ? Math.round((watchData.online || 0) / watchData.total * 100) : 0
-
+export function buildStageIntelItems({ pendingCount, criticalCount, unassignedCount, overdueCount, dataAsOf }) {
   return [
     {
       key: 'active-risk',
       label: '当前风险',
       value: pendingCount || 0,
-      note: `高危 ${currentCriticalCount} / 其他 ${Math.max(0, (pendingCount || 0) - currentCriticalCount)}`,
-      tone: currentCriticalCount > 0 ? 'danger' : pendingCount > 0 ? 'warning' : 'safe'
+      note: `高危 ${criticalCount || 0} / 其他 ${Math.max(0, (pendingCount || 0) - (criticalCount || 0))}`,
+      tone: criticalCount > 0 ? 'danger' : pendingCount > 0 ? 'warning' : 'safe'
     },
     {
-      key: 'watch-link',
-      label: '通信覆盖',
-      value: `${onlineRate}%`,
-      note: `在线 ${watchData.online || 0} / 离线 ${watchData.offline || 0}`,
-      tone: watchData.offline > 0 ? 'warning' : 'safe'
+      key: 'unassigned',
+      label: '未分派',
+      value: unassignedCount || 0,
+      note: '尚无责任人的开放事件',
+      tone: unassignedCount > 0 ? 'warning' : 'safe'
     },
     {
-      key: 'top-zone',
-      label: '重点部门',
-      value: topDept?.name || '待识别',
-      note: topDept ? `预警 ${topDept.warnings || 0} / ${topDept.statusText || '正常'}` : '暂无部门预警',
-      tone: topDept?.level === 'H' ? 'danger' : topDept?.level === 'M' ? 'warning' : 'primary'
+      key: 'overdue',
+      label: '已超时',
+      value: overdueCount || 0,
+      note: '超过处置时限的开放事件',
+      tone: overdueCount > 0 ? 'danger' : 'safe'
     },
     {
-      key: 'closure-target',
-      label: '闭环目标',
-      value: `${warningHandledRate || 0}%`,
-      note: `已处置 ${handledCount || 0} / 待处置 ${pendingCount || 0}`,
-      tone: warningHandledRate >= 80 ? 'safe' : 'warning'
+      key: 'freshness',
+      label: '数据时间',
+      value: dataAsOf ? String(dataAsOf).slice(11, 16) : '--:--',
+      note: dataAsOf ? String(dataAsOf).slice(0, 10) : '等待权威汇总',
+      tone: 'primary'
     }
   ]
 }
 
-export function buildStageActionItems({ stats, watchStatus, pendingCount, handledCount, criticalCount, warningHandledRate }) {
-  const statData = stats || {}
-  const watchData = watchStatus || {}
-  const currentCriticalCount = criticalCount ?? ((statData.sos || 0) + (statData.fall || 0))
-
+export function buildStageActionItems({ todayNew, pendingCount, handledCount, criticalCount, warningHandledRate }) {
   return [
     {
-      key: 'locate',
-      label: '定位核查',
-      value: pendingCount || 0,
-      note: pendingCount > 0 ? '待锁定事件' : '无需介入',
-      tone: pendingCount > 0 ? 'warning' : 'safe'
+      key: 'today-new',
+      label: '今日新增',
+      value: todayNew || 0,
+      note: '今日产生的全部预警',
+      tone: todayNew > 0 ? 'warning' : 'safe'
     },
     {
-      key: 'broadcast',
-      label: '广播触达',
-      value: `${watchData.online || 0}`,
-      note: `在线终端 / ${watchData.total || 0}`,
-      tone: watchData.online > 0 ? 'primary' : 'warning'
-    },
-    {
-      key: 'medical',
-      label: '医疗联动',
-      value: currentCriticalCount,
-      note: 'SOS + 跌倒',
+      key: 'critical',
+      label: '高危待办',
+      value: criticalCount || 0,
+      note: '需要优先介入',
       tone: criticalCount > 0 ? 'danger' : 'safe'
+    },
+    {
+      key: 'handled',
+      label: '今日已处置',
+      value: handledCount || 0,
+      note: `待处置 ${pendingCount || 0}`,
+      tone: handledCount > 0 ? 'safe' : 'warning'
     },
     {
       key: 'review',

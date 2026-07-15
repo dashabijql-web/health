@@ -1,12 +1,5 @@
 <template>
   <section class="sc-war-support">
-    <DeptRankTable
-      class="sc-support-rank panel-enter"
-      style="--delay:.16s"
-      :departments="deptsSorted"
-      @showDept="emit('show-dept', $event)"
-    />
-
     <div class="sc-panel sc-closure-panel panel-enter" style="--delay:.2s">
       <div class="sc-panel-head">
         <div>
@@ -38,57 +31,9 @@
             <div class="bar-p" :style="{ left: warningHandledRate + '%', width: (100 - warningHandledRate) + '%' }"></div>
           </div>
         </div>
-        <div class="rtypes">
-          <div v-for="tp in typeHandleProgress" :key="tp.key" class="rt-row">
-            <span class="rt-l">{{ tp.key }}预警</span>
-            <div class="rt-t">
-              <div class="rt-f" :style="{ width: tp.rate + '%', background: `linear-gradient(90deg,${tp.color},${tp.color}88)` }"></div>
-            </div>
-            <span class="rt-p" :style="{ color: tp.color }">{{ tp.rate }}%</span>
-          </div>
-        </div>
+        <div class="closure-note">按今日权威待办与已处置口径计算</div>
       </div>
     </div>
-
-    <div class="sc-panel sc-vitals-panel panel-enter" style="--delay:.24s">
-      <div class="sc-panel-head">
-        <div>
-          <span class="sc-panel-kicker">VITALS</span>
-          <h2>体征均值走势</h2>
-        </div>
-      </div>
-      <div class="vitals-body">
-        <div v-for="v in vitalsRows" :key="v.key" class="vrow">
-          <span class="v-lbl">{{ v.label }}</span>
-          <div class="v-spk">
-            <svg viewBox="0 0 260 48" preserveAspectRatio="none">
-              <defs>
-                <linearGradient :id="v.gradId" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" :stop-color="v.color" stop-opacity=".35"/>
-                  <stop offset="100%" :stop-color="v.color" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-              <line x1="0" y1="40" x2="260" y2="40" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
-              <path v-if="v.areaPath" :d="v.areaPath" :fill="`url(#${v.gradId})`" opacity=".7"/>
-              <path v-if="v.linePath" :d="v.linePath" fill="none" :stroke="v.color" stroke-width="2" stroke-linecap="round" class="spk-line"/>
-              <circle v-if="v.endX != null" :cx="v.endX" :cy="v.endY" r="4" :fill="v.color" :stroke="v.color + '44'" stroke-width="8" class="spk-dot"/>
-            </svg>
-          </div>
-          <div class="v-val-wrap">
-            <div class="v-val" :style="{ color: v.color }">{{ v.val }}</div>
-            <div class="v-unit">{{ v.unit }}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <AreaMapGrid
-      class="sc-support-area panel-enter"
-      style="--delay:.28s"
-      :areas="areas"
-      title="部门预警分布"
-      @showArea="emit('show-area', $event)"
-    />
 
     <div class="sc-panel sc-dist-panel panel-enter" style="--delay:.32s">
       <div class="sc-panel-head">
@@ -110,8 +55,8 @@
               transform="rotate(-90 75 75)"
               class="donut-seg" :style="{ '--seg-delay': (si * 0.12) + 's', opacity: seg.dash > 0 ? '.88' : '0' }"
             />
-            <text x="75" y="70" text-anchor="middle" fill="#dff0ff" font-size="17" font-weight="700" font-family="sans-serif">{{ warningTotal }}</text>
-            <text x="75" y="86" text-anchor="middle" fill="#3a5268" font-size="10">今日预警数</text>
+            <text x="75" y="70" text-anchor="middle" fill="#dff0ff" font-size="17" font-weight="700" font-family="sans-serif">{{ loadedTypeTotal }}</text>
+            <text x="75" y="86" text-anchor="middle" fill="#3a5268" font-size="10">已加载体征预警</text>
           </svg>
         </div>
         <div class="dist-lg">
@@ -159,7 +104,7 @@
           </div>
           <div class="ts-card">
             <div class="ts-v" style="color:#00e676">{{ warningHandledRate }}%</div>
-            <div class="ts-l">7日处理率</div>
+            <div class="ts-l">今日处置率</div>
           </div>
           <div class="ts-card">
             <div class="ts-v" :style="{ color: trendChange >= 0 ? '#ffd600' : '#00e676' }">{{ trendChange >= 0 ? '▲' : '▼' }}{{ Math.abs(trendChange) }}%</div>
@@ -183,13 +128,10 @@
 </template>
 
 <script setup>
-import DeptRankTable from './DeptRankTable.vue'
-import AreaMapGrid from './AreaMapGrid.vue'
+import { computed } from 'vue'
 import EventPanel from './EventPanel.vue'
 
-defineProps({
-  areas: { type: Array, default: () => [] },
-  deptsSorted: { type: Array, default: () => [] },
+const props = defineProps({
   donutSegments: { type: Array, default: () => [] },
   events: { type: Array, default: () => [] },
   handledCount: { type: Number, default: 0 },
@@ -197,14 +139,13 @@ defineProps({
   trend7dayTotal: { type: Number, default: 0 },
   trendChange: { type: Number, default: 0 },
   trendPath: { type: Object, default: null },
-  typeHandleProgress: { type: Array, default: () => [] },
-  vitalsRows: { type: Array, default: () => [] },
   warningHandledRate: { type: Number, default: 0 },
-  warningTotal: { type: Number, default: 0 },
   warningTrend: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['show-dept', 'show-area', 'show-event', 'show-person-from-event', 'handle-event'])
+const loadedTypeTotal = computed(() => props.donutSegments.reduce((sum, item) => sum + Number(item.cnt || 0), 0))
+
+const emit = defineEmits(['show-dept', 'show-event', 'show-person-from-event', 'handle-event'])
 </script>
 
 <style scoped lang="scss">

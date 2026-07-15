@@ -8,6 +8,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const src = (relativePath) => readFileSync(resolve(__dirname, '..', relativePath), 'utf8')
 
 test('A+C command pages avoid self-amplifying stretch layouts', () => {
+  const safetyPage = src('src/views/safety-command/index.vue')
+  const safetySupport = src('src/views/safety-command/components/SafetyCommandSupportGrid.vue')
   const safetyStyle = src('src/views/safety-command/safety-command.scss')
   const dashboardStyle = src('src/views/health-monitor/dashboard/dashboard.scss')
 
@@ -31,10 +33,11 @@ test('A+C command pages avoid self-amplifying stretch layouts', () => {
     /\.sc-war-support\s+:deep\(\.(?:area-panel|rank-panel|ev-panel)\)[\s\S]*height:\s*100%;/,
     'support child roots must not be reset to height:100%; that reintroduces auto-row amplification'
   )
-  assert.match(
-    safetyStyle,
-    /\.sc-war-support\s+\.sc-support-area\s*\{[\s\S]*height:\s*clamp\(/,
-    'area distribution panel should have a bounded height instead of expanding with every area tile'
+  assert.match(safetyPage, /v-for="node in stageNodes"/, 'the primary situation stage should retain department warning nodes')
+  assert.doesNotMatch(
+    safetySupport,
+    /DeptRankTable|AreaMapGrid|体征均值走势/,
+    'support grid should not repeat department ranking, department distribution, or unified-control vital summaries'
   )
 
   assert.match(
@@ -235,7 +238,7 @@ test('safety command response queue is bounded so support grid does not leave a 
 
   assert.match(
     safetyStyle,
-    /\.sc-response-queue\s*\{[\s\S]*height:\s*clamp\(700px,\s*calc\(38vw\s*\+\s*198px\),\s*735px\);[\s\S]*max-height:\s*clamp\(700px,\s*calc\(38vw\s*\+\s*198px\),\s*735px\);/,
+    /\.sc-response-queue\s*\{[\s\S]*height:\s*clamp\(580px,\s*calc\(38vw\s*\+\s*70px\),\s*610px\);[\s\S]*max-height:\s*clamp\(580px,\s*calc\(38vw\s*\+\s*70px\),\s*610px\);/,
     'desktop response queue should be bounded to the stage panel height so the next support row starts without a left-side blank gap'
   )
   assert.match(

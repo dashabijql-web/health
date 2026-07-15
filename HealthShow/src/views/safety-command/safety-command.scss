@@ -113,7 +113,7 @@ $mono: 'JetBrains Mono','Courier New',monospace;
   font-size: 17px; font-weight: 700; font-family: $mono; line-height: 1.1; color: $accent;
 }
 .sc-hd-kpi-l { font-size: 10px; color: $dim; margin-top: 2px; white-space: nowrap; }
-.sc-hd-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.sc-hd-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; margin-left: auto; }
 .sc-hd-clock { font-size: 12px; color: $dim; font-family: $mono; white-space: nowrap; }
 .sc-hd-actions { display: flex; gap: 6px; }
 .sc-hd-btn {
@@ -553,8 +553,8 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 .sc-response-queue {
   align-self: start;
   min-height: 0;
-  height: clamp(700px, calc(38vw + 198px), 735px);
-  max-height: clamp(700px, calc(38vw + 198px), 735px);
+  height: clamp(580px, calc(38vw + 70px), 610px);
+  max-height: clamp(580px, calc(38vw + 70px), 610px);
   display: flex;
   flex-direction: column;
 }
@@ -662,7 +662,7 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 
 .sc-war-support {
   display: grid;
-  grid-template-columns: minmax(280px, .88fr) minmax(270px, .82fr) minmax(300px, .96fr);
+  grid-template-columns: repeat(3, minmax(280px, 1fr));
   gap: 14px;
   align-items: start;
 }
@@ -686,16 +686,10 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 }
 
 .sc-closure-panel,
-.sc-vitals-panel,
 .sc-dist-panel,
 .sc-trend-panel {
   display: flex;
   flex-direction: column;
-}
-
-.sc-war-support .sc-support-area {
-  min-height: 0;
-  height: clamp(300px, 28vw, 380px);
 }
 
 // ── Root container ────────────────────────────────────────────────────────────
@@ -1036,9 +1030,7 @@ $mono: 'JetBrains Mono','Courier New',monospace;
 
 // A+C compact layout overrides. These sit after legacy panel rules because several
 // reused child components still carry their original grid/flex classes.
-.sc-war-support .sc-support-rank,
 .sc-war-support .sc-closure-panel,
-.sc-war-support .sc-vitals-panel,
 .sc-war-support .sc-dist-panel,
 .sc-war-support .sc-trend-panel {
   grid-column: auto;
@@ -1051,21 +1043,16 @@ $mono: 'JetBrains Mono','Courier New',monospace;
   grid-row: auto;
 }
 
-.sc-war-support :deep(.rank-scroll),
-.sc-war-support :deep(.ag),
 .sc-war-support :deep(.ev-list) {
   overflow-y: auto;
 }
 
-.sc-war-support :deep(.area-panel),
-.sc-war-support :deep(.rank-panel),
 .sc-war-support :deep(.ev-panel) {
   min-height: 0;
 }
 
 .sc-war-support :deep(.dist-body),
 .sc-war-support :deep(.trend-body),
-.sc-war-support :deep(.vitals-body),
 .sc-war-support :deep(.resp-body) {
   min-height: 0;
 }
@@ -1086,7 +1073,6 @@ $mono: 'JetBrains Mono','Courier New',monospace;
     max-height: none;
   }
 
-  .sc-support-rank,
   .sc-support-events {
     grid-row: auto;
   }
