@@ -321,6 +321,27 @@ sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; 
 - 后台管理：`device-list`、`user-list`、`role`、`department`、`job-type`
 - 独立页：`/ai-chat/index`
 
+## 2026-07-13 指挥中心与统一管控护栏
+
+- 两页共用 `/command-center/incidents` 事件模型和 `warningId + occurredAt` 定位键。分月预警表下禁止仅使用裸 `warningId` 查询、处理或审计。
+- 统一事件详情、确认、分派、处理、误报、外部动作和时间线都按 `X-Health-Data-Source` 双库路由；迁移脚本为 `HealthData/src/main/resources/sql/command_center_incident.sql`，必须对 `health` 与 `health_new` 分别执行。
+- 不在应用请求内自动建事件表。Druid SQL 防火墙会拒绝条件 DDL；缺表应明确返回 `503`，由部署迁移解决。
+- 呼叫、广播和撤离只能在具体事件详情中发起。未接入外部系统时，必须记录 `NOT_CONFIGURED` 审计且界面不得显示已下发。
+- `IncidentCommandDrawer` 是安全指挥中心和统一管控的共享处置入口。跨页必须保留 `warningId`、`occurredAt`、`incidentId`、人员和区域上下文；处理成功后刷新服务端事件状态，不得改本地数组伪造闭环。
+- 班前复检超时、设备数据中断目前没有后端事实数据。页面只能明确标记“未接入”，禁止虚构人数、人员列表、责任人或 SLA。
+- 灰度与回滚开关：`VITE_SAFETY_COMMAND_V2`、`VITE_UNIFIED_CONTROL_V2`，默认 `true`。配置为 `false` 后重新构建，路径保持不变并切回可构建的 `legacy-20260601` 页面。
+- 2026-07-13 本轮已验证：`audit:api` 53/53、`audit:auth` 7/7、`audit:e2e`、`audit:structure`、`safety-command,dashboard` 五档视觉审计和 `npm run build` 均通过。认证拦截必须从 `SaHolder.getRequest().getSource()` 获取 Servlet request；不可再把 `SaInterceptor` 的 handler 参数误判为 request，否则会放行所有业务接口。
+- 2026-07-14 统一管控指挥摘要改走 `GET /command-center/dashboard-summary`：今日新增、高危待办、待办总数不得再由前端前 `200` 条事件推算；未分派和已超时来自事件状态表聚合。复检状态/时限、低电、数据中断、设备故障未建模时必须返回 `status=UNAVAILABLE, value=null`，禁止用 `0` 伪装已接入。
+- 2026-07-15 安全指挥中心完成信息治理：头部统计只使用 `dashboard-summary` 权威口径，开放事件统一进入一个可筛选处置队列；页面只保留一个优先事件、一个部门预警矩阵、一个今日闭环和一个真实 7 日趋势。禁止重新加入模拟体征趋势、均摊处理率、样本与全量混算图表、重复部门榜单、重复事件列表或无具体事件上下文的批量呼叫。
+- 安全指挥中心所有数量必须明确对象和范围：部门矩阵展示“预警条数”，队列“已加载条数”不得冒充权威待办总数；未接入责任人、SLA 或外部动作必须显示“未分派 / 未配置 / 未接入”。本轮 `safety-command` 五档滚动视觉审计通过，结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T02-30-18-504Z/layout-summary.md`。
+
+## 2026-07-15 人员快速处置与健康画像护栏
+
+- 统一管控通过 `GET /employee/command-search` 按姓名、工号、手机号或 IMEI 快速找人；结果必须包含当前库的人员身份、绑定设备和 Netty 实时在线状态，并继续遵循 `X-Health-Data-Source` 双库路由。
+- `PersonDetailDrawer` 是统一管控、安全指挥中心和职工健康画像共用的人员综合管控入口。文字消息和单人语音可直接向已绑定手表下发；未绑定设备时必须禁用下发入口。
+- SOS 是手表端主动上报的求救事件，管理端不得伪造“发送 SOS”。人员抽屉的“应急处置”只能关联该人员已有的未处理预警，并以 `warningId + occurredAt` 打开 `IncidentCommandDrawer`。
+- 职工健康画像负责完整实时体征、趋势和预警分析；统一管控负责快速检索和快捷处置。两页复用同一人员抽屉，不复制通信实现。
+
 ## 当前验证基线
 
 2026-05-08 目标态收口后验证：
@@ -456,6 +477,8 @@ sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; 
 
 - 根目录仍然不是 git 仓库；`HealthShow` 和 `HealthData` 的 git 状态、提交、回滚必须分开处理。
 - 当前工作树存在大量用户未提交/未跟踪改动，任何改动都只能触碰本次任务文件。
+- 2026-07-13 统一管控 dashboard 的“监测覆盖与数据质量”和“健康异常快照”面板已完成；覆盖率支持实时总人数回退，异常人数来自统一事件流并按体征去重。相关契约、结构、构建和 dashboard 五档视觉审计均通过。
+- 2026-07-14 统一管控已按完整长图修复纵向空白：顶部“覆盖/健康”和“准入/闭环”两列等高，设备概览/例外独立成带，值班决策全宽并按三行内容组织。dashboard 布局修改除五档 `audit:visual` 外必须运行 `npm run audit:visual:dashboard-full`；完整长图覆盖桌面 `1440 / 1707 / 1920`，顶部双列高度差不得超过 `24px`，页面总高不得异常超过 `5000px`。禁止用 `vh`、`flex: 1`、`height: 100%` 形成循环拉伸，也不得隐藏图表占位或单纯拉高卡片填空。
 - 前端旧库演示/压测最多一个模拟器进程；新库验收前必须停掉模拟器。
 - 后端/前端/模拟器长驻进程应优先用现有脚本静默启动，避免弹出可见控制台污染长期测试。
 - 写入健康数据、手表数据、员工数据、AI 报告和日志前，默认按隐私数据处理。

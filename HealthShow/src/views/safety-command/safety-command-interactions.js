@@ -1,17 +1,16 @@
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  buildEventRiskSummary,
-  buildKpiDetailText,
-  buildRenderedDeptAiReport
-} from './safety-command-view-model'
+import { buildKpiDetailText, buildRenderedDeptAiReport } from './safety-command-view-model'
 import {
   generateSafetyCommandDeptAi,
   loadSafetyCommandDeptAi
 } from './safety-command-runtime'
 
-export function useSafetyCommandInteractions({ statsRef, watchStatusRef, handledCountRef, eventsRef, riskPersonsRef }) {
-  const eventDialogVisible = ref(false)
+export function useSafetyCommandInteractions({
+  statsRef = ref({}),
+  watchStatusRef = ref({})
+} = {}) {
+  const incidentDrawerVisible = ref(false)
   const areaDialogVisible = ref(false)
   const deptDialogVisible = ref(false)
   const broadcastDialogVisible = ref(false)
@@ -29,8 +28,6 @@ export function useSafetyCommandInteractions({ statsRef, watchStatusRef, handled
   const deptAiLoading = ref(false)
   const deptAiRendered = computed(() => buildRenderedDeptAiReport(deptAiReport.value))
 
-  const handleDialogVisible = ref(false)
-  const handleEvent = ref(null)
   const personDrawerVisible = ref(false)
   const personDrawerUserCode = ref('')
   const personDrawerUserName = ref('')
@@ -61,7 +58,7 @@ export function useSafetyCommandInteractions({ statsRef, watchStatusRef, handled
 
   function showEventDetail(event) {
     currentEvent.value = event
-    eventDialogVisible.value = true
+    incidentDrawerVisible.value = true
   }
 
   async function onDeptDialogOpen() {
@@ -107,7 +104,7 @@ export function useSafetyCommandInteractions({ statsRef, watchStatusRef, handled
       return
     }
     broadcastDialogVisible.value = false
-    ElMessage.success('紧急广播已发送')
+    showInfoDialog('广播未发送', '当前环境尚未配置真实广播设备接口，本次内容未下发。接入广播服务后，这里将显示发送状态和回执。')
   }
 
   function emergencyEvacuate() {
@@ -120,7 +117,7 @@ export function useSafetyCommandInteractions({ statsRef, watchStatusRef, handled
         type: 'error'
       }
     )
-      .then(() => ElMessage.success('撤离指令已下达！'))
+      .then(() => showInfoDialog('撤离未下发', '当前环境尚未配置真实撤离指令接口，本次未向井下人员下发指令。'))
       .catch(() => {})
   }
 
@@ -137,27 +134,7 @@ export function useSafetyCommandInteractions({ statsRef, watchStatusRef, handled
   }
 
   function onHandleEvent(event) {
-    handleEvent.value = event
-    handleDialogVisible.value = true
-  }
-
-  function onEventHandled(eventId) {
-    handledCountRef.value++
-    eventsRef.value = eventsRef.value.filter((event) => event.id !== eventId)
-    const nextSummary = buildEventRiskSummary(eventsRef.value)
-    riskPersonsRef.value = nextSummary.riskPersons
-    statsRef.value.sos = nextSummary.sosCount
-    statsRef.value.fall = nextSummary.fallCount
-  }
-
-  function closeEventDialogAfterHandle(event) {
-    onHandleEvent(event)
-    eventDialogVisible.value = false
-  }
-
-  function closeEventDialogAfterShowPerson(event) {
-    onShowPersonFromEvent(event)
-    eventDialogVisible.value = false
+    showEventDetail(event)
   }
 
   return {
@@ -177,16 +154,13 @@ export function useSafetyCommandInteractions({ statsRef, watchStatusRef, handled
     emergencyBroadcast,
     emergencyCall,
     emergencyEvacuate,
-    eventDialogVisible,
     handleDeptAi,
-    handleDialogVisible,
-    handleEvent,
     handleKpiDetail,
+    incidentDrawerVisible,
     infoDialogContent,
     infoDialogTitle,
     infoDialogVisible,
     onDeptDialogOpen,
-    onEventHandled,
     onHandleEvent,
     onShowPerson,
     onShowPersonFromEvent,
@@ -196,8 +170,6 @@ export function useSafetyCommandInteractions({ statsRef, watchStatusRef, handled
     showAreaDetail,
     showDeptDetail,
     showEventDetail,
-    showInfoDialog,
-    closeEventDialogAfterHandle,
-    closeEventDialogAfterShowPerson
+    showInfoDialog
   }
 }

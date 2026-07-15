@@ -22,7 +22,7 @@
           <span class="ac-name">{{ a.name }}</span>
           <span :class="['ac-dot', a.level==='danger'?'dot-r':a.level==='warning'?'dot-o':'dot-n']"></span>
         </div>
-        <div class="ac-cnt">人数 <b>{{ a.count }}</b></div>
+        <div class="ac-cnt">预警 <b>{{ a.count }}</b></div>
         <div v-if="a.sos>0||a.fall>0||a.warning>0" class="ac-badges">
           <span v-if="a.sos>0"  class="ab ab-r">SOS×{{ a.sos }}</span>
           <span v-else-if="a.fall>0" class="ab ab-r">跌倒×{{ a.fall }}</span>
@@ -65,11 +65,11 @@ const buildTreemap = () => {
     series:[{
       type:'treemap', width:'100%', height:'100%', roam:false, nodeClick:false,
       breadcrumb:{show:false},
-      label:{show:true,formatter:(p)=>`${p.name}\n${p.value}人`,fontSize:11,color:'#fff',textShadowColor:'rgba(0,0,0,.5)',textShadowBlur:3},
+      label:{show:true,formatter:(p)=>`${p.name}\n${p.value}条`,fontSize:11,color:'#fff',textShadowColor:'rgba(0,0,0,.5)',textShadowBlur:3},
       itemStyle:{borderColor:'rgba(10,22,42,.8)',borderWidth:2,gapWidth:2},
       data:props.areas.map(a=>({name:a.name,value:a.count||1,itemStyle:{color:levelColor(a.level)}}))
     }],
-    tooltip:{backgroundColor:'rgba(10,22,42,.95)',borderColor:'rgba(0,212,255,.3)',textStyle:{color:'#fff',fontSize:11},formatter:(p)=>{const a=props.areas.find(x=>x.name===p.name);if(!a)return p.name;return `<b>${a.name}</b><br/>人数: ${a.count}人<br/>SOS: ${a.sos} | 跌倒: ${a.fall} | 预警: ${a.warning}`}}
+    tooltip:{backgroundColor:'rgba(10,22,42,.95)',borderColor:'rgba(0,212,255,.3)',textStyle:{color:'#fff',fontSize:11},formatter:(p)=>{const a=props.areas.find(x=>x.name===p.name);if(!a)return p.name;return `<b>${a.name}</b><br/>预警: ${a.count}条<br/>SOS: ${a.sos} | 跌倒: ${a.fall}`}}
   })
 }
 

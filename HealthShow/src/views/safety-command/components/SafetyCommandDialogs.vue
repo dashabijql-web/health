@@ -8,6 +8,8 @@
         <div><span class="ik">时间</span>{{ currentEvent.time }}</div>
         <div><span class="ik">持续</span><b :class="{ red: currentEvent.durationMinutes > 5 }">{{ currentEvent.durationMinutes }}分钟</b></div>
         <div><span class="ik">等级</span><span :class="'lv-' + currentEvent.level">{{ getLevelText(currentEvent.level) }}</span></div>
+        <div><span class="ik">责任人</span>{{ currentEvent.owner || '未分派' }}</div>
+        <div><span class="ik">处置时限</span>{{ currentEvent.sla || '未配置' }}</div>
       </div>
       <div class="dlg-act">
         <el-button type="danger" @click="$emit('handleEvent', currentEvent)">处理</el-button>

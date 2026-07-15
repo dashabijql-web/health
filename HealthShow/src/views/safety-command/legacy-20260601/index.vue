@@ -270,9 +270,7 @@
       v-model:visible="personDrawerVisible"
       :userCode="personDrawerUserCode"
       :userName="personDrawerUserName"
-      @call="(code) => showInfoDialog('呼叫', `正在呼叫 ${code}...`)"
-      @notify="(code) => showInfoDialog('通知', `正在通知 ${code}...`)"
-      @viewRecord="(code) => showInfoDialog('完整档案', `加载 ${code} 健康档案...`)"
+      @emergency="showEventDetail"
     />
 
   </div><!-- /cc -->
@@ -282,13 +280,13 @@
 import { computed } from 'vue'
 import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import MetricStrip from '@/components/health-shell/MetricStrip.vue'
-import DeptRankTable from './components/DeptRankTable.vue'
-import RiskPersonPanel from './components/RiskPersonPanel.vue'
-import AreaMapGrid from './components/AreaMapGrid.vue'
-import EventPanel from './components/EventPanel.vue'
-import SafetyCommandDialogs from './components/SafetyCommandDialogs.vue'
-import EventHandleDialog from './components/EventHandleDialog.vue'
-import PersonDetailDrawer from './components/PersonDetailDrawer.vue'
+import DeptRankTable from '../components/DeptRankTable.vue'
+import RiskPersonPanel from '../components/RiskPersonPanel.vue'
+import AreaMapGrid from '../components/AreaMapGrid.vue'
+import EventPanel from '../components/EventPanel.vue'
+import SafetyCommandDialogs from '../components/SafetyCommandDialogs.vue'
+import EventHandleDialog from '../components/EventHandleDialog.vue'
+import PersonDetailDrawer from '../components/PersonDetailDrawer.vue'
 import {
   buildAreasFromDepartments,
   buildDeptRankData,
@@ -299,9 +297,9 @@ import {
   buildTrend7dayTotal,
   buildTypeHandleProgress,
   buildVitalsRows,
-} from './safety-command-view-model'
-import { useSafetyCommandInteractions } from './safety-command-interactions'
-import { useSafetyCommandPageData } from './use-safety-command-page-data'
+} from '../safety-command-view-model'
+import { useSafetyCommandInteractions } from '../safety-command-interactions'
+import { useSafetyCommandPageData } from '../use-safety-command-page-data'
 
 const {
   areas,
@@ -317,7 +315,7 @@ const {
   vitalsHistory,
   watchStatus,
   warningTrend
-} = useSafetyCommandPageData()
+} = useSafetyCommandPageData({ legacy: true })
 
 // ── Derived KPI ───────────────────────────────────────────────────────────────
 const isSafe = computed(() => stats.value.sos === 0 && stats.value.fall === 0)
@@ -438,5 +436,5 @@ const {
 </script>
 
 <style scoped lang="scss">
-@import './safety-command.scss';
+@import '../safety-command.scss';
 </style>

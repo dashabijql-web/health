@@ -32,13 +32,8 @@
 
       <!-- 处理表单 -->
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px" class="handle-form">
-        <el-form-item label="处理方式" prop="handleType">
-          <el-radio-group v-model="form.handleType">
-            <el-radio value="confirmed">确认属实</el-radio>
-            <el-radio value="false_alarm">误报</el-radio>
-            <el-radio value="dispatched">已派遣救援</el-radio>
-            <el-radio value="resolved">已解决</el-radio>
-          </el-radio-group>
+        <el-form-item label="处理状态">
+          <el-tag type="success" effect="plain">完成闭环</el-tag>
         </el-form-item>
 
         <el-form-item label="处理说明" prop="handleNote">
@@ -52,9 +47,8 @@
           />
         </el-form-item>
 
-        <el-form-item label="通知领导">
-          <el-switch v-model="form.notifyLeader" />
-          <span class="switch-hint">{{ form.notifyLeader ? '将通知值班领导' : '' }}</span>
+        <el-form-item label="通知能力">
+          <span class="switch-hint">当前环境未配置通知接口，本次处理不会发送通知。</span>
         </el-form-item>
       </el-form>
     </div>
@@ -69,7 +63,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import { handleRiskWarning } from '@/api/risk-warning'
+import { resolveCommandCenterIncident } from '@/api/command-center'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -82,13 +76,10 @@ const formRef = ref(null)
 const submitting = ref(false)
 
 const form = reactive({
-  handleType: 'confirmed',
-  handleNote: '',
-  notifyLeader: false
+  handleNote: ''
 })
 
 const rules = {
-  handleType: [{ required: true, message: '请选择处理方式', trigger: 'change' }],
   handleNote: [{ required: true, message: '请填写处理说明', trigger: 'blur' }]
 }
 
@@ -104,18 +95,15 @@ const onSubmit = async () => {
 
   submitting.value = true
   try {
-    // 后端 RiskWarningController 提取 handleBy 和 handleRemark 两个字段
-    await handleRiskWarning(props.event.id, {
-      handleBy:     form.handleType,   // 处理方式（confirmed/false_alarm/dispatched/resolved）
-      handleRemark: form.handleNote    // 处理说明文本
+    await resolveCommandCenterIncident(props.event.id, {
+      occurredAt: props.event.occurredAt,
+      remark: form.handleNote
     })
     ElMessage.success('处理成功')
-    emit('handled', props.event.id)
+    emit('handled')
     emit('update:visible', false)
     // Reset form
-    form.handleType = 'confirmed'
     form.handleNote = ''
-    form.notifyLeader = false
   } catch (err) {
     ElMessage.error('处理失败: ' + (err.message || '未知错误'))
   } finally {

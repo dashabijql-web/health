@@ -29,20 +29,21 @@ export function buildRenderedDeptAiReport(content) {
 }
 
 export function mapWarningToEvent(record) {
-  const warningType = record.warningType || record.warning_type || record.type || ''
+  const warningType = record.typeLabel || record.warningType || record.warning_type || record.type || ''
+  const incidentType = String(record.type || '').toUpperCase()
   let eventType = 'abnormal'
   let level = 'medium'
   let icon = 'WARN'
 
-  if (warningType.includes('SOS') || warningType.includes('sos')) {
+  if (incidentType === 'SOS' || warningType.includes('SOS') || warningType.includes('sos')) {
     eventType = 'sos'
     level = 'critical'
     icon = 'SOS'
-  } else if (warningType.includes('跌倒') || warningType.includes('fall')) {
+  } else if (incidentType === 'FALL' || warningType.includes('跌倒') || warningType.includes('fall')) {
     eventType = 'fall'
     level = 'high'
     icon = 'FALL'
-  } else if (warningType.includes('静止') || warningType.includes('static')) {
+  } else if (incidentType === 'STILL' || warningType.includes('静止') || warningType.includes('static')) {
     eventType = 'static'
     level = 'medium'
     icon = 'IDLE'
@@ -60,7 +61,7 @@ export function mapWarningToEvent(record) {
     icon = 'REST'
   }
 
-  const createdAt = record.createTime || record.create_time || record.time || ''
+  const createdAt = record.occurredAt || record.createTime || record.create_time || record.time || ''
   let durationMinutes = 0
   if (createdAt) {
     const createdDate = new Date(createdAt)
@@ -70,17 +71,24 @@ export function mapWarningToEvent(record) {
   }
 
   return {
-    id: record.id,
+    id: record.warningId ?? record.id,
+    incidentId: record.incidentId || '',
     icon,
     type: warningType,
-    user: record.userName || record.user_name || '',
-    userCode: record.userCode || record.user_code || '',
-    dept: record.deptName || record.dept_name || '',
-    location: record.location || record.deptName || record.dept_name || '',
+    user: record.person?.name || record.userName || record.user_name || '',
+    userCode: record.person?.userCode || record.userCode || record.user_code || '',
+    dept: record.person?.department || record.deptName || record.dept_name || '',
+    location: record.location?.status === 'UNAVAILABLE'
+      ? '未接入定位'
+      : (record.location?.label || record.location || record.deptName || record.dept_name || ''),
     time: formatEventAge(createdAt),
+    occurredAt: createdAt,
+    owner: record.owner?.name || (record.owner?.status === 'UNASSIGNED' ? '未分派' : ''),
+    sla: record.sla?.configured ? record.sla.deadlineAt : '未配置',
     level,
     eventType,
-    durationMinutes
+    durationMinutes,
+    status: record.status || (record.handled ? 'RESOLVED' : 'NEW')
   }
 }
 
@@ -90,6 +98,21 @@ export function buildProcessedWarningData(raw) {
   return {
     events,
     ...buildEventRiskSummary(events)
+  }
+}
+
+export function resolveWarningTotals(overview, fallbackPending = 0) {
+  const data = overview || {}
+  const handled = Number(data.handledWarnings ?? data.handledCount ?? data.handled ?? 0)
+  const pendingValue = data.pendingWarnings ?? data.pendingCount
+  const totalValue = data.totalWarnings ?? data.totalCount ?? data.total
+  const pending = Number(pendingValue ?? fallbackPending)
+
+  return {
+    pending,
+    handled,
+    total: Number(totalValue ?? (pending + handled)),
+    critical: Number(data.dangerCount ?? data.criticalCount ?? 0)
   }
 }
 
@@ -122,12 +145,12 @@ export function buildDeptRankData(departments) {
   return [...(departments || [])]
     .map((dept) => {
       const warnings = (dept.sos || 0) + (dept.fall || 0) + (dept.abnormal || 0)
-      const level = (dept.sos > 0 || dept.fall > 0) ? 'H' : warnings > 2 ? 'M' : warnings > 0 ? 'L' : 'N'
+      const level = warnings > 0 ? 'M' : 'N'
       return {
         ...dept,
         warnings,
         level,
-        statusText: DEPT_LEVEL_TEXT_MAP[level] || '正常'
+        statusText: warnings > 0 ? '有预警' : '正常'
       }
     })
     .sort((a, b) => b.warnings - a.warnings)
@@ -267,7 +290,7 @@ export function buildDepartmentListFromWarningStats(deptData) {
       fall: 0,
       static: 0,
       abnormal: totalWarn,
-      status: totalWarn >= 10 ? 'danger' : totalWarn >= 3 ? 'warning' : 'safe'
+      status: totalWarn > 0 ? 'warning' : 'safe'
     }
   })
 }
@@ -284,11 +307,11 @@ export function buildWatchStatus(realtimeStats) {
   }
 }
 
-export function buildStageIntelItems({ stats, watchStatus, pendingCount, handledCount, warningHandledRate, deptsSorted }) {
+export function buildStageIntelItems({ stats, watchStatus, pendingCount, handledCount, criticalCount, warningHandledRate, deptsSorted }) {
   const statData = stats || {}
   const watchData = watchStatus || {}
   const topDept = (deptsSorted || [])[0]
-  const criticalCount = (statData.sos || 0) + (statData.fall || 0)
+  const currentCriticalCount = criticalCount ?? ((statData.sos || 0) + (statData.fall || 0))
   const onlineRate = watchData.total ? Math.round((watchData.online || 0) / watchData.total * 100) : 0
 
   return [
@@ -296,8 +319,8 @@ export function buildStageIntelItems({ stats, watchStatus, pendingCount, handled
       key: 'active-risk',
       label: '当前风险',
       value: pendingCount || 0,
-      note: `高危 ${criticalCount} / 其他 ${Math.max(0, (pendingCount || 0) - criticalCount)}`,
-      tone: criticalCount > 0 ? 'danger' : pendingCount > 0 ? 'warning' : 'safe'
+      note: `高危 ${currentCriticalCount} / 其他 ${Math.max(0, (pendingCount || 0) - currentCriticalCount)}`,
+      tone: currentCriticalCount > 0 ? 'danger' : pendingCount > 0 ? 'warning' : 'safe'
     },
     {
       key: 'watch-link',
@@ -323,10 +346,10 @@ export function buildStageIntelItems({ stats, watchStatus, pendingCount, handled
   ]
 }
 
-export function buildStageActionItems({ stats, watchStatus, pendingCount, handledCount, warningHandledRate }) {
+export function buildStageActionItems({ stats, watchStatus, pendingCount, handledCount, criticalCount, warningHandledRate }) {
   const statData = stats || {}
   const watchData = watchStatus || {}
-  const criticalCount = (statData.sos || 0) + (statData.fall || 0)
+  const currentCriticalCount = criticalCount ?? ((statData.sos || 0) + (statData.fall || 0))
 
   return [
     {
@@ -346,7 +369,7 @@ export function buildStageActionItems({ stats, watchStatus, pendingCount, handle
     {
       key: 'medical',
       label: '医疗联动',
-      value: criticalCount,
+      value: currentCriticalCount,
       note: 'SOS + 跌倒',
       tone: criticalCount > 0 ? 'danger' : 'safe'
     },
@@ -368,7 +391,7 @@ export function buildStageNodes({ deptsSorted, areas, departments }) {
     key: `dept-${dept.id || dept.name || index}`,
     label: dept.name || `部门${index + 1}`,
     value: dept.warnings || 0,
-    meta: `SOS ${dept.sos || 0} / 跌倒 ${dept.fall || 0} / 异常 ${(dept.static || 0) + (dept.abnormal || 0)}`,
+    meta: '今日部门预警总量',
     status: dept.statusText || '正常',
     tone: dept.level === 'H' ? 'danger' : dept.level === 'M' ? 'warning' : dept.level === 'L' ? 'primary' : 'safe',
     dept,

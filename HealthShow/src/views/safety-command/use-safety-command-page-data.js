@@ -1,13 +1,7 @@
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useIntervalTask } from '@/composables/useIntervalTask'
 import { createEventBinding } from '@/utils/task-timer'
-import {
-  buildAreasFromDepartments,
-  buildDepartmentListFromWarningStats,
-  buildProcessedWarningData,
-  buildWatchStatus,
-  normalizeWarningTrendData
-} from './safety-command-view-model'
+import { buildProcessedWarningData } from './safety-command-view-model'
 import {
   fetchSafetyCommandCritical,
   fetchSafetyCommandData,
@@ -22,12 +16,18 @@ function updateClock(currentDate, currentTime) {
   currentTime.value = now.toLocaleTimeString('zh-CN', { hour12: false })
 }
 
-export function useSafetyCommandPageData() {
+export function useSafetyCommandPageData(options = {}) {
+  const legacy = options.legacy === true
+  const commandSummary = ref({ warning: {}, device: {} })
+  const dataAsOf = ref('')
   const currentDate = ref('')
   const currentTime = ref('')
   const stats = ref({ underground: 0, total: 0, sos: 0, fall: 0, static: 0, abnormal: 0, normal: 0 })
   const watchStatus = ref({ total: 0, online: 0, offline: 0, lowBattery: 0 })
   const handledCount = ref(0)
+  const pendingWarnings = ref(null)
+  const totalWarnings = ref(null)
+  const criticalWarnings = ref(0)
   const vitalAvg = ref({ heartRate: 0, bloodOxygen: 0, temperature: 0, pressure: 0 })
   const vitalsHistory = reactive({ hr: [], bo: [] })
   const events = ref([])
@@ -44,18 +44,33 @@ export function useSafetyCommandPageData() {
     stats.value.fall = nextState.fallCount
   }
 
-  const fetchCritical = async () => fetchSafetyCommandCritical({ processWarningData, handledCountRef: handledCount })
-  const fetchHourlyVitals = async () => fetchSafetyCommandHourlyVitals(vitalsHistory)
-  const fetchAllData = async () => fetchSafetyCommandData({
-    statsRef: stats,
-    watchStatusRef: watchStatus,
+  const fetchCritical = async () => fetchSafetyCommandCritical({
+    processWarningData,
     handledCountRef: handledCount,
-    vitalAvgRef: vitalAvg,
+    pendingWarningsRef: pendingWarnings,
+    totalWarningsRef: totalWarnings,
+    criticalWarningsRef: criticalWarnings,
+    commandSummaryRef: commandSummary,
+    dataAsOfRef: dataAsOf
+  })
+  const fetchAllData = async () => fetchSafetyCommandData({
+    handledCountRef: handledCount,
+    pendingWarningsRef: pendingWarnings,
+    totalWarningsRef: totalWarnings,
+    criticalWarningsRef: criticalWarnings,
+    commandSummaryRef: commandSummary,
+    dataAsOfRef: dataAsOf,
     warningTrendRef: warningTrend,
     departmentsRef: departments,
-    areasRef: areas,
-    processWarningData
+    processWarningData,
+    ...(legacy ? {
+      statsRef: stats,
+      watchStatusRef: watchStatus,
+      vitalAvgRef: vitalAvg,
+      areasRef: areas
+    } : {})
   })
+  const fetchHourlyVitals = async () => fetchSafetyCommandHourlyVitals(vitalsHistory)
 
   const { start: startClock, stop: stopClock } = useIntervalTask(() => updateClock(currentDate, currentTime), 1000)
   const { start: startCriticalPolling, stop: stopCriticalPolling } = useIntervalTask(fetchCritical, 5000)
@@ -82,31 +97,38 @@ export function useSafetyCommandPageData() {
   }
 
   onMounted(() => {
-    updateClock(currentDate, currentTime)
-    startClock()
+    if (legacy) {
+      updateClock(currentDate, currentTime)
+      startClock()
+      fetchHourlyVitals()
+    }
     fetchAllData()
-    fetchHourlyVitals()
     startPolling()
     visibilityBinding = createEventBinding(() => document, 'visibilitychange', onVisibilityChange)
     visibilityBinding.start()
   })
 
   onUnmounted(() => {
-    stopClock()
+    if (legacy) stopClock()
     stopPolling()
     visibilityBinding?.stop?.()
   })
 
   return {
     areas,
+    commandSummary,
     currentDate,
     currentTime,
+    dataAsOf,
     departments,
     events,
     fetchAllData,
     fetchCritical,
     fetchHourlyVitals,
     handledCount,
+    pendingWarnings,
+    totalWarnings,
+    criticalWarnings,
     processWarningData,
     riskPersons,
     stats,
