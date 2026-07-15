@@ -3,13 +3,12 @@
     <div class="ph">
       <span class="pt">
         <span class="pt-bar red-bar"></span>
-        高危人员
+        重点关注人员
         <span class="pt-cnt">{{ persons.length }}</span>
       </span>
-      <button class="call-btn" @click="$emit('callAll')">全部呼叫</button>
     </div>
     <div class="rp-list">
-      <div v-if="persons.length === 0" class="rp-empty">暂无高危人员</div>
+      <div v-if="persons.length === 0" class="rp-empty">暂无重点关注人员</div>
       <div v-for="p in persons" :key="p.id||p.name" class="rp" @click="$emit('showPerson', p)">
         <div class="rp-av">{{ p.name.charAt(0) }}</div>
         <div class="rp-info">
@@ -28,7 +27,7 @@
 
 <script setup>
 defineProps({ persons: { type: Array, default: () => [] } })
-defineEmits(['showAll','callAll','showPerson'])
+defineEmits(['showAll','showPerson'])
 
 const getTagClass = (t) =>
   t.includes('SOS') ? 'tg-r' :

@@ -11,9 +11,9 @@
       <div class="sc-hd-right">
         <span class="sc-hd-clock">数据截至 {{ dataAsOf || `${currentDate} ${currentTime}` }}</span>
         <div class="sc-hd-actions">
-          <button class="sc-hd-btn sc-hd-btn--outline" @click="emergencyCall">呼叫</button>
-          <button class="sc-hd-btn sc-hd-btn--outline" @click="emergencyBroadcast">广播</button>
-          <button class="sc-hd-btn sc-hd-btn--danger" @click="emergencyEvacuate">撤离</button>
+          <button class="sc-hd-btn sc-hd-btn--outline" type="button" disabled title="请在具体事件中发起呼叫">呼叫 · 未配置</button>
+          <button class="sc-hd-btn sc-hd-btn--outline" type="button" disabled title="请在具体事件中发起广播">广播 · 未配置</button>
+          <button class="sc-hd-btn sc-hd-btn--danger" type="button" disabled title="请在具体事件中发起撤离">撤离 · 未配置</button>
         </div>
       </div>
     </header>
@@ -34,8 +34,9 @@
               v-for="item in stageIntelItems"
               :key="item.key"
               type="button"
-              :class="['sc-stage-intel-card', `tone-${item.tone}`]"
-              @click="showInfoDialog(item.label, item.note)"
+              :disabled="item.key === 'freshness'"
+              :class="['sc-stage-intel-card', `tone-${item.tone}`, { 'is-active': activeEventFilter === item.key, 'is-static': item.key === 'freshness' }]"
+              @click="item.key !== 'freshness' && applyEventFilter(item.key, item.label)"
             >
               <span>{{ item.label }}</span>
               <strong>{{ item.value }}</strong>
@@ -59,7 +60,7 @@
             type="button"
             :class="['sc-stage-node', `tone-${node.tone}`]"
             :style="{ '--node-x': node.x + '%', '--node-y': node.y + '%' }"
-            @click="node.dept ? showDeptDetail(node.dept) : showAreaDetail(node.area)"
+            @click="openDepartment(node.dept || node.area)"
           >
             <span class="sc-node-pulse"></span>
             <span class="sc-node-main">
@@ -77,8 +78,8 @@
               v-for="action in stageActionItems"
               :key="action.key"
               type="button"
-              :class="['sc-stage-action-cell', `tone-${action.tone}`]"
-              @click="action.key === 'broadcast' ? emergencyBroadcast() : showInfoDialog(action.label, action.note)"
+              :class="['sc-stage-action-cell', `tone-${action.tone}`, { 'is-active': activeEventFilter === action.key }]"
+              @click="handleStageAction(action)"
             >
               <span>{{ action.label }}</span>
               <strong>{{ action.value }}</strong>
@@ -95,7 +96,12 @@
             <span class="sc-panel-kicker">RESPONSE QUEUE</span>
             <h2>现场处置队列</h2>
           </div>
-          <span class="sc-queue-count">{{ authoritativePendingCount }}</span>
+          <span class="sc-queue-count">{{ activeEventFilter === 'all' ? authoritativePendingCount : `${filteredEvents.length}/${authoritativePendingCount}` }}</span>
+        </div>
+
+        <div v-if="activeEventFilter !== 'all'" class="sc-active-filter">
+          <span>当前筛选：{{ activeEventFilterLabel }}</span>
+          <button type="button" @click="clearEventFilter">清除</button>
         </div>
 
         <div class="sc-queue-list">
@@ -103,7 +109,7 @@
             v-for="(item, index) in commandQueue"
             :key="item.id"
             :class="['sc-queue-card', `tone-${item.tone}`]"
-            @click="item.event ? showEventDetail(item.event) : showInfoDialog('值守状态', item.meta)"
+            @click="item.event && showEventDetail(item.event)"
           >
             <span class="sc-queue-order">{{ String(index + 1).padStart(2, '0') }}</span>
             <div class="sc-queue-main">
@@ -111,9 +117,10 @@
               <span>{{ item.meta }}</span>
             </div>
             <button
+              v-if="item.event"
               type="button"
               class="sc-queue-action"
-              @click.stop="item.event ? onHandleEvent(item.event) : emergencyBroadcast()"
+              @click.stop="item.event && onHandleEvent(item.event)"
             >{{ item.action }}</button>
           </article>
         </div>
@@ -121,7 +128,6 @@
         <RiskPersonPanel
           class="sc-risk-lane"
           :persons="top5Persons"
-          @callAll="emergencyCall"
           @showPerson="onShowPerson"
         />
       </aside>
@@ -129,7 +135,8 @@
 
     <SafetyCommandSupportGrid
       :donut-segments="donutSegments"
-      :events="events"
+      :events="filteredEvents"
+      :event-list-title="activeEventFilter === 'all' ? '开放事件' : activeEventFilterLabel"
       :handled-count="handledCount"
       :pending-count="authoritativePendingCount"
       :trend7day-total="trend7dayTotal"
@@ -137,31 +144,18 @@
       :trend-path="trendPath"
       :warning-handled-rate="warningHandledRate"
       :warning-trend="warningTrend"
-      @show-dept="showDeptDetail"
+      @show-dept="openDepartment"
       @show-event="showEventDetail"
       @show-person-from-event="onShowPersonFromEvent"
       @handle-event="onHandleEvent"
     />
 
-    <SafetyCommandDialogs
-      v-model:areaDialogVisible="areaDialogVisible"
-      v-model:deptDialogVisible="deptDialogVisible"
-      v-model:broadcastDialogVisible="broadcastDialogVisible"
-      v-model:contactDialogVisible="contactDialogVisible"
-      v-model:infoDialogVisible="infoDialogVisible"
-      v-model:broadcastContent="broadcastContent"
-      :currentArea="currentArea"
-      :currentDept="currentDept"
-      :deptAiReport="deptAiReport"
-      :deptAiRendered="deptAiRendered"
-      :deptAiLoading="deptAiLoading"
-      :deptAiTime="deptAiTime"
-      :infoDialogTitle="infoDialogTitle"
-      :infoDialogContent="infoDialogContent"
-      @showInfo="showInfoDialog"
-      @deptDialogOpen="onDeptDialogOpen"
-      @handleDeptAi="handleDeptAi"
-      @confirmBroadcast="confirmBroadcast"
+    <DepartmentIncidentDrawer
+      v-model:visible="departmentDrawerVisible"
+      :department="currentDepartment"
+      :events="events"
+      @show-event="openEventFromDepartment"
+      @show-person="onShowPersonFromEvent"
     />
 
     <IncidentCommandDrawer
@@ -176,21 +170,18 @@
       v-model:visible="personDrawerVisible"
       :userCode="personDrawerUserCode"
       :userName="personDrawerUserName"
-      @call="(code) => showInfoDialog('呼叫', `正在呼叫 ${code}...`)"
-      @notify="(code) => showInfoDialog('通知', `正在通知 ${code}...`)"
-      @viewRecord="(code) => showInfoDialog('完整档案', `加载 ${code} 健康档案...`)"
     />
 
   </div>
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getCommandCenterIncident } from '@/api/command-center'
 import RiskPersonPanel from './components/RiskPersonPanel.vue'
 import SafetyCommandSupportGrid from './components/SafetyCommandSupportGrid.vue'
-import SafetyCommandDialogs from './components/SafetyCommandDialogs.vue'
+import DepartmentIncidentDrawer from './components/DepartmentIncidentDrawer.vue'
 import IncidentCommandDrawer from './components/IncidentCommandDrawer.vue'
 import PersonDetailDrawer from './components/PersonDetailDrawer.vue'
 import {
@@ -220,14 +211,16 @@ const {
   fetchAllData,
   handledCount,
   pendingWarnings,
-  processWarningData,
   riskPersons,
-  stats,
   warningTrend
 } = useSafetyCommandPageData()
 
 const route = useRoute()
 const router = useRouter()
+const activeEventFilter = ref('all')
+const activeEventFilterLabel = ref('全部开放事件')
+const departmentDrawerVisible = ref(false)
+const currentDepartment = ref(null)
 
 // ── Derived KPI ───────────────────────────────────────────────────────────────
 const isSafe = computed(() => Number(commandSummary.value.warning?.criticalPending || 0) === 0)
@@ -281,8 +274,16 @@ const stageNodes = computed(() => buildStageNodes({
   departments: departments.value
 }))
 
+const filteredEvents = computed(() => {
+  const list = events.value || []
+  if (activeEventFilter.value === 'unassigned') return list.filter((event) => !event.owner || event.owner === '未分派')
+  if (activeEventFilter.value === 'overdue') return list.filter((event) => event.slaStatus === 'OVERDUE')
+  if (activeEventFilter.value === 'critical') return list.filter((event) => ['critical', 'high'].includes(event.level))
+  return list
+})
+
 const commandQueue = computed(() => {
-  const queue = (events.value || []).slice(0, 5).map((event) => ({
+  const queue = filteredEvents.value.slice(0, 5).map((event) => ({
     id: event.id || `${event.user}-${event.time}-${event.type}`,
     title: `${event.user || '未知人员'} · ${event.type || '预警'}`,
     meta: `${event.dept || event.location || '未知区域'} / ${event.time || '刚刚'}`,
@@ -296,8 +297,8 @@ const commandQueue = computed(() => {
   return [{
     id: 'safe-duty',
     title: '当前无紧急事件',
-    meta: '保持在线巡查，关注设备离线和低电量变化',
-    action: '广播',
+    meta: activeEventFilter.value === 'all' ? '当前已加载范围内无开放事件' : `“${activeEventFilterLabel.value}”暂无匹配事件`,
+    action: '',
     tone: 'safe',
     event: null
   }]
@@ -317,38 +318,55 @@ const trend7dayTotal = computed(() => buildTrend7dayTotal(warningTrend.value))
 const trendChange = computed(() => buildTrendChange(warningTrend.value))
 
 const {
-  areaDialogVisible,
-  broadcastContent,
-  broadcastDialogVisible,
-  confirmBroadcast,
-  contactDialogVisible,
-  currentArea,
-  currentDept,
   currentEvent,
-  deptAiLoading,
-  deptAiRendered,
-  deptAiReport,
-  deptAiTime,
-  deptDialogVisible,
-  emergencyBroadcast,
-  emergencyCall,
-  emergencyEvacuate,
-  handleDeptAi,
-  infoDialogContent,
-  infoDialogTitle,
-  infoDialogVisible,
-  onDeptDialogOpen,
   onHandleEvent,
   onShowPerson,
   onShowPersonFromEvent,
   personDrawerUserCode,
   personDrawerUserName,
   personDrawerVisible,
-  showAreaDetail,
-  showDeptDetail,
-  showEventDetail,
-  showInfoDialog
-} = useSafetyCommandInteractions({ statsRef: stats })
+  showEventDetail
+} = useSafetyCommandInteractions()
+
+function applyEventFilter(key, label) {
+  activeEventFilter.value = key
+  activeEventFilterLabel.value = key === 'active-risk' ? '全部开放事件' : label
+}
+
+function clearEventFilter() {
+  activeEventFilter.value = 'all'
+  activeEventFilterLabel.value = '全部开放事件'
+}
+
+function handleStageAction(action) {
+  if (action.key === 'today-new') {
+    router.push({
+      path: '/alert-management/records',
+      query: { startDate: currentDate.value, endDate: currentDate.value }
+    })
+    return
+  }
+  if (action.key === 'handled' || action.key === 'review') {
+    router.push({
+      path: '/alert-management/records',
+      query: { handleStatus: 'handled', startDate: currentDate.value, endDate: currentDate.value }
+    })
+    return
+  }
+  applyEventFilter(action.key, action.label)
+}
+
+function openDepartment(department) {
+  currentDepartment.value = typeof department === 'string'
+    ? (deptsSorted.value.find((item) => item.name === department) || department)
+    : department
+  departmentDrawerVisible.value = true
+}
+
+function openEventFromDepartment(event) {
+  departmentDrawerVisible.value = false
+  showEventDetail(event)
+}
 
 function returnToDashboard() {
   router.push({

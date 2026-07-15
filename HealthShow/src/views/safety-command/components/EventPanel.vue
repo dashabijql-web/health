@@ -3,7 +3,7 @@
     <div class="ph">
       <span class="pt">
         <span class="pt-bar red-bar"></span>
-        紧急事件
+        {{ title }}
         <span class="pt-cnt">{{ events.length }}</span>
       </span>
       <div class="tabs">
@@ -79,7 +79,8 @@ import * as echarts from '@/utils/echarts-setup'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
-  trendData: { type: Array, default: () => [] }
+  trendData: { type: Array, default: () => [] },
+  title: { type: String, default: '开放事件' }
 })
 defineEmits(['showAll','showDetail','showPerson','showDept','handle'])
 

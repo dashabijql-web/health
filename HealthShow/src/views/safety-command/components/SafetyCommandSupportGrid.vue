@@ -116,7 +116,9 @@
 
     <div class="sc-support-events panel-enter" style="--delay:.4s">
       <EventPanel
+        :key="eventListTitle"
         :events="events"
+        :title="event-list-title"
         :trend-data="[]"
         @showDetail="emit('show-event', $event)"
         @showPerson="emit('show-person-from-event', $event)"
@@ -140,7 +142,8 @@ const props = defineProps({
   trendChange: { type: Number, default: 0 },
   trendPath: { type: Object, default: null },
   warningHandledRate: { type: Number, default: 0 },
-  warningTrend: { type: Array, default: () => [] }
+  warningTrend: { type: Array, default: () => [] },
+  eventListTitle: { type: String, default: '开放事件' }
 })
 
 const loadedTypeTotal = computed(() => props.donutSegments.reduce((sum, item) => sum + Number(item.cnt || 0), 0))
