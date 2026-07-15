@@ -52,3 +52,14 @@ test('employee profile history supports employee-scoped ranges, curves and serve
   assert.match(historyModel, /HISTORY_METRICS/)
   assert.match(api, /\/api\/health\/record\/history\/trend/)
 })
+
+test('employee profile shows a live countdown aligned with its 30-second refresh', () => {
+  const page = source('src/views/health-monitor/employee-profile/index.vue')
+  const composable = source('src/views/health-monitor/employee-profile/use-employee-profile-page.js')
+
+  assert.match(page, /距下次刷新 \{\{ nextRefreshSeconds \}\} 秒/)
+  assert.match(composable, /const PROFILE_REFRESH_SECONDS = 30/)
+  assert.match(composable, /nextRefreshSeconds\.value -= 1/)
+  assert.match(composable, /nextRefreshSeconds\.value <= 0[\s\S]*refresh\(\)/)
+  assert.match(composable, /useIntervalTask\([\s\S]*1000\)/)
+})

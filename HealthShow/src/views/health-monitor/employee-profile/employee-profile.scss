@@ -58,8 +58,15 @@
 
 .ep-ph-bar { width: 3px; height: 15px; background: #00b4ff; border-radius: 2px; }
 .ep-ph-context { color: #6f92af; font-size: 11px; font-weight: 400; }
-.ep-text-action {
+.ep-refresh-countdown {
   margin-left: auto;
+  color: #7fa3bf;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.ep-text-action {
   padding: 4px 0;
   border: 0;
   background: transparent;
@@ -183,4 +190,5 @@
   .ep-warning-layout { grid-template-columns: 1fr; }
   .ep-warn-list { grid-template-columns: 1fr; }
   .ep-ph-context { display: none; }
+  .ep-refresh-countdown { font-size: 10px; }
 }

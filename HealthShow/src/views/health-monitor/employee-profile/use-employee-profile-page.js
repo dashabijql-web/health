@@ -25,6 +25,8 @@ import {
   syncEmpInfoFromRoute
 } from './employee-profile-runtime'
 
+const PROFILE_REFRESH_SECONDS = 30
+
 export function useEmployeeProfilePage() {
   const route = useRoute()
   const router = useRouter()
@@ -40,12 +42,14 @@ export function useEmployeeProfilePage() {
   const isOnline = ref(false)
   const lastUpdate = ref('--')
   const freshnessStatus = ref('no_data')
+  const nextRefreshSeconds = ref(PROFILE_REFRESH_SECONDS)
   const printWindowRef = ref(null)
   const trend7 = ref({ avgHr: 0, avgSpo2: 0, avgTemp: 0 })
   const portraitTrend = ref(null)
   const personCommandVisible = ref(false)
   const incidentDrawerVisible = ref(false)
   const currentIncidentEvent = ref(null)
+  let refreshInFlight = false
 
   const aiReportVisible = ref(false)
   const aiReportLoading = ref(false)
@@ -175,42 +179,47 @@ export function useEmployeeProfilePage() {
 
   async function refresh() {
     const code = empInfo.value.empCode
-    if (!code) return
+    nextRefreshSeconds.value = PROFILE_REFRESH_SECONDS
+    if (!code || refreshInFlight) return
+    refreshInFlight = true
 
-    const now = new Date()
-    const endDate = now.toISOString().slice(0, 10)
-    const start30 = new Date(now.getTime() - 29 * 86400000).toISOString().slice(0, 10)
-    const start7 = new Date(now.getTime() - 6 * 86400000).toISOString().slice(0, 10)
-    const [portraitRes, warnRes, pendingRes, warn7Res] = await Promise.allSettled([
-      getHealthPortrait(code),
-      getRiskWarningList({ userCode: code, startDate: start30, endDate, page: 1, size: 4 }),
-      getRiskWarningList({ userCode: code, handled: false, startDate: start30, endDate, page: 1, size: 1 }),
-      getRiskWarningList({ userCode: code, startDate: start7, endDate, page: 1, size: 1 })
-    ])
+    try {
+      const now = new Date()
+      const endDate = now.toISOString().slice(0, 10)
+      const start30 = new Date(now.getTime() - 29 * 86400000).toISOString().slice(0, 10)
+      const start7 = new Date(now.getTime() - 6 * 86400000).toISOString().slice(0, 10)
+      const [portraitRes, warnRes, pendingRes, warn7Res] = await Promise.allSettled([
+        getHealthPortrait(code),
+        getRiskWarningList({ userCode: code, startDate: start30, endDate, page: 1, size: 4 }),
+        getRiskWarningList({ userCode: code, handled: false, startDate: start30, endDate, page: 1, size: 1 }),
+        getRiskWarningList({ userCode: code, startDate: start7, endDate, page: 1, size: 1 })
+      ])
 
-    if (portraitRes.status === 'fulfilled' && portraitRes.value?.data) {
-      applyEmployeePortrait(portraitRes.value.data, {
-        vitals,
-        exercise,
-        isOnline,
-        lastUpdate,
-        freshnessStatus,
-        trend7,
-        portraitTrend
-      })
-    }
+      if (portraitRes.status === 'fulfilled' && portraitRes.value?.data) {
+        applyEmployeePortrait(portraitRes.value.data, {
+          vitals,
+          exercise,
+          isOnline,
+          lastUpdate,
+          freshnessStatus,
+          trend7,
+          portraitTrend
+        })
+      }
 
-    if (warnRes.status === 'fulfilled' && warnRes.value?.data) {
-      warnings.value = normalizeEmployeeWarnings(warnRes.value.data)
-      warningTotal.value = Number(warnRes.value.data.total) || 0
+      if (warnRes.status === 'fulfilled' && warnRes.value?.data) {
+        warnings.value = normalizeEmployeeWarnings(warnRes.value.data)
+        warningTotal.value = Number(warnRes.value.data.total) || 0
+      }
+      if (pendingRes.status === 'fulfilled' && pendingRes.value?.data) {
+        pendingTotal.value = Number(pendingRes.value.data.total) || 0
+      }
+      if (warn7Res.status === 'fulfilled' && warn7Res.value?.data) {
+        warning7Total.value = Number(warn7Res.value.data.total) || 0
+      }
+    } finally {
+      refreshInFlight = false
     }
-    if (pendingRes.status === 'fulfilled' && pendingRes.value?.data) {
-      pendingTotal.value = Number(pendingRes.value.data.total) || 0
-    }
-    if (warn7Res.status === 'fulfilled' && warn7Res.value?.data) {
-      warning7Total.value = Number(warn7Res.value.data.total) || 0
-    }
-
   }
 
   async function loadProfilePage() {
@@ -226,7 +235,10 @@ export function useEmployeeProfilePage() {
     }
   }
 
-  const { start: startProfileRefresh } = useIntervalTask(refresh, 30000)
+  const { start: startProfileRefresh } = useIntervalTask(() => {
+    nextRefreshSeconds.value -= 1
+    if (nextRefreshSeconds.value <= 0) void refresh()
+  }, 1000)
 
   const openAiReport = async () => {
     if (!empInfo.value.empCode) return
@@ -333,6 +345,7 @@ export function useEmployeeProfilePage() {
     lastUpdate,
     loading,
     nextActionSummary,
+    nextRefreshSeconds,
     openAiReport,
     openEmergency,
     openPersonCommand,

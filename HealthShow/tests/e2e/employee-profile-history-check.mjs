@@ -23,6 +23,18 @@ try {
   await card.click()
   await page.locator('.ep-history-chart canvas').waitFor({ state: 'visible', timeout: 15000 })
 
+  const countdown = page.locator('.ep-refresh-countdown')
+  await countdown.waitFor({ state: 'visible', timeout: 5000 })
+  const readCountdown = async () => Number((await countdown.textContent())?.match(/(\d+)\s*秒/)?.[1])
+  const countdownStart = await readCountdown()
+  await page.waitForTimeout(1200)
+  const countdownNext = await readCountdown()
+  if (!Number.isFinite(countdownStart) || countdownNext >= countdownStart) {
+    throw new Error(`refresh countdown did not decrease: ${countdownStart} -> ${countdownNext}`)
+  }
+  await page.getByRole('button', { name: '刷新', exact: true }).click()
+  await page.waitForFunction(() => document.querySelector('.ep-refresh-countdown')?.textContent?.includes('30 秒'))
+
   const samples = await page.locator('.ep-history-summary strong').first().textContent()
   if (!samples || Number.parseInt(samples, 10) <= 0) throw new Error(`invalid sample total: ${samples}`)
 

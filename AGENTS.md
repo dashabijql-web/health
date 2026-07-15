@@ -366,6 +366,7 @@ sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; 
 - 历史曲线走 `GET /api/health/record/history/trend`，按当前员工和日期范围直查涉及的月分表；原始明细继续走 `/api/health/record/page` 服务端分页。禁止前端截取前200条或当前页数据自行计算时间段曲线。
 - 历史区必须始终显示员工姓名、工号、起止日期、聚合粒度、完整样本数和明细总数；曲线与明细都继续遵循 `X-Health-Data-Source` 双库路由。
 - 本轮历史区五档滚动视觉审计通过，结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T08-21-43-765Z/layout-summary.md`；真实交互守护为 `node tests/e2e/employee-profile-history-check.mjs`。
+- 当前体征每30秒自动刷新，标题栏必须显示动态秒级倒计时；自动刷新、手动刷新和切换员工后倒计时都从30秒重新开始，且不得并发发起重复刷新请求。
 
 ## 当前验证基线
 

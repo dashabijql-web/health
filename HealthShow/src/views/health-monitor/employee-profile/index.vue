@@ -58,6 +58,7 @@
           <div class="ep-ph">
             <span class="ep-ph-bar"></span>当前体征
             <span class="ep-ph-context">每项取最近一次非空读数</span>
+            <span class="ep-refresh-countdown">距下次刷新 {{ nextRefreshSeconds }} 秒</span>
             <button type="button" class="ep-text-action" @click="refresh">刷新</button>
           </div>
           <div class="ep-vital-grid">
@@ -153,7 +154,7 @@ const {
   currentIncidentEvent, empInfo, exercise, fmtTime, freshnessStatus,
   handleIncidentUpdated, incidentDrawerVisible, isOnline, lastUpdate, loading,
   openAiReport, openEmergency, openPersonCommand, personCommandVisible,
-  printAiReport, profileInsightLines, profileSummaryCards, recentWarnings,
+  nextRefreshSeconds, printAiReport, profileInsightLines, profileSummaryCards, recentWarnings,
   recentWarningFootnote, recentWarningSummary, refresh,
   vitals, goWarningCenter
 } = page
