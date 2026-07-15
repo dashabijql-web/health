@@ -25,7 +25,7 @@
             <span>{{ event.time || '刚刚' }} · {{ event.owner || '未分派' }}</span>
             <span>{{ event.location || '未接入定位' }} · {{ event.slaStatus === 'OVERDUE' ? '已超时' : '处置中' }}</span>
           </button>
-          <button type="button" class="dept-incident-person" @click="$emit('show-person', event)">人员</button>
+          <button type="button" class="dept-incident-person" @click="$emit('show-profile', event)">健康画像</button>
           <button type="button" class="dept-incident-handle" @click="$emit('show-event', event)">处置</button>
         </article>
       </div>
@@ -43,7 +43,7 @@ const props = defineProps({
   events: { type: Array, default: () => [] }
 })
 
-defineEmits(['update:visible', 'show-event', 'show-person'])
+defineEmits(['update:visible', 'show-event', 'show-profile'])
 
 const departmentName = computed(() => typeof props.department === 'string'
   ? props.department

@@ -155,7 +155,7 @@
       :department="currentDepartment"
       :events="events"
       @show-event="openEventFromDepartment"
-      @show-person="onShowPersonFromEvent"
+      @show-profile="openEmployeeProfile"
     />
 
     <IncidentCommandDrawer
@@ -366,6 +366,19 @@ function openDepartment(department) {
 function openEventFromDepartment(event) {
   departmentDrawerVisible.value = false
   showEventDetail(event)
+}
+
+function openEmployeeProfile(event) {
+  departmentDrawerVisible.value = false
+  router.push({
+    path: '/health-monitor/employee-profile',
+    query: {
+      empCode: event.userCode || '',
+      empName: event.user || '',
+      deptName: event.dept || '',
+      from: route.fullPath
+    }
+  })
 }
 
 function returnToDashboard() {
