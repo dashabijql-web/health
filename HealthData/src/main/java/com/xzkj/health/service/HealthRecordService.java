@@ -3,6 +3,7 @@ package com.xzkj.health.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xzkj.health.model.HealthRecord;
+import com.xzkj.health.dto.healthrecord.EmployeeHealthHistoryView;
 
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,8 @@ public interface HealthRecordService extends IService<HealthRecord> {
                                        String userCode,
                                        String startTime,
                                        String endTime);
+
+    EmployeeHealthHistoryView getEmployeeHistory(String userCode, String startDate, String endDate);
 
     /**
      * 统计每个用户的记录数量

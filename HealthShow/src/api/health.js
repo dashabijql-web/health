@@ -173,6 +173,14 @@ export function getHealthRecords(params) {
   })
 }
 
+export function getEmployeeHealthHistory(params) {
+  return request({
+    url: '/api/health/record/history/trend',
+    method: 'get',
+    params
+  })
+}
+
 /**
  * 获取各部门健康数据量统计
  *

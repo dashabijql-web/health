@@ -12,7 +12,7 @@ test('employee profile keeps only factual health and action surfaces', () => {
 
   assert.doesNotMatch(page, /HeartRateWave|实时心电图|ep-miner|miner-worker|健康风险评估|riskItems/)
   assert.match(page, /当前体征/)
-  assert.match(page, /7日体征趋势/)
+  assert.doesNotMatch(page, /7日体征趋势/)
   assert.match(page, /近期预警轨迹/)
   assert.match(page, /联系与处置/)
   assert.match(page, /<EmployeeProfileCommandLayer/)
@@ -32,4 +32,23 @@ test('employee profile uses backend freshness and authoritative warning totals',
   assert.match(composable, /pendingTotal\.value = Number\(pendingRes\.value\.data\.total\)/)
   assert.match(composable, /warning7Total\.value = Number\(warn7Res\.value\.data\.total\)/)
   assert.doesNotMatch(composable, /warnings\.value\.length/)
+})
+
+test('employee profile history supports employee-scoped ranges, curves and server pagination', () => {
+  const page = source('src/views/health-monitor/employee-profile/index.vue')
+  const history = source('src/views/health-monitor/employee-profile/components/EmployeeHealthHistory.vue')
+  const historyModel = source('src/views/health-monitor/employee-profile/employee-profile-history.js')
+  const api = source('src/api/health.js')
+
+  assert.match(page, /<EmployeeHealthHistory/)
+  assert.match(page, /:employee-code="empInfo\.empCode"/)
+  assert.match(history, /type="daterange"/)
+  assert.match(history, /历史曲线/)
+  assert.match(history, /明细记录/)
+  assert.match(history, /getEmployeeHealthHistory\(params\)/)
+  assert.match(history, /getHealthRecords\(\{[\s\S]*userCode: props\.employeeCode[\s\S]*startTime:[\s\S]*endTime:/)
+  assert.match(history, /v-model:current-page="recordPage"/)
+  assert.match(history, /历史数据查询范围不能超过365天/)
+  assert.match(historyModel, /HISTORY_METRICS/)
+  assert.match(api, /\/api\/health\/record\/history\/trend/)
 })

@@ -4,7 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xzkj.health.mapper.HealthRecordMapper;
+import com.xzkj.health.common.exception.BusinessException;
+import com.xzkj.health.dto.healthrecord.EmployeeHealthHistoryPointView;
+import com.xzkj.health.dto.healthrecord.EmployeeHealthHistoryRow;
+import com.xzkj.health.dto.healthrecord.EmployeeHealthHistoryView;
 import com.xzkj.health.model.HealthRecord;
+import com.xzkj.health.util.TableSourceUtil;
 import com.xzkj.health.service.HealthRecordService;
 import com.xzkj.health.util.TableNameUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -99,6 +106,53 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
         }
         wrapper.orderByDesc("record_time");
         return baseMapper.selectPage(page, wrapper);
+    }
+
+    @Override
+    public EmployeeHealthHistoryView getEmployeeHistory(String userCode, String startDate, String endDate) {
+        if (isBlank(userCode)) {
+            throw new BusinessException(400, "历史数据查询必须指定员工工号");
+        }
+
+        LocalDate start;
+        LocalDate end;
+        try {
+            start = LocalDate.parse(startDate);
+            end = LocalDate.parse(endDate);
+        } catch (DateTimeParseException | NullPointerException ex) {
+            throw new BusinessException(400, "历史数据日期格式应为 yyyy-MM-dd");
+        }
+        if (end.isBefore(start)) {
+            throw new BusinessException(400, "历史数据结束日期不能早于开始日期");
+        }
+        long days = ChronoUnit.DAYS.between(start, end) + 1L;
+        if (days > 365L) {
+            throw new BusinessException(400, "历史数据查询范围不能超过365天");
+        }
+
+        String columns = "user_code,heart_rate,blood_oxygen,temperature,blood_pressure_high," +
+                "blood_pressure_low,pressure,steps,calories,record_time";
+        String tableSource = TableSourceUtil.healthRecordSource(start, end, columns);
+        String granularity = days <= 7L ? "hour" : "day";
+        List<EmployeeHealthHistoryRow> rows = baseMapper.selectEmployeeHistory(
+                tableSource, userCode.trim(), start.toString(), end.toString(), granularity);
+        if (rows == null) rows = Collections.emptyList();
+
+        List<EmployeeHealthHistoryPointView> points = rows.stream()
+                .filter(Objects::nonNull)
+                .map(row -> new EmployeeHealthHistoryPointView(
+                        row.getBucketTime(), round(row.getAvgHeartRate()), round(row.getAvgBloodOxygen()),
+                        round(row.getAvgTemperature()), round(row.getAvgSystolic()), round(row.getAvgDiastolic()),
+                        round(row.getAvgPressure()), row.getMaxSteps(), row.getMaxCalories(),
+                        row.getSampleCount() == null ? 0L : row.getSampleCount()))
+                .toList();
+        long totalSamples = points.stream().mapToLong(EmployeeHealthHistoryPointView::sampleCount).sum();
+        return new EmployeeHealthHistoryView(userCode.trim(), start.toString(), end.toString(),
+                granularity, totalSamples, points);
+    }
+
+    private Double round(Double value) {
+        return value == null ? null : Math.round(value * 10.0) / 10.0;
     }
 
     private Page<HealthRecord> getPageWithoutFilters(Page<HealthRecord> page) {

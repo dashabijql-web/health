@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xzkj.health.common.Result;
 import com.xzkj.health.model.HealthRecord;
 import com.xzkj.health.service.HealthRecordService;
+import com.xzkj.health.dto.healthrecord.EmployeeHealthHistoryView;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,5 +42,13 @@ public class HealthRecordController {
         data.put("current", pageResult.getCurrent());
         data.put("size",    pageResult.getSize());
         return Result.ok("查询成功", data);
+    }
+
+    @GetMapping("/history/trend")
+    public Result<EmployeeHealthHistoryView> getEmployeeHistory(
+            @RequestParam String userCode,
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+        return Result.ok("查询成功", healthRecordService.getEmployeeHistory(userCode, startDate, endDate));
     }
 }

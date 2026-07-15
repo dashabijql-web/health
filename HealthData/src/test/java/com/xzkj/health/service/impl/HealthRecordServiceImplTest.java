@@ -3,6 +3,8 @@ package com.xzkj.health.service.impl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xzkj.health.mapper.HealthRecordMapper;
 import com.xzkj.health.model.HealthRecord;
+import com.xzkj.health.dto.healthrecord.EmployeeHealthHistoryRow;
+import com.xzkj.health.common.exception.BusinessException;
 import com.xzkj.health.util.TableNameUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -69,6 +72,44 @@ class HealthRecordServiceImplTest {
         verify(healthRecordMapper).selectPage(any(), any());
         verify(healthRecordMapper, never()).countRowsByTableName(anyString());
         verify(healthRecordMapper, never()).selectPageFromSource(anyString(), any(Long.class), any(Long.class));
+    }
+
+    @Test
+    void getEmployeeHistoryUsesHourlyBucketsForSevenDays() {
+        EmployeeHealthHistoryRow row = new EmployeeHealthHistoryRow();
+        row.setBucketTime("2026-07-15 10:00:00");
+        row.setAvgHeartRate(72.34);
+        row.setAvgBloodOxygen(97.26);
+        row.setSampleCount(12L);
+        when(healthRecordMapper.selectEmployeeHistory(
+                anyString(), eq("EMP1001"), eq("2026-07-09"), eq("2026-07-15"), eq("hour")))
+                .thenReturn(List.of(row));
+
+        var result = healthRecordService.getEmployeeHistory("EMP1001", "2026-07-09", "2026-07-15");
+
+        assertEquals("hour", result.granularity());
+        assertEquals(12L, result.totalSamples());
+        assertEquals(72.3, result.points().get(0).heartRate());
+        assertEquals(97.3, result.points().get(0).bloodOxygen());
+    }
+
+    @Test
+    void getEmployeeHistoryUsesDailyBucketsForLongerRanges() {
+        when(healthRecordMapper.selectEmployeeHistory(
+                anyString(), eq("EMP1001"), eq("2026-06-01"), eq("2026-07-15"), eq("day")))
+                .thenReturn(List.of());
+
+        var result = healthRecordService.getEmployeeHistory("EMP1001", "2026-06-01", "2026-07-15");
+
+        assertEquals("day", result.granularity());
+    }
+
+    @Test
+    void getEmployeeHistoryRejectsInvalidRanges() {
+        assertThrows(BusinessException.class,
+                () -> healthRecordService.getEmployeeHistory("EMP1001", "2026-07-15", "2026-07-01"));
+        assertThrows(BusinessException.class,
+                () -> healthRecordService.getEmployeeHistory("EMP1001", "2025-01-01", "2026-07-15"));
     }
 
     private static HealthRecord record(String userCode) {

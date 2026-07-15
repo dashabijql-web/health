@@ -1,6 +1,5 @@
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import * as echarts from '@/utils/echarts-setup'
 import { getRiskWarningList } from '@/api/risk-warning'
 import { getHealthPortrait } from '@/api/health-portrait'
 import { generateEmployeeReport } from '@/api/ai'
@@ -20,10 +19,8 @@ import {
   buildMineEntryRoute,
   buildReportCenterRoute,
   buildWorkbenchRoute,
-  disposeEmployeeChart,
   loadEmployeeAiReport,
   normalizeEmployeeWarnings,
-  renderEmployeeTrendChart,
   resetEmployeeProfileState,
   syncEmpInfoFromRoute
 } from './employee-profile-runtime'
@@ -43,14 +40,12 @@ export function useEmployeeProfilePage() {
   const isOnline = ref(false)
   const lastUpdate = ref('--')
   const freshnessStatus = ref('no_data')
-  const trendRef = ref(null)
   const printWindowRef = ref(null)
   const trend7 = ref({ avgHr: 0, avgSpo2: 0, avgTemp: 0 })
   const portraitTrend = ref(null)
   const personCommandVisible = ref(false)
   const incidentDrawerVisible = ref(false)
   const currentIncidentEvent = ref(null)
-  let trendChart = null
 
   const aiReportVisible = ref(false)
   const aiReportLoading = ref(false)
@@ -216,8 +211,6 @@ export function useEmployeeProfilePage() {
       warning7Total.value = Number(warn7Res.value.data.total) || 0
     }
 
-    await nextTick()
-    renderTrendChart()
   }
 
   async function loadProfilePage() {
@@ -234,15 +227,6 @@ export function useEmployeeProfilePage() {
   }
 
   const { start: startProfileRefresh } = useIntervalTask(refresh, 30000)
-
-  function renderTrendChart() {
-    trendChart = renderEmployeeTrendChart({
-      el: trendRef.value,
-      chart: trendChart,
-      trend: portraitTrend.value,
-      echartsLib: echarts
-    })
-  }
 
   const openAiReport = async () => {
     if (!empInfo.value.empCode) return
@@ -323,10 +307,6 @@ export function useEmployeeProfilePage() {
     void loadProfilePage()
   })
 
-  onUnmounted(() => {
-    trendChart = disposeEmployeeChart(trendChart)
-  })
-
   return {
     aiReportContent,
     aiReportHtml,
@@ -369,7 +349,6 @@ export function useEmployeeProfilePage() {
     recentWarningFootnote,
     refresh,
     trendStats,
-    trendRef,
     vitals,
     warn7Count,
     warnCount,

@@ -362,6 +362,10 @@ sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; 
 - `HeartRateWave` 是根据心率生成的动画示意，不是真实 ECG 数据；职工健康画像禁止将其标为“实时心电图”。只有后端接入真实 ECG 波形及采集时间后才允许恢复心电模块。
 - 规则模板必须明确标为“规则提示”，不得冒充 AI 结论；AI 诊断报告继续作为用户主动触发的二级能力。
 - 信息治理回归入口为 `npm run test:employee-profile-governance`。页面布局改动继续运行 `node scripts/with-env.mjs VISUAL_ROUTES=employee-profile -- npm run audit:visual` 并检查五档截图。2026-07-15 本轮五档结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T07-40-13-080Z/layout-summary.md`。
+- 画像页历史趋势的唯一入口是“历史健康数据”，默认近7日，并支持今日、近30日和最长365天自定义范围；不要再恢复另一套固定7日曲线。7天内由后端按小时聚合，超过7天按日聚合，完整样本数必须随接口返回。
+- 历史曲线走 `GET /api/health/record/history/trend`，按当前员工和日期范围直查涉及的月分表；原始明细继续走 `/api/health/record/page` 服务端分页。禁止前端截取前200条或当前页数据自行计算时间段曲线。
+- 历史区必须始终显示员工姓名、工号、起止日期、聚合粒度、完整样本数和明细总数；曲线与明细都继续遵循 `X-Health-Data-Source` 双库路由。
+- 本轮历史区五档滚动视觉审计通过，结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T08-21-43-765Z/layout-summary.md`；真实交互守护为 `node tests/e2e/employee-profile-history-check.mjs`。
 
 ## 当前验证基线
 

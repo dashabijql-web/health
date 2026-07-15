@@ -76,19 +76,6 @@
           </div>
         </div>
 
-        <div class="ep-panel ep-trend">
-          <div class="ep-ph"><span class="ep-ph-bar"></span>7日体征趋势</div>
-          <div class="ep-trend-stats">
-            <div v-for="item in trendStats" :key="item.key" :class="['ep-trend-stat', `tone-${item.tone}`]">
-              <span>{{ item.label }}</span>
-              <strong>{{ item.value }}<em v-if="item.unit">{{ item.unit }}</em></strong>
-            </div>
-          </div>
-          <div class="ep-trend-chart-wrap">
-            <div ref="trendRef" class="ep-trend-chart"></div>
-            <div v-if="!hasTrendData" class="ep-trend-nodata"><span>暂无7日趋势数据</span></div>
-          </div>
-        </div>
       </section>
 
       <aside class="ep-side-column">
@@ -121,6 +108,11 @@
       </aside>
     </main>
 
+    <EmployeeHealthHistory
+      :employee-code="empInfo.empCode"
+      :employee-name="empInfo.empName"
+    />
+
     <section class="ep-panel ep-warning-band">
       <div class="ep-ph">
         <span class="ep-ph-bar"></span>近期预警轨迹
@@ -152,6 +144,7 @@ import { ArrowLeft, ChatDotRound, Document } from '@element-plus/icons-vue'
 import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import EmployeeProfileCommandLayer from './components/EmployeeProfileCommandLayer.vue'
+import EmployeeHealthHistory from './components/EmployeeHealthHistory.vue'
 import { useEmployeeProfilePage } from './use-employee-profile-page'
 
 const page = useEmployeeProfilePage()
@@ -161,11 +154,10 @@ const {
   handleIncidentUpdated, incidentDrawerVisible, isOnline, lastUpdate, loading,
   openAiReport, openEmergency, openPersonCommand, personCommandVisible,
   printAiReport, profileInsightLines, profileSummaryCards, recentWarnings,
-  recentWarningFootnote, recentWarningSummary, refresh, trendRef, trendStats,
+  recentWarningFootnote, recentWarningSummary, refresh,
   vitals, goWarningCenter
 } = page
 
-const hasTrendData = computed(() => trendStats.value.some((item) => item.value !== '--'))
 const summaryMetricItems = computed(() => profileSummaryCards.value.map((card) => ({
   key: card.label,
   label: card.label,

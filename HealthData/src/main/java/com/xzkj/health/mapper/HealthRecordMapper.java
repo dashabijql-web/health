@@ -2,6 +2,7 @@ package com.xzkj.health.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.xzkj.health.model.HealthRecord;
+import com.xzkj.health.dto.healthrecord.EmployeeHealthHistoryRow;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -104,6 +105,45 @@ public interface HealthRecordMapper extends BaseMapper<HealthRecord> {
     List<HealthRecord> selectPageFromSource(@Param("tableSource") String tableSource,
                                             @Param("offset") long offset,
                                             @Param("size") long size);
+
+    @SelectProvider(type = EmployeeHistorySqlProvider.class, method = "selectHistory")
+    List<EmployeeHealthHistoryRow> selectEmployeeHistory(
+            @Param("tableSource") String tableSource,
+            @Param("userCode") String userCode,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            @Param("granularity") String granularity);
+
+    class EmployeeHistorySqlProvider {
+        public String selectHistory(Map<String, Object> params) {
+            String tableSource = String.valueOf(params.get("tableSource"));
+            String granularity = String.valueOf(params.get("granularity"));
+            if (!tableSource.matches("health_record_\\d{6}|\\(SELECT [a-zA-Z0-9_, ]+ FROM health_record_\\d{6}( UNION ALL SELECT [a-zA-Z0-9_, ]+ FROM health_record_\\d{6})+\\)")) {
+                throw new IllegalArgumentException("Invalid health history table source");
+            }
+            if (!"hour".equals(granularity) && !"day".equals(granularity)) {
+                throw new IllegalArgumentException("Invalid health history granularity");
+            }
+
+            String bucket = "hour".equals(granularity)
+                    ? "DATEADD(HOUR, DATEDIFF(HOUR, 0, h.record_time), 0)"
+                    : "CAST(h.record_time AS DATE)";
+            String bucketFormat = "hour".equals(granularity) ? "120" : "23";
+            return "SELECT CONVERT(varchar(19), " + bucket + ", " + bucketFormat + ") AS bucketTime, " +
+                    "ROUND(AVG(CASE WHEN h.heart_rate > 0 THEN CAST(h.heart_rate AS FLOAT) END), 1) AS avgHeartRate, " +
+                    "ROUND(AVG(CASE WHEN h.blood_oxygen > 0 THEN CAST(h.blood_oxygen AS FLOAT) END), 1) AS avgBloodOxygen, " +
+                    "ROUND(AVG(CASE WHEN h.temperature > 0 THEN CAST(h.temperature AS FLOAT) / 10.0 END), 1) AS avgTemperature, " +
+                    "ROUND(AVG(CASE WHEN h.blood_pressure_high > 0 THEN CAST(h.blood_pressure_high AS FLOAT) END), 1) AS avgSystolic, " +
+                    "ROUND(AVG(CASE WHEN h.blood_pressure_low > 0 THEN CAST(h.blood_pressure_low AS FLOAT) END), 1) AS avgDiastolic, " +
+                    "ROUND(AVG(CASE WHEN h.pressure IS NOT NULL THEN CAST(h.pressure AS FLOAT) END), 1) AS avgPressure, " +
+                    "MAX(h.steps) AS maxSteps, MAX(h.calories) AS maxCalories, COUNT_BIG(*) AS sampleCount " +
+                    "FROM " + tableSource + " AS h " +
+                    "WHERE h.user_code = #{userCode} " +
+                    "AND h.record_time >= CONVERT(datetime, #{startDate}) " +
+                    "AND h.record_time < DATEADD(DAY, 1, CONVERT(datetime, #{endDate})) " +
+                    "GROUP BY " + bucket + " ORDER BY " + bucket;
+        }
+    }
 
     /**
      * 自定义查询：统计每个用户的记录数量（查视图）
