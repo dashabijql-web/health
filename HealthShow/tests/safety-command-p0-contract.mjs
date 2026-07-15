@@ -3,7 +3,12 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { resolveWarningTotals } from '../src/views/safety-command/safety-command-view-model.js'
+import {
+  buildDeviceCoverage,
+  buildLoadedEventTypeItems,
+  buildLoadedWorkflowSignals,
+  resolveWarningTotals
+} from '../src/views/safety-command/safety-command-view-model.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const source = (relativePath) => readFileSync(resolve(__dirname, '..', relativePath), 'utf8')
@@ -47,6 +52,38 @@ test('safety command removes fabricated and duplicate information from the activ
   assert.match(workflow, /event\.occurredAt/)
   assert.match(areaGrid, /预警 <b>\{\{ a\.count \}\}<\/b>/)
   assert.doesNotMatch(areaGrid, /人数: \$\{a\.count\}/)
+})
+
+test('safety command restores high-value operational intelligence with explicit scope', () => {
+  const view = source('src/views/safety-command/index.vue')
+  const intelligence = source('src/views/safety-command/components/SafetyCommandIntelligenceGrid.vue')
+
+  assert.match(view, /<SafetyCommandIntelligenceGrid/)
+  assert.match(intelligence, /人员与设备覆盖/)
+  assert.match(intelligence, /开放事件按人员去重/)
+  assert.match(intelligence, /类型和状态只描述当前队列样本；权威待办总数以页头为准/)
+  assert.doesNotMatch(intelligence, /EventPanel|全部呼叫|体征均值走势|各类型处理率/)
+
+  const coverage = buildDeviceCoverage({
+    total: 20,
+    online: 16,
+    offline: 4,
+    onlineRate: 80,
+    lowBattery: { status: 'AVAILABLE', value: 3, message: '低电阈值' },
+    dataInterrupted: { status: 'UNAVAILABLE', value: null, message: '尚未接入' }
+  })
+  assert.equal(coverage.onlineRate, 80)
+  assert.equal(coverage.capabilities[0].display, '3')
+  assert.equal(coverage.capabilities[1].display, '未接入')
+
+  const events = [
+    { eventType: 'sos', type: 'SOS', status: 'NEW', owner: '未分派', slaStatus: 'NOT_CONFIGURED' },
+    { eventType: 'fall', type: '跌倒', status: 'ACKED', owner: '李值班', slaStatus: 'OVERDUE' },
+    { eventType: 'abnormal', type: '心率异常', status: 'ACKED', owner: '李值班', slaStatus: 'ON_TIME' },
+    { eventType: 'static', type: '静止', status: 'NEW', owner: '未分派', slaStatus: 'NOT_CONFIGURED' }
+  ]
+  assert.deepEqual(buildLoadedEventTypeItems(events).map((item) => item.count), [1, 1, 1, 1])
+  assert.deepEqual(buildLoadedWorkflowSignals(events).map((item) => item.value), [2, 2, 2, 1])
 })
 
 test('legacy safety command data is isolated from the active page fetch path', () => {

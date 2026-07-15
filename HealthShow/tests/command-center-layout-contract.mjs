@@ -157,11 +157,29 @@ test('A+C command pages avoid self-amplifying stretch layouts', () => {
 test('safety command uses one filterable incident queue', () => {
   const safetyPage = src('src/views/safety-command/index.vue')
   const supportGrid = src('src/views/safety-command/components/SafetyCommandSupportGrid.vue')
+  const intelligenceGrid = src('src/views/safety-command/components/SafetyCommandIntelligenceGrid.vue')
 
   assert.match(safetyPage, /class="sc-queue-filters"/)
   assert.match(safetyPage, /展示前50条开放事件，按风险优先/)
   assert.doesNotMatch(safetyPage, /<RiskPersonPanel/)
   assert.doesNotMatch(supportGrid, /EventPanel|RiskPersonPanel/)
+  assert.doesNotMatch(intelligenceGrid, /EventPanel|RiskPersonPanel/)
+  assert.match(intelligenceGrid, /基于已加载 \{\{ loadedCount \}\} 条开放事件/)
+})
+
+test('safety command operational intelligence uses stable responsive tracks', () => {
+  const safetyStyle = src('src/views/safety-command/safety-command.scss')
+
+  assert.match(
+    safetyStyle,
+    /\.sc-intelligence-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(300px,\s*\.9fr\)\s+minmax\(320px,\s*1fr\)\s+minmax\(380px,\s*1\.12fr\);/,
+    'desktop operational intelligence should use three deliberate tracks'
+  )
+  assert.match(
+    safetyStyle,
+    /@media\s*\(max-width:\s*980px\)\s*\{[\s\S]*\.sc-intelligence-grid,[\s\S]*grid-template-columns:\s*1fr;/,
+    'operational intelligence should collapse before content becomes cramped'
+  )
 })
 
 test('safety command situation stage exposes regional relations and an actionable incident', () => {

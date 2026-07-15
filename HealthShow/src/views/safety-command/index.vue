@@ -127,6 +127,15 @@
       </aside>
     </section>
 
+    <SafetyCommandIntelligenceGrid
+      :device-coverage="deviceCoverage"
+      :event-type-items="eventTypeItems"
+      :loaded-count="loadedQueueCount"
+      :risk-persons="riskPersons"
+      :workflow-signals="workflowSignals"
+      @show-person="onShowPerson"
+    />
+
     <SafetyCommandSupportGrid
       :handled-count="handledCount"
       :pending-count="pendingCount"
@@ -181,11 +190,15 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getCommandCenterIncident } from '@/api/command-center'
 import SafetyCommandSupportGrid from './components/SafetyCommandSupportGrid.vue'
+import SafetyCommandIntelligenceGrid from './components/SafetyCommandIntelligenceGrid.vue'
 import SafetyCommandDialogs from './components/SafetyCommandDialogs.vue'
 import IncidentCommandDrawer from './components/IncidentCommandDrawer.vue'
 import PersonDetailDrawer from './components/PersonDetailDrawer.vue'
 import {
   buildDeptRankData,
+  buildDeviceCoverage,
+  buildLoadedEventTypeItems,
+  buildLoadedWorkflowSignals,
   buildStageNodes,
   buildTrendChange,
   buildTrendPath,
@@ -209,6 +222,7 @@ const {
   handledCount,
   pendingWarnings,
   criticalWarnings,
+  riskPersons,
   warningTrend
 } = useSafetyCommandPageData()
 
@@ -309,6 +323,9 @@ const commandQueue = computed(() => filteredQueueEvents.value.length
   ? buildSafetyCommandQueue(filteredQueueEvents.value)
   : [])
 const loadedQueueCount = computed(() => events.value.length)
+const deviceCoverage = computed(() => buildDeviceCoverage(commandSummary.value?.device))
+const eventTypeItems = computed(() => buildLoadedEventTypeItems(events.value))
+const workflowSignals = computed(() => buildLoadedWorkflowSignals(events.value))
 
 const trendPath = computed(() => buildTrendPath(warningTrend.value))
 const trend7dayTotal = computed(() => buildTrend7dayTotal(warningTrend.value))

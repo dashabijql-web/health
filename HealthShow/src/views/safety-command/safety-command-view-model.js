@@ -84,7 +84,9 @@ export function mapWarningToEvent(record) {
     time: formatEventAge(createdAt),
     occurredAt: createdAt,
     owner: record.owner?.name || (record.owner?.status === 'UNASSIGNED' ? '未分派' : ''),
+    ownerStatus: record.owner?.status || '',
     sla: record.sla?.configured ? record.sla.deadlineAt : '未配置',
+    slaStatus: record.sla?.status || (record.sla?.configured ? 'ON_TIME' : 'NOT_CONFIGURED'),
     level,
     eventType,
     durationMinutes,
@@ -128,10 +130,14 @@ export function buildEventRiskSummary(events) {
         name: event.user,
         userCode: event.userCode,
         dept: event.dept,
-        count: 0
+        count: 0,
+        types: [],
+        latestEvent: event
       })
     }
-    personMap.get(event.user).count++
+    const person = personMap.get(event.user)
+    person.count++
+    if (event.type && !person.types.includes(event.type)) person.types.push(event.type)
   })
 
   return {
@@ -139,6 +145,86 @@ export function buildEventRiskSummary(events) {
     sosCount: list.filter((event) => event.eventType === 'sos').length,
     fallCount: list.filter((event) => event.eventType === 'fall').length
   }
+}
+
+export function buildDeviceCoverage(deviceSummary) {
+  const source = deviceSummary || {}
+  const numberOrNull = (value) => value === null || value === undefined || value === ''
+    ? null
+    : Number(value)
+  const total = numberOrNull(source.total)
+  const online = numberOrNull(source.online)
+  const offline = numberOrNull(source.offline)
+  const onlineRate = numberOrNull(source.onlineRate)
+  const hasCoverage = [total, online, offline, onlineRate].some(Number.isFinite)
+
+  const capability = (key, label, tone) => {
+    const item = source[key]
+    const available = item?.status === 'AVAILABLE' && item.value !== null && item.value !== undefined
+    return {
+      key,
+      label,
+      value: available ? Number(item.value) : null,
+      display: available ? String(Number(item.value)) : '未接入',
+      message: item?.message || '当前没有权威数据源',
+      tone: available && Number(item.value) > 0 ? tone : available ? 'safe' : 'muted',
+      available
+    }
+  }
+
+  return {
+    available: hasCoverage,
+    total,
+    online,
+    offline,
+    onlineRate,
+    cards: [
+      { key: 'total', label: '设备总数', display: total ?? '--', tone: 'primary' },
+      { key: 'online', label: '在线设备', display: online ?? '--', tone: 'safe' },
+      { key: 'offline', label: '离线设备', display: offline ?? '--', tone: Number(offline) > 0 ? 'warning' : 'safe' }
+    ],
+    capabilities: [
+      capability('lowBattery', '低电设备', 'warning'),
+      capability('dataInterrupted', '数据中断', 'danger'),
+      capability('faulted', '设备故障', 'danger')
+    ]
+  }
+}
+
+export function buildLoadedEventTypeItems(events) {
+  const list = Array.isArray(events) ? events : []
+  const definitions = [
+    { key: 'sos', label: 'SOS', tone: 'danger', matches: (event) => event.eventType === 'sos' },
+    { key: 'fall', label: '跌倒', tone: 'danger', matches: (event) => event.eventType === 'fall' },
+    { key: 'vital', label: '体征异常', tone: 'warning', matches: (event) => ['心率', '血氧', '体温', '压力', '睡眠', '疲劳'].some((key) => String(event.type || '').includes(key)) },
+    { key: 'other', label: '其他', tone: 'primary', matches: () => true }
+  ]
+  const claimed = new Set()
+
+  return definitions.map((definition) => {
+    const count = list.reduce((sum, event, index) => {
+      if (claimed.has(index) || !definition.matches(event)) return sum
+      claimed.add(index)
+      return sum + 1
+    }, 0)
+    return {
+      key: definition.key,
+      label: definition.label,
+      count,
+      tone: definition.tone,
+      percent: list.length ? Math.round(count / list.length * 100) : 0
+    }
+  })
+}
+
+export function buildLoadedWorkflowSignals(events) {
+  const list = Array.isArray(events) ? events : []
+  return [
+    { key: 'new', label: '待确认', value: list.filter((event) => String(event.status || '').toUpperCase() === 'NEW').length, tone: 'warning' },
+    { key: 'acked', label: '已确认', value: list.filter((event) => String(event.status || '').toUpperCase() === 'ACKED').length, tone: 'primary' },
+    { key: 'assigned', label: '已分派', value: list.filter((event) => event.owner && event.owner !== '未分派').length, tone: 'safe' },
+    { key: 'overdue', label: 'SLA 超时', value: list.filter((event) => String(event.slaStatus || '').toUpperCase() === 'OVERDUE').length, tone: 'danger' }
+  ]
 }
 
 export function buildDeptRankData(departments) {
