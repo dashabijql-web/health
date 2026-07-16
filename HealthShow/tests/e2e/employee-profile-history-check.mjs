@@ -33,6 +33,17 @@ try {
   }
   await warningDialog.getByRole('button', { name: '关闭', exact: true }).click()
 
+  await page.getByRole('button', { name: '联系与处置', exact: true }).click()
+  const contactDrawer = page.getByRole('dialog', { name: /联系与处置/ })
+  await contactDrawer.waitFor({ state: 'visible', timeout: 5000 })
+  if (await contactDrawer.getByText('实时心电图').count() > 0 || await contactDrawer.getByText('7天趋势').count() > 0) {
+    throw new Error('employee contact drawer still contains duplicate health analysis')
+  }
+  for (const action of ['发送消息', '语音播报', '应急处置']) {
+    await contactDrawer.getByRole('button', { name: action, exact: true }).waitFor({ state: 'visible' })
+  }
+  await contactDrawer.locator('.el-drawer__close-btn').click()
+
   const countdown = page.locator('.ep-refresh-countdown')
   await countdown.waitFor({ state: 'visible', timeout: 5000 })
   const readCountdown = async () => Number((await countdown.textContent())?.match(/(\d+)\s*秒/)?.[1])

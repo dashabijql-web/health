@@ -33,6 +33,19 @@ test('employee profile keeps one actionable warning summary without duplicate st
   assert.doesNotMatch(viewModel, /label: '实时在线'|label: '建议动作'/)
 })
 
+test('employee contact action opens the shared drawer in focused contact mode', () => {
+  const layer = source('src/views/health-monitor/employee-profile/components/EmployeeProfileCommandLayer.vue')
+  const drawer = source('src/views/safety-command/components/PersonDetailDrawer.vue')
+
+  assert.match(layer, /mode="contact"/)
+  assert.match(drawer, /isContactMode\.value \? '联系与处置' : '人员综合管控'/)
+  assert.match(drawer, /v-if="!isContactMode" class="vital-grid"/)
+  assert.match(drawer, /v-if="!isContactMode" @click="openProfile"/)
+  assert.match(drawer, /发送消息/)
+  assert.match(drawer, /语音播报/)
+  assert.match(drawer, /应急处置/)
+})
+
 test('employee profile uses backend freshness and authoritative warning totals', () => {
   const runtime = source('src/views/health-monitor/employee-profile/employee-profile-runtime.js')
   const composable = source('src/views/health-monitor/employee-profile/use-employee-profile-page.js')

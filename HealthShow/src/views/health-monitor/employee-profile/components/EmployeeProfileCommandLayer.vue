@@ -6,6 +6,7 @@
     :dept-name="person.deptName || ''"
     :imei="person.imei || ''"
     :online="online"
+    mode="contact"
     @update:visible="emit('update:personVisible', $event)"
     @emergency="emit('emergency', $event)"
   />
