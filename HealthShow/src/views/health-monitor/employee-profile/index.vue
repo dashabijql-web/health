@@ -114,7 +114,7 @@
 
       </section>
 
-      <aside class="ep-side-column">
+      <section class="ep-support-grid">
         <div class="ep-panel ep-basic">
           <div class="ep-ph"><span class="ep-ph-bar"></span>职工信息</div>
           <dl class="ep-person-grid">
@@ -128,10 +128,17 @@
         </div>
 
         <div class="ep-panel ep-guidance">
-          <div class="ep-ph"><span class="ep-ph-bar"></span>规则提示</div>
+          <div class="ep-ph">
+            <span class="ep-ph-bar"></span>规则提示
+            <span class="ep-rule-refresh">随画像每30秒刷新 · {{ nextRefreshSeconds }}秒后更新</span>
+          </div>
           <ul class="ep-guidance-list">
             <li v-for="(item, index) in profileInsightLines" :key="index">{{ item }}</li>
           </ul>
+          <div class="ep-guidance-actions">
+            <button type="button" class="hm-action-btn hm-action-btn--primary" @click="openWarningDetails">查看预警</button>
+            <button type="button" class="hm-action-btn" @click="openPersonCommand">联系处置</button>
+          </div>
         </div>
 
         <div class="ep-panel ep-activity">
@@ -141,7 +148,7 @@
             <div><span>消耗</span><strong>{{ exercise.todayCalories > 0 ? exercise.todayCalories : '--' }}</strong><em>kcal</em></div>
           </div>
         </div>
-      </aside>
+      </section>
     </main>
 
     <EmployeeHealthHistory

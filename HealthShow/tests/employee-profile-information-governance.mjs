@@ -89,3 +89,16 @@ test('employee profile shows a live countdown aligned with its 30-second refresh
   assert.match(composable, /nextRefreshSeconds\.value <= 0[\s\S]*refresh\(\)/)
   assert.match(composable, /useIntervalTask\([\s\S]*1000\)/)
 })
+
+test('employee profile rule guidance declares freshness, exposes actions and avoids the empty two-column layout', () => {
+  const page = source('src/views/health-monitor/employee-profile/index.vue')
+  const styles = source('src/views/health-monitor/employee-profile/employee-profile.scss')
+
+  assert.match(page, /规则提示/)
+  assert.match(page, /随画像每30秒刷新/)
+  assert.match(page, /@click="openWarningDetails">查看预警/)
+  assert.match(page, /@click="openPersonCommand">联系处置/)
+  assert.match(page, /class="ep-support-grid"/)
+  assert.match(styles, /\.ep-workspace \{[\s\S]*flex-direction: column/)
+  assert.doesNotMatch(styles, /grid-template-columns: minmax\(0, 1\.7fr\) minmax\(290px, 0\.8fr\)/)
+})
