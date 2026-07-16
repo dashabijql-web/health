@@ -58,7 +58,13 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="aiReportVisible" :title="'AI 健康诊断报告 - ' + empInfo.empName" width="820px" :close-on-click-modal="false">
+    <el-dialog
+      v-model="aiReportVisible"
+      :title="'AI 健康诊断报告 - ' + empInfo.empName"
+      width="820px"
+      class="ep-ai-report-dialog"
+      :close-on-click-modal="false"
+    >
       <div v-if="aiReportLoading" class="ep-report-loading">
         <div class="ep-report-dots"><span></span><span></span><span></span></div>
         <p>正在生成健康诊断报告，请稍候...</p>
