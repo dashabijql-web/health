@@ -206,6 +206,7 @@
     width="780px"
     :append-to-body="true"
     :destroy-on-close="true"
+    class="dm-warn-curve-dialog"
     @opened="handleWarnCurveOpened"
     @closed="closeWarnCurveModal"
   >
@@ -300,3 +301,80 @@ function handleWarnCurveOpened() {
   props.initWarnCurveChart(warnCurveChartRef.value)
 }
 </script>
+
+<style lang="scss">
+.dm-handle-dialog.el-dialog,
+.dm-warn-curve-dialog.el-dialog {
+  --el-bg-color: #080c20;
+  --el-bg-color-overlay: #0a1628;
+  --el-fill-color-blank: rgba(8, 20, 38, .96);
+  --el-fill-color-light: rgba(0, 212, 255, .08);
+  --el-border-color: rgba(0, 212, 255, .24);
+  --el-border-color-light: rgba(0, 212, 255, .16);
+  --el-text-color-primary: #e8f4ff;
+  --el-text-color-regular: #a8c4dc;
+  --el-text-color-secondary: #7696b2;
+  background: #080c20;
+  border: 1px solid rgba(0, 212, 255, .24);
+  border-radius: 8px;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, .58), 0 0 28px rgba(0, 180, 255, .08);
+  overflow: hidden;
+}
+
+.dm-handle-dialog .el-dialog__header,
+.dm-warn-curve-dialog .el-dialog__header {
+  margin: 0;
+  padding: 18px 20px 14px;
+  background: #0a1628;
+  border-bottom: 1px solid rgba(0, 212, 255, .14);
+}
+
+.dm-handle-dialog .el-dialog__title,
+.dm-warn-curve-dialog .el-dialog__title {
+  color: #e8f4ff;
+  font-weight: 700;
+}
+
+.dm-handle-dialog .el-dialog__headerbtn .el-dialog__close,
+.dm-warn-curve-dialog .el-dialog__headerbtn .el-dialog__close {
+  color: #82a8c8;
+}
+
+.dm-handle-dialog .el-dialog__headerbtn:hover .el-dialog__close,
+.dm-warn-curve-dialog .el-dialog__headerbtn:hover .el-dialog__close {
+  color: #00d4ff;
+}
+
+.dm-handle-dialog .el-dialog__body,
+.dm-warn-curve-dialog .el-dialog__body {
+  padding: 18px 20px 20px;
+  color: #a8c4dc;
+  background: #080c20;
+}
+
+.dm-handle-dialog .el-dialog__footer {
+  padding: 14px 20px 18px;
+  background: #080c20;
+  border-top: 1px solid rgba(0, 212, 255, .1);
+}
+
+.dm-handle-dialog .el-textarea__inner {
+  color: #d8e8f5;
+  background: rgba(0, 30, 56, .72);
+  box-shadow: 0 0 0 1px rgba(0, 212, 255, .22) inset;
+}
+
+.dm-handle-dialog .el-textarea__inner::placeholder {
+  color: #587690;
+}
+
+@media (max-width: 820px) {
+  .dm-warn-curve-dialog.el-dialog {
+    width: calc(100% - 24px);
+  }
+
+  .dm-handle-dialog.el-dialog {
+    width: min(400px, calc(100% - 24px));
+  }
+}
+</style>

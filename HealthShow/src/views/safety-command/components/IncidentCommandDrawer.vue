@@ -5,6 +5,7 @@
     size="min(620px, 100vw)"
     :destroy-on-close="false"
     class="incident-command-drawer"
+    style="--el-bg-color:#071426;--el-drawer-bg-color:#071426;--el-text-color-primary:#e8f4ff;--el-text-color-regular:#a8c4dc;--el-text-color-secondary:#7696b2;--el-border-color:#183754;--el-border-color-lighter:rgba(24,55,84,.7);--el-fill-color-blank:#0a1a30;--el-fill-color-light:rgba(0,200,255,.08)"
     @open="loadIncident"
   >
     <template #header>
@@ -259,7 +260,10 @@ async function runExternal(action) {
 
 async function runConfirmedAction(message, action, task) {
   try {
-    await ElMessageBox.confirm(message, '确认操作', { type: 'warning' })
+    await ElMessageBox.confirm(message, '确认操作', {
+      type: 'warning',
+      customClass: 'incident-command-confirm'
+    })
   } catch {
     return
   }
@@ -314,6 +318,64 @@ h3 { margin:0 0 10px; font-size:14px; }
 .external-note { margin:8px 0 0; color:var(--el-text-color-secondary); font-size:12px; line-height:1.5; }
 .incident-timeline :deep(.el-timeline-item__content) { display:grid; gap:3px; }
 .incident-timeline p { margin:0; color:var(--el-text-color-secondary); font-size:12px; }
+:global(.incident-command-drawer.el-drawer) {
+  color:#a8c4dc;
+  background:#071426;
+  border-left:1px solid rgba(0,200,255,.24);
+  box-shadow:-18px 0 54px rgba(0,0,0,.58), 0 0 30px rgba(0,180,255,.07);
+}
+:global(.incident-command-drawer .el-drawer__header) {
+  margin:0;
+  padding:18px 20px 14px;
+  color:#e8f4ff;
+  background:#081a30;
+  border-bottom:1px solid rgba(0,200,255,.16);
+}
+:global(.incident-command-drawer .el-drawer__close-btn) { color:#82a8c8; }
+:global(.incident-command-drawer .el-drawer__close-btn:hover) { color:#00c8ff; }
+:global(.incident-command-drawer .el-drawer__body) {
+  padding:18px 20px 24px;
+  color:#a8c4dc;
+  background:#071426;
+}
+:global(.incident-command-drawer .el-input__wrapper),
+:global(.incident-command-drawer .el-textarea__inner),
+:global(.incident-command-drawer .el-input-number .el-input__wrapper),
+:global(.incident-command-drawer .el-select__wrapper) {
+  color:#d8e8f5;
+  background:rgba(0,30,56,.72);
+  box-shadow:0 0 0 1px rgba(0,200,255,.22) inset;
+}
+:global(.incident-command-drawer .el-input__inner),
+:global(.incident-command-drawer .el-textarea__inner) { color:#d8e8f5; }
+:global(.incident-command-drawer .el-input__inner::placeholder),
+:global(.incident-command-drawer .el-textarea__inner::placeholder) { color:#587690; }
+:global(.incident-command-drawer .el-timeline-item__timestamp),
+:global(.incident-command-drawer .el-empty__description p) { color:#7696b2; }
+:global(.incident-command-confirm.el-message-box) {
+  --el-bg-color:#081a30;
+  --el-bg-color-overlay:#081a30;
+  --el-fill-color-blank:#0a1a30;
+  --el-border-color:rgba(0,200,255,.24);
+  --el-text-color-primary:#e8f4ff;
+  --el-text-color-regular:#a8c4dc;
+  width:min(420px, calc(100vw - 24px));
+  background:#081a30;
+  border:1px solid rgba(0,200,255,.24);
+  box-shadow:0 18px 54px rgba(0,0,0,.62), 0 0 28px rgba(0,180,255,.08);
+}
+:global(.incident-command-confirm .el-message-box__title) { color:#e8f4ff; }
+:global(.incident-command-confirm .el-message-box__content) { color:#a8c4dc; }
+:global(.incident-command-confirm .el-message-box__headerbtn .el-message-box__close) { color:#82a8c8; }
+:global(.el-overlay:has(.incident-command-confirm) .el-overlay-message-box) {
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+}
+:global(.el-overlay:has(.incident-command-confirm) .el-overlay-message-box::after) { display:none; }
 @media (max-width: 480px) {
   .incident-summary { grid-template-columns:1fr; }
   .incident-summary > div { border-bottom:1px solid var(--el-border-color-lighter) !important; }
