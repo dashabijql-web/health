@@ -372,6 +372,9 @@ sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; 
 
 ## 当前验证基线
 
+- 2026-07-16 修复后端“进程仍在但 Druid 已关闭”的半关闭状态：`health-wsl-stack.sh` 的后端状态与启动判定必须读取 Actuator 顶层 `status`，只有 `health=UP` 才算可用；发现运行中但健康为 `DOWN` 时自动完整重启。tmux 停止后端时必须终止整个进程组并确认 `8080/9000` 已释放，禁止只删除 session/pid 文件。
+- 裸 `@Async` 手表数据任务统一使用 `taskExecutor` 有界线程池，线程名前缀为 `watch-data-`，队列满时由调用线程回压；禁止回退到会持续创建线程的 `SimpleAsyncTaskExecutor`。
+
 2026-05-08 目标态收口后验证：
 
 - `mvn -q test -f D:\Health\HealthData\pom.xml` 通过。

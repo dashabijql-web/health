@@ -21,6 +21,21 @@ public class AsyncExecutorConfig {
         };
     }
 
+    @Bean(name = "taskExecutor")
+    public Executor taskExecutor(TaskDecorator healthDataSourceTaskDecorator) {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(8);
+        executor.setMaxPoolSize(16);
+        executor.setQueueCapacity(2000);
+        executor.setThreadNamePrefix("watch-data-");
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.setTaskDecorator(healthDataSourceTaskDecorator);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "aiChatTaskExecutor")
     public Executor aiChatTaskExecutor(TaskDecorator healthDataSourceTaskDecorator) {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

@@ -10,6 +10,17 @@ const wslRunnerWrapperPath = path.resolve('..', 'tools', 'start-health-runner.py
 const healthLoopRunnerPath = path.resolve('..', 'tests', 'run-health-loop.py')
 const watchCapturePath = path.resolve('..', 'tools', 'watch-capture', 'run_three_hour_capture.py')
 const watchCaptureDebugPath = path.resolve('..', 'tools', 'watch-capture', 'run_three_hour_backend_debug_capture.py')
+const stackManagerPath = path.resolve('..', 'tools', 'health-wsl-stack.sh')
+
+test('WSL stack manager rejects half-closed backend instances', () => {
+  const source = fs.readFileSync(stackManagerPath, 'utf8')
+
+  assert.match(source, /backend_healthy/, 'backend lifecycle must verify actuator health, not only process presence')
+  assert.match(source, /health=DOWN/, 'backend status must expose an unhealthy running process')
+  assert.match(source, /process is running but unhealthy; restarting/, 'backend start must replace half-closed instances')
+  assert.match(source, /wait_for_port_closed/, 'backend stop must wait until HTTP and TCP listeners are released')
+  assert.match(source, /kill -TERM -- "-\$process_group"/, 'tmux shutdown must terminate the complete backend process group')
+})
 
 test('WSL full stack runner uses the WSL stack manager and preserves summary contracts', () => {
   const source = fs.readFileSync(fullStackRunnerPath, 'utf8')

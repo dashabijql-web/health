@@ -116,9 +116,25 @@ stop_service() {
   local service_name="${3:-$label}"
   if use_tmux_launcher; then
     local session_name
+    local pane_pid
+    local process_group
     session_name="$(service_session_name "$service_name")"
     if tmux has-session -t "$session_name" 2>/dev/null; then
-      tmux kill-session -t "$session_name"
+      pane_pid="$(tmux display-message -p -t "$session_name" '#{pane_pid}')"
+      process_group="$(ps -o pgid= -p "$pane_pid" 2>/dev/null | tr -d '[:space:]')"
+      if [[ -n "$process_group" ]]; then
+        kill -TERM -- "-$process_group" 2>/dev/null || true
+        for _ in {1..20}; do
+          if ! kill -0 -- "-$process_group" 2>/dev/null; then
+            break
+          fi
+          sleep 1
+        done
+        if kill -0 -- "-$process_group" 2>/dev/null; then
+          kill -KILL -- "-$process_group" 2>/dev/null || true
+        fi
+      fi
+      tmux kill-session -t "$session_name" 2>/dev/null || true
       rm -f "$pid_file"
       echo "$label stopped"
       return 0
@@ -193,6 +209,58 @@ wait_for_http() {
   return 1
 }
 
+backend_health_url() {
+  printf 'http://127.0.0.1:%s/health/actuator/health\n' "$BACKEND_HTTP_PORT"
+}
+
+backend_healthy() {
+  curl -fsS --max-time 5 "$(backend_health_url)" 2>/dev/null | \
+    "$HEALTH_PYTHON_CMD" -c 'import json, sys; sys.exit(0 if json.load(sys.stdin).get("status") == "UP" else 1)' \
+      2>/dev/null
+}
+
+wait_for_backend_health() {
+  local timeout="${1:-180}"
+  local i
+  for ((i=0; i<timeout; i++)); do
+    if backend_healthy; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+port_is_open() {
+  local host="$1"
+  local port="$2"
+  "$HEALTH_PYTHON_CMD" - "$host" "$port" <<'PY'
+import socket, sys
+s = socket.socket()
+s.settimeout(0.5)
+try:
+    s.connect((sys.argv[1], int(sys.argv[2])))
+except OSError:
+    sys.exit(1)
+finally:
+    s.close()
+PY
+}
+
+wait_for_port_closed() {
+  local host="$1"
+  local port="$2"
+  local timeout="${3:-30}"
+  local i
+  for ((i=0; i<timeout; i++)); do
+    if ! port_is_open "$host" "$port"; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 wait_for_tcp() {
   local host="$1"
   local port="$2"
@@ -220,19 +288,31 @@ PY
 
 start_backend() {
   if is_running "$backend_pid_file" "backend"; then
-    echo "backend already running pid=$(current_pid "$backend_pid_file" "backend")"
-    return 0
+    if backend_healthy; then
+      echo "backend already running pid=$(current_pid "$backend_pid_file" "backend")"
+      return 0
+    fi
+    echo "backend process is running but unhealthy; restarting"
+    stop_backend
   fi
   local log_file="$LOG_ROOT/backend.log"
   start_with_pid_file "$backend_pid_file" "$log_file" "backend" \
     env SERVER_PORT="$BACKEND_HTTP_PORT" NETTY_SERVER_PORT="$BACKEND_TCP_PORT" "$BACKEND_RUNNER"
-  wait_for_http "http://127.0.0.1:${BACKEND_HTTP_PORT}/health/actuator/health" 180
-  wait_for_tcp 127.0.0.1 "$BACKEND_TCP_PORT" 120 >/dev/null
+  if ! wait_for_backend_health 180 || ! wait_for_tcp 127.0.0.1 "$BACKEND_TCP_PORT" 120 >/dev/null; then
+    echo "backend failed health verification; see $log_file" >&2
+    stop_backend
+    return 1
+  fi
   echo "backend started http=$BACKEND_HTTP_PORT tcp=$BACKEND_TCP_PORT pid=$(current_pid "$backend_pid_file" "backend")"
 }
 
 stop_backend() {
   stop_service "$backend_pid_file" "backend" "backend"
+  if ! wait_for_port_closed 127.0.0.1 "$BACKEND_HTTP_PORT" 30 || \
+     ! wait_for_port_closed 127.0.0.1 "$BACKEND_TCP_PORT" 30; then
+    echo "backend stopped but ports are still occupied: http=$BACKEND_HTTP_PORT tcp=$BACKEND_TCP_PORT" >&2
+    return 1
+  fi
 }
 
 restart_backend() {
@@ -242,7 +322,11 @@ restart_backend() {
 
 backend_status() {
   if is_running "$backend_pid_file" "backend"; then
-    echo "backend running pid=$(current_pid "$backend_pid_file" "backend") http=$BACKEND_HTTP_PORT tcp=$BACKEND_TCP_PORT"
+    if backend_healthy; then
+      echo "backend running pid=$(current_pid "$backend_pid_file" "backend") http=$BACKEND_HTTP_PORT tcp=$BACKEND_TCP_PORT health=UP"
+    else
+      echo "backend unhealthy pid=$(current_pid "$backend_pid_file" "backend") http=$BACKEND_HTTP_PORT tcp=$BACKEND_TCP_PORT health=DOWN"
+    fi
   else
     echo "backend stopped"
   fi
