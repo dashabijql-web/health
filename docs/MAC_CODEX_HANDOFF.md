@@ -48,7 +48,7 @@ health-codex-handoff-20260716/
     └── SHA256SUMS
 ```
 
-`health-repository-current.tar.gz` 是首选恢复入口，包含 `.git`、完整历史和当前未提交工作树；已排除依赖缓存、构建产物、运行日志、测试截图产物和本地密钥。`.bundle` 是 Git 历史的独立恢复保险，不包含未提交改动。
+`health-repository-current.tar.gz` 是首选恢复入口，包含 `.git`、完整历史和当前未提交工作树；已排除依赖缓存、构建产物、服务运行日志和本地密钥。仓库中被 Git 跟踪的历史测试证据仍会保留，以确保解压后的工作树状态完全一致。`.bundle` 是 Git 历史的独立恢复保险，不包含未提交改动。
 
 ## 4. Mac 架构与 SQL Server 决策
 
