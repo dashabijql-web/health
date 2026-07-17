@@ -97,6 +97,8 @@ test('dashboard header and device cards avoid invented health and device counts'
 
   assert.equal(header.some((item) => item.label === '健康达标'), false)
   assert.equal(header.find((item) => item.label === '当前在线').val, 8)
+  assert.equal(header.find((item) => item.label === '今日新增').val, 3)
+  assert.equal(header.some((item) => item.label === '新增预警'), false)
   assert.equal(header.some((item) => item.label === '监测覆盖'), false)
   assert.equal(header.find((item) => item.label === '设备激活').val, '92%')
   assert.equal(devices.find((item) => item.label === '低电设备').val, '--')

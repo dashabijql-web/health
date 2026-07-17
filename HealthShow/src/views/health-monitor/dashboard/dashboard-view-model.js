@@ -35,7 +35,7 @@ export function buildDashboardHeaderKpis({
       sub: kpiRealtimeTotal > 0 ? `短时有上报 · 监测人员 ${kpiRealtimeTotal}` : '数据加载中...'
     },
     {
-      label: '新增预警',
+      label: '今日新增',
       val: kpiTodayWarnings,
       cls: 'kpi-red',
       clickable: true,
