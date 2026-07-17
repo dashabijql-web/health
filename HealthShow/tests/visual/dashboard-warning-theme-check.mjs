@@ -26,7 +26,7 @@ try {
   await page.locator('.dm-event').first().waitFor({ state: 'visible', timeout: 20000 })
 
   const backgrounds = {}
-  await page.locator('.dm-event').first().click()
+  await page.locator('.dm-event').first().evaluate((element) => element.click())
   const curveDialog = page.locator('.dm-warn-curve-dialog')
   await curveDialog.waitFor({ state: 'visible' })
   backgrounds.curve = await curveDialog.evaluate((element) => getComputedStyle(element).backgroundColor)
@@ -35,7 +35,7 @@ try {
   await page.screenshot({ path: `${SCREENSHOT_PREFIX}-curve.png`, fullPage: false })
   await curveDialog.locator('.el-dialog__headerbtn').click()
 
-  await page.locator('.dm-event').first().getByRole('button', { name: '指挥处置' }).click()
+  await page.locator('.dm-event').first().getByRole('button', { name: '指挥处置' }).evaluate((element) => element.click())
   const commandDrawer = page.locator('.incident-command-drawer')
   await commandDrawer.waitFor({ state: 'visible' })
   backgrounds.command = await commandDrawer.evaluate((element) => getComputedStyle(element).backgroundColor)
@@ -65,7 +65,7 @@ try {
   await warningList.evaluate((element) => { element.scrollTop = 0 })
   await warningList.hover()
   await page.waitForTimeout(150)
-  await page.locator('.dm-event').first().getByRole('button', { name: '处理', exact: true }).click()
+  await page.locator('.dm-event').first().getByRole('button', { name: '处理', exact: true }).evaluate((element) => element.click())
   const handleDialog = page.locator('.dm-handle-dialog')
   await handleDialog.waitFor({ state: 'visible' })
   backgrounds.handle = await handleDialog.evaluate((element) => getComputedStyle(element).backgroundColor)
