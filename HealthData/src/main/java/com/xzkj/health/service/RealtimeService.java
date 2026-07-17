@@ -174,7 +174,11 @@ public class RealtimeService {
                 buildHealthMetric("temperature", "体温", "°C", freshUsers,
                         RealtimeUserView::temperature),
                 buildHealthMetric("pressure", "压力", "idx", freshUsers,
-                        user -> number(user.pressure()))
+                        user -> number(user.pressure())),
+                buildHealthMetric("bloodPressureHigh", "高压", "mmHg", freshUsers,
+                        user -> number(user.bloodPressureHigh())),
+                buildHealthMetric("bloodPressureLow", "低压", "mmHg", freshUsers,
+                        user -> number(user.bloodPressureLow()))
         );
 
         int onlineUsers = snapshot.summary().onlineCount();
@@ -357,6 +361,8 @@ public class RealtimeService {
                 new Thresholds(36d, 37.5d, 35d, 38d), reasons, states, severityRank);
         severityRank = evaluateRange("bloodPressureHigh", "收缩压", row.getBloodPressureHigh(), "mmHg", configs.get(4),
                 new Thresholds(90d, 139d, null, 180d), reasons, states, severityRank);
+        severityRank = evaluateRange("bloodPressureLow", "舒张压", row.getBloodPressureLow(), "mmHg", null,
+                new Thresholds(60d, 89d, null, 120d), reasons, states, severityRank);
         severityRank = evaluateRange("pressure", "压力指数", row.getPressure(), "", configs.get(5),
                 new Thresholds(null, 84d, null, 90d), reasons, states, severityRank);
 

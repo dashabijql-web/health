@@ -120,6 +120,12 @@ class RealtimeServiceTest {
         RealtimeUserRow normal = realtimeRow("E001", 72, 98, 36.5, 35, 20L);
         RealtimeUserRow danger = realtimeRow("E002", 128, 88, 38.2, 92, 40L);
         RealtimeUserRow stale = realtimeRow("E003", 80, 97, 36.7, 42, 600L);
+        normal.setBloodPressureHigh(118);
+        normal.setBloodPressureLow(78);
+        danger.setBloodPressureHigh(148);
+        danger.setBloodPressureLow(96);
+        stale.setBloodPressureHigh(122);
+        stale.setBloodPressureLow(82);
 
         when(alertConfigService.getConfigMap(nullable(Integer.class))).thenReturn(Collections.emptyMap());
         when(realtimeMapper.getActiveUsersDirect(anyString(), eq(15)))
@@ -142,6 +148,23 @@ class RealtimeServiceTest {
         assertEquals(72.0, heartRate.minimum(), 0.001);
         assertEquals(128.0, heartRate.maximum(), 0.001);
         assertEquals(128.0, heartRate.p95(), 0.001);
+        assertEquals(6, result.metrics().size());
+        var systolic = result.metrics().stream()
+                .filter(metric -> "bloodPressureHigh".equals(metric.key()))
+                .findFirst().orElseThrow();
+        assertEquals(2, systolic.coveredUsers());
+        assertEquals(1, systolic.abnormalUsers());
+        assertEquals(133.0, systolic.average(), 0.001);
+        assertEquals(118.0, systolic.minimum(), 0.001);
+        assertEquals(148.0, systolic.maximum(), 0.001);
+        var diastolic = result.metrics().stream()
+                .filter(metric -> "bloodPressureLow".equals(metric.key()))
+                .findFirst().orElseThrow();
+        assertEquals(2, diastolic.coveredUsers());
+        assertEquals(1, diastolic.abnormalUsers());
+        assertEquals(87.0, diastolic.average(), 0.001);
+        assertEquals(78.0, diastolic.minimum(), 0.001);
+        assertEquals(96.0, diastolic.maximum(), 0.001);
     }
 
     private RealtimeUserRow realtimeRow(String code, int heartRate, int bloodOxygen,

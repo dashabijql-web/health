@@ -138,11 +138,23 @@ test('dashboard command panels prioritize actionable exceptions', () => {
     vitalCards,
     warningEvents: [],
     healthSnapshot: {
-      metrics: [{
-        key: 'heartRate', label: '心率', unit: 'bpm', average: 78.5,
-        minimum: 52, maximum: 128, p95: 112, coveredUsers: 20,
-        abnormalUsers: 3, abnormalRate: 15
-      }]
+      metrics: [
+        {
+          key: 'heartRate', label: '心率', unit: 'bpm', average: 78.5,
+          minimum: 52, maximum: 128, p95: 112, coveredUsers: 20,
+          abnormalUsers: 3, abnormalRate: 15
+        },
+        {
+          key: 'bloodPressureHigh', label: '高压', unit: 'mmHg', average: 124,
+          minimum: 92, maximum: 181, p95: 145, coveredUsers: 18,
+          abnormalUsers: 2, abnormalRate: 11.1
+        },
+        {
+          key: 'bloodPressureLow', label: '低压', unit: 'mmHg', average: 78,
+          minimum: 58, maximum: 96, p95: 90, coveredUsers: 18,
+          abnormalUsers: 1, abnormalRate: 5.6
+        }
+      ]
     }
   })
   const realtimeHeartRate = realtimeExceptions.find(item => item.metricKey === 'heartRate')
@@ -150,6 +162,14 @@ test('dashboard command panels prioritize actionable exceptions', () => {
   assert.equal(realtimeHeartRate.unit, '异常/覆盖')
   assert.equal(realtimeHeartRate.tag, '群体均值 78.5bpm')
   assert.match(realtimeHeartRate.exceptionText, /范围 52-128bpm · 覆盖 20 人/)
+  const realtimeSystolic = realtimeExceptions.find(item => item.metricKey === 'bloodPressureHigh')
+  assert.equal(realtimeSystolic.val, '2/18')
+  assert.equal(realtimeSystolic.unit, '异常/覆盖')
+  assert.equal(realtimeSystolic.tag, '群体均值 124mmHg')
+  const realtimeDiastolic = realtimeExceptions.find(item => item.metricKey === 'bloodPressureLow')
+  assert.equal(realtimeDiastolic.val, '1/18')
+  assert.equal(realtimeDiastolic.unit, '异常/覆盖')
+  assert.equal(realtimeDiastolic.tag, '群体均值 78mmHg')
   assert.doesNotMatch(viewSource, /监测覆盖与数据质量|全项覆盖/)
   assert.doesNotMatch(viewSource, /warningEvents\.filter\(e=>e\.handled\)\.length/)
   assert.match(viewSource, /健康异常快照/)
