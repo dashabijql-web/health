@@ -22,7 +22,9 @@ test('dashboard command totals come from the server summary instead of the first
   const workflow = source('src/views/health-monitor/dashboard/dashboard-command-workflow.js')
 
   assert.match(api, /url: '\/command-center\/dashboard-summary'/)
+  assert.match(api, /getCommandCenterDashboardSummary\(params\)/)
   assert.match(runtime, /fetchCommandCenterDashboardSummary/)
+  assert.match(runtime, /summary\.warning\?\.periodNew/)
   assert.match(runtime, /summary\.warning\?\.criticalPending/)
   assert.match(workflow, /warningSummary\?\.pendingTotal/)
   assert.match(workflow, /warningSummary\?\.unassignedTotal/)

@@ -15,9 +15,11 @@ export function buildDashboardHeaderKpis({
     ? Math.round((kpiTodayWarnings - kpiYesterdayWarnings) / kpiYesterdayWarnings * 100)
     : null
 
-  const deltaText = delta !== null
-    ? `${delta > 0 ? '↑' : '↓'}${Math.abs(delta)}% 较昨${kpiYesterdayWarnings}件`
-    : `昨日 ${kpiYesterdayWarnings}件`
+  const deltaText = periodLabel === '当日'
+    ? delta !== null
+      ? `${delta > 0 ? '↑' : '↓'}${Math.abs(delta)}% 较昨${kpiYesterdayWarnings}件`
+      : `昨日 ${kpiYesterdayWarnings}件`
+    : `${periodLabel}累计`
 
   const abnormalUsers = new Set(
     (warningEvents || [])
@@ -35,7 +37,7 @@ export function buildDashboardHeaderKpis({
       sub: kpiRealtimeTotal > 0 ? `短时有上报 · 监测人员 ${kpiRealtimeTotal}` : '数据加载中...'
     },
     {
-      label: '今日新增',
+      label: `${periodLabel}预警`,
       val: kpiTodayWarnings,
       cls: 'kpi-red',
       clickable: true,

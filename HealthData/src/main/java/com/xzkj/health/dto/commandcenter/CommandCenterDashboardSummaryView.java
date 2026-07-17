@@ -8,6 +8,8 @@ public record CommandCenterDashboardSummaryView(
 ) {
     public record WarningSummary(
             int todayNew,
+            int periodNew,
+            String period,
             int criticalPending,
             int pendingTotal,
             int unassignedTotal,

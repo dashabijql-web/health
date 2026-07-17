@@ -161,7 +161,7 @@ export const dashboardComputed = {
       personCounts: this.personCounts,
       deviceActivationRate: this.deviceStats.total > 0 ? Math.round(this.deviceStats.activeRate || 0) : null,
       preShiftData: this.preShiftData,
-      periodLabel: this.activePeriod === 'day' ? '今日' : this.periodLabel
+      periodLabel: this.periodLabel
     })
   },
 

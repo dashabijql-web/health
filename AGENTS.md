@@ -331,7 +331,7 @@ sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; 
 - 班前复检超时、设备数据中断目前没有后端事实数据。页面只能明确标记“未接入”，禁止虚构人数、人员列表、责任人或 SLA。
 - 灰度与回滚开关：`VITE_SAFETY_COMMAND_V2`、`VITE_UNIFIED_CONTROL_V2`，默认 `true`。配置为 `false` 后重新构建，路径保持不变并切回可构建的 `legacy-20260601` 页面。
 - 2026-07-13 本轮已验证：`audit:api` 53/53、`audit:auth` 7/7、`audit:e2e`、`audit:structure`、`safety-command,dashboard` 五档视觉审计和 `npm run build` 均通过。认证拦截必须从 `SaHolder.getRequest().getSource()` 获取 Servlet request；不可再把 `SaInterceptor` 的 handler 参数误判为 request，否则会放行所有业务接口。
-- 2026-07-14 统一管控指挥摘要改走 `GET /command-center/dashboard-summary`：今日新增、高危待办、待办总数不得再由前端前 `200` 条事件推算；未分派和已超时来自事件状态表聚合。复检状态/时限、低电、数据中断、设备故障未建模时必须返回 `status=UNAVAILABLE, value=null`，禁止用 `0` 伪装已接入。
+- 2026-07-14 统一管控指挥摘要改走 `GET /command-center/dashboard-summary`：预警总数、高危待办、待办总数不得再由前端前 `200` 条事件推算；`period=day/week/month` 分别返回当日、近7日、近30日权威 `periodNew`，页面标题和值必须随周期切换，`todayNew` 仅保留为兼容的当天口径。未分派和已超时来自事件状态表聚合。复检状态/时限、低电、数据中断、设备故障未建模时必须返回 `status=UNAVAILABLE, value=null`，禁止用 `0` 伪装已接入。
 - 2026-07-15 安全指挥中心完成信息治理：头部统计只使用 `dashboard-summary` 权威口径，开放事件统一进入一个可筛选处置队列；页面只保留一个优先事件、一个部门预警矩阵、一个今日闭环和一个真实 7 日趋势。禁止重新加入模拟体征趋势、均摊处理率、样本与全量混算图表、重复部门榜单、重复事件列表或无具体事件上下文的批量呼叫。
 - 安全指挥中心所有数量必须明确对象和范围：部门矩阵展示“预警条数”，队列“已加载条数”不得冒充权威待办总数；未接入责任人、SLA 或外部动作必须显示“未分派 / 未配置 / 未接入”。本轮信息恢复后的 `safety-command` 五档滚动视觉审计通过，结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T03-36-35-040Z/layout-summary.md`。
 - 2026-07-15 信息治理后的恢复原则：安全指挥中心应保留权威设备覆盖、开放事件去重后的重点风险人员、以及明确标注“已加载事件范围”的类型与处置信号；这些属于处置所需信息，不应作为冗余删除。仍禁止恢复模拟体征、均摊处理率、第二套事件明细或样本冒充全量的统计。

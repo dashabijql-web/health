@@ -28,12 +28,22 @@ public class CommandCenterDashboardSummaryService {
     private final DeviceOperationalService deviceOperationalService;
 
     @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_UNCOMMITTED)
-    public CommandCenterDashboardSummaryView getSummary() {
+    public CommandCenterDashboardSummaryView getSummary(String requestedPeriod) {
         LocalDate today = LocalDate.now();
         String startAt = today.atStartOfDay().format(DATE_TIME);
         String endAt = today.plusDays(1).atStartOfDay().format(DATE_TIME);
+        String period = normalizePeriod(requestedPeriod);
+        int periodDays = switch (period) {
+            case "week" -> 7;
+            case "month" -> 30;
+            default -> 1;
+        };
+        String periodStartAt = today.minusDays(periodDays - 1L).atStartOfDay().format(DATE_TIME);
 
         int todayNew = countWarnings(null, null, startAt, endAt);
+        int periodNew = periodDays == 1
+                ? todayNew
+                : countWarnings(null, null, periodStartAt, endAt);
         int pendingTotal = countWarnings(null, false, startAt, endAt);
         int criticalPending = countWarnings("高危", false, startAt, endAt);
         Map<String, Object> workflow = incidentMapper.getOpenWorkflowSummary(startAt, endAt);
@@ -47,6 +57,8 @@ public class CommandCenterDashboardSummaryService {
         return new CommandCenterDashboardSummaryView(
                 new CommandCenterDashboardSummaryView.WarningSummary(
                         todayNew,
+                        periodNew,
+                        period,
                         criticalPending,
                         pendingTotal,
                         Math.max(0, pendingTotal - assignedOpen),
@@ -74,6 +86,10 @@ public class CommandCenterDashboardSummaryService {
 
     private int countWarnings(String level, Boolean handled, String startAt, String endAt) {
         return riskWarningService.getWarningListByTimeWindow(level, handled, startAt, endAt, 1, 1).total();
+    }
+
+    private String normalizePeriod(String period) {
+        return "week".equals(period) || "month".equals(period) ? period : "day";
     }
 
     private int intValue(Object value) {

@@ -84,7 +84,7 @@ test('dashboard header and device cards avoid invented health and device counts'
     personCounts: { heartRate: 8 },
     deviceActivationRate: 92,
     preShiftData: { preShiftRate: 95, qualifiedCount: 19, totalToday: 20 },
-    periodLabel: '今日'
+    periodLabel: '当日'
   })
   const devices = buildDashboardDeviceCards({
     deviceStats: { total: 100, boundDevices: 100, warningRate: 17 },
@@ -97,8 +97,24 @@ test('dashboard header and device cards avoid invented health and device counts'
 
   assert.equal(header.some((item) => item.label === '健康达标'), false)
   assert.equal(header.find((item) => item.label === '当前在线').val, 8)
-  assert.equal(header.find((item) => item.label === '今日新增').val, 3)
+  assert.equal(header.find((item) => item.label === '当日预警').val, 3)
+  assert.equal(header.find((item) => item.label === '当日预警').sub, '↑50% 较昨2件')
   assert.equal(header.some((item) => item.label === '新增预警'), false)
+  const monthlyHeader = buildDashboardHeaderKpis({
+    kpiRealtimeOnline: 8,
+    kpiRealtimeTotal: 10,
+    kpiTodayWarnings: 300,
+    kpiYesterdayWarnings: 2,
+    kpiUnhandledHigh: 1,
+    kpiUnhandledMid: 1,
+    warningEvents: [],
+    personCounts: {},
+    deviceActivationRate: 92,
+    preShiftData: {},
+    periodLabel: '近30日'
+  })
+  assert.equal(monthlyHeader.find((item) => item.label === '近30日预警').val, 300)
+  assert.equal(monthlyHeader.find((item) => item.label === '近30日预警').sub, '近30日累计')
   assert.equal(header.some((item) => item.label === '监测覆盖'), false)
   assert.equal(header.find((item) => item.label === '设备激活').val, '92%')
   assert.equal(devices.find((item) => item.label === '低电设备').val, '--')

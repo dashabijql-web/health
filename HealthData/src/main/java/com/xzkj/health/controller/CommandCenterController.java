@@ -42,8 +42,9 @@ public class CommandCenterController {
     private final SysUserService sysUserService;
 
     @GetMapping("/dashboard-summary")
-    public Result<CommandCenterDashboardSummaryView> getDashboardSummary() {
-        return Result.ok("获取成功", dashboardSummaryService.getSummary());
+    public Result<CommandCenterDashboardSummaryView> getDashboardSummary(
+            @RequestParam(defaultValue = "day") String period) {
+        return Result.ok("获取成功", dashboardSummaryService.getSummary(period));
     }
 
     @GetMapping("/pre-shift-reviews")

@@ -120,21 +120,21 @@ export const dashboardRuntimeMethods = {
   async fetchKpiData() {
     const [snapshot] = await Promise.all([
       fetchDashboardKpiSnapshot(this.warningEvents),
-      this.fetchCommandSummary()
+      this.fetchCommandSummary(this.activePeriod)
     ])
     this.kpiRealtimeOnline = snapshot.kpiRealtimeOnline
     this.kpiRealtimeTotal = snapshot.kpiRealtimeTotal
-    this.kpiTodayWarnings = this.commandSummary?.warning?.todayNew ?? snapshot.kpiTodayWarnings
+    this.kpiTodayWarnings = this.commandSummary?.warning?.periodNew ?? snapshot.kpiTodayWarnings
     this.kpiYesterdayWarnings = snapshot.kpiYesterdayWarnings
     this.kpiUnhandledHigh = this.commandSummary?.warning?.criticalPending ?? snapshot.kpiUnhandledHigh
     this.kpiUnhandledMid = snapshot.kpiUnhandledMid
   },
 
-  async fetchCommandSummary() {
-    const summary = await fetchCommandCenterDashboardSummary()
+  async fetchCommandSummary(period = this.activePeriod) {
+    const summary = await fetchCommandCenterDashboardSummary(period)
     if (!summary) return
     this.commandSummary = summary
-    this.kpiTodayWarnings = summary.warning?.todayNew ?? this.kpiTodayWarnings
+    this.kpiTodayWarnings = summary.warning?.periodNew ?? this.kpiTodayWarnings
     this.kpiUnhandledHigh = summary.warning?.criticalPending ?? this.kpiUnhandledHigh
     this.preShiftData = {
       ...this.preShiftData,

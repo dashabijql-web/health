@@ -143,9 +143,9 @@ export async function fetchDashboardKpiSnapshot(warningEvents) {
   }
 }
 
-export async function fetchCommandCenterDashboardSummary() {
+export async function fetchCommandCenterDashboardSummary(period = 'day') {
   try {
-    const response = await getCommandCenterDashboardSummary()
+    const response = await getCommandCenterDashboardSummary({ period })
     return response.code === 200 && response.data ? response.data : null
   } catch {
     return null

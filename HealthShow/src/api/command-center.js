@@ -8,10 +8,11 @@ export function getCommandCenterIncidents(params) {
   })
 }
 
-export function getCommandCenterDashboardSummary() {
+export function getCommandCenterDashboardSummary(params) {
   return request({
     url: '/command-center/dashboard-summary',
-    method: 'get'
+    method: 'get',
+    params
   })
 }
 
