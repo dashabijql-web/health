@@ -14,5 +14,13 @@ test('待复检和复检超时筛选会渲染禁入人员列表', () => {
   )
   assert.match(page, /filterStatus\.value === 'review'\s*\? '待复检'/)
   assert.match(page, /filterStatus\.value === 'overdue'\s*\? '复检超时'/)
-  assert.match(page, /needsCompleteReviewQueue\s*\?\s*5000\s*:\s*isMobile\s*\?\s*200\s*:\s*1000/)
+  assert.match(page, /getMineEntryList\(5000\)/)
+})
+
+test('顶部数量可以筛选名单并同步 URL', () => {
+  for (const status of ['', 'pass', 'fail', 'review', 'overdue']) {
+    assert.match(page, new RegExp(`@click="setStatusFilter\\('${status}'\\)"`))
+  }
+  assert.match(page, /class="me-kpi me-kpi-button"/)
+  assert.match(page, /router\.replace\(\{ query \}\)/)
 })

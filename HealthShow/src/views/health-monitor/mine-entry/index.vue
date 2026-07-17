@@ -6,26 +6,26 @@
         <h1 class="me-hd-title">入井健康准入</h1>
       </div>
       <div class="me-hd-kpis">
-        <div class="me-kpi">
+        <button type="button" class="me-kpi me-kpi-button" :class="{ active: filterStatus === '' }" :aria-pressed="filterStatus === ''" @click="setStatusFilter('')">
           <span class="me-kpi-n primary">{{ summary.totalToday || 0 }}</span>
           <span class="me-kpi-l">今日检测</span>
-        </div>
-        <div class="me-kpi">
+        </button>
+        <button type="button" class="me-kpi me-kpi-button" :class="{ active: filterStatus === 'pass' }" :aria-pressed="filterStatus === 'pass'" @click="setStatusFilter('pass')">
           <span class="me-kpi-n success">{{ summary.qualifiedCount || 0 }}</span>
           <span class="me-kpi-l">准入通过</span>
-        </div>
-        <div class="me-kpi">
+        </button>
+        <button type="button" class="me-kpi me-kpi-button" :class="{ active: filterStatus === 'fail' }" :aria-pressed="filterStatus === 'fail'" @click="setStatusFilter('fail')">
           <span class="me-kpi-n" :class="summary.failedCount > 0 ? 'danger' : 'success'">{{ summary.failedCount || 0 }}</span>
           <span class="me-kpi-l">禁止入井</span>
-        </div>
-        <div class="me-kpi">
+        </button>
+        <button type="button" class="me-kpi me-kpi-button" :class="{ active: filterStatus === 'review' }" :aria-pressed="filterStatus === 'review'" @click="setStatusFilter('review')">
           <span class="me-kpi-n" :class="reviewSummary.awaitingReview > 0 ? 'warning' : 'success'">{{ reviewSummary.awaitingReview }}</span>
           <span class="me-kpi-l">待复检</span>
-        </div>
-        <div class="me-kpi">
+        </button>
+        <button type="button" class="me-kpi me-kpi-button" :class="{ active: filterStatus === 'overdue' }" :aria-pressed="filterStatus === 'overdue'" @click="setStatusFilter('overdue')">
           <span class="me-kpi-n" :class="reviewSummary.retestOverdue > 0 ? 'danger' : 'success'">{{ reviewSummary.retestOverdue }}</span>
           <span class="me-kpi-l">复检超时</span>
-        </div>
+        </button>
         <div class="me-kpi">
           <span class="me-kpi-n" :class="rateClass">{{ summary.preShiftRate !== null ? summary.preShiftRate + '%' : '--' }}</span>
           <span class="me-kpi-l">达标率</span>
@@ -37,7 +37,7 @@
         <el-select v-model="filterDept" placeholder="全部部门" size="small" clearable class="me-toolbar-select">
           <el-option v-for="d in deptOptions" :key="d" :label="d" :value="d" />
         </el-select>
-        <el-select v-model="filterStatus" placeholder="全部状态" size="small" class="me-toolbar-select">
+        <el-select v-model="filterStatus" placeholder="全部状态" size="small" class="me-toolbar-select" @change="setStatusFilter">
           <el-option label="全部" value="" />
           <el-option label="准入" value="pass" />
           <el-option label="禁入" value="fail" />
@@ -316,15 +316,20 @@ function fmtTime(t) {
   return dayjs(t).format('HH:mm:ss')
 }
 
+function setStatusFilter(status) {
+  const normalized = normalizeMineEntryStatus(status)
+  filterStatus.value = normalized
+  const query = { ...route.query }
+  if (normalized) query.status = normalized
+  else delete query.status
+  router.replace({ query })
+}
+
 async function load() {
   loading.value = true
   try {
-    // 处置队列必须拉取完整名单，避免移动端 200 条采样截断待复检任务。
-    const isMobile = window.innerWidth < 992
-    const needsCompleteReviewQueue = ['review', 'overdue'].includes(filterStatus.value)
-    const fetchSize = needsCompleteReviewQueue ? 5000 : isMobile ? 200 : 1000
     const [listRes, statsRes, reviewRes] = await Promise.allSettled([
-      getMineEntryList(fetchSize),
+      getMineEntryList(5000),
       getPreShiftCompliance(),
       getPreShiftReviews({ status: 'ALL' })
     ])

@@ -50,6 +50,26 @@ try {
     assert.ok(cards > 0, `${viewport.name}: pending reviews must render concrete review cards`)
     assert.equal(cards, groupCount, `${viewport.name}: review group count and rendered cards should agree`)
     assert.ok(cards >= pending, `${viewport.name}: review queue must not be truncated below the authoritative count`)
+
+    const clickKpi = async (label, status) => {
+      const kpi = page.locator('.me-kpi-button').filter({ hasText: label })
+      await kpi.click()
+      await page.waitForFunction(
+        (expected) => new URLSearchParams(window.location.hash.split('?')[1] || '').get('status') === expected,
+        status || null
+      )
+      assert.equal(await kpi.getAttribute('aria-pressed'), 'true', `${viewport.name}: ${label} should be selected`)
+      const selected = await page.locator('.me-toolbar-select').nth(1).locator('.el-select__placeholder').textContent()
+      assert.ok(selected?.includes(status === 'pass' ? '准入' : status === 'fail' ? '禁入' : status === 'review' ? '待复检' : '全部'))
+    }
+    await clickKpi('准入通过', 'pass')
+    assert.ok(await page.locator('.el-table__body tbody tr').count() > 0, `${viewport.name}: pass filter should show rows`)
+    await clickKpi('禁止入井', 'fail')
+    assert.ok(await page.locator('.me-card-fail').count() > 0, `${viewport.name}: fail filter should show cards`)
+    await clickKpi('待复检', 'review')
+    assert.ok(await page.locator('.me-card-fail').count() > 0, `${viewport.name}: review filter should show cards`)
+    await clickKpi('今日检测', '')
+    assert.ok(await page.locator('.me-card-fail').count() > 0, `${viewport.name}: all filter should restore cards`)
     results.push({ viewport: viewport.name, pending, groupCount, cards })
     await context.close()
   }
