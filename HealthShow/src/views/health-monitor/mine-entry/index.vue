@@ -19,6 +19,14 @@
           <span class="me-kpi-l">禁止入井</span>
         </div>
         <div class="me-kpi">
+          <span class="me-kpi-n" :class="reviewSummary.awaitingReview > 0 ? 'warning' : 'success'">{{ reviewSummary.awaitingReview }}</span>
+          <span class="me-kpi-l">待复检</span>
+        </div>
+        <div class="me-kpi">
+          <span class="me-kpi-n" :class="reviewSummary.retestOverdue > 0 ? 'danger' : 'success'">{{ reviewSummary.retestOverdue }}</span>
+          <span class="me-kpi-l">复检超时</span>
+        </div>
+        <div class="me-kpi">
           <span class="me-kpi-n" :class="rateClass">{{ summary.preShiftRate !== null ? summary.preShiftRate + '%' : '--' }}</span>
           <span class="me-kpi-l">达标率</span>
         </div>
@@ -33,6 +41,8 @@
           <el-option label="全部" value="" />
           <el-option label="准入" value="pass" />
           <el-option label="禁入" value="fail" />
+          <el-option label="待复检" value="review" />
+          <el-option label="复检超时" value="overdue" />
         </el-select>
         <button v-if="route.query.empCode" type="button" class="me-back-btn" @click="backToProfile">返回画像</button>
         <button type="button" class="me-refresh-btn" @click="load" :disabled="loading">
@@ -63,11 +73,11 @@
         <div class="me-empty-desc">可以等待下一轮班前检测，或切换筛选条件查看其它状态记录。</div>
       </div>
 
-      <div v-if="failList.length && (filterStatus === '' || filterStatus === 'fail')">
+      <div v-if="failList.length && ['','fail','review','overdue'].includes(filterStatus)">
         <div class="me-group-hd fail-hd">
           <span class="me-fail-dot"></span>
-          <span>禁止入井（{{ failList.length }} 人）</span>
-          <span class="me-group-tip">以下人员存在健康异常，禁止下井作业</span>
+          <span>{{ failGroupTitle }}（{{ failList.length }} 人）</span>
+          <span class="me-group-tip">{{ failGroupTip }}</span>
         </div>
         <div class="me-cards fail-section">
           <div
@@ -94,6 +104,25 @@
               </div>
               <div class="me-fail-reasons">
                 <span v-for="r in failReasons(item)" :key="r" class="me-reason-tag">{{ r }}</span>
+              </div>
+              <div v-if="item.review" class="me-review-workflow" @click.stop>
+                <div class="me-review-meta">
+                  <el-tag :type="item.review.overdue ? 'danger' : item.review.reviewStatus === 'IN_REVIEW' ? 'warning' : 'info'" size="small" effect="dark">
+                    {{ reviewStatusLabel(item.review) }}
+                  </el-tag>
+                  <span>时限 {{ formatReviewDeadline(item.review.reviewDeadline) }}</span>
+                  <span v-if="item.review.reviewOwner">责任人 {{ item.review.reviewOwner }}</span>
+                </div>
+                <div v-if="item.review.reviewStatus !== 'COMPLETED'" class="me-review-actions">
+                  <el-button
+                    v-if="item.review.reviewStatus === 'PENDING'"
+                    type="primary"
+                    size="small"
+                    @click="applyReviewAction(item, 'CLAIM')"
+                  >接手复检</el-button>
+                  <el-button type="warning" size="small" @click="applyReviewAction(item, 'REQUEST_RETEST')">要求复检</el-button>
+                  <el-button type="danger" size="small" @click="applyReviewAction(item, 'CONFIRM_PROHIBITED')">确认禁入</el-button>
+                </div>
               </div>
             </div>
             <div class="me-card-status fail-status">
@@ -172,10 +201,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Refresh, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import { getMineEntryList, getPreShiftCompliance } from '@/api/health'
+import { getPreShiftReviews } from '@/api/command-center'
 import dayjs from 'dayjs'
 import { exportToExcel } from '@/utils/export-excel'
 import { useIntervalTask } from '@/composables/useIntervalTask'
@@ -185,6 +215,16 @@ import {
   mineEntryRateClass,
   vitalClass
 } from './mine-entry-view-model.js'
+import {
+  attachReviews,
+  buildReviewMap,
+  createReviewActionHandler,
+  formatReviewDeadline,
+  matchesReviewFilter,
+  normalizeMineEntryStatus,
+  reviewStatusLabel,
+  summarizeReviews
+} from './mine-entry-review-workflow.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -215,15 +255,15 @@ function backToProfile() {
 const loading = ref(false)
 const searchText = ref('')
 const filterDept = ref('')
-const filterStatus = ref('')
+const filterStatus = ref(normalizeMineEntryStatus(route.query.status))
 const passPage = ref(1)
 const passPageSize = 50
 const currentDate = ref(dayjs().format('YYYY年MM月DD日'))
 const lastRefreshTime = ref('')
 
 const entryList = ref([])
+const reviewList = ref([])
 const summary = ref({ totalToday: 0, qualifiedCount: 0, failedCount: 0, preShiftRate: null })
-
 const rateClass = computed(() => {
   return mineEntryRateClass(summary.value.preShiftRate)
 })
@@ -232,6 +272,9 @@ const deptOptions = computed(() => {
   return [...s].sort()
 })
 
+const reviewMap = computed(() => buildReviewMap(reviewList.value))
+const reviewSummary = computed(() => summarizeReviews(reviewList.value))
+
 const filteredList = computed(() => {
   passPage.value = 1
   return entryList.value.filter(item => {
@@ -239,12 +282,21 @@ const filteredList = computed(() => {
     if (filterDept.value && item.deptName !== filterDept.value) return false
     if (filterStatus.value === 'pass' && !item.qualified) return false
     if (filterStatus.value === 'fail' && item.qualified) return false
+    if (!matchesReviewFilter(item, filterStatus.value, reviewMap.value)) return false
     return true
   })
 })
 
-const failList = computed(() => filteredList.value.filter(e => !e.qualified))
+const failList = computed(() => attachReviews(filteredList.value.filter(e => !e.qualified), reviewMap.value))
 const passList = computed(() => filteredList.value.filter(e => e.qualified))
+const failGroupTitle = computed(() => filterStatus.value === 'review'
+  ? '待复检'
+  : filterStatus.value === 'overdue' ? '复检超时' : '禁止入井')
+const failGroupTip = computed(() => filterStatus.value === 'review'
+  ? '以下人员存在健康异常，需完成复检后重新判定准入'
+  : filterStatus.value === 'overdue'
+    ? '以下人员的复检任务已超过处置时限，请优先处理'
+    : '以下人员存在健康异常，禁止下井作业')
 const paginatedPassList = computed(() => {
   const s = (passPage.value - 1) * passPageSize
   return passList.value.slice(s, s + passPageSize)
@@ -267,12 +319,14 @@ function fmtTime(t) {
 async function load() {
   loading.value = true
   try {
-    // 手机端请求 200 条（减少 WiFi 传输量），桌面端请求全量
+    // 处置队列必须拉取完整名单，避免移动端 200 条采样截断待复检任务。
     const isMobile = window.innerWidth < 992
-    const fetchSize = isMobile ? 200 : 1000
-    const [listRes, statsRes] = await Promise.allSettled([
+    const needsCompleteReviewQueue = ['review', 'overdue'].includes(filterStatus.value)
+    const fetchSize = needsCompleteReviewQueue ? 5000 : isMobile ? 200 : 1000
+    const [listRes, statsRes, reviewRes] = await Promise.allSettled([
       getMineEntryList(fetchSize),
-      getPreShiftCompliance()
+      getPreShiftCompliance(),
+      getPreShiftReviews({ status: 'ALL' })
     ])
     if (listRes.status === 'fulfilled' && listRes.value.code === 200) {
       entryList.value = listRes.value.data || []
@@ -283,6 +337,9 @@ async function load() {
     if (statsRes.status === 'fulfilled' && statsRes.value.code === 200) {
       summary.value = statsRes.value.data || summary.value
     }
+    if (reviewRes.status === 'fulfilled' && reviewRes.value.code === 200) {
+      reviewList.value = reviewRes.value.data || []
+    }
     lastRefreshTime.value = dayjs().format('HH:mm:ss')
   } catch (e) {
     console.error(e)
@@ -290,6 +347,8 @@ async function load() {
     loading.value = false
   }
 }
+
+const applyReviewAction = createReviewActionHandler(load)
 
 function exportList() {
   const cols = [
@@ -315,6 +374,9 @@ function exportList() {
 }
 
 const { start: startMineEntryRefresh } = useIntervalTask(load, 60000)
+watch(() => route.query.status, (status) => {
+  filterStatus.value = normalizeMineEntryStatus(status)
+})
 onMounted(() => {
   load()
   startMineEntryRefresh()
