@@ -43,14 +43,16 @@
 .me-kpi {
   display: flex; flex-direction: column; align-items: center;
   padding: 0 14px;
-  border-right: 1px solid rgba(56,239,125,0.12);
-  &:first-child { border-left: 1px solid rgba(56,239,125,0.12); }
+  border-right: 1px solid rgba(74,174,214,0.14);
+  &:first-child { border-left: 1px solid rgba(74,174,214,0.14); }
 }
 .me-kpi-button {
   appearance: none;
   min-width: 86px;
-  border-top: 0;
-  border-bottom: 0;
+  border: 0;
+  border-right: 1px solid rgba(74,174,214,0.14);
+
+  &:first-child { border-left: 1px solid rgba(74,174,214,0.14); }
   background: transparent;
   font: inherit;
   cursor: pointer;
