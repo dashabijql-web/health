@@ -39,31 +39,6 @@
     <div class="db-control-body dm-bd" ref="dmBody">
       <section class="db-main-grid">
         <aside class="db-col-health">
-          <div class="db-panel db-duty-snapshot db-panel--interactive">
-            <div class="db-track">
-              <span class="db-track-title">监测覆盖与数据质量</span>
-              <button type="button" class="dm-inline-action" @click="openDeptPersonModal">查看部门详情</button>
-            </div>
-            <div class="dm-metrics-row">
-              <div
-                v-for="m in coverageCards"
-                :key="m.key"
-                :class="['dm-metric-card', 'is-operational-card', `tone-${m.tone}`, m.route ? 'is-clickable' : '']"
-                :style="{ '--metric-tone': m.color }"
-                @click="m.route && $router.push(m.route)"
-              >
-                <div class="dm-metric-val">
-                  <span>{{ m.value }}</span>
-                </div>
-                <div class="dm-metric-label">{{ m.label }}</div>
-                <div class="dm-metric-note">{{ m.note }}</div>
-                <div v-if="m.progress !== null && m.progress !== undefined" class="dm-metric-bar-wrap">
-                  <div class="dm-metric-bar" :style="{ width: `${m.progress}%` }"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div class="db-panel db-health-snapshot db-health-exception-snapshot">
             <div class="db-track">
               <span class="db-track-title">健康异常快照</span>
@@ -211,21 +186,6 @@
                 <span class="dm-block-sub">结构占比</span>
               </div>
               <div id="warnTypeChart" class="dm-chart-flex"></div>
-            </div>
-          </div>
-          <div class="dm-model-footer">
-            <div class="dm-mf-group is-handled">
-              <div class="dm-mf-dot"></div>
-              <span class="dm-mf-label">{{ periodLabel }}已处理</span>
-              <span class="dm-mf-val">{{ warningEvents.filter(e=>e.handled).length }}</span>
-              <span class="dm-mf-unit">件</span>
-            </div>
-            <div class="dm-mf-sep"></div>
-            <div class="dm-mf-group is-pending">
-              <div class="dm-mf-dot"></div>
-              <span class="dm-mf-label">待处理</span>
-              <span class="dm-mf-val">{{ warningEvents.filter(e=>!e.handled).length }}</span>
-              <span class="dm-mf-unit">件</span>
             </div>
           </div>
         </div>

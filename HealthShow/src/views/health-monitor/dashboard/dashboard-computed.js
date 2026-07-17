@@ -10,7 +10,6 @@ import {
 } from './dashboard-summary'
 import {
   buildDashboardDeviceCards,
-  buildDashboardCoverageCards,
   buildDashboardHealthExceptionCards,
   buildDashboardHeaderKpis,
   buildDashboardMetricCards,
@@ -178,23 +177,6 @@ export const dashboardComputed = {
       checkData: this.checkData,
       kpiRealtimeTotal: this.kpiRealtimeTotal
     })
-  },
-
-  coverageCards() {
-    return buildDashboardCoverageCards({
-      kpiRealtimeOnline: this.kpiRealtimeOnline,
-      kpiRealtimeTotal: this.kpiRealtimeTotal,
-      personCounts: this.personCounts,
-      kpiUnhandledHigh: this.kpiUnhandledHigh,
-      kpiUnhandledMid: this.kpiUnhandledMid,
-      pendingTotal: this.commandSummary?.warning?.pendingTotal,
-      unassignedTotal: this.commandSummary?.warning?.unassignedTotal,
-      lastRefreshText: this.lastRefreshText,
-      periodLabel: this.periodLabel
-    }).map((card) => ({
-      ...card,
-      color: card.tone === 'danger' ? '#ff5252' : card.tone === 'warning' ? '#ffb84d' : card.tone === 'success' ? '#38ef7d' : '#00d4ff'
-    }))
   },
 
   healthExceptionCards() {

@@ -11,7 +11,6 @@ import {
   getLatestDangerEvent
 } from '../src/views/health-monitor/dashboard/dashboard-summary.js'
 import {
-  buildDashboardCoverageCards,
   buildDashboardDeviceCards,
   buildDashboardHeaderKpis,
   buildDashboardHealthExceptionCards,
@@ -97,54 +96,19 @@ test('dashboard header and device cards avoid invented health and device counts'
   })
 
   assert.equal(header.some((item) => item.label === '健康达标'), false)
+  assert.equal(header.find((item) => item.label === '当前在线').val, 8)
+  assert.equal(header.some((item) => item.label === '监测覆盖'), false)
   assert.equal(header.find((item) => item.label === '设备激活').val, '92%')
   assert.equal(devices.find((item) => item.label === '低电设备').val, '--')
   assert.equal(devices.find((item) => item.label === '数据中断').val, '--')
   assert.equal(devices.find((item) => item.label === '故障设备').val, '--')
 })
 
-test('dashboard command panels expose coverage and exception decisions', () => {
+test('dashboard command panels prioritize actionable exceptions', () => {
   const viewSource = src('src/views/health-monitor/dashboard/index.vue')
   const viewModelSource = src('src/views/health-monitor/dashboard/dashboard-view-model.js')
   const devicePanelSource = src('src/views/health-monitor/dashboard/components/DashboardDevicePanel.vue')
   const styleSource = src('src/views/health-monitor/dashboard/dashboard.scss')
-  const coverageCards = buildDashboardCoverageCards({
-    kpiRealtimeOnline: 8,
-    kpiRealtimeTotal: 10,
-    personCounts: {
-      totalPersons: 100,
-      heartRate: 100,
-      bloodOxygen: 90,
-      steps: 80,
-      temperature: 70,
-      pressure: 60
-    },
-    kpiUnhandledHigh: 2,
-    kpiUnhandledMid: 3,
-    lastRefreshText: '刚刚更新',
-    periodLabel: '近30日'
-  })
-
-  assert.deepEqual(coverageCards.map(({ key, value, progress }) => [key, value, progress]), [
-    ['online', '8/10', 80],
-    ['coverage', '60%', 60],
-    ['pending', 5, undefined],
-    ['updated', '刚刚更新', undefined]
-  ])
-  assert.equal(
-    buildDashboardCoverageCards({
-      kpiRealtimeOnline: 8,
-      kpiRealtimeTotal: 10,
-      personCounts: { heartRate: 8, bloodOxygen: 7, steps: 6, temperature: 5, pressure: 4 },
-      kpiUnhandledHigh: 0,
-      kpiUnhandledMid: 0,
-      lastRefreshText: '刚刚更新',
-      periodLabel: '近30日'
-    }).find((item) => item.key === 'coverage').value,
-    '40%',
-    'coverage should fall back to realtime total when personCounts has no totalPersons'
-  )
-
   const vitalCards = buildDashboardVitalCards({
     bodyIndicators: {
       avgHeartRate: 82,
@@ -186,7 +150,8 @@ test('dashboard command panels expose coverage and exception decisions', () => {
   assert.equal(realtimeHeartRate.unit, '异常/覆盖')
   assert.equal(realtimeHeartRate.tag, '群体均值 78.5bpm')
   assert.match(realtimeHeartRate.exceptionText, /范围 52-128bpm · 覆盖 20 人/)
-  assert.match(viewSource, /监测覆盖与数据质量/)
+  assert.doesNotMatch(viewSource, /监测覆盖与数据质量|全项覆盖/)
+  assert.doesNotMatch(viewSource, /warningEvents\.filter\(e=>e\.handled\)\.length/)
   assert.match(viewSource, /健康异常快照/)
   assert.match(viewSource, /v\.exceptionText/)
   assert.doesNotMatch(viewSource, /近30日检测人数/)

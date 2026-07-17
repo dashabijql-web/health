@@ -25,17 +25,14 @@ export function buildDashboardHeaderKpis({
       .filter(Boolean)
   ).size
 
-  const monitored = Number(personCounts?.heartRate || 0)
-  const total = kpiRealtimeTotal || 0
-  const coverageRate = total > 0 ? Math.round(monitored / total * 100) : null
-
   return [
     {
-      label: '监测覆盖',
-      val: coverageRate !== null ? `${coverageRate}%` : '--',
-      cls: coverageRate !== null && coverageRate < 80 ? 'kpi-orange' : 'kpi-teal',
-      clickable: false,
-      sub: total > 0 ? `已监测 ${monitored} / ${total} 人` : '数据加载中...'
+      label: '当前在线',
+      val: kpiRealtimeTotal > 0 ? kpiRealtimeOnline : '--',
+      cls: kpiRealtimeTotal > 0 && kpiRealtimeOnline < kpiRealtimeTotal ? 'kpi-orange' : 'kpi-teal',
+      clickable: true,
+      route: '/health-monitor/real-time',
+      sub: kpiRealtimeTotal > 0 ? `短时有上报 · 监测人员 ${kpiRealtimeTotal}` : '数据加载中...'
     },
     {
       label: '新增预警',
@@ -125,66 +122,6 @@ export function buildDashboardMetricCards({ metricList, personCounts, checkData,
   })
 
   return cards
-}
-
-export function buildDashboardCoverageCards({
-  kpiRealtimeOnline,
-  kpiRealtimeTotal,
-  personCounts,
-  kpiUnhandledHigh,
-  kpiUnhandledMid,
-  pendingTotal,
-  unassignedTotal,
-  lastRefreshText,
-  periodLabel
-}) {
-  const metricKeys = ['heartRate', 'bloodOxygen', 'steps', 'temperature', 'pressure']
-  const hasMetricCounts = metricKeys.some(key => personCounts?.[key] !== undefined && personCounts?.[key] !== null)
-  const totalPersons = Number(personCounts?.totalPersons || kpiRealtimeTotal || 0)
-  const metricValues = metricKeys.map(key => Number(personCounts?.[key] || 0))
-  const coveredPersons = hasMetricCounts ? Math.min(...metricValues) : null
-  const coverageRate = totalPersons > 0 && coveredPersons !== null
-    ? Math.round(coveredPersons / totalPersons * 100)
-    : null
-  const pendingWarnings = pendingTotal ?? (Number(kpiUnhandledHigh || 0) + Number(kpiUnhandledMid || 0))
-
-  return [
-    {
-      key: 'online',
-      label: '在线作业',
-      value: kpiRealtimeTotal > 0 ? `${kpiRealtimeOnline}/${kpiRealtimeTotal}` : '--',
-      note: '当前在线人员 / 监测人员',
-      progress: kpiRealtimeTotal > 0 ? Math.round(kpiRealtimeOnline / kpiRealtimeTotal * 100) : null,
-      tone: kpiRealtimeTotal > 0 && kpiRealtimeOnline < kpiRealtimeTotal ? 'warning' : 'success',
-      route: '/health-monitor/real-time'
-    },
-    {
-      key: 'coverage',
-      label: '全项覆盖',
-      value: coverageRate === null ? '--' : `${coverageRate}%`,
-      note: `${periodLabel}五项体征均有数据`,
-      progress: coverageRate,
-      tone: coverageRate !== null && coverageRate < 80 ? 'warning' : 'success',
-      route: '/health-monitor/real-time'
-    },
-    {
-      key: 'pending',
-      label: '待处理预警',
-      value: pendingWarnings,
-      note: unassignedTotal === undefined
-        ? `高危 ${kpiUnhandledHigh || 0} / 中危 ${kpiUnhandledMid || 0}`
-        : `高危 ${kpiUnhandledHigh || 0} / 未分派 ${unassignedTotal}`,
-      tone: pendingWarnings > 0 ? 'danger' : 'success',
-      route: '/alert-management/notifications'
-    },
-    {
-      key: 'updated',
-      label: '数据更新时间',
-      value: lastRefreshText || '--',
-      note: `${periodLabel}数据窗口`,
-      tone: 'primary'
-    }
-  ]
 }
 
 function warningEventMatchesMetric(event, metricKey) {

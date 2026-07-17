@@ -86,9 +86,8 @@ $danger: $red;
   position: static;
 }
 
-.db-duty-snapshot { grid-column: 1; grid-row: 1; }
-.db-ops-preshift { grid-column: 2; grid-row: 1; }
-.db-health-snapshot { grid-column: 1 / -1; grid-row: 2; }
+.db-ops-preshift { grid-column: 1 / -1; grid-row: 2; }
+.db-health-snapshot { grid-column: 1 / -1; grid-row: 1; }
 .db-closure-lane { grid-column: 1 / -1; grid-row: 3; }
 
 .db-col-device {
