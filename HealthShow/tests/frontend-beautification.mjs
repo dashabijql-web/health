@@ -346,18 +346,16 @@ test('dashboard overview rail keeps the health snapshot in a single-column layou
   )
 })
 
-test('dashboard duty panel uses a workflow shell instead of duplicated stat cards', () => {
+test('dashboard duty assist keeps unique decision support without a second closure queue', () => {
   const source = readSource('src/views/health-monitor/dashboard/components/DashboardDispatchPanel.vue')
 
   assert.match(source, /dm-dispatch-mission/, 'dashboard duty panel should expose the mission banner shell')
   assert.match(source, /class="dm-dispatch-mission-cta"/, 'dashboard duty panel should expose the primary workflow CTA')
-  assert.match(source, /class="dm-dispatch-workspace"/, 'dashboard duty panel should expose the two-zone workspace shell')
-  assert.match(source, /class="dm-dispatch-queue"/, 'dashboard duty panel should expose the closure queue rail')
-  assert.match(source, /class="dm-dispatch-queue-list"/, 'dashboard duty panel should render queue rows inside a dedicated list')
-  assert.match(source, /dm-dispatch-queue-item/, 'dashboard duty panel should render action rows instead of metric cards')
-  assert.match(source, /class="dm-dispatch-assist"/, 'dashboard duty panel should expose the assist rail')
+  assert.match(source, /class="dm-dispatch-workspace"/, 'dashboard duty panel should expose the assist workspace')
   assert.match(source, /class="dm-dispatch-assist-card dm-dispatch-assist-card--summary"/, 'dashboard duty panel should keep the AI summary in a dedicated assist card')
   assert.match(source, /class="dm-dispatch-assist-card dm-dispatch-assist-card--focus"/, 'dashboard duty panel should keep the focus people list in a dedicated assist card')
+  assert.doesNotMatch(source, /class="dm-dispatch-queue"/, 'dashboard duty assist should not duplicate the authoritative closure queue')
+  assert.doesNotMatch(source, /dm-dispatch-queue-item/, 'dashboard duty assist should not repeat closure metrics')
   assert.doesNotMatch(source, /class="dm-dispatch-actions"/, 'dashboard duty panel should retire the old three-card action strip')
   assert.doesNotMatch(source, /class="dm-dispatch-grid"/, 'dashboard duty panel should retire the old duplicated stat grid')
 })

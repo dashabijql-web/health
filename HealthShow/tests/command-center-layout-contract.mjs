@@ -82,8 +82,8 @@ test('A+C command pages avoid self-amplifying stretch layouts', () => {
   )
   assert.match(
     dashboardStyle,
-    /@media\s*\(min-width:\s*1500px\)\s*\{[\s\S]*\.db-health-snapshot\s+\.dm-vitals-grid,[\s\S]*\.db-health-snapshot\s+\.dm-vitals-supplemental,[\s\S]*\.db-health-snapshot\s+\.dm-assess-bars\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/,
-    'dashboard health snapshot should switch to a 3-column matrix only when the rail is wide enough'
+    /\.db-health-exception-snapshot\s+\.dm-vitals-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/,
+    'dashboard full-width health snapshot should use a dense 3-column matrix on desktop'
   )
   assert.match(
     dashboardStyle,

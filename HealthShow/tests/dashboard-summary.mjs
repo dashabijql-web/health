@@ -5,10 +5,19 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 
 import {
+  buildDispatchActionItems,
   buildWarningTypeData,
+  getFocusWarningEvents,
   getLatestDangerEvent
 } from '../src/views/health-monitor/dashboard/dashboard-summary.js'
-import { buildDashboardMetricCards } from '../src/views/health-monitor/dashboard/dashboard-view-model.js'
+import {
+  buildDashboardCoverageCards,
+  buildDashboardDeviceCards,
+  buildDashboardHeaderKpis,
+  buildDashboardHealthExceptionCards,
+  buildDashboardMetricCards,
+  buildDashboardVitalCards
+} from '../src/views/health-monitor/dashboard/dashboard-view-model.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const src = (relativePath) => readFileSync(resolve(__dirname, '..', relativePath), 'utf8')
@@ -46,17 +55,62 @@ test('buildWarningTypeData falls back to warning event types', () => {
   ])
 })
 
-test('buildDashboardMetricCards fills the sixth detection slot with all-metric coverage', () => {
+test('dashboard action counts keep strict incident semantics and deduplicate people', () => {
+  const warningEvents = [
+    { id: 1, userCode: 'EMP001', level: 'danger', handled: false },
+    { id: 2, userCode: 'EMP001', level: 'warn', handled: false },
+    { id: 3, userCode: 'EMP002', level: 'warn', handled: false }
+  ]
+  const actions = buildDispatchActionItems({
+    warningEvents,
+    focusWarningEvents: getFocusWarningEvents(warningEvents),
+    kpiUnhandledHigh: 1,
+    periodLabel: '近30日',
+    preShiftData: { failedCount: 0 }
+  })
+
+  assert.equal(actions[0].value, '1 条')
+  assert.equal(getFocusWarningEvents(warningEvents).length, 2)
+})
+
+test('dashboard header and device cards avoid invented health and device counts', () => {
+  const header = buildDashboardHeaderKpis({
+    kpiRealtimeOnline: 8,
+    kpiRealtimeTotal: 10,
+    kpiTodayWarnings: 3,
+    kpiYesterdayWarnings: 2,
+    kpiUnhandledHigh: 1,
+    kpiUnhandledMid: 1,
+    warningEvents: [],
+    personCounts: { heartRate: 8 },
+    deviceActivationRate: 92,
+    preShiftData: { preShiftRate: 95, qualifiedCount: 19, totalToday: 20 },
+    periodLabel: '今日'
+  })
+  const devices = buildDashboardDeviceCards({
+    deviceStats: { total: 100, boundDevices: 100, warningRate: 17 },
+    deviceOnline: 90,
+    deviceOffline: 10,
+    lowBatteryCount: null,
+    dataInterrupted: { status: 'UNAVAILABLE', value: null },
+    faulted: { status: 'UNAVAILABLE', value: null }
+  })
+
+  assert.equal(header.some((item) => item.label === '健康达标'), false)
+  assert.equal(header.find((item) => item.label === '设备激活').val, '92%')
+  assert.equal(devices.find((item) => item.label === '低电设备').val, '--')
+  assert.equal(devices.find((item) => item.label === '数据中断').val, '--')
+  assert.equal(devices.find((item) => item.label === '故障设备').val, '--')
+})
+
+test('dashboard command panels expose coverage and exception decisions', () => {
   const viewSource = src('src/views/health-monitor/dashboard/index.vue')
-  const methodSource = src('src/views/health-monitor/dashboard/dashboard-chart-methods.js')
-  const cards = buildDashboardMetricCards({
-    metricList: [
-      { key: 'heartRate', label: '心率', color: '#00d4ff' },
-      { key: 'bloodOxygen', label: '血氧', color: '#67C23A' },
-      { key: 'steps', label: '步数', color: '#F56C6C' },
-      { key: 'temperature', label: '体温', color: '#00c8c8' },
-      { key: 'pressure', label: '压力', color: '#3eb7ff' }
-    ],
+  const viewModelSource = src('src/views/health-monitor/dashboard/dashboard-view-model.js')
+  const devicePanelSource = src('src/views/health-monitor/dashboard/components/DashboardDevicePanel.vue')
+  const styleSource = src('src/views/health-monitor/dashboard/dashboard.scss')
+  const coverageCards = buildDashboardCoverageCards({
+    kpiRealtimeOnline: 8,
+    kpiRealtimeTotal: 10,
     personCounts: {
       totalPersons: 100,
       heartRate: 100,
@@ -65,33 +119,80 @@ test('buildDashboardMetricCards fills the sixth detection slot with all-metric c
       temperature: 70,
       pressure: 60
     },
-    checkData: {},
-    kpiRealtimeTotal: 100
+    kpiUnhandledHigh: 2,
+    kpiUnhandledMid: 3,
+    lastRefreshText: '刚刚更新',
+    periodLabel: '近30日'
   })
 
-  assert.equal(cards.length, 6, 'dashboard detection grid should not leave the sixth two-column slot empty')
-  assert.deepEqual(
-    {
-      key: cards[5].key,
-      label: cards[5].label,
-      val: cards[5].val,
-      unit: cards[5].unit,
-      pct: cards[5].pct,
-      metricDetail: cards[5].metricDetail
-    },
-    {
-      key: 'allCoverage',
-      label: '全项覆盖',
-      val: 60,
-      unit: '%',
-      pct: 60,
-      metricDetail: false
+  assert.deepEqual(coverageCards.map(({ key, value, progress }) => [key, value, progress]), [
+    ['online', '8/10', 80],
+    ['coverage', '60%', 60],
+    ['pending', 5, undefined],
+    ['updated', '刚刚更新', undefined]
+  ])
+  assert.equal(
+    buildDashboardCoverageCards({
+      kpiRealtimeOnline: 8,
+      kpiRealtimeTotal: 10,
+      personCounts: { heartRate: 8, bloodOxygen: 7, steps: 6, temperature: 5, pressure: 4 },
+      kpiUnhandledHigh: 0,
+      kpiUnhandledMid: 0,
+      lastRefreshText: '刚刚更新',
+      periodLabel: '近30日'
+    }).find((item) => item.key === 'coverage').value,
+    '40%',
+    'coverage should fall back to realtime total when personCounts has no totalPersons'
+  )
+
+  const vitalCards = buildDashboardVitalCards({
+    bodyIndicators: {
+      avgHeartRate: 82,
+      avgBloodOxygen: 96,
+      avgPressure: 64,
+      avgTemperature: 36.8,
+      avgBloodPressureHigh: 128,
+      avgBloodPressureLow: 82
     }
+  })
+  const exceptions = buildDashboardHealthExceptionCards({
+    vitalCards,
+    warningEvents: [
+      { type: '心率异常', userCode: 'EMP001', handled: false },
+      { type: '心率异常', userCode: 'EMP001', handled: false },
+      { type: '血氧偏低', userCode: 'EMP002', handled: false },
+      { type: '血压偏高', userCode: 'EMP003', handled: false },
+      { type: '舒张压偏高', userCode: 'EMP004', handled: false }
+    ]
+  })
+
+  assert.deepEqual(
+    exceptions.filter((item) => item.exceptionCount > 0).map(({ metricKey, exceptionCount }) => [metricKey, exceptionCount]),
+    [['heartRate', 1], ['bloodOxygen', 1], ['bloodPressureHigh', 1], ['bloodPressureLow', 1]]
   )
-  assert.match(viewSource, /m\.unit/, 'dashboard metric cards should render units for derived summary cards')
-  assert.match(
-    methodSource,
-    /m\.metricDetail\s*===\s*false[\s\S]*openDeptPersonModal\(\)/,
-    'dashboard derived metric summary cards should open department details instead of invalid metric detail requests'
-  )
+  assert.match(viewSource, /监测覆盖与数据质量/)
+  assert.match(viewSource, /健康异常快照/)
+  assert.match(viewSource, /v\.exceptionText/)
+  assert.doesNotMatch(viewSource, /近30日检测人数/)
+  assert.match(viewModelSource, /filter\(event => !event\.handled && warningEventMatchesMetric\(event, metricKey\)\)/)
+  assert.match(devicePanelSource, /设备运行概览/)
+  assert.doesNotMatch(viewSource, /设备例外队列/)
+  assert.match(styleSource, /\.db-control-system \.db-col-device\.dm-main-device[\s\S]*flex: 0 0 auto/)
+  assert.match(styleSource, /\.db-control-system \.db-col-device \.dm-device-cards[\s\S]*repeat\(6, minmax\(0, 1fr\)\)/)
+  assert.match(styleSource, /\.db-control-system \.db-col-device \.dm-device-cards[\s\S]*width: 100%/)
+  assert.doesNotMatch(styleSource, /@media \(min-width: 1500px\)[\s\S]{0,180}\.db-health-exception-snapshot \.dm-vitals-grid/)
+  assert.match(styleSource, /\.db-col-health,[\s\S]*\.db-col-decision[\s\S]*display: contents/)
+  assert.match(styleSource, /\.db-control-system \.db-closure-lane[\s\S]*height: clamp\(620px, 72vh, 760px\);[\s\S]*min-height: 620px/)
+  assert.doesNotMatch(styleSource, /\.db-control-system \.db-closure-lane[\s\S]{0,120}54vh/)
+  assert.match(viewSource, /<section class="db-device-band">/)
+  const dispatchPanelSource = src('src/views/health-monitor/dashboard/components/DashboardDispatchPanel.vue')
+  assert.match(viewSource, /class="db-closure-workspace"/)
+  assert.match(viewSource, /class="db-closure-assist"/)
+  assert.doesNotMatch(viewSource, /值班决策面板/)
+  assert.doesNotMatch(dispatchPanelSource, /待处理闭环队列/)
+  assert.doesNotMatch(dispatchPanelSource, /dm-dispatch-queue-list/)
+  assert.match(dispatchPanelSource, /\.dm-dispatch-focus-list[\s\S]*grid-template-columns: 1fr/)
+  assert.doesNotMatch(dispatchPanelSource, /<section class="dm-dispatch-assist">/)
+  assert.match(styleSource, /\.db-device-band\s*\{[\s\S]*?display: block;/)
+  assert.doesNotMatch(styleSource, /\.db-device-band\s*\{[\s\S]{0,160}grid-template-columns:/)
 })

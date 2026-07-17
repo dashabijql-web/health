@@ -57,8 +57,9 @@ $danger: $red;
 .db-main-grid {
   display: grid;
   grid-template-columns: minmax(320px, .72fr) minmax(500px, 1.28fr);
+  grid-template-rows: auto auto auto;
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .db-main-grid > * {
@@ -66,30 +67,75 @@ $danger: $red;
   min-height: 0;
 }
 
+.db-device-band {
+  display: block;
+}
+
+.db-device-band > * {
+  min-width: 0;
+  height: 100%;
+}
+
 .db-col-health,
 .db-col-decision {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: contents;
 }
 
 .db-col-health {
-  position: sticky;
-  top: 62px;
-  align-self: stretch;
+  position: static;
 }
+
+.db-duty-snapshot { grid-column: 1; grid-row: 1; }
+.db-ops-preshift { grid-column: 2; grid-row: 1; }
+.db-health-snapshot { grid-column: 1 / -1; grid-row: 2; }
+.db-closure-lane { grid-column: 1 / -1; grid-row: 3; }
 
 .db-col-device {
   flex: 1;
 }
 .db-col-device .dm-device-cards {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: space-evenly;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .db-col-device .dm-device-gauges {
   display: none;
+}
+
+// Device status is a single full-width summary; actionable incidents live in
+// the command workflow instead of a duplicated exception panel.
+.db-control-system .db-col-device.dm-main-device {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.db-control-system .db-col-device .dm-device-body {
+  flex: none;
+  min-height: 0;
+  padding: 10px 12px 12px;
+  gap: 0;
+}
+
+.db-control-system .db-col-device .dm-device-cards {
+  flex: none;
+  width: 100%;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.db-control-system .db-col-device .dm-dcard {
+  min-height: 76px;
+  padding: 10px 8px;
+}
+
+.db-control-system .db-col-device .dm-dcard-val {
+  font-size: 16px;
+}
+
+.db-control-system .db-col-device .dm-dcard-label {
+  font-size: 11px;
 }
 
 .db-health-rail,
@@ -173,15 +219,41 @@ $danger: $red;
 .db-closure-lane {
   display: flex;
   flex-direction: column;
-  height: clamp(340px, 42vh, 480px);
+  height: auto;
   min-height: 0;
+}
+
+.db-closure-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(290px, 360px);
+  gap: 12px;
+  padding: 14px 16px 16px;
+}
+
+.db-closure-primary {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(133, 175, 220, .09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .012);
+}
+
+.db-closure-assist {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .db-closure-items {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  padding: 14px 16px;
+  padding: 12px;
   border-bottom: 1px solid rgba(133, 175, 220, .09);
 }
 
@@ -255,7 +327,7 @@ $danger: $red;
 }
 
 .db-closure-lane .dm-event-list-wrap {
-  padding: 12px 16px 0;
+  padding: 12px 12px 0;
 }
 
 .db-duty-console {
@@ -308,7 +380,7 @@ $danger: $red;
 
 .db-analysis-band {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
@@ -320,6 +392,12 @@ $danger: $red;
 .db-analysis-sidebar .dm-right-preshift,
 .db-analysis-sidebar .dm-right-action {
   display: none !important;
+}
+
+.db-analysis-sidebar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .db-analysis-sidebar.dm-monitor-sidebar,
@@ -1096,19 +1174,6 @@ $danger: $red;
   height: 6px;
 }
 
-@media (min-width: 1500px) {
-  .db-health-snapshot .dm-vitals-grid,
-  .db-health-snapshot .dm-vitals-supplemental,
-  .db-health-snapshot .dm-assess-bars {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .db-health-snapshot .dm-vitals-supplemental__item:nth-child(3):last-child,
-  .db-health-snapshot .dm-assess-row:nth-child(3):last-child {
-    grid-column: auto;
-  }
-}
-
 // ══ MAIN flex:1 ══
 .dm-main-dispatch { overflow:hidden; }
 .dm-main-model   { min-height:432px; overflow:hidden; }
@@ -1516,8 +1581,9 @@ $danger: $red;
 }
 
 .db-control-system .db-closure-lane {
-  height: clamp(460px, 54vh, 620px);
-  min-height: 0;
+  flex: none;
+  height: clamp(620px, 72vh, 760px);
+  min-height: 620px;
 }
 
 .db-control-system .db-duty-console .dm-dispatch-shell {
@@ -1528,6 +1594,10 @@ $danger: $red;
 .db-control-system .db-duty-console .dm-dispatch-workspace {
   flex: none;
   min-height: 0;
+}
+
+.db-control-system > .db-control-body > .db-duty-console .dm-dispatch-queue-item {
+  min-height: 78px;
 }
 
 .db-control-system .db-closure-lane .dm-model-video-col {
@@ -1826,6 +1896,7 @@ $danger: $red;
 .dm-ev-time { font-family: $mono; font-size: 11px; color: $dim; }
 .dm-ev-row2 { display: flex; align-items: center; gap: 10px; font-size: 12px; color: $text; }
 .dm-ev-user { font-weight: 700; color: $white; }
+.dm-ev-owner { color:$dim; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:88px; }
 .dm-ev-val { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; em { color: $yellow; font-style: normal; font-weight: 700; } }
 .dm-ev-actions { display: flex; align-items: center; gap: 6px; }
 .dm-ev-user    { color:$accent; font-weight:600; white-space:nowrap; }
@@ -2316,6 +2387,22 @@ $danger: $red;
 @media (max-width: 1100px) {
   .db-main-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .db-col-health,
+  .db-col-decision {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .db-duty-snapshot,
+  .db-ops-preshift,
+  .db-health-snapshot,
+  .db-closure-lane {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .db-col-health {
@@ -2336,6 +2423,19 @@ $danger: $red;
   .db-trend-grid,
   .db-support-sidebar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .db-closure-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .db-control-system .db-closure-lane {
+    height: auto;
+    min-height: 0;
+  }
+
+  .db-closure-assist {
+    overflow: visible;
   }
 
   .db {
@@ -2393,6 +2493,66 @@ $danger: $red;
 // 首屏降噪：隐藏非必须模块
 // ══════════════════════════════════════════════════════════════
 @media (max-width: 768px) {
+  .db-hd {
+    height: auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title controls'
+      'kpis kpis';
+    align-items: start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .db-hd-left {
+    grid-area: title;
+    min-width: 0;
+  }
+
+  .db-hd-title {
+    font-size: 17px;
+    letter-spacing: 1px;
+  }
+
+  .db-hd-kpis {
+    grid-area: kpis;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid rgba($accent, .1);
+  }
+
+  .db-hd-kpi {
+    min-width: 0;
+    min-height: 48px;
+    padding: 6px 8px;
+  }
+
+  .db-hd-kpi-v,
+  .db-hd-kpi-l {
+    max-width: 100%;
+  }
+
+  .db-hd-right {
+    grid-area: controls;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .db-hd-clock,
+  .db-hd-refresh-text {
+    display: none;
+  }
+
+  .db-hd-period-tab {
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+
   .db-control-system {
     transform: none !important;
     width: 100% !important;
@@ -2415,6 +2575,7 @@ $danger: $red;
   .db-governance-workspace,
   .db-support-sidebar,
   .db-main-grid,
+  .db-device-band,
   .db-analysis-band {
     display: flex !important;
     flex-direction: column !important;
@@ -2423,7 +2584,18 @@ $danger: $red;
 
   .db-col-health,
   .db-col-decision {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
     position: static !important;
+  }
+
+  .db-duty-snapshot,
+  .db-ops-preshift,
+  .db-health-snapshot,
+  .db-closure-lane {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .db-health-rail {
@@ -2440,6 +2612,10 @@ $danger: $red;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .db-closure-workspace {
+    padding: 10px;
+  }
+
   .db-closure-lane,
   .db-duty-console,
   .db-trend-command,
@@ -2448,6 +2624,19 @@ $danger: $red;
   .db-support-sidebar .dm-right-action {
     min-height: 0;
     height: auto;
+  }
+
+  .db-duty-console {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .db-duty-console .dm-dispatch-shell,
+  .db-duty-console .dm-dispatch-workspace,
+  .db-duty-console .dm-dispatch-assist {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
   }
 
   // ── 整体容器 ──
@@ -2583,7 +2772,8 @@ $danger: $red;
   // ── 体征评估：2列 ──
   .dm-vitals-grid { grid-template-columns: repeat(2, 1fr); }
 
-  // ── 设备状态：2列，最后一项跨行补齐，避免 3+2 空槽 ──
+  // ── 设备状态：移动端保持 2 列，桌面端由紧凑摘要规则使用 3 列 ──
+  .db-col-device .dm-device-cards,
   .db-device-rail .dm-device-cards { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .dm-dcard-val   { font-size: 20px; }
   .dm-dcard-label { font-size: 11px; }
@@ -2601,4 +2791,159 @@ $danger: $red;
   .dm-hd-kpis { grid-template-columns: repeat(2, 1fr); }
   .dm-vitals-grid { grid-template-columns: repeat(2, 1fr); }
   .dm-metrics-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+// Operational queues keep every number tied to a concrete next step.
+.dm-preshift-queues {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.dm-preshift-queue {
+  min-width: 0;
+  min-height: 112px;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 13px;
+  border: 1px solid rgba($accent, .15);
+  border-radius: 8px;
+  background: rgba(255,255,255,.025);
+  color: $white;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: rgba($accent,.4);
+    background: rgba($accent,.08);
+  }
+
+  span { color: rgba($text,.78); font-size: 12px; }
+  strong { color: $accent; font-family: $mono; font-size: 25px; line-height: 1; }
+  em { color: rgba($text,.58); font-size: 11px; font-style: normal; line-height: 1.45; }
+  &.tone-danger { border-color: rgba($red,.3); strong { color:$red; } }
+  &.tone-warning { border-color: rgba($orange,.3); strong { color:$orange; } }
+  &.tone-success strong { color:$green; }
+  &.is-unavailable { cursor:not-allowed; opacity:.66; }
+}
+
+@media (max-width: 1100px) {
+  .dm-preshift-queues { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .db-control-system .db-col-device .dm-device-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 768px) {
+  .dm-preshift-queues { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px 12px 12px; }
+  .dm-preshift-queue { min-height: 102px; padding: 11px; }
+  .db-control-system .db-col-device .dm-device-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+// The first rail is for operational coverage, not repeated historical counts.
+.db-duty-snapshot .dm-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.db-duty-snapshot .dm-metric-card.is-operational-card {
+  min-height: 108px;
+  justify-content: flex-start;
+  gap: 7px;
+  cursor: default;
+}
+
+.db-duty-snapshot .dm-metric-card.is-operational-card.is-clickable {
+  cursor: pointer;
+}
+
+.db-duty-snapshot .dm-metric-card.is-operational-card.tone-danger {
+  border-color: rgba(255, 82, 82, .34);
+  background: rgba(255, 82, 82, .07);
+}
+
+.db-duty-snapshot .dm-metric-card.is-operational-card.tone-warning {
+  border-color: rgba(255, 184, 77, .32);
+  background: rgba(255, 184, 77, .06);
+}
+
+.db-duty-snapshot .dm-metric-card.is-operational-card.tone-success {
+  border-color: rgba(56, 239, 125, .26);
+  background: rgba(56, 239, 125, .05);
+}
+
+.dm-metric-note {
+  min-height: 28px;
+  color: rgba(139, 166, 200, .78);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.db-health-exception-snapshot .dm-vitals-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+.db-health-exception-snapshot .dm-vital-card {
+  min-height: 112px;
+  gap: 8px;
+}
+
+.db-health-exception-snapshot .dm-vital-foot {
+  margin-top: auto;
+}
+
+.dm-vital-foot__status {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.dm-vital-exception {
+  color: rgba(139, 166, 200, .72);
+  font-size: 10px;
+  line-height: 1.3;
+  text-align: right;
+}
+
+.dm-vital-exception.tone-danger { color: #ff7070; font-weight: 700; }
+.dm-vital-exception.tone-warning { color: #ffb84d; font-weight: 700; }
+.dm-vital-exception.tone-success { color: #6ee7a0; }
+
+.dm-health-snapshot-note {
+  padding: 0 12px 12px;
+  color: rgba(139, 166, 200, .62);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+  .db-duty-snapshot .dm-metrics-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .db-health-exception-snapshot .dm-vitals-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .db-duty-snapshot .dm-metrics-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .db-duty-snapshot .dm-metric-card.is-operational-card {
+    min-height: 100px;
+  }
+
+  .db-health-exception-snapshot .dm-vitals-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

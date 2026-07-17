@@ -34,45 +34,44 @@
       </div>
     </header>
 
+    <DashboardPersonSearch @select="goToEmployeeProfile" />
+
     <div class="db-control-body dm-bd" ref="dmBody">
       <section class="db-main-grid">
         <aside class="db-col-health">
-          <div class="db-panel db-duty-snapshot db-panel--interactive" @click="openDeptPersonModal">
+          <div class="db-panel db-duty-snapshot db-panel--interactive">
             <div class="db-track">
-              <span class="db-track-title">{{ periodLabel }}检测人数</span>
-              <span class="db-track-sub">
-                <span class="dm-main-metrics-total">共 {{ totalPersons !== null ? totalPersons.toLocaleString() : '--' }} 人次</span>
-                <span class="dm-inline-action">查看部门详情</span>
-              </span>
+              <span class="db-track-title">监测覆盖与数据质量</span>
+              <button type="button" class="dm-inline-action" @click="openDeptPersonModal">查看部门详情</button>
             </div>
             <div class="dm-metrics-row">
               <div
-                v-for="m in metricCards"
+                v-for="m in coverageCards"
                 :key="m.key"
-                :class="['dm-metric-card', m.summary ? 'is-summary' : '']"
+                :class="['dm-metric-card', 'is-operational-card', `tone-${m.tone}`, m.route ? 'is-clickable' : '']"
                 :style="{ '--metric-tone': m.color }"
-                @click.stop="onMetricCardClick(m)"
+                @click="m.route && $router.push(m.route)"
               >
                 <div class="dm-metric-val">
-                  <span>{{ m.val.toLocaleString() }}</span>
-                  <em v-if="m.unit">{{ m.unit }}</em>
+                  <span>{{ m.value }}</span>
                 </div>
                 <div class="dm-metric-label">{{ m.label }}</div>
-                <div class="dm-metric-bar-wrap">
-                  <div class="dm-metric-bar" :style="{ width: `${m.pct}%` }"></div>
+                <div class="dm-metric-note">{{ m.note }}</div>
+                <div v-if="m.progress !== null && m.progress !== undefined" class="dm-metric-bar-wrap">
+                  <div class="dm-metric-bar" :style="{ width: `${m.progress}%` }"></div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="db-panel db-health-snapshot">
+          <div class="db-panel db-health-snapshot db-health-exception-snapshot">
             <div class="db-track">
-              <span class="db-track-title">健康快照</span>
-              <span class="db-track-sub">{{ periodLabel }}体征均值</span>
+              <span class="db-track-title">健康异常快照</span>
+              <button type="button" class="dm-inline-action" @click="$router.push('/health-monitor/risk-warning')">查看全部异常</button>
             </div>
             <div class="dm-vitals-grid">
               <div
-                v-for="v in primaryVitalCards"
+                v-for="v in healthExceptionCards"
                 :key="v.label"
                 :class="['dm-vital-card', v.route ? 'is-clickable' : '']"
                 :style="{ '--vital-tone': v.color, '--vital-tone-soft': `${v.color}12`, '--vital-tone-border': `${v.color}33` }"
@@ -89,138 +88,97 @@
                   <span v-if="v.unit" class="dm-vital-unit">{{ v.unit }}</span>
                 </div>
                 <div class="dm-vital-foot">
-                  <div class="dm-vital-tag" :class="v.tagCls">{{ v.tag }}</div>
+                  <div class="dm-vital-foot__status">
+                    <div class="dm-vital-tag" :class="v.tagCls">{{ v.tag }}</div>
+                    <span :class="['dm-vital-exception', `tone-${v.tone}`]">{{ v.exceptionText }}</span>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="dm-vitals-supplemental">
-              <button
-                v-for="v in supplementalVitalCards"
-                :key="`${v.label}-supplemental`"
-                type="button"
-                :class="['dm-vitals-supplemental__item', v.route ? 'is-clickable' : '']"
-                :style="{ '--vital-tone': v.color, '--vital-tone-soft': `${v.color}14`, '--vital-tone-border': `${v.color}2b` }"
-                @click="v.route && $router.push(v.route)"
-              >
-                <span class="dm-vitals-supplemental__label">{{ v.label }}</span>
-                <span class="dm-vitals-supplemental__value">{{ v.val }}<em v-if="v.unit">{{ v.unit }}</em></span>
-                <span :class="['dm-vitals-supplemental__tag', v.tagCls]">{{ v.tag }}</span>
-              </button>
-            </div>
-            <div class="dm-assess-bars">
-              <div
-                v-for="item in healthAssess"
-                :key="`health-assess-${item.label}`"
-                class="dm-assess-row"
-              >
-                <span class="dm-assess-label">{{ item.label }}</span>
-                <span class="dm-assess-track">
-                  <span class="dm-assess-fill" :style="{ width: `${item.pct}%`, background: item.color }"></span>
-                </span>
-                <span class="dm-assess-tag" :style="{ color: item.color }">{{ item.tag }}</span>
-              </div>
-            </div>
+            <div class="dm-health-snapshot-note">均值用于识别变化，异常人数用于决定是否立即处置</div>
           </div>
 
-          <DashboardDevicePanel
-            class="db-panel db-col-device"
-            :device-cards="deviceCards"
-            @go-device="goToDeviceList"
-          />
         </aside>
 
         <main class="db-col-decision">
-          <div class="db-panel db-ops-preshift db-panel--interactive" @click="$router.push('/health-monitor/mine-entry')">
+          <div class="db-panel db-ops-preshift">
             <div class="db-track">
               <span class="db-track-title">班前健康准入</span>
-              <span class="db-track-sub">{{ (preShiftData?.failedCount || 0) > 0 ? `${preShiftData.failedCount} 人需复核` : '当前准入平稳' }}</span>
+              <span class="db-track-sub">人员名单和健康异常均可直接进入处置</span>
             </div>
-            <div class="dm-preshift-body">
-              <div class="dm-ps-ring-wrap">
-                <svg viewBox="0 0 96 96" class="dm-ps-ring">
-                  <circle cx="48" cy="48" r="38" fill="none" stroke="#1a2a4d" stroke-width="7"/>
-                  <circle cx="48" cy="48" r="38" fill="none"
-                    :stroke="(preShiftData?.preShiftRate || 0) >= 90 ? '#38ef7d' : (preShiftData?.preShiftRate || 0) >= 70 ? '#ffd200' : '#ff5252'"
-                    stroke-width="7" stroke-linecap="round"
-                    :stroke-dasharray="`${(preShiftData?.preShiftRate || 0) * 2.388} 239`"
-                    stroke-dashoffset="60"
-                  />
-                </svg>
-                <div class="dm-ps-ring-inner">
-                  <div :class="['dm-ps-rate', (preShiftData?.preShiftRate || 0) >= 90 ? 'tone-success' : (preShiftData?.preShiftRate || 0) >= 70 ? 'tone-warning' : 'tone-danger']">
-                    {{ preShiftData?.preShiftRate != null ? preShiftData.preShiftRate + '%' : '--' }}
-                  </div>
-                  <div class="dm-ps-rate-label">达标率</div>
-                </div>
-              </div>
-              <div class="dm-ps-stats">
-                <div class="dm-ps-stat">
-                  <span class="dm-ps-stat-val">{{ preShiftData?.totalToday || 0 }}</span>
-                  <span class="dm-ps-stat-label">今日检测</span>
-                </div>
-                <div class="dm-ps-stat dm-ps-ok">
-                  <span class="dm-ps-stat-val">{{ preShiftData?.qualifiedCount || 0 }}</span>
-                  <span class="dm-ps-stat-label">准入通过</span>
-                </div>
-                <div class="dm-ps-stat dm-ps-fail">
-                  <span class="dm-ps-stat-val">{{ preShiftData?.failedCount || 0 }}</span>
-                  <span class="dm-ps-stat-label">禁止入井</span>
-                </div>
-              </div>
+            <div class="dm-preshift-queues">
+              <button
+                v-for="item in admissionQueueItems"
+                :key="item.key"
+                type="button"
+                :class="['dm-preshift-queue', `tone-${item.tone}`, item.unavailable && 'is-unavailable']"
+                :disabled="item.unavailable"
+                @click="openAdmissionQueue(item)"
+              >
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+                <em>{{ item.note }}</em>
+              </button>
             </div>
           </div>
 
           <section class="db-panel db-closure-lane">
             <div class="db-track">
               <span class="db-track-title">闭环指挥线</span>
-              <span class="db-track-sub">先清待办，再看趋势</span>
+              <span class="db-track-sub">事件处置 / 值班研判 / 重点人员</span>
             </div>
-            <div class="db-closure-items">
-              <button
-                v-for="item in closureLaneItems"
-                :key="item.key"
-                type="button"
-                :class="['db-closure-item', `tone-${item.tone}`]"
-                @click="item.route && $router.push(item.route)"
-              >
-                <span class="db-closure-label">{{ item.label }}</span>
-                <strong>{{ item.value }}</strong>
-                <em>{{ item.note }}</em>
-              </button>
+            <div class="db-closure-workspace">
+              <div class="db-closure-primary">
+                <div class="db-closure-items">
+                  <button
+                    v-for="item in closureLaneItems"
+                    :key="item.key"
+                    type="button"
+                    :class="['db-closure-item', `tone-${item.tone}`]"
+                    @click="item.route && $router.push(item.route)"
+                  >
+                    <span class="db-closure-label">{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <em>{{ item.note }}</em>
+                  </button>
+                </div>
+                <DashboardWarningStream
+                  class="db-closure-stream"
+                  :warning-events="warningEvents"
+                  :latest-danger-event="latestDangerEvent"
+                  :format-time-ago="formatTimeAgo"
+                  :open-warn-curve="openWarnCurve"
+                  :open-handle-dialog="openHandleDialog"
+                  :open-command-incident="openCommandIncident"
+                />
+              </div>
+              <DashboardDispatchPanel
+                class="db-closure-assist"
+                :dispatch-priority="dispatchPriority"
+                :dispatch-action-items="dispatchActionItems"
+                :focus-warning-events="focusWarningEvents"
+                :mine-ai-report="mineAiReport"
+                :mine-ai-loading="mineAiLoading"
+                :dashboard-ai-summary="dashboardAiSummary"
+                :risk-dept-list="riskDeptList"
+                :latest-danger-event="latestDangerEvent"
+                @navigate="$router.push($event)"
+                @person-click="goToEmployeeProfile"
+                @toggle-ai="toggleMineAiPanel"
+              />
             </div>
-            <DashboardWarningStream
-              class="db-closure-stream"
-              :warning-events="warningEvents"
-              :latest-danger-event="latestDangerEvent"
-              :format-time-ago="formatTimeAgo"
-              :open-warn-curve="openWarnCurve"
-              :open-handle-dialog="openHandleDialog"
-            />
           </section>
 
-          <div class="db-panel db-duty-console dm-main-dispatch dm-command-dispatch-shell">
-            <div class="db-track">
-              <span class="db-track-title">值班决策面板</span>
-              <span class="db-track-sub">任务闭环 / 班前准入 / 重点人员</span>
-            </div>
-            <DashboardDispatchPanel
-              :dispatch-priority="dispatchPriority"
-              :dispatch-action-items="dispatchActionItems"
-              :kpi-unhandled-high="kpiUnhandledHigh"
-              :pre-shift-data="preShiftData"
-              :focus-warning-events="focusWarningEvents"
-              :mine-ai-report="mineAiReport"
-              :mine-ai-loading="mineAiLoading"
-              :dashboard-ai-summary="dashboardAiSummary"
-              :risk-dept-list="riskDeptList"
-              :latest-danger-event="latestDangerEvent"
-              @navigate="$router.push($event)"
-              @person-click="goToEmployeeProfile"
-              @toggle-ai="toggleMineAiPanel"
-            />
-          </div>
         </main>
 
+      </section>
+
+      <section class="db-device-band">
+        <DashboardDevicePanel
+          class="db-panel db-col-device"
+          :device-cards="deviceCards"
+          @go-device="goToDeviceList"
+        />
       </section>
 
       <section class="db-analysis-band">
@@ -306,6 +264,14 @@
     :submit-handle="submitHandle"
   />
 
+  <IncidentCommandDrawer
+    v-model:visible="incidentDrawerVisible"
+    :event="currentIncidentEvent"
+    source-page="dashboard"
+    @updated="handleIncidentUpdated"
+    @open-command-center="goToCommandIncident(currentIncidentEvent)"
+  />
+
   </div>
 
 </template>
@@ -318,15 +284,22 @@ import { dashboardChartMethods } from './dashboard-chart-methods'
 import { dashboardDetailMethods } from './dashboard-detail-methods'
 import { activateDashboardPage, mountDashboardPage, unmountDashboardPage } from './dashboard-lifecycle'
 import { dashboardRuntimeMethods } from './dashboard-runtime'
+import {
+  buildDashboardAdmissionQueueItems,
+  buildDashboardClosureLaneItems,
+  dashboardCommandWorkflowMethods
+} from './dashboard-command-workflow'
 import DashboardDispatchPanel from './components/DashboardDispatchPanel.vue'
+import DashboardPersonSearch from './components/DashboardPersonSearch.vue'
 import DashboardRightSidebar from './components/DashboardRightSidebar.vue'
 import DashboardDevicePanel from './components/DashboardDevicePanel.vue'
 import DashboardDialogs from './components/DashboardDialogs.vue'
 import DashboardWarningStream from './components/DashboardWarningStream.vue'
+import IncidentCommandDrawer from '../../safety-command/components/IncidentCommandDrawer.vue'
 
 export default {
   name: 'HealthDashboard',
-  components: { DashboardDispatchPanel, DashboardRightSidebar, DashboardDevicePanel, DashboardDialogs, DashboardWarningStream },
+  components: { DashboardDispatchPanel, DashboardPersonSearch, DashboardRightSidebar, DashboardDevicePanel, DashboardDialogs, DashboardWarningStream, IncidentCommandDrawer },
   data() {
     return createDashboardPageState()
   },
@@ -345,41 +318,16 @@ export default {
         }))
       },
       closureLaneItems() {
-        const pending = (this.warningEvents || []).filter((item) => !item.handled).length
-        return [
-          {
-            key: 'high',
-            label: '高危闭环',
-            value: this.kpiUnhandledHigh || 0,
-            note: '通知页优先处置',
-            tone: (this.kpiUnhandledHigh || 0) > 0 ? 'danger' : 'success',
-            route: '/alert-management/notifications'
-          },
-          {
-            key: 'pending',
-            label: '全量待办',
-            value: pending,
-            note: `${this.periodLabel}预警流`,
-            tone: pending > 0 ? 'warning' : 'success',
-            route: '/alert-management/records'
-          },
-          {
-            key: 'entry',
-            label: '准入复核',
-            value: this.preShiftData?.failedCount || 0,
-            note: '班前未通过',
-            tone: (this.preShiftData?.failedCount || 0) > 0 ? 'warning' : 'success',
-            route: '/health-monitor/mine-entry'
-          },
-          {
-            key: 'device',
-            label: '设备干预',
-            value: this.deviceWarningCount || 0,
-            note: `离线 ${this.deviceOffline || 0}`,
-            tone: (this.deviceWarningCount || this.deviceOffline) ? 'warning' : 'success',
-            route: { path: '/admin/device-list', query: { filter: 'warning' } }
-          }
-        ]
+        return buildDashboardClosureLaneItems({
+          warningSummary: this.commandSummary?.warning,
+          preShiftData: this.preShiftData
+        })
+      },
+      admissionQueueItems() {
+        return buildDashboardAdmissionQueueItems({
+          preShiftData: this.preShiftData,
+          admissionSummary: this.commandSummary?.admission
+        })
       },
       primaryVitalCards() {
         return (this.vitalCards || []).slice(0, 6)
@@ -398,9 +346,19 @@ export default {
   beforeUnmount() {
     unmountDashboardPage(this)
   },
+  watch: {
+    '$route.query': {
+      immediate: true,
+      deep: true,
+      handler(query) {
+        this.openIncidentFromRoute(query)
+      }
+    }
+  },
 
   methods: {
     ...dashboardRuntimeMethods,
+    ...dashboardCommandWorkflowMethods,
     ...dashboardViewActions,
     ...dashboardChartMethods,
     ...dashboardDetailMethods,
@@ -420,7 +378,7 @@ export default {
       if (item?.route) {
         this.$router.push(item.route)
       }
-    }
+    },
   }
 }
 </script>
@@ -428,4 +386,3 @@ export default {
 <style lang="scss">
 @import './dashboard.scss';
 </style>
-
