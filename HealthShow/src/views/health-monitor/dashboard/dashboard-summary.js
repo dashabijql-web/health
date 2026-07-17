@@ -56,7 +56,7 @@ export function buildDispatchActionItems({ warningEvents, focusWarningEvents, kp
   return [
     {
       label: '高危待处理',
-      value: `${(warningEvents || []).filter((e) => !e.handled).length} 条`,
+      value: `${kpiUnhandledHigh || 0} 条`,
       sub: '优先进入待处理列表，先完成高危预警闭环。',
       path: '/alert-management/notifications',
       tone: kpiUnhandledHigh > 0 ? 'danger' : 'accent',
@@ -90,7 +90,14 @@ export function buildDispatchActionItems({ warningEvents, focusWarningEvents, kp
 }
 
 export function getFocusWarningEvents(warningEvents) {
-  return (warningEvents || []).filter((e) => !e.handled).slice(0, 4)
+  const seen = new Set()
+  return (warningEvents || []).filter((event) => {
+    if (event.handled) return false
+    const personKey = event.userCode || event.userName
+    if (!personKey || seen.has(personKey)) return false
+    seen.add(personKey)
+    return true
+  }).slice(0, 4)
 }
 
 export function getLatestDangerEvent(warningEvents) {

@@ -95,7 +95,11 @@
                 </div>
               </div>
             </div>
-            <div class="dm-health-snapshot-note">均值用于识别变化，异常人数用于决定是否立即处置</div>
+            <div class="dm-health-snapshot-note">
+              实时窗口 {{ healthSnapshot?.onlineWindowMinutes || '--' }} 分钟 · 新鲜度 {{ healthSnapshot?.freshnessMinutes || '--' }} 分钟 ·
+              覆盖 {{ healthSnapshot?.freshUsers ?? '--' }}/{{ healthSnapshot?.onlineUsers ?? '--' }} 人 ·
+              数据状态 {{ healthSnapshotStatusText }}
+            </div>
           </div>
 
         </aside>

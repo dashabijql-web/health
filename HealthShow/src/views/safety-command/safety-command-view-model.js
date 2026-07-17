@@ -301,14 +301,14 @@ export function buildVitalsRows(vitalAvg, vitalsHistory) {
 
   const hrVals = (history.hr || []).length >= 2
     ? history.hr.map((item) => item.avgHeartRate || 0).filter((value) => value > 0)
-    : [hr * 0.96, hr * 0.98, hr * 0.99, hr, hr * 1.01, hr]
+    : []
 
   const oxygenVals = (history.bo || []).length >= 2
     ? history.bo.map((item) => item.avgBloodOxygen || 0).filter((value) => value > 0)
-    : [bloodOxygen - 0.5, bloodOxygen - 0.2, bloodOxygen, bloodOxygen + 0.1, bloodOxygen, bloodOxygen - 0.1]
+    : []
 
-  const temperatureVals = [temperature * 0.999, temperature * 1.0, temperature * 1.001, temperature, temperature * 0.999, temperature]
-  const pressureVals = [pressure * 0.95, pressure * 0.98, pressure, pressure * 1.02, pressure, pressure * 0.97]
+  const temperatureVals = []
+  const pressureVals = []
 
   const hrPath = buildSparkPath(hrVals, 50, 120)
   const oxygenPath = buildSparkPath(oxygenVals, 90, 100)
@@ -316,10 +316,10 @@ export function buildVitalsRows(vitalAvg, vitalsHistory) {
   const pressurePath = buildSparkPath(pressureVals, 0, 100)
 
   return [
-    { key: 'hr', label: '心率', val: hr > 0 ? Math.round(hr) : '--', unit: 'bpm', color: '#ff3b3b', gradId: 'vg-hr', ...hrPath },
-    { key: 'bo', label: '血氧', val: bloodOxygen > 0 ? Math.round(bloodOxygen) : '--', unit: '%', color: '#ff8c00', gradId: 'vg-bo', ...oxygenPath },
-    { key: 'temp', label: '体温', val: temperature > 0 ? temperature.toFixed(1) : '--', unit: '°C', color: '#00e676', gradId: 'vg-temp', ...temperaturePath },
-    { key: 'pres', label: '压力', val: pressure > 0 ? Math.round(pressure) : '--', unit: 'idx', color: '#a855f7', gradId: 'vg-pres', ...pressurePath }
+    { key: 'hr', label: '心率群体基线', val: hr > 0 ? Math.round(hr) : '--', unit: 'bpm', color: '#ff3b3b', gradId: 'vg-hr', hasTrend: hrVals.length >= 2, ...hrPath },
+    { key: 'bo', label: '血氧群体基线', val: bloodOxygen > 0 ? Math.round(bloodOxygen) : '--', unit: '%', color: '#ff8c00', gradId: 'vg-bo', hasTrend: oxygenVals.length >= 2, ...oxygenPath },
+    { key: 'temp', label: '体温群体基线', val: temperature > 0 ? temperature.toFixed(1) : '--', unit: '°C', color: '#00e676', gradId: 'vg-temp', hasTrend: false, ...temperaturePath },
+    { key: 'pres', label: '压力群体基线', val: pressure > 0 ? Math.round(pressure) : '--', unit: 'idx', color: '#a855f7', gradId: 'vg-pres', hasTrend: false, ...pressurePath }
   ]
 }
 

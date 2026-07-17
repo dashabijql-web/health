@@ -69,6 +69,15 @@
 - `HEALTH_SIMULATOR_SOURCE`：默认 `old`
 - `HEALTH_SIMULATOR_IMEI_REGEX`：默认 `^3594567800\\d{5}$`
 
+## 指挥中心事件迁移与灰度
+
+- 统一事件接口 `/command-center/incidents` 及其详情、确认、分派、处理、误报、外部动作和时间线均按当前 `X-Health-Data-Source` 路由。
+- 事件唯一定位键固定为 `warningId + occurredAt`。预警按月分表，不能仅凭裸 `warningId` 读取、处理或审计事件。
+- 部署或切换到尚未迁移的数据库前，必须在 `health` 和 `health_new` 分别执行 `src/main/resources/sql/command_center_incident.sql`。
+- 迁移只新增 `command_center_incident` 与 `command_center_incident_action`，不修改历史预警。应用不会运行时建表，因为 Druid SQL 防火墙会拒绝条件 DDL；缺表时接口会返回 `503` 并提示执行迁移。
+- 模拟器只写老库。因此老库演示可以验证事件状态、责任人、SLA 和审计；新库空业务态返回空事件列表是预期，不得据此回退到老库数据。
+- 前端默认启用 V2。出现页面回归时可将 `VITE_SAFETY_COMMAND_V2=false` 或 `VITE_UNIFIED_CONTROL_V2=false` 后重新构建，原路径保持不变；回滚只影响页面入口，不会删除事件表或审计记录。
+
 ## 明天上线前建议核对
 
 1. 真实手表 IMEI 是否不会命中模拟器正则。

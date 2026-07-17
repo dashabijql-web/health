@@ -1,13 +1,20 @@
 package com.xzkj.health.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.xzkj.health.common.Result;
+import com.xzkj.health.common.exception.BusinessException;
+import com.xzkj.health.dto.commandcenter.DeviceFaultRequest;
+import com.xzkj.health.dto.commandcenter.DeviceOperationalStateView;
 import com.xzkj.health.mapper.RiskWarningMapper;
 import com.xzkj.health.model.Device;
 import com.xzkj.health.model.DeviceUser;
+import com.xzkj.health.model.entity.SysUser;
 import com.xzkj.health.service.DeviceDataBufferService;
 import com.xzkj.health.service.DeviceManagerService;
+import com.xzkj.health.service.DeviceOperationalService;
 import com.xzkj.health.service.DeviceService;
 import com.xzkj.health.service.DeviceUserService;
+import com.xzkj.health.service.SysUserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -42,6 +49,12 @@ public class DeviceController {
     @Autowired
     private RiskWarningMapper riskWarningMapper;
 
+    @Autowired
+    private DeviceOperationalService deviceOperationalService;
+
+    @Autowired
+    private SysUserService sysUserService;
+
     /**
      * 获取设备列表（所有设备，包含在线/离线状态）
      * GET http://localhost:8080/health/api/device/online
@@ -56,6 +69,7 @@ public class DeviceController {
             // 批量查询绑定和缓冲计数（2次SQL替代N*2次）
             Map<Long, DeviceUser> bindingMap = deviceUserService.getAllCurrentBindings();
             Map<Long, Integer> bufferCountMap = deviceDataBufferService.getAllPendingCounts();
+            Map<Long, DeviceOperationalStateView> operationalStates = deviceOperationalService.getAllStates();
 
             // 查询近24小时有未处理预警的员工ID集合
             Set<Long> warningEmpIds;
@@ -78,6 +92,7 @@ public class DeviceController {
                 boolean isOnline = deviceManager.isDeviceOnline(device.getImei());
                 deviceInfo.put("status", isOnline ? 1 : 0);
                 deviceInfo.put("lastOnlineTime", device.getLastOnlineTime());
+                deviceInfo.put("lastReportTime", device.getLastOnlineTime());
 
                 // 从批量查询结果取绑定信息
                 DeviceUser binding = bindingMap.get(device.getId());
@@ -91,6 +106,19 @@ public class DeviceController {
 
                 // 电量（0-100，null=未知）
                 deviceInfo.put("batteryLevel", device.getBatteryLevel());
+                deviceInfo.put("lowBattery", deviceOperationalService.isLowBattery(device));
+                deviceInfo.put("dataInterrupted", deviceOperationalService.isDataInterrupted(device, isOnline));
+                deviceInfo.put("lostDurationSeconds", deviceOperationalService.lostDurationSeconds(device, isOnline));
+
+                DeviceOperationalStateView operationalState = operationalStates.get(device.getId());
+                deviceInfo.put("currentAbnormal",
+                        deviceOperationalService.currentAbnormal(device, operationalState, isOnline));
+                deviceInfo.put("faultStatus", operationalState == null ? "NORMAL" : operationalState.faultStatus());
+                deviceInfo.put("faultCode", operationalState == null ? null : operationalState.faultCode());
+                deviceInfo.put("faultDescription", operationalState == null ? null : operationalState.faultDescription());
+                deviceInfo.put("handlingStatus", operationalState == null ? "RESOLVED" : operationalState.handlingStatus());
+                deviceInfo.put("ownerName", operationalState == null ? null : operationalState.ownerName());
+                deviceInfo.put("faultDetectedAt", operationalState == null ? null : operationalState.detectedAt());
 
                 // 从批量查询结果取缓冲计数
                 deviceInfo.put("bufferCount", bufferCountMap.getOrDefault(device.getId(), 0));
@@ -107,11 +135,18 @@ public class DeviceController {
                 deviceInfo.put("imei", imei);
                 deviceInfo.put("status", 1);
                 deviceInfo.put("lastOnlineTime", null);
+                deviceInfo.put("lastReportTime", null);
                 deviceInfo.put("bindStatus", false);
                 deviceInfo.put("userName", "未建档设备");
                 deviceInfo.put("deptName", "--");
                 deviceInfo.put("hasWarning", false);
                 deviceInfo.put("batteryLevel", null);
+                deviceInfo.put("lowBattery", false);
+                deviceInfo.put("dataInterrupted", false);
+                deviceInfo.put("lostDurationSeconds", null);
+                deviceInfo.put("currentAbnormal", "UNREGISTERED");
+                deviceInfo.put("faultStatus", "NORMAL");
+                deviceInfo.put("handlingStatus", "RESOLVED");
                 deviceInfo.put("bufferCount", 0);
                 deviceList.add(0, deviceInfo);
             }
@@ -224,5 +259,32 @@ public class DeviceController {
             log.error("解绑设备失败: deviceId={}", deviceId, e);
             return Result.error("解绑失败: " + e.getMessage());
         }
+    }
+
+    @PostMapping("/{deviceId}/fault")
+    public Result<DeviceOperationalStateView> markDeviceFault(
+            @PathVariable Long deviceId,
+            @RequestBody DeviceFaultRequest request) {
+        return Result.ok("设备故障已登记",
+                deviceOperationalService.markFault(deviceId, request, currentOperator()));
+    }
+
+    @PostMapping("/{deviceId}/fault/resolve")
+    public Result<DeviceOperationalStateView> resolveDeviceFault(
+            @PathVariable Long deviceId,
+            @RequestBody(required = false) DeviceFaultRequest request) {
+        String remark = request == null ? null : request.remark();
+        return Result.ok("设备故障已关闭",
+                deviceOperationalService.resolveFault(deviceId, remark, currentOperator()));
+    }
+
+    private String currentOperator() {
+        StpUtil.checkLogin();
+        SysUser user = sysUserService.getById(StpUtil.getLoginIdAsLong());
+        if (user == null) {
+            throw new BusinessException(401, "登录用户不存在");
+        }
+        return user.getRealName() == null || user.getRealName().isBlank()
+                ? user.getUsername() : user.getRealName();
     }
 }

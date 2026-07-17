@@ -1,10 +1,3 @@
-export function buildDashboardHealthPassRate(warningRates) {
-  const rates = warningRates || []
-  if (!rates.length) return null
-  const avgWarn = rates.reduce((sum, item) => sum + (item.rate || 0), 0) / rates.length
-  return Math.max(0, Math.min(100, Math.round(100 - avgWarn)))
-}
-
 export function buildDashboardHeaderKpis({
   kpiRealtimeOnline,
   kpiRealtimeTotal,
@@ -14,7 +7,7 @@ export function buildDashboardHeaderKpis({
   kpiUnhandledMid,
   warningEvents,
   personCounts,
-  healthPassRate,
+  deviceActivationRate,
   preShiftData,
   periodLabel
 }) {
@@ -70,10 +63,12 @@ export function buildDashboardHeaderKpis({
       sub: `${periodLabel}累计`
     },
     {
-      label: '健康达标',
-      val: healthPassRate !== null ? `${healthPassRate}%` : '--',
-      cls: 'kpi-teal',
-      clickable: false
+      label: '设备激活',
+      val: deviceActivationRate !== null ? `${deviceActivationRate}%` : '--',
+      cls: deviceActivationRate !== null && deviceActivationRate < 80 ? 'kpi-orange' : 'kpi-teal',
+      clickable: true,
+      sub: '当前绑定设备激活率',
+      route: '/admin/device-list'
     },
     {
       label: '班前达标',
@@ -132,29 +127,143 @@ export function buildDashboardMetricCards({ metricList, personCounts, checkData,
   return cards
 }
 
+export function buildDashboardCoverageCards({
+  kpiRealtimeOnline,
+  kpiRealtimeTotal,
+  personCounts,
+  kpiUnhandledHigh,
+  kpiUnhandledMid,
+  pendingTotal,
+  unassignedTotal,
+  lastRefreshText,
+  periodLabel
+}) {
+  const metricKeys = ['heartRate', 'bloodOxygen', 'steps', 'temperature', 'pressure']
+  const hasMetricCounts = metricKeys.some(key => personCounts?.[key] !== undefined && personCounts?.[key] !== null)
+  const totalPersons = Number(personCounts?.totalPersons || kpiRealtimeTotal || 0)
+  const metricValues = metricKeys.map(key => Number(personCounts?.[key] || 0))
+  const coveredPersons = hasMetricCounts ? Math.min(...metricValues) : null
+  const coverageRate = totalPersons > 0 && coveredPersons !== null
+    ? Math.round(coveredPersons / totalPersons * 100)
+    : null
+  const pendingWarnings = pendingTotal ?? (Number(kpiUnhandledHigh || 0) + Number(kpiUnhandledMid || 0))
+
+  return [
+    {
+      key: 'online',
+      label: '在线作业',
+      value: kpiRealtimeTotal > 0 ? `${kpiRealtimeOnline}/${kpiRealtimeTotal}` : '--',
+      note: '当前在线人员 / 监测人员',
+      progress: kpiRealtimeTotal > 0 ? Math.round(kpiRealtimeOnline / kpiRealtimeTotal * 100) : null,
+      tone: kpiRealtimeTotal > 0 && kpiRealtimeOnline < kpiRealtimeTotal ? 'warning' : 'success',
+      route: '/health-monitor/real-time'
+    },
+    {
+      key: 'coverage',
+      label: '全项覆盖',
+      value: coverageRate === null ? '--' : `${coverageRate}%`,
+      note: `${periodLabel}五项体征均有数据`,
+      progress: coverageRate,
+      tone: coverageRate !== null && coverageRate < 80 ? 'warning' : 'success',
+      route: '/health-monitor/real-time'
+    },
+    {
+      key: 'pending',
+      label: '待处理预警',
+      value: pendingWarnings,
+      note: unassignedTotal === undefined
+        ? `高危 ${kpiUnhandledHigh || 0} / 中危 ${kpiUnhandledMid || 0}`
+        : `高危 ${kpiUnhandledHigh || 0} / 未分派 ${unassignedTotal}`,
+      tone: pendingWarnings > 0 ? 'danger' : 'success',
+      route: '/alert-management/notifications'
+    },
+    {
+      key: 'updated',
+      label: '数据更新时间',
+      value: lastRefreshText || '--',
+      note: `${periodLabel}数据窗口`,
+      tone: 'primary'
+    }
+  ]
+}
+
+function warningEventMatchesMetric(event, metricKey) {
+  const text = `${event?.type || ''} ${event?.indicator || ''}`.toLowerCase()
+  const aliases = {
+    heartRate: ['心率', 'heartrate', 'heart rate'],
+    bloodOxygen: ['血氧', 'bloodoxygen', 'spo2'],
+    pressure: ['压力', 'pressure'],
+    temperature: ['体温', 'temperature'],
+    bloodPressureHigh: ['血压', '收缩压', '高压', 'systolic', 'bloodpressurehigh'],
+    bloodPressureLow: ['舒张压', '低压', 'diastolic', 'bloodpressurelow']
+  }
+  return (aliases[metricKey] || []).some(alias => text.includes(alias.toLowerCase()))
+}
+
+export function buildDashboardHealthExceptionCards({ vitalCards, warningEvents, healthSnapshot }) {
+  const metricKeys = ['heartRate', 'bloodOxygen', 'pressure', 'temperature', 'bloodPressureHigh', 'bloodPressureLow']
+  const snapshotMetrics = new Map((healthSnapshot?.metrics || []).map(metric => [metric.key, metric]))
+  return metricKeys.map((metricKey) => {
+    const card = (vitalCards || []).find(item => item.metricKey === metricKey)
+    const metric = snapshotMetrics.get(metricKey)
+    const users = new Set(
+      (warningEvents || [])
+        .filter(event => !event.handled && warningEventMatchesMetric(event, metricKey))
+        .map(event => event.userCode || event.userName || event.id)
+        .filter(Boolean)
+    )
+    const exceptionCount = users.size
+    if (metric) {
+      const hasData = metric.coveredUsers > 0
+      return {
+        ...card,
+        metricKey,
+        label: `${metric.label}异常`,
+        val: `${metric.abnormalUsers}/${metric.coveredUsers}`,
+        unit: '异常/覆盖',
+        exceptionCount: metric.abnormalUsers,
+        tag: hasData ? `群体均值 ${metric.average}${metric.unit}` : '暂无有效数据',
+        tagCls: metric.abnormalUsers > 0 ? 'vtag-warn' : hasData ? 'vtag-ok' : '',
+        exceptionText: hasData
+          ? `范围 ${metric.minimum}-${metric.maximum}${metric.unit} · 覆盖 ${metric.coveredUsers} 人`
+          : '当前快照没有新鲜体征',
+        tone: metric.abnormalUsers > 0 ? 'danger' : hasData ? 'success' : 'warning'
+      }
+    }
+    return {
+      ...card,
+      metricKey,
+      exceptionCount,
+      warningType: card?.label || metricKey,
+      exceptionText: exceptionCount > 0 ? `异常 ${exceptionCount} 人` : '暂无待处置异常',
+      tone: exceptionCount > 0 ? 'danger' : card?.tagCls === 'vtag-warn' ? 'warning' : 'success'
+    }
+  }).filter(card => card.label)
+}
+
 export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) {
   const b = bodyIndicators || {}
   return [
     {
-      label: '心率均值', val: b.avgHeartRate || '--', unit: 'bpm', color: '#00d4ff', icon: 'Monitor',
+      metricKey: 'heartRate', label: '心率均值', val: b.avgHeartRate || '--', unit: 'bpm', color: '#00d4ff', icon: 'Monitor',
       route: '/health-monitor/heart-rate',
       tag: !b.avgHeartRate ? '-' : b.avgHeartRate > 100 ? '偏快' : b.avgHeartRate < 55 ? '偏慢' : '正常',
       tagCls: !b.avgHeartRate ? '' : (b.avgHeartRate > 100 || b.avgHeartRate < 55) ? 'vtag-warn' : 'vtag-ok'
     },
     {
-      label: '血氧均值', val: b.avgBloodOxygen || '--', unit: '%', color: '#67C23A', icon: 'FirstAidKit',
+      metricKey: 'bloodOxygen', label: '血氧均值', val: b.avgBloodOxygen || '--', unit: '%', color: '#67C23A', icon: 'FirstAidKit',
       route: '/health-monitor/blood-oxygen',
       tag: !b.avgBloodOxygen ? '-' : b.avgBloodOxygen < 90 ? '过低' : b.avgBloodOxygen < 95 ? '偏低' : '良好',
       tagCls: !b.avgBloodOxygen ? '' : b.avgBloodOxygen < 90 ? 'vtag-danger' : b.avgBloodOxygen < 95 ? 'vtag-warn' : 'vtag-ok'
     },
     {
-      label: '压力均值', val: b.avgPressure || '--', unit: '', color: '#3eb7ff', icon: 'MagicStick',
+      metricKey: 'pressure', label: '压力均值', val: b.avgPressure || '--', unit: '', color: '#3eb7ff', icon: 'MagicStick',
       route: '/health-monitor/pressure',
       tag: !b.avgPressure ? '-' : b.avgPressure > 80 ? '过高' : b.avgPressure > 60 ? '偏高' : '适中',
       tagCls: !b.avgPressure ? '' : b.avgPressure > 80 ? 'vtag-danger' : b.avgPressure > 60 ? 'vtag-warn' : 'vtag-ok'
     },
     {
-      label: '体温均值', val: b.avgTemperature || '--', unit: '°C', color: '#00c8c8', icon: 'Sunny',
+      metricKey: 'temperature', label: '体温均值', val: b.avgTemperature || '--', unit: '°C', color: '#00c8c8', icon: 'Sunny',
       tag: !b.avgTemperature ? '-' : b.avgTemperature > 37.5 ? '偏高' : b.avgTemperature < 36 ? '偏低' : '正常',
       tagCls: !b.avgTemperature ? '' : (b.avgTemperature > 37.5 || b.avgTemperature < 36) ? 'vtag-warn' : 'vtag-ok'
     },
@@ -164,6 +273,7 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
       tagCls: !b.avgSteps ? '' : b.avgSteps < 5000 ? 'vtag-warn' : 'vtag-ok'
     },
     {
+      metricKey: 'bloodPressureHigh',
       label: '高压均值',
       val: b.avgBloodPressureHigh ? Math.round(b.avgBloodPressureHigh) : '--',
       unit: 'mmHg',
@@ -179,6 +289,7 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
         : 'vtag-warn'
     },
     {
+      metricKey: 'bloodPressureLow',
       label: '低压均值',
       val: b.avgBloodPressureLow ? Math.round(b.avgBloodPressureLow) : '--',
       unit: 'mmHg',
@@ -226,20 +337,34 @@ export function buildDashboardVitalCards({ bodyIndicators, warningRates = [] }) 
   ]
 }
 
-export function buildDashboardDeviceCards({ deviceStats, deviceOnline, deviceOffline, deviceWarningCount, lowBatteryCount }) {
+export function buildDashboardDeviceCards({ deviceStats, deviceOnline, deviceOffline, lowBatteryCount, dataInterrupted, faulted }) {
   const hasDeviceData = (deviceStats.total > 0) || (deviceStats.boundDevices > 0)
   const showVal = (val) => hasDeviceData ? val : '--'
 
   const total = deviceStats.boundDevices ?? deviceStats.total
-  const onlineRate = hasDeviceData && total > 0 ? Math.round(deviceOnline / total * 100) + '%' : '--'
+  const capabilityValue = (capability) => capability?.status === 'AVAILABLE' ? capability.value : '--'
 
   return [
     { label: '设备总数', val: showVal(total), cls: 'dc-blue', route: { path: '/admin/device-list' } },
     { label: '在线设备', val: showVal(deviceOnline), cls: 'dc-green', route: { path: '/admin/device-list', query: { online: 1 } } },
     { label: '离线设备', val: showVal(deviceOffline), cls: 'dc-gray', route: { path: '/admin/device-list', query: { online: 0 } } },
-    { label: '预警设备', val: showVal(deviceWarningCount), cls: 'dc-red', route: { path: '/admin/device-list', query: { filter: 'warning' } } },
-    { label: '电量不足', val: showVal(lowBatteryCount), cls: 'dc-orange', route: { path: '/admin/device-list', query: { filter: 'lowBattery' } } },
-    { label: '在线率', val: onlineRate, cls: 'dc-cyan' }
+    { label: '低电设备', val: lowBatteryCount === null ? '--' : showVal(lowBatteryCount), cls: 'dc-orange', route: lowBatteryCount === null ? null : { path: '/admin/device-list', query: { filter: 'lowBattery' } } },
+    {
+      label: '数据中断',
+      val: capabilityValue(dataInterrupted),
+      cls: 'dc-orange',
+      route: dataInterrupted?.status === 'AVAILABLE'
+        ? { path: '/admin/device-list', query: { filter: 'dataInterrupted' } }
+        : null
+    },
+    {
+      label: '故障设备',
+      val: capabilityValue(faulted),
+      cls: 'dc-red',
+      route: faulted?.status === 'AVAILABLE'
+        ? { path: '/admin/device-list', query: { filter: 'faulted' } }
+        : null
+    }
   ]
 }
 

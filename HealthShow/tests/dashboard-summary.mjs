@@ -170,6 +170,22 @@ test('dashboard command panels expose coverage and exception decisions', () => {
     exceptions.filter((item) => item.exceptionCount > 0).map(({ metricKey, exceptionCount }) => [metricKey, exceptionCount]),
     [['heartRate', 1], ['bloodOxygen', 1], ['bloodPressureHigh', 1], ['bloodPressureLow', 1]]
   )
+  const realtimeExceptions = buildDashboardHealthExceptionCards({
+    vitalCards,
+    warningEvents: [],
+    healthSnapshot: {
+      metrics: [{
+        key: 'heartRate', label: '心率', unit: 'bpm', average: 78.5,
+        minimum: 52, maximum: 128, p95: 112, coveredUsers: 20,
+        abnormalUsers: 3, abnormalRate: 15
+      }]
+    }
+  })
+  const realtimeHeartRate = realtimeExceptions.find(item => item.metricKey === 'heartRate')
+  assert.equal(realtimeHeartRate.val, '3/20')
+  assert.equal(realtimeHeartRate.unit, '异常/覆盖')
+  assert.equal(realtimeHeartRate.tag, '群体均值 78.5bpm')
+  assert.match(realtimeHeartRate.exceptionText, /范围 52-128bpm · 覆盖 20 人/)
   assert.match(viewSource, /监测覆盖与数据质量/)
   assert.match(viewSource, /健康异常快照/)
   assert.match(viewSource, /v\.exceptionText/)

@@ -290,9 +290,27 @@ import { Timer, Search, Refresh, Edit, Bell, WarningFilled, WarnTriangleFilled, 
 import { ElMessage } from 'element-plus'
 import { formatDate } from '@/utils'
 import { useClock } from '@/composables/useClock'
-import { getRiskWarningList, getRiskWarningOverview, handleRiskWarning, handleBatchRiskWarning } from '@/api/risk-warning'
 import { exportToExcel } from '@/utils/export-excel'
-import { buildWarningLifecycleItem, levelLabel, warningHandledStatusLabel, warningLevelFilterLabel } from '../common/warning-lifecycle'
+import { levelLabel, warningHandledStatusLabel, warningLevelFilterLabel } from '../common/warning-lifecycle'
+import {
+  buildExportRows,
+  buildRecordsQuery,
+  createRecordsHandleForm,
+  createRecordsOverview,
+  createRecordsPagination,
+  createRecordsSearchForm,
+  exportColumns,
+  levelTag,
+  typeLabel,
+  typeTag
+} from './records-view-model'
+import {
+  fetchRecordsExportRows,
+  fetchRecordsOverview,
+  fetchRecordsPage,
+  submitBatchRecordHandle,
+  submitRecordHandle
+} from './records-runtime'
 
 const route = useRoute()
 
@@ -300,50 +318,33 @@ const { currentTime } = useClock()
 const isMobile = ref(window.innerWidth < 768)
 const filterExpanded = ref(false)
 
-const overview = reactive({ todayTotal: 0, pending: 0, critical: 0, handled: 0 })
+const overview = reactive(createRecordsOverview())
 const handleRate = computed(() => { const t = overview.todayTotal||0; return t===0?0:((overview.handled/t)*100).toFixed(1) })
 
 const loadOverview = async () => {
   try {
-    const r = await getRiskWarningOverview()
-    if (r.code === 200) {
-      const d = r.data || {}
-      // 后端字段名: totalWarnings/pendingWarnings/dangerCount/handledWarnings
-      // 前端字段名: todayTotal/pending/critical/handled
-      Object.assign(overview, {
-        todayTotal: d.totalWarnings   ?? d.todayTotal   ?? 0,
-        pending:    d.pendingWarnings ?? d.pending      ?? 0,
-        critical:   d.dangerCount     ?? d.critical     ?? 0,
-        handled:    d.handledWarnings ?? d.handled      ?? 0
-      })
-    }
+    const nextOverview = await fetchRecordsOverview()
+    if (nextOverview) Object.assign(overview, nextOverview)
   } catch(e) {}
 }
 
-const searchForm = reactive({ dateRange: null, warningType: '', warningLevel: '', handleStatus: '', keyword: '' })
+const searchForm = reactive(createRecordsSearchForm())
 const loading = ref(false)
 const tableData = ref([])
-const pagination = reactive({ page: 1, size: 20, total: 0 })
+const pagination = reactive(createRecordsPagination())
 
 const loadData = async () => {
   loading.value = true
   try {
-    const p = { page: pagination.page, size: pagination.size }
-    if (searchForm.dateRange?.length===2) { p.startDate=searchForm.dateRange[0]; p.endDate=searchForm.dateRange[1] }
-    // 后端参数名与前端 searchForm 字段名的映射：
-    // warningLevel → level，keyword → userCode（模糊匹配员工编号/姓名由后端处理）
-    if (searchForm.warningType) p.warningType = searchForm.warningType
-    if (searchForm.warningLevel) p.level = searchForm.warningLevel
-    if (searchForm.handleStatus==='handled') p.handled=true; else if(searchForm.handleStatus==='unhandled') p.handled=false
-    if (searchForm.keyword) p.userCode = searchForm.keyword
-    const res = await getRiskWarningList(p)
-    if (res.code===200) { tableData.value = (res.data?.list||[]).map(r => buildWarningLifecycleItem(r)); pagination.total = res.data?.total||0 }
+    const result = await fetchRecordsPage(buildRecordsQuery(searchForm, pagination))
+    tableData.value = result.rows
+    pagination.total = result.total
   } catch(e) { ElMessage.error('加载预警列表失败') }
   finally { loading.value = false }
 }
 
 const handleSearch = () => { pagination.page=1; loadData() }
-const handleReset = () => { Object.assign(searchForm, { dateRange:null, warningType:'', warningLevel:'', handleStatus:'', keyword:'' }); handleSearch() }
+const handleReset = () => { Object.assign(searchForm, createRecordsSearchForm()); handleSearch() }
 
 function applyRouteFilters(query = route.query) {
   searchForm.warningType = query.warningType || ''
@@ -370,12 +371,6 @@ const filterByCard = (type) => {
   handleSearch()
 }
 
-const typeMap = { SOS:{l:'SOS求助',t:'danger'}, fall:{l:'跌倒',t:'warning'}, heartRate:{l:'心率异常',t:'primary'}, bloodOxygen:{l:'血氧异常',t:'info'}, temperature:{l:'体温异常',t:'warning'}, bloodPressure:{l:'血压偏高',t:'danger'}, pressure:{l:'压力偏高',t:'warning'}, staticAlert:{l:'静态预警',t:'info'} }
-const typeLabel = t => typeMap[t]?.l||t||'-'
-const typeTag = t => typeMap[t]?.t||'primary'
-const levelMap = { 高危:{t:'danger'}, 中危:{t:'warning'}, 低危:{t:'info'}, 危险:{t:'danger'}, 预警:{t:'warning'}, 提示:{t:'info'} }
-const levelTag = l => levelMap[l]?.t||'primary'
-
 // Detail drawer
 const detailVisible = ref(false)
 const detailRow = ref(null)
@@ -389,7 +384,7 @@ const batchHandle = async () => {
   batchLoading.value = true
   try {
     const ids = selectedRows.value.map(r => r.id)
-    const res = await handleBatchRiskWarning(ids)
+    const res = await submitBatchRecordHandle(ids)
     if (res.code === 200) {
       ElMessage.success(`已批量处理 ${ids.length} 条预警`)
       selectedRows.value = []
@@ -406,7 +401,7 @@ const handleDialogVisible = ref(false)
 const handleSubmitting = ref(false)
 const handleFormRef = ref(null)
 const currentRow = ref(null)
-const handleForm = reactive({ handleType: 1, handleNote: '', notify: false })
+const handleForm = reactive(createRecordsHandleForm())
 const handleRules = { handleType:[{required:true,message:'请选择处理方式'}], handleNote:[{required:true,message:'请输入处理备注',trigger:'blur'}] }
 
 const openHandle = (row) => { currentRow.value=row; handleForm.handleType=1; handleForm.handleNote=''; handleForm.notify=false; handleDialogVisible.value=true }
@@ -415,7 +410,7 @@ const submitHandle = async () => {
   if(!valid) return
   handleSubmitting.value = true
   try {
-    const res = await handleRiskWarning(currentRow.value.id, { handleType:handleForm.handleType, handleNote:handleForm.handleNote, notify:handleForm.notify, createTime:currentRow.value.createTime })
+    const res = await submitRecordHandle(currentRow.value.id, { handleType:handleForm.handleType, handleNote:handleForm.handleNote, notify:handleForm.notify, createTime:currentRow.value.createTime })
     if(res.code===200) { ElMessage.success('处理成功'); handleDialogVisible.value=false; loadData(); loadOverview() }
     else ElMessage.error(res.message||'处理失败')
   } catch(e) { ElMessage.error('处理失败') }
@@ -424,42 +419,10 @@ const submitHandle = async () => {
 
 const exportExcel = async () => {
   try {
-    // 导出所有符合当前筛选条件的数据（最多5000条）
-    const p = { page: 1, size: 5000 }
-    if (searchForm.dateRange?.length === 2) { p.startDate = searchForm.dateRange[0]; p.endDate = searchForm.dateRange[1] }
-    if (searchForm.warningType) p.warningType = searchForm.warningType
-    if (searchForm.warningLevel) p.level = searchForm.warningLevel
-    if (searchForm.handleStatus === 'handled') p.handled = true
-    else if (searchForm.handleStatus === 'unhandled') p.handled = false
-    if (searchForm.keyword) p.userCode = searchForm.keyword
-    const res = await getRiskWarningList(p)
-    const rows = res.data?.list || []
+    const rows = await fetchRecordsExportRows(buildRecordsQuery(searchForm, pagination, { includePage: false }))
     if (!rows.length) { ElMessage.warning('无数据可导出'); return }
-    const data = rows.map(r => ({
-      '预警时间': formatDate(r.createTime),
-      '姓名': r.userName || '-',
-      '性别': r.gender === 1 ? '男' : r.gender === 2 ? '女' : '-',
-      '年龄': r.age ?? '-',
-      '预警类型': typeLabel(r.warningType),
-      '预警值': r.warningValue || '-',
-      '预警级别': levelLabel(r.warningLevel),
-      '处理状态': warningHandledStatusLabel(r),
-      '处理人': r.handleBy || '-',
-      '处理备注': r.handleNote || '-'
-    }))
-    const cols = [
-      { label: '预警时间', key: '预警时间' },
-      { label: '姓名', key: '姓名' },
-      { label: '性别', key: '性别' },
-      { label: '年龄', key: '年龄' },
-      { label: '预警类型', key: '预警类型' },
-      { label: '预警值', key: '预警值' },
-      { label: '预警级别', key: '预警级别' },
-      { label: '处理状态', key: '处理状态' },
-      { label: '处理人', key: '处理人' },
-      { label: '处理备注', key: '处理备注' }
-    ]
-    await exportToExcel(data, cols, `预警记录_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`)
+    const data = buildExportRows(rows, { formatDate, levelLabel, warningHandledStatusLabel })
+    await exportToExcel(data, exportColumns, `预警记录_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`)
     ElMessage.success(`已导出 ${rows.length} 条记录`)
   } catch (e) { ElMessage.error('导出失败') }
 }

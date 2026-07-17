@@ -13,6 +13,38 @@ export function deviceOnlineLabel(row) {
   return '离线'
 }
 
+const ABNORMAL_LABELS = {
+  NORMAL: '正常',
+  OFFLINE: '离线',
+  LOW_BATTERY: '低电',
+  DATA_INTERRUPTED: '数据中断',
+  FAULT: '设备故障',
+  UNREGISTERED: '未建档'
+}
+
+export function deviceAbnormalLabel(row) {
+  return ABNORMAL_LABELS[row.currentAbnormal] || '未知'
+}
+
+export function deviceAbnormalTagType(row) {
+  return {
+    NORMAL: 'success',
+    OFFLINE: 'info',
+    LOW_BATTERY: 'warning',
+    DATA_INTERRUPTED: 'warning',
+    FAULT: 'danger',
+    UNREGISTERED: 'info'
+  }[row.currentAbnormal] || 'info'
+}
+
+export function formatLostDuration(seconds) {
+  if (seconds === null || seconds === undefined) return '--'
+  if (seconds < 60) return `${seconds}秒`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}分钟`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}小时`
+  return `${Math.floor(seconds / 86400)}天`
+}
+
 export function buildFilteredDeviceList(deviceList, filters) {
   let list = deviceList
   if (filters.searchImei) {
@@ -33,6 +65,14 @@ export function buildFilteredDeviceList(deviceList, filters) {
 
   if (filters.filterWarning) {
     list = list.filter((device) => device.hasWarning)
+  }
+
+  if (filters.filterOperationalVal === 'dataInterrupted') {
+    list = list.filter((device) => device.dataInterrupted)
+  } else if (filters.filterOperationalVal === 'faulted') {
+    list = list.filter((device) => device.currentAbnormal === 'FAULT')
+  } else if (filters.filterOperationalVal === 'abnormal') {
+    list = list.filter((device) => device.currentAbnormal && device.currentAbnormal !== 'NORMAL')
   }
 
   if (filters.filterBatteryVal === 'low') {
@@ -118,6 +158,7 @@ export function resetDeviceFilters(filters, pagination) {
   filters.filterLowBattery = false
   filters.filterWarningVal = ''
   filters.filterBatteryVal = ''
+  filters.filterOperationalVal = ''
   pagination.page = 1
 }
 
@@ -127,4 +168,7 @@ export function applyDeviceRouteFilters(query, filters) {
   filters.filterWarningVal = filters.filterWarning ? 'warning' : ''
   filters.filterLowBattery = query.filter === 'lowBattery'
   filters.filterBatteryVal = filters.filterLowBattery ? 'low' : ''
+  filters.filterOperationalVal = ['dataInterrupted', 'faulted', 'abnormal'].includes(query.filter)
+    ? query.filter
+    : ''
 }

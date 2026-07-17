@@ -4,13 +4,13 @@ import {
   getBodyIndicators,
   getDataTop5,
   getDeviceActivation,
-  getWarningEvents,
   getDeptHealthCounts,
   getDeptPersonStats,
   getPersonCounts,
   getPreShiftCompliance
 } from '@/api/health'
-import { getRealtimeStatistics } from '@/api/realtime'
+import { getCommandCenterDashboardSummary, getCommandCenterIncidents } from '@/api/command-center'
+import { getRealtimeHealthSnapshot, getRealtimeStatistics } from '@/api/realtime'
 import { dashboardCache as _cache } from './dashboard-cache'
 import { normalizeWarningLevel, isWarningHandled } from '../../alert-management/common/warning-lifecycle'
 
@@ -33,17 +33,31 @@ function mapDashboardTop5Rows(rawRows) {
 }
 
 function mapDashboardWarningEvent(event) {
+  const incidentSeverity = String(event.severity || '').toUpperCase()
   return {
-    id: event.id,
-    type: event.warningType || event.type || event.indicatorName || '--',
-    indicator: event.indicatorName || event.indicator || event.warningType || '--',
-    value: event.warningValue || event.value || event.actualValue || '--',
-    time: event.createTime || event.recordTime || event.warningTime || event.time,
-    userName: event.empName || event.userName || event.name || '--',
-    userCode: event.empCode || event.userCode || event.code,
-    deptName: event.deptName || event.department || '--',
-    level: normalizeWarningLevel(event.warningLevel ?? event.level),
-    handled: isWarningHandled(event) || event.status === 1
+    id: event.warningId ?? event.id,
+    incidentId: event.incidentId || '',
+    occurredAt: event.occurredAt || event.createTime || event.recordTime || event.warningTime || event.time,
+    type: event.typeLabel || event.warningType || event.type || event.indicatorName || '--',
+    indicator: event.vitalSnapshot?.indicator || event.indicatorName || event.indicator || event.warningType || '--',
+    value: event.vitalSnapshot?.value || event.warningValue || event.value || event.actualValue || '--',
+    time: event.occurredAt || event.createTime || event.recordTime || event.warningTime || event.time,
+    userName: event.person?.name || event.empName || event.userName || event.name || '--',
+    userCode: event.person?.userCode || event.empCode || event.userCode || event.code,
+    deptName: event.person?.department || event.deptName || event.department || '--',
+    location: event.location?.status === 'UNAVAILABLE'
+      ? '未接入定位'
+      : (event.location?.label || event.location || event.deptName || '--'),
+    owner: event.owner?.name || (event.owner?.status === 'UNASSIGNED' ? '未分派' : '--'),
+    slaText: event.sla?.configured
+      ? (event.sla.deadlineAt || '--') + ' · ' + (event.sla.message || '--')
+      : 'SLA 未配置',
+    level: incidentSeverity === 'CRITICAL'
+      ? 'danger'
+      : incidentSeverity === 'HIGH'
+        ? 'warn'
+        : normalizeWarningLevel(event.warningLevel ?? event.level),
+    handled: event.status === 'RESOLVED' || isWarningHandled(event) || event.status === 1
   }
 }
 
@@ -109,8 +123,8 @@ export async function fetchDashboardKpiSnapshot(warningEvents) {
 
       const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
       const [todayRes, yesRes] = await Promise.all([
-        getWarningEvents({ startTime: today, endTime: today }),
-        getWarningEvents({ startTime: yesterday, endTime: yesterday })
+        getCommandCenterIncidents({ scope: 'range', status: 'ALL', startAt: today, endAt: today, page: 1, size: 1 }),
+        getCommandCenterIncidents({ scope: 'range', status: 'ALL', startAt: yesterday, endAt: yesterday, page: 1, size: 1 })
       ])
 
       _cache.kpiTodayWarnings = countWarningRows(todayRes)
@@ -126,6 +140,15 @@ export async function fetchDashboardKpiSnapshot(warningEvents) {
     kpiTodayWarnings: _cache.kpiTodayWarnings || 0,
     kpiYesterdayWarnings: _cache.kpiYesterdayWarnings || 0,
     ...buildDashboardUnhandledStats(warningEvents)
+  }
+}
+
+export async function fetchCommandCenterDashboardSummary() {
+  try {
+    const response = await getCommandCenterDashboardSummary()
+    return response.code === 200 && response.data ? response.data : null
+  } catch {
+    return null
   }
 }
 
@@ -185,6 +208,15 @@ export async function fetchDashboardBodyIndicatorData(periodRange) {
   }
 }
 
+export async function fetchDashboardHealthSnapshot() {
+  try {
+    const res = await getRealtimeHealthSnapshot()
+    return res.code === 200 && res.data ? res.data : null
+  } catch {
+    return null
+  }
+}
+
 export async function fetchDashboardDeviceState(periodRange) {
   try {
     const res = await getDeviceActivation(periodRange)
@@ -205,9 +237,16 @@ export async function fetchDashboardDeviceState(periodRange) {
 
 export async function fetchDashboardWarningEventState(periodRange) {
   try {
-    const res = await getWarningEvents(periodRange)
-    if (res.code === 200) {
-      return (res.data || []).map(mapDashboardWarningEvent)
+    const res = await getCommandCenterIncidents({
+      scope: 'range',
+      status: 'ALL',
+      startAt: periodRange.startTime,
+      endAt: periodRange.endTime,
+      page: 1,
+      size: 200
+    })
+    if (res.code === 200 && Array.isArray(res.data?.items)) {
+      return res.data.items.map(mapDashboardWarningEvent)
     }
   } catch {}
   return []

@@ -1,6 +1,7 @@
 package com.xzkj.health.config;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
+import cn.dev33.satoken.context.SaHolder;
 import cn.dev33.satoken.stp.StpUtil;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
@@ -104,8 +105,9 @@ public class SaTokenConfig implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new SaInterceptor(handler -> {
-            if (handler instanceof HttpServletRequest request && shouldCheckLogin(request)) {
+        registry.addInterceptor(new SaInterceptor(ignored -> {
+            Object source = SaHolder.getRequest().getSource();
+            if (source instanceof HttpServletRequest request && shouldCheckLogin(request)) {
                 StpUtil.checkLogin();
             }
         }))

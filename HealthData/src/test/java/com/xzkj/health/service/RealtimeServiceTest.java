@@ -5,6 +5,7 @@ import com.xzkj.health.dto.realtime.RealtimeAlertRow;
 import com.xzkj.health.dto.realtime.RealtimeAlertView;
 import com.xzkj.health.dto.realtime.RealtimeOverviewRow;
 import com.xzkj.health.dto.realtime.RealtimeOverviewView;
+import com.xzkj.health.dto.realtime.RealtimeHealthSnapshotView;
 import com.xzkj.health.dto.realtime.RealtimeStatisticsRow;
 import com.xzkj.health.dto.realtime.RealtimeStatisticsView;
 import com.xzkj.health.dto.realtime.RealtimeUserDetailView;
@@ -112,6 +113,50 @@ class RealtimeServiceTest {
         assertEquals(1, result.summary().warningCount());
         assertEquals(15, result.summary().onlineWindowMinutes());
         assertEquals(5, result.summary().freshnessMinutes());
+    }
+
+    @Test
+    void getHealthSnapshotPrioritizesAbnormalUsersAndReportsCoverageAndExtremes() {
+        RealtimeUserRow normal = realtimeRow("E001", 72, 98, 36.5, 35, 20L);
+        RealtimeUserRow danger = realtimeRow("E002", 128, 88, 38.2, 92, 40L);
+        RealtimeUserRow stale = realtimeRow("E003", 80, 97, 36.7, 42, 600L);
+
+        when(alertConfigService.getConfigMap(nullable(Integer.class))).thenReturn(Collections.emptyMap());
+        when(realtimeMapper.getActiveUsersDirect(anyString(), eq(15)))
+                .thenReturn(List.of(normal, danger, stale));
+
+        RealtimeHealthSnapshotView result = realtimeService.getHealthSnapshot();
+
+        assertEquals("PARTIAL", result.status());
+        assertEquals(3, result.onlineUsers());
+        assertEquals(2, result.freshUsers());
+        assertEquals(1, result.warningUsers());
+        assertEquals(1, result.staleUsers());
+        assertEquals(66.7, result.coverageRate(), 0.001);
+        var heartRate = result.metrics().stream()
+                .filter(metric -> "heartRate".equals(metric.key()))
+                .findFirst().orElseThrow();
+        assertEquals(2, heartRate.coveredUsers());
+        assertEquals(1, heartRate.abnormalUsers());
+        assertEquals(50.0, heartRate.abnormalRate(), 0.001);
+        assertEquals(72.0, heartRate.minimum(), 0.001);
+        assertEquals(128.0, heartRate.maximum(), 0.001);
+        assertEquals(128.0, heartRate.p95(), 0.001);
+    }
+
+    private RealtimeUserRow realtimeRow(String code, int heartRate, int bloodOxygen,
+                                        double temperature, int pressure, long ageSeconds) {
+        RealtimeUserRow row = new RealtimeUserRow();
+        row.setId((long) code.hashCode());
+        row.setUserCode(code);
+        row.setUserName(code);
+        row.setHeartRate(heartRate);
+        row.setBloodOxygen(bloodOxygen);
+        row.setTemperature(temperature);
+        row.setPressure(pressure);
+        row.setDataAgeSeconds(ageSeconds);
+        row.setLastUpdate("2026-07-17 10:00:00");
+        return row;
     }
 
     @Test

@@ -292,18 +292,18 @@
 </template>
 
 <script>
-import { dashboardComputed } from './dashboard-computed'
-import { createDashboardPageState } from './dashboard-page-state'
-import { dashboardViewActions } from './dashboard-view-actions'
-import { dashboardChartMethods } from './dashboard-chart-methods'
-import { dashboardDetailMethods } from './dashboard-detail-methods'
-import { activateDashboardPage, mountDashboardPage, unmountDashboardPage } from './dashboard-lifecycle'
-import { dashboardRuntimeMethods } from './dashboard-runtime'
-import DashboardDispatchPanel from './components/DashboardDispatchPanel.vue'
-import DashboardRightSidebar from './components/DashboardRightSidebar.vue'
-import DashboardDevicePanel from './components/DashboardDevicePanel.vue'
-import DashboardDialogs from './components/DashboardDialogs.vue'
-import DashboardWarningStream from './components/DashboardWarningStream.vue'
+import { dashboardComputed } from '../dashboard-computed'
+import { createDashboardPageState } from '../dashboard-page-state'
+import { dashboardViewActions } from '../dashboard-view-actions'
+import { dashboardChartMethods } from '../dashboard-chart-methods'
+import { dashboardDetailMethods } from '../dashboard-detail-methods'
+import { activateDashboardPage, mountDashboardPage, unmountDashboardPage } from '../dashboard-lifecycle'
+import { dashboardRuntimeMethods } from '../dashboard-runtime'
+import DashboardDispatchPanel from '../components/DashboardDispatchPanel.vue'
+import DashboardRightSidebar from '../components/DashboardRightSidebar.vue'
+import DashboardDevicePanel from '../components/DashboardDevicePanel.vue'
+import DashboardDialogs from '../components/DashboardDialogs.vue'
+import DashboardWarningStream from '../components/DashboardWarningStream.vue'
 import PageHeroHeader from '@/components/health-shell/PageHeroHeader.vue'
 import MetricStrip from '@/components/health-shell/MetricStrip.vue'
 
@@ -376,5 +376,5 @@ export default {
 </script>
 
 <style lang="scss">
-@import './dashboard.scss';
+@import '../dashboard.scss';
 </style>

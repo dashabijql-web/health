@@ -30,6 +30,7 @@ const DEFAULT_ROUTES = [
   { slug: 'risk-warning', path: '/health-monitor/risk-warning' },
   { slug: 'employee-profile', path: '/health-monitor/employee-profile' },
   { slug: 'mine-entry', path: '/health-monitor/mine-entry' },
+  { slug: 'device-management', path: '/admin/device-list' },
   { slug: 'alert-notifications', path: '/alert-management/notifications' },
   { slug: 'alert-records', path: '/alert-management/records' },
   { slug: 'report-center', path: '/health-monitor/report-center' },
@@ -148,6 +149,7 @@ async function prepareRoute(page, route) {
   await cards.first().click();
   await page.waitForFunction(() => window.location.hash.includes('/health-monitor/employee-profile'), null, { timeout: 15000 });
   await page.locator('.ep-vitals-panel').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.ep-history-chart canvas').first().waitFor({ state: 'visible', timeout: 15000 });
   await page.waitForTimeout(600);
 }
 

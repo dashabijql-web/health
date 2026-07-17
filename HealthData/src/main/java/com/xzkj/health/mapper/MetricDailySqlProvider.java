@@ -36,12 +36,14 @@ public class MetricDailySqlProvider {
                "    AND (lr.blood_oxygen IS NULL OR lr.blood_oxygen >= 95) " +
                "    AND (lr.blood_pressure_high IS NULL OR lr.blood_pressure_high < 140) " +
                "    AND (lr.blood_pressure_low IS NULL OR lr.blood_pressure_low < 90) " +
+               "    AND (lr.temperature IS NULL OR (lr.temperature >= 36.0 AND lr.temperature <= 37.5)) " +
                "    THEN 1 ELSE 0 END) AS qualifiedCount, " +
                "  SUM(CASE WHEN " +
                "    (lr.heart_rate IS NOT NULL AND (lr.heart_rate < 60 OR lr.heart_rate > 100)) " +
                "    OR (lr.blood_oxygen IS NOT NULL AND lr.blood_oxygen < 95) " +
                "    OR (lr.blood_pressure_high IS NOT NULL AND lr.blood_pressure_high >= 140) " +
                "    OR (lr.blood_pressure_low IS NOT NULL AND lr.blood_pressure_low >= 90) " +
+               "    OR (lr.temperature IS NOT NULL AND (lr.temperature < 36.0 OR lr.temperature > 37.5)) " +
                "    THEN 1 ELSE 0 END) AS failedCount " +
                "FROM " + table + " lr " +
                "INNER JOIN ( " +
@@ -74,6 +76,7 @@ public class MetricDailySqlProvider {
                "    AND (lr.blood_oxygen IS NULL OR lr.blood_oxygen >= 95) " +
                "    AND (lr.blood_pressure_high IS NULL OR lr.blood_pressure_high < 140) " +
                "    AND (lr.blood_pressure_low IS NULL OR lr.blood_pressure_low < 90) " +
+               "    AND (lr.temperature IS NULL OR (lr.temperature >= 36.0 AND lr.temperature <= 37.5)) " +
                "    THEN 1 ELSE 0 END AS qualified " +
                "FROM " + table + " lr " +
                "INNER JOIN ( " +

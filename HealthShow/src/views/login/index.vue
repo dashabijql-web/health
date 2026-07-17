@@ -1,228 +1,269 @@
 <template>
-  <!--
-    ╔══════════════════════════════════════════════════════════════════╗
-    ║              登录页面模板（新手必读）                               ║
-    ╚══════════════════════════════════════════════════════════════════╝
-
-    【Vue 单文件组件（SFC）结构说明】
-
-    .vue 文件分三个块：
-      <template>：HTML 模板（页面结构）
-      <script>：JavaScript 逻辑（数据、方法）
-      <style>：CSS 样式（支持 SCSS/Less 等预处理器）
-
-    【页面布局说明】
-
-    整个页面是一个深色背景的登录框，包含：
-    - 顶部标题"登录"
-    - 用户名输入框（带用户图标）
-    - 密码输入框（带密码图标 + 显示/隐藏切换）
-    - 登录按钮（点击后发请求，有 loading 效果）
-
-    【Element Plus 组件说明】
-
-    el-form：表单容器
-      :model="loginForm" → 将表单与 loginForm 数据对象绑定
-      :rules="loginRules" → 表单验证规则
-      ref="loginForm"     → 给表单设置引用名（通过 this.$refs.loginForm 操作）
-
-    el-form-item：表单项（包裹输入框，显示验证错误消息）
-      prop="username" → 指定验证 loginRules 中的哪条规则
-
-    el-input：输入框
-      v-model="loginForm.username" → 双向数据绑定（输入框和数据同步）
-      :type="passwordType" → 动态 type：'password' 隐藏，'' 显示
-      @keyup.enter="handleLogin" → 按 Enter 键触发登录
-  -->
   <div class="login-container">
-    <!-- 登录表单 -->
-    <el-form
-      ref="loginForm"
-      :model="loginForm"
-      :rules="loginRules"
-      class="login-form"
-      auto-complete="on"
-      label-position="left"
+    <!-- 星空背景 -->
+    <div class="login-starfield">
+      <span
+        v-for="(s, i) in stars"
+        :key="'s' + i"
+        class="login-star"
+        :style="{
+          left: s.left + '%',
+          top: s.top + '%',
+          width: s.size + 'px',
+          height: s.size + 'px',
+          animationDuration: s.duration + 's',
+          animationDelay: s.delay + 's'
+        }"
+      ></span>
+    </div>
+
+    <!-- 星云光晕 -->
+    <div class="login-bg-glow login-bg-glow--a"></div>
+    <div class="login-bg-glow login-bg-glow--b"></div>
+    <div class="login-bg-glow login-bg-glow--c"></div>
+
+    <!-- 斜向能量光束 -->
+    <div class="login-beam login-beam--1"></div>
+    <div class="login-beam login-beam--2"></div>
+    <div class="login-beam login-beam--3"></div>
+
+    <!-- 全息扫描核心 -->
+    <div class="login-hologram">
+      <span class="login-holo-ring login-holo-ring--1"></span>
+      <span class="login-holo-ring login-holo-ring--2"></span>
+      <span class="login-holo-ring login-holo-ring--3"></span>
+      <span class="login-holo-sweep"></span>
+      <span class="login-holo-core"></span>
+    </div>
+
+    <!-- 悬浮粒子 -->
+    <span
+      v-for="(p, i) in particles"
+      :key="'p' + i"
+      :class="['login-particle', p.tone]"
+      :style="{
+        left: p.left + '%',
+        top: p.top + '%',
+        width: p.size + 'px',
+        height: p.size + 'px',
+        opacity: p.opacity,
+        animationDuration: p.duration + 's',
+        animationDelay: p.delay + 's'
+      }"
+    ></span>
+
+    <!-- 侧边数据流 -->
+    <div class="login-data-stream login-data-stream--left">
+      <div class="login-data-stream-track">
+        <p v-for="(line, i) in dataLines" :key="'dl-' + i">{{ line }}</p>
+        <p v-for="(line, i) in dataLines" :key="'dl2-' + i">{{ line }}</p>
+      </div>
+    </div>
+    <div class="login-data-stream login-data-stream--right">
+      <div class="login-data-stream-track">
+        <p v-for="(line, i) in dataLines" :key="'dr-' + i">{{ line }}</p>
+        <p v-for="(line, i) in dataLines" :key="'dr2-' + i">{{ line }}</p>
+      </div>
+    </div>
+
+    <!-- HUD 边角 -->
+    <span class="login-hud-corner login-hud-corner--tl"></span>
+    <span class="login-hud-corner login-hud-corner--tr"></span>
+    <span class="login-hud-corner login-hud-corner--bl"></span>
+    <span class="login-hud-corner login-hud-corner--br"></span>
+
+    <!-- 底部心电图动画条 -->
+    <div class="login-ecg">
+      <div class="login-ecg-track">
+        <svg viewBox="0 0 400 60" class="login-ecg-svg" preserveAspectRatio="none">
+          <polyline points="0,30 40,30 55,30 65,6 75,54 85,20 95,30 140,30 180,30 195,30 205,6 215,54 225,20 235,30 280,30 320,30 335,30 345,6 355,54 365,20 375,30 400,30" />
+        </svg>
+        <svg viewBox="0 0 400 60" class="login-ecg-svg" preserveAspectRatio="none">
+          <polyline points="0,30 40,30 55,30 65,6 75,54 85,20 95,30 140,30 180,30 195,30 205,6 215,54 225,20 235,30 280,30 320,30 335,30 345,6 355,54 365,20 375,30 400,30" />
+        </svg>
+      </div>
+    </div>
+
+    <div
+      ref="loginPanel"
+      class="login-panel"
+      :style="panelStyle"
+      @mousemove="onPanelMouseMove"
+      @mouseleave="onPanelMouseLeave"
     >
-      <!-- 标题 -->
-      <div class="title-container">
-        <h3 class="title">登录</h3>
+      <span class="login-panel-spotlight" :style="spotlightStyle"></span>
+      <span class="login-panel-corner login-panel-corner--tl"></span>
+      <span class="login-panel-corner login-panel-corner--tr"></span>
+      <span class="login-panel-corner login-panel-corner--bl"></span>
+      <span class="login-panel-corner login-panel-corner--br"></span>
+
+      <div class="login-brand">
+        <div class="login-brand-mark">
+          <svg viewBox="0 0 24 24" width="26" height="26">
+            <path
+              class="login-brand-pulse-path"
+              d="M3 12h3l2-6 4 12 2-6h7"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+        <div class="login-brand-text">
+          <h1 class="login-brand-title">职业健康监测管理系统</h1>
+          <p class="login-brand-sub">Occupational Health Monitoring Platform</p>
+        </div>
       </div>
 
-      <!-- 用户名输入框 -->
-      <el-form-item prop="username">
-        <!-- SVG 图标（用户图标） -->
-        <span class="svg-container">
-          <svg-icon icon-class="user" />
-        </span>
-        <el-input
-          ref="username"
-          v-model="loginForm.username"
-          placeholder="Username"
-          name="username"
-          type="text"
-          tabindex="1"
-          auto-complete="on"
-        />
-      </el-form-item>
-
-      <!-- 密码输入框 -->
-      <el-form-item prop="password">
-        <!-- SVG 图标（密码图标） -->
-        <span class="svg-container">
-          <svg-icon icon-class="password" />
-        </span>
-        <!--
-          :key="passwordType"：
-          当 passwordType 变化时，强制重新渲染输入框
-          这是为了触发浏览器自动填充行为（解决 type 切换时的浏览器兼容问题）
-        -->
-        <el-input
-          :key="passwordType"
-          ref="password"
-          v-model="loginForm.password"
-          :type="passwordType"
-          placeholder="Password"
-          name="password"
-          tabindex="2"
-          auto-complete="on"
-          @keyup.enter="handleLogin"
-        />
-        <!-- 显示/隐藏密码的眼睛图标按钮 -->
-        <span class="show-pwd" @click="showPwd">
-          <!-- 根据 passwordType 动态切换图标：关眼睛 / 开眼睛 -->
-          <svg-icon :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'" />
-        </span>
-      </el-form-item>
-
-      <!--
-        登录按钮
-        :loading="loading" → loading=true 时按钮显示旋转动画，防止重复点击
-        @click.prevent → 阻止 form 默认提交行为（防止页面刷新）
-      -->
-      <el-button
-        :loading="loading"
-        type="primary"
-        style="width:100%;margin-bottom:30px;"
-        @click.prevent="handleLogin"
+      <el-form
+        ref="loginForm"
+        :model="loginForm"
+        :rules="loginRules"
+        class="login-form"
+        auto-complete="on"
+        label-position="left"
       >
-        登录
-      </el-button>
+        <el-form-item prop="username">
+          <div class="login-field">
+            <span class="login-field-icon">
+              <svg-icon icon-class="user" />
+            </span>
+            <el-input
+              ref="username"
+              v-model="loginForm.username"
+              placeholder="用户名"
+              name="username"
+              type="text"
+              tabindex="1"
+              auto-complete="on"
+            />
+          </div>
+        </el-form-item>
 
-      <div class="tips">
-        <span>账号：admin</span>
-        <span>密码：admin123</span>
-      </div>
-    </el-form>
+        <el-form-item prop="password">
+          <div class="login-field">
+            <span class="login-field-icon">
+              <svg-icon icon-class="password" />
+            </span>
+            <el-input
+              :key="passwordType"
+              ref="password"
+              v-model="loginForm.password"
+              :type="passwordType"
+              placeholder="密码"
+              name="password"
+              tabindex="2"
+              auto-complete="on"
+              @keyup.enter="handleLogin"
+            />
+            <span class="login-field-toggle" @click="showPwd">
+              <svg-icon :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'" />
+            </span>
+          </div>
+        </el-form-item>
+
+        <el-button
+          :loading="loading"
+          class="login-submit"
+          type="primary"
+          @click.prevent="handleLogin"
+        >
+          登 录
+        </el-button>
+
+        <div class="login-tips">
+          <span>账号：admin</span>
+          <span>密码：admin123</span>
+        </div>
+
+        <div class="login-status">
+          <span class="login-status-dot"></span>
+          系统在线 · 实时监测中
+        </div>
+      </el-form>
+    </div>
   </div>
 </template>
 
 <script>
-/**
- * ╔══════════════════════════════════════════════════════════════════╗
- * ║              登录页面逻辑（新手必读）                               ║
- * ╚══════════════════════════════════════════════════════════════════╝
- *
- * 【Options API vs Composition API】
- *
- * 本组件使用 Vue 的 Options API（export default { data(), methods() }）
- * Vue 3 还支持更新的 Composition API（setup() 函数风格）
- * 两者功能等价，本项目用 Options API（更接近 Vue 2，上手简单）
- *
- * 【登录流程】
- *
- * 用户点击登录按钮 → handleLogin()
- *   ↓ 表单验证
- * this.$refs.loginForm.validate()
- *   ↓ 验证通过
- * loading = true（显示加载动画）
- *   ↓
- * this.$store.dispatch('user/login', loginForm)
- *   ↓ Vuex action：调用 POST /auth/login
- *   ↓ 成功：Token 存入 Cookie + store
- *   ↓ 跳转到目标页（或首页）
- * loading = false
- *
- * 【redirect 参数说明】
- *
- * 当未登录用户访问 /health-monitor/dashboard 时，
- * permission.js 会将其重定向到：
- *   /login?redirect=%2Fhealth-monitor%2Fdashboard
- *
- * 登录成功后，handleLogin 读取 this.redirect 参数，
- * 跳回用户原本想访问的页面（而不是首页）。
- *
- * 安全过滤：
- *   不能跳到 /404 或 /login（这两个路径跳转没意义，改为跳首页）
- *
- * 【$nextTick 说明】
- *
- * showPwd() 方法切换密码显示后，调用：
- *   this.$nextTick(() => { this.$refs.password.focus() })
- *
- * nextTick：等待 Vue 完成当前的 DOM 更新后再执行回调。
- * 因为 DOM 更新是异步的（批量更新），立即 focus() 可能操作到旧 DOM。
- * nextTick 确保操作的是新渲染的 DOM。
- */
+function createStars(count) {
+  return Array.from({ length: count }, () => ({
+    left: Math.random() * 100,
+    top: Math.random() * 100,
+    size: Math.random() * 2 + 1,
+    duration: Math.random() * 3 + 2,
+    delay: Math.random() * 4
+  }))
+}
+
+function createParticles(count) {
+  const tones = ['is-cyan', 'is-green']
+  return Array.from({ length: count }, () => ({
+    left: Math.random() * 100,
+    top: Math.random() * 100,
+    size: Math.random() * 2.4 + 1.2,
+    opacity: Math.random() * 0.5 + 0.35,
+    duration: Math.random() * 6 + 5,
+    delay: Math.random() * 6,
+    tone: tones[Math.floor(Math.random() * tones.length)]
+  }))
+}
+
+function createDataLines(count) {
+  const labels = ['SYS', 'NODE', 'TEMP', 'HR', 'SPO2', 'SIG', 'NET', 'PWR', 'CORE', 'SCAN']
+  const states = ['OK', 'SYNC', 'IDLE', 'LIVE', 'INIT']
+  return Array.from({ length: count }, () => {
+    const label = labels[Math.floor(Math.random() * labels.length)]
+    const hex = Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, '0')
+    const state = states[Math.floor(Math.random() * states.length)]
+    return `${label}-${hex} :: ${state}`
+  })
+}
+
 export default {
   name: 'Login',
 
-  /**
-   * data()：定义组件的响应式数据
-   * 函数返回对象（而不是直接写对象）是为了确保多实例时数据隔离
-   */
   data() {
     return {
-      /**
-       * 表单数据对象
-       * 通过 v-model 与输入框双向绑定
-       * 新库切换后的现场默认保留管理员预填，保证空库状态也能直接登录
-       */
       loginForm: {
         username: 'admin',
         password: 'admin123'
       },
-
-      /**
-       * 表单验证规则
-       * 只保留最基本的必填校验，错误语义仍以后端为准
-       */
       loginRules: {
         username: [{ required: true, trigger: 'blur', message: '请输入用户名' }],
         password: [{ required: true, trigger: 'blur', message: '请输入密码' }]
       },
-
-      /**
-       * 登录按钮 loading 状态
-       * true：显示旋转动画（防止重复点击）
-       * false：正常状态（可点击）
-       */
       loading: false,
-
-      /**
-       * 密码输入框的 type 属性
-       * 'password'：隐藏输入（显示 ****）
-       * ''（空字符串）：显示原文
-       */
       passwordType: 'password',
+      redirect: undefined,
+      stars: createStars(150),
+      particles: createParticles(34),
+      dataLines: createDataLines(22),
+      tiltX: 0,
+      tiltY: 0,
+      spotlightX: 50,
+      spotlightY: 50,
+      spotlightOpacity: 0
+    }
+  },
 
-      /**
-       * 登录成功后要跳转的目标路径
-       * 从 URL 的 ?redirect=xxx 参数中读取
-       * 例如：访问 /dashboard 被重定向到登录页时，redirect = '/dashboard'
-       */
-      redirect: undefined
+  computed: {
+    panelStyle() {
+      return {
+        transform: `rotateX(${this.tiltX}deg) rotateY(${this.tiltY}deg)`
+      }
+    },
+    spotlightStyle() {
+      return {
+        background: `radial-gradient(circle at ${this.spotlightX}% ${this.spotlightY}%, rgba(62, 183, 255, 0.22), transparent 55%)`,
+        opacity: this.spotlightOpacity
+      }
     }
   },
 
   watch: {
-    /**
-     * 监听路由变化，实时更新 redirect 参数
-     * immediate: true 表示组件创建时立即执行一次（读取初始 redirect）
-     *
-     * 为什么用 watch 而不是在 mounted 中读一次？
-     * 因为路由可能在组件已挂载后发生变化（如浏览器前进/后退）
-     */
     $route: {
       handler: function(route) {
         this.redirect = route.query && route.query.redirect
@@ -232,75 +273,54 @@ export default {
   },
 
   methods: {
-    /**
-     * 切换密码显示/隐藏
-     * 点击眼睛图标时调用
-     */
+    onPanelMouseMove(e) {
+      const rect = this.$refs.loginPanel.getBoundingClientRect()
+      const px = (e.clientX - rect.left) / rect.width
+      const py = (e.clientY - rect.top) / rect.height
+
+      this.tiltY = (px - 0.5) * 10
+      this.tiltX = (0.5 - py) * 10
+      this.spotlightX = px * 100
+      this.spotlightY = py * 100
+      this.spotlightOpacity = 1
+    },
+
+    onPanelMouseLeave() {
+      this.tiltX = 0
+      this.tiltY = 0
+      this.spotlightOpacity = 0
+    },
+
     showPwd() {
       if (this.passwordType === 'password') {
-        this.passwordType = ''          // 切换为明文显示
+        this.passwordType = ''
       } else {
-        this.passwordType = 'password'  // 切换为密码隐藏
+        this.passwordType = 'password'
       }
-      // 等待 DOM 更新后，将焦点移回密码输入框（方便用户继续输入）
       this.$nextTick(() => {
         this.$refs.password.focus()
       })
     },
 
-    /**
-     * 处理登录逻辑
-     * 点击登录按钮或按 Enter 键时调用
-     */
     handleLogin() {
-      /**
-       * validate()：执行表单验证（检查 loginRules 中的规则）
-       * 回调参数 valid = true 表示验证全部通过，false 表示有错误
-       */
       this.$refs.loginForm.validate(valid => {
         if (valid) {
-          // ─── 验证通过，执行登录 ───────────────────────────────────
+          this.loading = true
 
-          this.loading = true  // 开启 loading 动画
-
-          /**
-           * dispatch('user/login', this.loginForm)：
-           * 调用 Vuex store 中 user 模块的 login action
-           * action 内部：调用 POST /auth/login → 成功则存 Token
-           *
-           * .then()：登录成功后的跳转逻辑
-           * .catch()：登录失败（用户名/密码错误等），关闭 loading
-           */
           this.$store.dispatch('user/login', this.loginForm).then(() => {
-            // 登录完成后，先拉取用户信息并注入业务路由，再跳目标页。
-            // 否则首次 push 到业务页时，Vue Router 会先对“未注册路由”报警告。
             return this.$store.dispatch('user/getInfo').then(() => {
-              /**
-               * 登录成功，执行跳转
-               *
-               * 安全过滤 redirect 参数：
-               *   - redirect 存在且不是 /404 也不是 /login → 跳转到 redirect 指定的页面
-               *   - 否则 → 跳转到首页 /
-               *
-               * 为什么过滤 /404 和 /login？
-               *   - 跳到 /404 对用户没意义
-               *   - 跳到 /login 会造成循环（刚登录又跳登录页）
-               */
               const safePath = (this.redirect && this.redirect !== '/404' && this.redirect !== '/login')
                 ? this.redirect
                 : '/health-monitor/dashboard'
 
-              this.$router.push({ path: safePath })  // 跳转到目标页
-              this.loading = false                    // 关闭 loading
+              this.$router.push({ path: safePath })
+              this.loading = false
             })
           }).catch(() => {
-            // 登录失败（request.js 的响应拦截器会显示错误提示）
             this.loading = false
           })
-
         } else {
-          // ─── 验证未通过（输入格式有误）─────────────────────────────
-          return false  // 表单校验未通过，阻止提交
+          return false
         }
       })
     }
@@ -308,127 +328,611 @@ export default {
 }
 </script>
 
-<!-- 非 scoped 样式：影响当前组件内的 Element Plus 组件（需要穿透组件作用域） -->
+<!-- 非 scoped 样式：覆盖 Element Plus 组件内部结构 -->
 <style lang="scss">
-/* 登录页颜色变量 */
-$bg: #283443;           /* 输入框背景色（深蓝色） */
-$light_gray: #fff;      /* 文字颜色（白色） */
-$cursor: #fff;          /* 光标颜色（白色） */
-
-/*
-  重置 Element Plus 输入框样式
-  让输入框融入深色背景主题
-
-  注意：这里不用 scoped，因为需要覆盖 Element Plus 内部组件的样式
-  Element Plus 2.x 的输入框结构变了，直接选 .el-input__wrapper 和 .el-input__inner
-*/
 .login-container {
-  /* 输入框外层包装（Element Plus 2.x 新增的 wrapper） */
-  .el-input__wrapper {
-    background: transparent !important;  /* 透明背景（显示出输入框所在的深色区域） */
-    border: 0 !important;                /* 去掉边框 */
-    border-radius: 0 !important;         /* 去掉圆角 */
-    box-shadow: none !important;         /* 去掉阴影（Element Plus 默认有 focus 阴影） */
-    padding: 0 !important;
-    height: 47px;
-    width: 85%;
-  }
-
-  /* 实际的 input 元素 */
-  .el-input__inner {
+  .login-field .el-input__wrapper {
     background: transparent !important;
     border: 0 !important;
-    -webkit-appearance: none;            /* 取消 Safari 默认样式 */
-    border-radius: 0;
-    padding: 12px 5px 12px 15px;
-    color: $light_gray !important;       /* 输入文字白色 */
-    height: 47px;
-    caret-color: $cursor;                /* 光标颜色 */
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    height: 46px;
+    flex: 1;
+  }
 
-    /* 浏览器自动填充时的样式（防止自动填充变白色背景） */
+  .login-field .el-input__inner {
+    background: transparent !important;
+    border: 0 !important;
+    -webkit-appearance: none;
+    border-radius: 0;
+    padding: 0 6px;
+    color: var(--text-strong) !important;
+    height: 46px;
+    caret-color: var(--accent-primary);
+    font-size: 15px;
+
     &:-webkit-autofill {
-      box-shadow: 0 0 0px 1000px $bg inset !important;       /* 用内阴影覆盖自动填充背景 */
-      -webkit-text-fill-color: $cursor !important;            /* 自动填充文字颜色 */
+      box-shadow: 0 0 0 1000px rgba(13, 40, 71, 0.9) inset !important;
+      -webkit-text-fill-color: var(--text-strong) !important;
     }
   }
 
-  /* 表单项（包含输入框的整行区域） */
   .el-form-item {
-    border: 1px solid rgba(255, 255, 255, 0.1);   /* 半透明白色边框 */
-    background: rgba(0, 0, 0, 0.1);               /* 半透明黑色背景 */
-    border-radius: 5px;
-    color: #454545;
+    margin-bottom: 20px;
+  }
+
+  .el-form-item__error {
+    color: var(--accent-danger);
+    padding-top: 4px;
+  }
+
+  .login-submit.el-button--primary {
+    background: linear-gradient(135deg, var(--accent-success) 0%, var(--accent-primary) 100%) !important;
+    border: none !important;
+    box-shadow: 0 12px 24px -8px rgba(62, 183, 255, 0.4) !important;
+
+    &:hover {
+      filter: brightness(1.08);
+    }
   }
 }
 </style>
 
-<!-- scoped 样式：只影响当前组件自己的元素 -->
+<!-- scoped 样式：登录页专属布局与视觉 -->
 <style lang="scss" scoped>
-$bg: #2d3a4b;           /* 整个登录页背景色 */
-$dark_gray: #889aa4;    /* 图标颜色（灰蓝色） */
-$light_gray: #eee;      /* 标题颜色（浅灰） */
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
 
-/* 登录页容器 */
+@keyframes beamPass {
+  0% { left: -10%; opacity: 0; }
+  12% { opacity: 0.6; }
+  50% { opacity: 0.3; }
+  88% { opacity: 0.6; }
+  100% { left: 110%; opacity: 0; }
+}
+
+@keyframes holoSpin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes holoSpinReverse {
+  from { transform: translate(-50%, -50%) rotate(360deg); }
+  to { transform: translate(-50%, -50%) rotate(0deg); }
+}
+
+@keyframes holoSweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes holoCorePulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+  50% { transform: translate(-50%, -50%) scale(1.8); opacity: 0.15; }
+}
+
+@keyframes dataScroll {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+@keyframes particleFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-16px) scale(1.15); }
+}
+
+@keyframes glowDrift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(30px, -20px); }
+}
+
+@keyframes ecgScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes iconPulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+@keyframes iconBreathe {
+  0%, 100% { stroke-width: 2; filter: drop-shadow(0 0 0 rgba(62, 183, 255, 0)); }
+  50% { stroke-width: 2.6; filter: drop-shadow(0 0 4px rgba(62, 183, 255, 0.8)); }
+}
+
+@keyframes titleShift {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+
+@keyframes panelGlow {
+  from { box-shadow: var(--shadow-elevated), var(--shadow-inner), 0 0 0 rgba(62, 183, 255, 0); }
+  to { box-shadow: var(--shadow-elevated), var(--shadow-inner), 0 0 46px rgba(62, 183, 255, 0.28); }
+}
+
+@keyframes cornerPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+@keyframes btnShine {
+  0% { left: -60%; }
+  55% { left: 120%; }
+  100% { left: 120%; }
+}
+
+@keyframes beaconBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
 .login-container {
-  min-height: 100%;
+  position: relative;
+  min-height: 100vh;
   width: 100%;
   overflow: hidden;
-  /* 背景图（项目根目录 src/assets/1.png） */
-  background: url(@/assets/1.png);
-  background-size: 100% 100%;    /* 图片拉伸填满整个屏幕 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(62, 183, 255, 0.16), transparent 40%),
+    radial-gradient(circle at 88% 78%, rgba(54, 211, 153, 0.14), transparent 42%),
+    radial-gradient(circle at 65% 12%, rgba(124, 108, 255, 0.12), transparent 38%),
+    radial-gradient(circle at 50% 100%, rgba(62, 183, 255, 0.08), transparent 55%),
+    linear-gradient(160deg, #020509 0%, #050d1a 45%, #081a2f 100%);
+  perspective: 1200px;
+}
 
-  /* 登录表单卡片 */
-  .login-form {
-    position: relative;
-    width: 520px;
-    max-width: 100%;               /* 移动端不超出屏幕 */
-    padding: 160px 35px 0;        /* 顶部留白（让表单居于屏幕中偏上） */
-    margin: 0 auto;               /* 水平居中 */
-    overflow: hidden;
+.login-starfield {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.login-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+  animation-name: starTwinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.login-bg-glow {
+  position: absolute;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  opacity: 0.55;
+  animation: glowDrift 10s ease-in-out infinite;
+  z-index: 0;
+
+  &--a {
+    top: -160px;
+    left: -120px;
+    background: rgba(62, 183, 255, 0.4);
   }
 
-  /* 底部账号密码提示文字 */
-  .tips {
-    font-size: 14px;
-    color: #fff;
-    margin-bottom: 10px;
-
-    span:first-of-type {
-      margin-right: 16px;
-    }
+  &--b {
+    bottom: -180px;
+    right: -140px;
+    background: rgba(54, 211, 153, 0.32);
+    animation-delay: 2s;
   }
 
-  /* 输入框左侧的 SVG 图标区域 */
-  .svg-container {
-    padding: 6px 5px 6px 15px;
-    color: $dark_gray;
-    vertical-align: middle;
-    width: 30px;
-    display: inline-block;
+  &--c {
+    top: 28%;
+    right: 6%;
+    width: 380px;
+    height: 380px;
+    background: rgba(124, 108, 255, 0.26);
+    animation-delay: 4s;
+  }
+}
+
+.login-beam {
+  position: absolute;
+  top: -30%;
+  width: 2px;
+  height: 160%;
+  background: linear-gradient(180deg, transparent, rgba(62, 183, 255, 0.65), transparent);
+  filter: blur(1.5px);
+  transform: rotate(14deg);
+  pointer-events: none;
+  animation: beamPass linear infinite;
+  z-index: 0;
+
+  &--1 {
+    animation-duration: 8s;
   }
 
-  /* 标题区域 */
-  .title-container {
-    position: relative;
-
-    .title {
-      font-size: 26px;
-      color: $light_gray;
-      margin: 0px auto 40px auto;
-      text-align: center;
-      font-weight: bold;
-    }
+  &--2 {
+    animation-duration: 11s;
+    animation-delay: 2.5s;
+    background: linear-gradient(180deg, transparent, rgba(54, 211, 153, 0.55), transparent);
+    transform: rotate(-10deg);
   }
 
-  /* 密码输入框右侧的眼睛图标按钮 */
-  .show-pwd {
+  &--3 {
+    animation-duration: 14s;
+    animation-delay: 5s;
+  }
+}
+
+.login-hologram {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.login-holo-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  border: 1px dashed rgba(62, 183, 255, 0.2);
+
+  &--1 {
+    width: 560px;
+    height: 560px;
+    margin: -280px 0 0 -280px;
+    animation: holoSpin 34s linear infinite;
+  }
+
+  &--2 {
+    width: 760px;
+    height: 760px;
+    margin: -380px 0 0 -380px;
+    border-color: rgba(54, 211, 153, 0.16);
+    border-style: solid;
+    animation: holoSpinReverse 50s linear infinite;
+  }
+
+  &--3 {
+    width: 940px;
+    height: 940px;
+    margin: -470px 0 0 -470px;
+    border-color: rgba(124, 108, 255, 0.14);
+    animation: holoSpin 70s linear infinite;
+  }
+}
+
+.login-holo-sweep {
+  position: absolute;
+  width: 560px;
+  height: 560px;
+  margin: -280px 0 0 -280px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(62, 183, 255, 0.3), rgba(62, 183, 255, 0.08) 12%, transparent 26%, transparent 100%);
+  animation: holoSweep 5s linear infinite;
+  opacity: 0.45;
+  mask-image: radial-gradient(circle, transparent 0%, #000 8%, #000 92%, transparent 100%);
+}
+
+.login-holo-core {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  box-shadow: 0 0 24px 6px rgba(62, 183, 255, 0.6);
+  animation: holoCorePulse 2.4s ease-in-out infinite;
+}
+
+.login-particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation-name: particleFloat;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+
+  &.is-cyan {
+    background: #7fd6ff;
+    box-shadow: 0 0 6px rgba(62, 183, 255, 0.9);
+  }
+
+  &.is-green {
+    background: #8ff0c9;
+    box-shadow: 0 0 6px rgba(54, 211, 153, 0.9);
+  }
+}
+
+.login-data-stream {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 130px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.32;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 2;
+  letter-spacing: 0.5px;
+  color: var(--accent-primary);
+  mask-image: linear-gradient(180deg, transparent, #000 15%, #000 85%, transparent);
+  z-index: 0;
+
+  &--left {
+    left: 28px;
+  }
+
+  &--right {
+    right: 28px;
+    text-align: right;
+    color: var(--accent-success);
+  }
+
+  @media (max-width: 980px) {
+    display: none;
+  }
+}
+
+.login-data-stream-track {
+  display: flex;
+  flex-direction: column;
+  animation: dataScroll 22s linear infinite;
+
+  p {
+    margin: 0;
+    white-space: nowrap;
+  }
+}
+
+.login-data-stream--right .login-data-stream-track {
+  animation-duration: 26s;
+  animation-direction: reverse;
+}
+
+.login-hud-corner {
+  position: fixed;
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(62, 183, 255, 0.4);
+  pointer-events: none;
+  z-index: 2;
+  animation: cornerPulse 3s ease-in-out infinite;
+
+  &--tl { top: 22px; left: 22px; border-right: 0; border-bottom: 0; }
+  &--tr { top: 22px; right: 22px; border-left: 0; border-bottom: 0; }
+  &--bl { bottom: 22px; left: 22px; border-right: 0; border-top: 0; }
+  &--br { bottom: 22px; right: 22px; border-left: 0; border-top: 0; }
+}
+
+.login-ecg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 32px;
+  height: 60px;
+  overflow: hidden;
+  opacity: 0.4;
+  mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+  pointer-events: none;
+}
+
+.login-ecg-track {
+  display: flex;
+  width: 200%;
+  height: 100%;
+  animation: ecgScroll 5s linear infinite;
+}
+
+.login-ecg-svg {
+  width: 50%;
+  height: 100%;
+  flex-shrink: 0;
+
+  polyline {
+    fill: none;
+    stroke: var(--accent-primary);
+    stroke-width: 2;
+    filter: drop-shadow(0 0 4px rgba(62, 183, 255, 0.7));
+  }
+}
+
+.login-panel {
+  position: relative;
+  z-index: 1;
+  width: 520px;
+  max-width: calc(100vw - 40px);
+  padding: 56px 52px 44px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-soft);
+  background: linear-gradient(145deg, rgba(13, 28, 51, 0.86), rgba(7, 16, 29, 0.82));
+  box-shadow: var(--shadow-elevated), var(--shadow-inner);
+  backdrop-filter: blur(18px);
+  animation: panelGlow 4s ease-in-out infinite alternate;
+  transform-style: preserve-3d;
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+}
+
+.login-panel-spotlight {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: opacity 0.25s ease-out;
+  z-index: 0;
+}
+
+.login-panel-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--accent-primary);
+  opacity: 0.7;
+  pointer-events: none;
+  animation: cornerPulse 2.4s ease-in-out infinite;
+
+  &--tl { top: -1px; left: -1px; border-right: 0; border-bottom: 0; border-radius: 10px 0 0 0; }
+  &--tr { top: -1px; right: -1px; border-left: 0; border-bottom: 0; border-radius: 0 10px 0 0; }
+  &--bl { bottom: -1px; left: -1px; border-right: 0; border-top: 0; border-radius: 0 0 0 10px; }
+  &--br { bottom: -1px; right: -1px; border-left: 0; border-top: 0; border-radius: 0 0 10px 0; }
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.login-brand-mark {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(62, 183, 255, 0.1);
+  border: 1px solid rgba(95, 189, 255, 0.28);
+  color: var(--accent-primary);
+
+  &::before,
+  &::after {
+    content: '';
     position: absolute;
-    right: 10px;
-    top: 7px;
-    font-size: 16px;
-    color: $dark_gray;
-    cursor: pointer;              /* 鼠标悬停显示手型 */
-    user-select: none;            /* 禁止文字选中（点击时防止意外选中图标） */
+    inset: -6px;
+    border-radius: 14px;
+    border: 1px solid rgba(62, 183, 255, 0.4);
+    animation: iconPulse 2.4s ease-out infinite;
   }
+
+  &::after {
+    animation-delay: 1.2s;
+  }
+}
+
+.login-brand-pulse-path {
+  animation: iconBreathe 1.8s ease-in-out infinite;
+}
+
+.login-brand-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(90deg, var(--accent-success) 15%, var(--accent-primary) 50%, var(--accent-success) 85%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titleShift 4s ease-in-out infinite alternate;
+}
+
+.login-brand-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+.login-field {
+  display: flex;
+  align-items: center;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-soft);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+
+  &:focus-within {
+    border-color: var(--border-strong);
+    box-shadow: 0 0 0 3px rgba(62, 183, 255, 0.16);
+  }
+}
+
+.login-field-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin-right: 4px;
+}
+
+.login-field-toggle {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    color: var(--accent-primary);
+  }
+}
+
+.login-submit {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 46px;
+  margin: 8px 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  border-radius: var(--radius-md);
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+    transform: skewX(-20deg);
+    animation: btnShine 3s ease-in-out infinite;
+  }
+}
+
+.login-tips {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.login-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: var(--accent-success);
+}
+
+.login-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-success);
+  box-shadow: 0 0 8px rgba(54, 211, 153, 0.8);
+  animation: beaconBlink 2s ease-in-out infinite;
 }
 </style>

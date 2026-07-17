@@ -86,3 +86,19 @@ export function unbindDevice(deviceId) {
     method: 'post'
   })
 }
+
+export function markDeviceFault(deviceId, data) {
+  return request({
+    url: `/api/device/${deviceId}/fault`,
+    method: 'post',
+    data
+  })
+}
+
+export function resolveDeviceFault(deviceId, data) {
+  return request({
+    url: `/api/device/${deviceId}/fault/resolve`,
+    method: 'post',
+    data
+  })
+}

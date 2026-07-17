@@ -17,6 +17,8 @@ test('visual audit default route inventory includes warning lifecycle records ro
   assert.match(auditSource, /path:\s*'\/health-monitor\/employee-profile'/)
   assert.match(auditSource, /slug:\s*'mine-entry'/)
   assert.match(auditSource, /path:\s*'\/health-monitor\/mine-entry'/)
+  assert.match(auditSource, /slug:\s*'device-management'/)
+  assert.match(auditSource, /path:\s*'\/admin\/device-list'/)
   assert.match(auditSource, /slug:\s*'trend-warning'/)
   assert.match(auditSource, /path:\s*'\/health-monitor\/trend-warning'/)
   for (const slug of ['heart-rate', 'pressure', 'blood-pressure', 'blood-oxygen']) {

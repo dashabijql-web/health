@@ -1,6 +1,7 @@
 package com.xzkj.health.controller;
 
 import com.xzkj.health.common.Result;
+import com.xzkj.health.dto.employee.EmployeeCommandSearchView;
 import com.xzkj.health.model.entity.Employee;
 import com.xzkj.health.service.EmployeeService;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,13 @@ public class EmployeeController {
             log.error("获取员工详情列表失败", e);
             return Result.error("获取失败: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/command-search")
+    public Result<List<EmployeeCommandSearchView>> searchForCommand(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "12") int limit) {
+        return Result.ok("获取成功", employeeService.searchForCommand(query, limit));
     }
 
     @GetMapping("/detail/{id}")

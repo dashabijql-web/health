@@ -1,8 +1,8 @@
 <template>
   <div class="db-panel dm-main-device">
     <div class="db-track">
-      <span class="db-track-title">设备状态</span>
-      <span class="db-track-sub">激活 / 使用 / 预警</span>
+      <span class="db-track-title">设备运行概览</span>
+      <span class="db-track-sub">总数 / 在线 / 异常</span>
     </div>
     <div class="dm-device-body">
       <div class="dm-device-cards">
@@ -54,4 +54,3 @@ export default defineComponent({
 <style scoped lang="scss">
 @import '../dashboard.scss';
 </style>
-

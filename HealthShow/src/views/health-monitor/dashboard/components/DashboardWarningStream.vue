@@ -31,10 +31,12 @@
           </div>
           <div class="dm-ev-row2">
             <span class="dm-ev-user">{{ ev.userName }}</span>
+            <span class="dm-ev-owner" :title="ev.slaText">责任：{{ ev.owner }}</span>
             <span class="dm-ev-val">{{ ev.indicator }}: <em>{{ ev.value }}</em></span>
             <span v-if="ev.handled" class="dm-ev-done">已处理</span>
             <span v-else class="dm-ev-actions">
               <span class="dm-ev-pending">待处理</span>
+              <button type="button" class="dm-ev-handle-btn" @click.stop="openCommandIncident(ev)">指挥处置</button>
               <button type="button" class="dm-ev-handle-btn" @click.stop="openHandleDialog(ev)">处理</button>
             </span>
           </div>
@@ -78,6 +80,7 @@ const props = defineProps({
   formatTimeAgo: { type: Function, required: true },
   latestDangerEvent: { type: Object, default: null },
   openHandleDialog: { type: Function, required: true },
+  openCommandIncident: { type: Function, required: true },
   openWarnCurve: { type: Function, required: true },
   warningEvents: { type: Array, required: true }
 })

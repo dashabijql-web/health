@@ -54,6 +54,14 @@ export function getOnlineUsers(params = {}, timeout = 15000) {
   })
 }
 
+/** 获取统一管控实时健康异常快照。 */
+export function getRealtimeHealthSnapshot() {
+  return request({
+    url: '/realtime/health-snapshot',
+    method: 'get'
+  })
+}
+
 /**
  * 获取单个用户的实时体征数据
  *

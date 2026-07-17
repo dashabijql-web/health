@@ -60,6 +60,7 @@
  */
 
 const Layout = () => import('@/layout/index.vue')  // 主布局组件按需加载
+const useUnifiedControlV2 = (import.meta.env?.VITE_UNIFIED_CONTROL_V2 ?? 'true') !== 'false'
 
 /**
  * 健康监测模块路由配置对象
@@ -118,7 +119,9 @@ const healthMonitorRouter = {
       // 统一管控页面（数据总览）
       path: 'dashboard',             // 完整路径：/health-monitor/dashboard
       name: 'HealthDashboard',
-      component: () => import('@/views/health-monitor/dashboard/index.vue'),
+      component: () => useUnifiedControlV2
+        ? import('@/views/health-monitor/dashboard/index.vue')
+        : import('@/views/health-monitor/dashboard/legacy-20260601/index.vue'),
       meta: {
         title: '统一管控',
         icon: 'Odometer',

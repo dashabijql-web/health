@@ -123,6 +123,7 @@ const migratedPages = [
     maxIndexLines: 380,
     required: [
       'index.vue',
+      'mine-entry-review-workflow.js',
       'mine-entry-view-model.js',
       'mine-entry.scss'
     ]
@@ -190,6 +191,8 @@ const migratedPages = [
     maxIndexLines: 470,
     required: [
       'index.vue',
+      'records-runtime.js',
+      'records-view-model.js',
       'records.scss'
     ]
   },

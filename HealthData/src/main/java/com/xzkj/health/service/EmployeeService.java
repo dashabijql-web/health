@@ -1,6 +1,8 @@
 package com.xzkj.health.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.xzkj.health.dto.employee.EmployeeCommandSearchRow;
+import com.xzkj.health.dto.employee.EmployeeCommandSearchView;
 import com.xzkj.health.mapper.EmployeeMapper;
 import com.xzkj.health.model.entity.Employee;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,9 @@ public class EmployeeService {
 
     @Autowired
     private EmployeeMapper employeeMapper;
+
+    @Autowired
+    private DeviceManagerService deviceManagerService;
 
     public List<Employee> list(String keyword, Long deptId, Long jobTypeId, Integer status) {
         QueryWrapper<Employee> qw = new QueryWrapper<>();
@@ -57,6 +62,30 @@ public class EmployeeService {
 
     public List<Map<String, Object>> listWithDetails() {
         return employeeMapper.getEmployeeListWithDept();
+    }
+
+    public List<EmployeeCommandSearchView> searchForCommand(String query, int limit) {
+        String normalizedQuery = query == null ? "" : query.trim();
+        int boundedLimit = Math.max(1, Math.min(limit, 20));
+        return employeeMapper.searchForCommand(normalizedQuery, boundedLimit).stream()
+                .map(this::toCommandSearchView)
+                .toList();
+    }
+
+    private EmployeeCommandSearchView toCommandSearchView(EmployeeCommandSearchRow row) {
+        String imei = row.getImei();
+        boolean online = imei != null && !imei.isBlank() && deviceManagerService.isDeviceOnline(imei);
+        return new EmployeeCommandSearchView(
+                row.getEmployeeId(),
+                row.getEmpCode(),
+                row.getEmpName(),
+                row.getDeptName(),
+                row.getJobTypeName(),
+                row.getPhone(),
+                imei,
+                online,
+                row.getDeviceLastOnlineTime()
+        );
     }
 
     public Map<String, Object> getStats() {

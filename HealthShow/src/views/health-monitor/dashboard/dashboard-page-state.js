@@ -44,6 +44,7 @@ export function createDashboardPageState() {
       chart: null
     },
     bodyIndicators: {},
+    healthSnapshot: null,
     top5Data: [],
     deptDataList: [],
     deptPersonStatsList: [],
@@ -88,6 +89,9 @@ export function createDashboardPageState() {
       remark: '',
       submitting: false
     },
+    incidentDrawerVisible: false,
+    currentIncidentEvent: null,
+    routeIncidentKey: '',
     isRefreshing: false,
     lastRefreshTime: null,
     lastRefreshText: '加载中...',
@@ -97,6 +101,7 @@ export function createDashboardPageState() {
     kpiYesterdayWarnings: 0,
     kpiUnhandledHigh: 0,
     kpiUnhandledMid: 0,
+    commandSummary: null,
     VITAL_NORMAL_RANGES: {
       heartRate: { max: 15 },
       bloodOxygen: { max: 10 },

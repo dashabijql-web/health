@@ -5,6 +5,8 @@ import com.xzkj.health.common.exception.BusinessException;
 import com.xzkj.health.config.datasource.HealthCacheKeys;
 import com.xzkj.health.dto.realtime.RealtimeAlertRow;
 import com.xzkj.health.dto.realtime.RealtimeAlertView;
+import com.xzkj.health.dto.realtime.RealtimeHealthMetricView;
+import com.xzkj.health.dto.realtime.RealtimeHealthSnapshotView;
 import com.xzkj.health.dto.realtime.RealtimeMonitorSummaryView;
 import com.xzkj.health.dto.realtime.RealtimeOverviewRow;
 import com.xzkj.health.dto.realtime.RealtimeOverviewView;
@@ -37,6 +39,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -152,6 +155,94 @@ public class RealtimeService {
                 warningPreview,
                 LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         );
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.READ_UNCOMMITTED)
+    public RealtimeHealthSnapshotView getHealthSnapshot() {
+        int safeOnlineWindow = Math.max(1, onlineWindowMinutes);
+        int safeFreshness = Math.max(1, Math.min(freshnessMinutes, safeOnlineWindow));
+        RealtimeSnapshot snapshot = loadRealtimeSnapshot(safeOnlineWindow, safeFreshness);
+        List<RealtimeUserView> freshUsers = snapshot.users().stream()
+                .filter(user -> "normal".equals(user.status()) || "warning".equals(user.status()))
+                .toList();
+
+        List<RealtimeHealthMetricView> metrics = List.of(
+                buildHealthMetric("heartRate", "心率", "bpm", freshUsers,
+                        user -> number(user.heartRate())),
+                buildHealthMetric("bloodOxygen", "血氧", "%", freshUsers,
+                        user -> number(user.bloodOxygen())),
+                buildHealthMetric("temperature", "体温", "°C", freshUsers,
+                        RealtimeUserView::temperature),
+                buildHealthMetric("pressure", "压力", "idx", freshUsers,
+                        user -> number(user.pressure()))
+        );
+
+        int onlineUsers = snapshot.summary().onlineCount();
+        int freshCount = freshUsers.size();
+        String status = onlineUsers == 0 ? "NO_DATA"
+                : freshCount == 0 ? "STALE"
+                : freshCount < onlineUsers ? "PARTIAL" : "NORMAL";
+        double coverageRate = onlineUsers == 0 ? 0d : roundOne(freshCount * 100d / onlineUsers);
+
+        return new RealtimeHealthSnapshotView(
+                status,
+                snapshot.refreshedAt(),
+                safeOnlineWindow,
+                safeFreshness,
+                onlineUsers,
+                freshCount,
+                snapshot.summary().warningCount(),
+                snapshot.summary().staleCount(),
+                snapshot.summary().noDataCount(),
+                coverageRate,
+                metrics
+        );
+    }
+
+    private RealtimeHealthMetricView buildHealthMetric(
+            String key,
+            String label,
+            String unit,
+            List<RealtimeUserView> users,
+            Function<RealtimeUserView, Double> valueExtractor) {
+        List<Double> values = users.stream()
+                .map(valueExtractor)
+                .filter(value -> value != null && value > 0)
+                .sorted()
+                .toList();
+        int abnormalUsers = (int) users.stream()
+                .filter(user -> isAbnormalState(user.indicatorStates().get(key)))
+                .count();
+        int coveredUsers = values.size();
+        double abnormalRate = coveredUsers == 0 ? 0d : roundOne(abnormalUsers * 100d / coveredUsers);
+        if (values.isEmpty()) {
+            return new RealtimeHealthMetricView(key, label, unit, null, null, null, null,
+                    0, abnormalUsers, abnormalRate);
+        }
+        double average = values.stream().mapToDouble(Double::doubleValue).average().orElse(0d);
+        int p95Index = Math.max(0, (int) Math.ceil(values.size() * 0.95d) - 1);
+        return new RealtimeHealthMetricView(
+                key, label, unit,
+                roundOne(average),
+                roundOne(values.get(0)),
+                roundOne(values.get(values.size() - 1)),
+                roundOne(values.get(p95Index)),
+                coveredUsers,
+                abnormalUsers,
+                abnormalRate
+        );
+    }
+
+    private boolean isAbnormalState(String state) {
+        return "warning".equals(state) || "danger".equals(state);
+    }
+
+    private Double number(Number value) {
+        return value == null ? null : value.doubleValue();
+    }
+
+    private double roundOne(double value) {
+        return Math.round(value * 10d) / 10d;
     }
 
     private Map<Integer, AlertConfig> loadAlertConfigs(Integer riskLevel) {

@@ -19,7 +19,27 @@ export const dashboardViewActions = {
       path: '/health-monitor/employee-profile',
       query: {
         empCode: code,
-        empName: item.userName || item.empName || ''
+        empName: item.userName || item.empName || '',
+        deptName: item.deptName || '',
+        jobTypeName: item.jobTypeName || '',
+        phone: item.phone || '',
+        imei: item.imei || '',
+        from: this.$route.fullPath
+      }
+    })
+  },
+
+  goToCommandIncident(event) {
+    if (!event?.id || !event?.occurredAt) return
+    this.$router.push({
+      path: '/safety-command/index',
+      query: {
+        warningId: String(event.id),
+        occurredAt: event.occurredAt,
+        incidentId: event.incidentId || '',
+        person: event.userName || '',
+        area: event.location || event.deptName || '',
+        from: 'dashboard'
       }
     })
   },

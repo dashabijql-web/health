@@ -40,4 +40,5 @@ class SaTokenConfigTest {
 
         assertFalse(config.shouldCheckLogin(request));
     }
+
 }

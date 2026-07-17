@@ -10,6 +10,8 @@ import {
   clearDeviceBuffer,
   fetchOnlineDeviceList,
   pushDeviceMessage,
+  closeDeviceFault,
+  registerDeviceFault,
   searchDeviceUsers,
   transferDeviceBuffer,
   unbindDeviceById
@@ -24,6 +26,9 @@ import {
   createTransferFormState,
   deviceOnlineLabel,
   deviceOnlineLevel,
+  deviceAbnormalLabel,
+  deviceAbnormalTagType,
+  formatLostDuration,
   paginateDeviceList,
   resetBindForm,
   resetDeviceFilters,
@@ -45,7 +50,8 @@ export function useDeviceManagementPage() {
     filterWarning: false,
     filterLowBattery: false,
     filterWarningVal: '',
-    filterBatteryVal: ''
+    filterBatteryVal: '',
+    filterOperationalVal: ''
   })
 
   const pagination = reactive(createPaginationState())
@@ -270,6 +276,59 @@ export function useDeviceManagementPage() {
     }).catch(() => {})
   }
 
+  const handleMarkFault = async (row) => {
+    try {
+      const { value } = await ElMessageBox.prompt(
+        `登记设备 ${row.imei} 的故障事实，登记后将进入故障设备统计。`,
+        '登记设备故障',
+        {
+          confirmButtonText: '登记',
+          cancelButtonText: '取消',
+          inputPlaceholder: '请输入具体故障现象',
+          inputValidator: (text) => !!text?.trim() || '故障说明不能为空'
+        }
+      )
+      const response = await registerDeviceFault(row.id, {
+        faultCode: 'MANUAL',
+        faultDescription: value.trim()
+      })
+      if (response.code !== 200) {
+        ElMessage.error(response.message || '故障登记失败')
+        return
+      }
+      ElMessage.success('设备故障已登记并分派给当前操作人')
+      detailDrawerVisible.value = false
+      await refreshDevices()
+    } catch (error) {
+      if (error !== 'cancel' && error !== 'close') ElMessage.error('故障登记失败')
+    }
+  }
+
+  const handleResolveFault = async (row) => {
+    try {
+      const { value } = await ElMessageBox.prompt(
+        `确认设备 ${row.imei} 已恢复正常。`,
+        '关闭设备故障',
+        {
+          confirmButtonText: '确认恢复',
+          cancelButtonText: '取消',
+          inputPlaceholder: '填写恢复情况或处理结果',
+          inputValidator: (text) => !!text?.trim() || '处理结果不能为空'
+        }
+      )
+      const response = await closeDeviceFault(row.id, value.trim())
+      if (response.code !== 200) {
+        ElMessage.error(response.message || '故障关闭失败')
+        return
+      }
+      ElMessage.success('设备故障已关闭')
+      detailDrawerVisible.value = false
+      await refreshDevices()
+    } catch (error) {
+      if (error !== 'cancel' && error !== 'close') ElMessage.error('故障关闭失败')
+    }
+  }
+
   const handleSizeChange = (size) => {
     pagination.size = size
     pagination.page = 1
@@ -305,6 +364,9 @@ export function useDeviceManagementPage() {
     deviceList,
     deviceOnlineLabel,
     deviceOnlineLevel,
+    deviceAbnormalLabel,
+    deviceAbnormalTagType,
+    formatLostDuration,
     deviceStats,
     filteredDeviceList,
     formatDate,
@@ -312,6 +374,8 @@ export function useDeviceManagementPage() {
     handleBind,
     handleCurrentChange,
     handleDeleteBuffer,
+    handleMarkFault,
+    handleResolveFault,
     handleSelectTransferUser,
     handleSelectUser,
     handleSendMessage,
@@ -354,6 +418,10 @@ export function useDeviceManagementPage() {
     filterBatteryVal: computed({
       get: () => filters.filterBatteryVal,
       set: (value) => { filters.filterBatteryVal = value }
+    }),
+    filterOperationalVal: computed({
+      get: () => filters.filterOperationalVal,
+      set: (value) => { filters.filterOperationalVal = value }
     }),
     transferDialogVisible,
     transferForm

@@ -98,12 +98,13 @@
       <div class="panel vitals-panel panel-enter" style="--delay:.2s">
         <div class="ph">
           <div class="phb phb-c"></div>
-          <span class="ph-t">体征均值走势（今日逐小时）</span>
+          <span class="ph-t">体征群体基线（今日真实数据）</span>
         </div>
         <div class="vitals-body">
           <div v-for="v in vitalsRows" :key="v.key" class="vrow">
             <span class="v-lbl">{{ v.label }}</span>
             <div class="v-spk">
+              <span v-if="!v.hasTrend" class="panel-empty">数据不足</span>
               <svg viewBox="0 0 260 48" preserveAspectRatio="none">
                 <defs>
                   <linearGradient :id="v.gradId" x1="0" y1="0" x2="0" y2="1">
@@ -112,9 +113,9 @@
                   </linearGradient>
                 </defs>
                 <line x1="0" y1="40" x2="260" y2="40" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
-                <path v-if="v.areaPath" :d="v.areaPath" :fill="`url(#${v.gradId})`" opacity=".7"/>
-                <path v-if="v.linePath" :d="v.linePath" fill="none" :stroke="v.color" stroke-width="2" stroke-linecap="round" class="spk-line"/>
-                <circle v-if="v.endX != null" :cx="v.endX" :cy="v.endY" r="4" :fill="v.color" :stroke="v.color + '44'" stroke-width="8" class="spk-dot"/>
+                <path v-if="v.hasTrend && v.areaPath" :d="v.areaPath" :fill="`url(#${v.gradId})`" opacity=".7"/>
+                <path v-if="v.hasTrend && v.linePath" :d="v.linePath" fill="none" :stroke="v.color" stroke-width="2" stroke-linecap="round" class="spk-line"/>
+                <circle v-if="v.hasTrend && v.endX != null" :cx="v.endX" :cy="v.endY" r="4" :fill="v.color" :stroke="v.color + '44'" stroke-width="8" class="spk-dot"/>
               </svg>
             </div>
             <div class="v-val-wrap">
@@ -227,8 +228,8 @@
           <div class="rbot-g">
             <div class="rbc"><div class="rbc-v" style="color:#00c8ff">{{ trend7dayTotal }}</div><div class="rbc-l">近7日总量</div></div>
             <div class="rbc"><div class="rbc-v" style="color:#00e676">{{ warningHandledRate }}%</div><div class="rbc-l">处理率</div></div>
-            <div class="rbc"><div class="rbc-v" style="color:#a855f7">{{ vitalAvg.temperature > 0 ? vitalAvg.temperature.toFixed(1) + '°' : '--' }}</div><div class="rbc-l">平均体温</div></div>
-            <div class="rbc"><div class="rbc-v" style="color:#ffd600">{{ vitalAvg.bloodOxygen > 0 ? Math.round(vitalAvg.bloodOxygen) + '%' : '--' }}</div><div class="rbc-l">平均血氧</div></div>
+            <div class="rbc"><div class="rbc-v" style="color:#a855f7">{{ vitalAvg.temperature > 0 ? vitalAvg.temperature.toFixed(1) + '°' : '--' }}</div><div class="rbc-l">群体平均体温</div></div>
+            <div class="rbc"><div class="rbc-v" style="color:#ffd600">{{ vitalAvg.bloodOxygen > 0 ? Math.round(vitalAvg.bloodOxygen) + '%' : '--' }}</div><div class="rbc-l">群体平均血氧</div></div>
           </div>
         </div>
       </div>

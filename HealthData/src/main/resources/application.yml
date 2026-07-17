@@ -114,6 +114,10 @@ health:
   realtime:
     online-window-minutes: ${HEALTH_REALTIME_ONLINE_WINDOW_MINUTES:15}
     freshness-minutes: ${HEALTH_REALTIME_FRESHNESS_MINUTES:5}
+  command-center:
+    pre-shift-review-minutes: ${HEALTH_PRE_SHIFT_REVIEW_MINUTES:30}
+    device-data-interrupted-minutes: ${HEALTH_DEVICE_DATA_INTERRUPTED_MINUTES:15}
+    device-low-battery-threshold: ${HEALTH_DEVICE_LOW_BATTERY_THRESHOLD:20}
 
 # ================================
 # MyBatis-Plus

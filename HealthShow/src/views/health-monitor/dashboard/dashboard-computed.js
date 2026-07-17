@@ -10,8 +10,9 @@ import {
 } from './dashboard-summary'
 import {
   buildDashboardDeviceCards,
+  buildDashboardCoverageCards,
+  buildDashboardHealthExceptionCards,
   buildDashboardHeaderKpis,
-  buildDashboardHealthPassRate,
   buildDashboardMetricCards,
   buildDashboardTop5DisplayData,
   buildDashboardVitalCards
@@ -115,29 +116,25 @@ export const dashboardComputed = {
   },
 
   deviceOnline() {
+    if (this.commandSummary?.device?.online !== undefined) return this.commandSummary.device.online
     return Math.round((this.deviceStats.total || 0) * (this.deviceStats.activeRate || 0) / 100)
   },
 
   deviceOffline() {
+    if (this.commandSummary?.device?.offline !== undefined) return this.commandSummary.device.offline
     return Math.max(0, (this.deviceStats.total || 0) - this.deviceOnline)
   },
 
-  deviceWarningCount() {
-    return Math.round((this.deviceStats.total || 0) * (this.deviceStats.warningRate || 0) / 100)
-  },
-
   lowBatteryCount() {
+    const capability = this.commandSummary?.device?.lowBattery
+    if (capability) return capability.status === 'AVAILABLE' ? capability.value : null
     if (this.deviceStats.lowBattery !== undefined && this.deviceStats.lowBattery !== null) {
       return this.deviceStats.lowBattery
     }
     if (this.deviceStats.lowBatteryRate && this.deviceStats.total) {
       return Math.round((this.deviceStats.total || 0) * (this.deviceStats.lowBatteryRate || 0) / 100)
     }
-    return 0
-  },
-
-  healthPassRate() {
-    return buildDashboardHealthPassRate(this.warningRates)
+    return null
   },
 
   warningRateList() {
@@ -163,7 +160,7 @@ export const dashboardComputed = {
       kpiUnhandledMid: this.kpiUnhandledMid,
       warningEvents: this.warningEvents,
       personCounts: this.personCounts,
-      healthPassRate: this.healthPassRate,
+      deviceActivationRate: this.deviceStats.total > 0 ? Math.round(this.deviceStats.activeRate || 0) : null,
       preShiftData: this.preShiftData,
       periodLabel: this.activePeriod === 'day' ? '今日' : this.periodLabel
     })
@@ -181,6 +178,40 @@ export const dashboardComputed = {
       checkData: this.checkData,
       kpiRealtimeTotal: this.kpiRealtimeTotal
     })
+  },
+
+  coverageCards() {
+    return buildDashboardCoverageCards({
+      kpiRealtimeOnline: this.kpiRealtimeOnline,
+      kpiRealtimeTotal: this.kpiRealtimeTotal,
+      personCounts: this.personCounts,
+      kpiUnhandledHigh: this.kpiUnhandledHigh,
+      kpiUnhandledMid: this.kpiUnhandledMid,
+      pendingTotal: this.commandSummary?.warning?.pendingTotal,
+      unassignedTotal: this.commandSummary?.warning?.unassignedTotal,
+      lastRefreshText: this.lastRefreshText,
+      periodLabel: this.periodLabel
+    }).map((card) => ({
+      ...card,
+      color: card.tone === 'danger' ? '#ff5252' : card.tone === 'warning' ? '#ffb84d' : card.tone === 'success' ? '#38ef7d' : '#00d4ff'
+    }))
+  },
+
+  healthExceptionCards() {
+    return buildDashboardHealthExceptionCards({
+      vitalCards: this.vitalCards,
+      warningEvents: this.warningEvents,
+      healthSnapshot: this.healthSnapshot
+    })
+  },
+
+  healthSnapshotStatusText() {
+    return {
+      NORMAL: '正常',
+      PARTIAL: '部分覆盖',
+      STALE: '数据过期',
+      NO_DATA: '暂无数据'
+    }[this.healthSnapshot?.status] || '加载中'
   },
 
   vitalCards() {
@@ -255,8 +286,9 @@ export const dashboardComputed = {
       deviceStats: this.deviceStats,
       deviceOnline: this.deviceOnline,
       deviceOffline: this.deviceOffline,
-      deviceWarningCount: this.deviceWarningCount,
-      lowBatteryCount: this.lowBatteryCount
+      lowBatteryCount: this.lowBatteryCount,
+      dataInterrupted: this.commandSummary?.device?.dataInterrupted,
+      faulted: this.commandSummary?.device?.faulted
     })
   }
 }

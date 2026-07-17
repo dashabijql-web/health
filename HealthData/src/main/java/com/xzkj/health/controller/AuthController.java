@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -220,9 +222,31 @@ public class AuthController {
      * @return 退出成功的响应（固定不变）
      */
     @PostMapping("/logout")
-    public Result<String> logout() {
-        StpUtil.logout();       // Sa-Token 注销当前 Token
+    public Result<String> logout(HttpServletRequest request) {
+        String tokenValue = resolveLogoutToken(request);
+        if (tokenValue == null) {
+            StpUtil.logout();
+        } else {
+            StpUtil.logoutByTokenValue(tokenValue);
+        }
         return Result.ok("退出成功");
+    }
+
+    static String resolveLogoutToken(HttpServletRequest request) {
+        String headerToken = request.getHeader("satoken");
+        if (headerToken != null && !headerToken.isBlank()) {
+            return headerToken;
+        }
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if ("satoken".equals(cookie.getName()) && !cookie.getValue().isBlank()) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }
 

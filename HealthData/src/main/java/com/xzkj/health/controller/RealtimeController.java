@@ -2,6 +2,7 @@ package com.xzkj.health.controller;
 
 import com.xzkj.health.common.Result;
 import com.xzkj.health.dto.realtime.RealtimeAlertView;
+import com.xzkj.health.dto.realtime.RealtimeHealthSnapshotView;
 import com.xzkj.health.dto.realtime.RealtimeOverviewView;
 import com.xzkj.health.dto.realtime.RealtimeStatisticsView;
 import com.xzkj.health.dto.realtime.RealtimeUserDetailView;
@@ -37,6 +38,12 @@ public class RealtimeController {
             @RequestParam(required = false) String dept,
             @RequestParam(required = false) String status) {
         return Result.ok("获取成功", realtimeService.getOnlineUsers(page, size, name, dept, status));
+    }
+
+    /** 获取统一管控使用的实时健康快照。 */
+    @GetMapping("/health-snapshot")
+    public Result<RealtimeHealthSnapshotView> getHealthSnapshot() {
+        return Result.ok("获取成功", realtimeService.getHealthSnapshot());
     }
 
     /** 获取单个用户实时数据 */

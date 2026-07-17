@@ -2,6 +2,8 @@ import healthMonitorRouter from './health-monitor.mjs'
 import alertManagementRouter from './alert-management.mjs'
 
 const Layout = () => import('@/layout/index.vue')
+// Keep rollback at the route boundary while preserving the public path.
+const useSafetyCommandV2 = (import.meta.env?.VITE_SAFETY_COMMAND_V2 ?? 'true') !== 'false'
 
 export const appRoutes = [
   {
@@ -14,7 +16,9 @@ export const appRoutes = [
       {
         path: 'index',
         name: 'SafetyCommandIndex',
-        component: () => import('@/views/safety-command/index.vue'),
+        component: () => useSafetyCommandV2
+          ? import('@/views/safety-command/index.vue')
+          : import('@/views/safety-command/legacy-20260601/index.vue'),
         meta: {
           title: '安全指挥中心',
           icon: 'Aim',

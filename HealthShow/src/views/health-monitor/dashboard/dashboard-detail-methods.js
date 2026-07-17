@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import * as echarts from '@/utils/echarts-setup-radar'
-import { handleRiskWarning } from '@/api/risk-warning'
+import { resolveCommandCenterIncident } from '@/api/command-center'
 import {
   buildEmpTrendChartOption,
   buildEmpRadarChartOption,
@@ -82,14 +82,13 @@ export const dashboardDetailMethods = {
     if (!event) return
     this.handleDialog.submitting = true
     try {
-      await handleRiskWarning(event.id, {
-        handleBy: this.$store.getters.name || '管理员',
-        handleRemark: this.handleDialog.remark,
-        createTime: event.time
+      await resolveCommandCenterIncident(event.id, {
+        occurredAt: event.occurredAt,
+        remark: this.handleDialog.remark
       })
-      event.handled = true
-      event.handleRemark = this.handleDialog.remark
       this.handleDialog.visible = false
+      await this.fetchWarningEvents()
+      await this.fetchKpiData()
       this.$message?.success('预警已处理')
     } catch {
       this.$message?.error('处理失败，请重试')

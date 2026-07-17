@@ -39,6 +39,11 @@
             <el-option label="电量不足(<20%)" value="low" />
             <el-option label="电量充足(≥20%)" value="ok" />
           </el-select>
+          <el-select v-model="filterOperationalVal" placeholder="运行异常" clearable size="small" class="filter-select" @change="pagination.page = 1">
+            <el-option label="全部异常" value="abnormal" />
+            <el-option label="数据中断" value="dataInterrupted" />
+            <el-option label="设备故障" value="faulted" />
+          </el-select>
           <el-button size="small" @click="resetFilters">重置</el-button>
           <span class="total-badge">{{ filteredDeviceList.length }} / {{ deviceList.length }} 台</span>
           <el-button type="primary" size="small" :icon="Refresh" @click="refreshDevices">刷新</el-button>
@@ -97,6 +102,13 @@
               {{ row.batteryLevel }}%
             </span>
             <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="运行异常" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag :type="deviceAbnormalTagType(row)" size="small" effect="dark">
+              {{ deviceAbnormalLabel(row) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="lastOnlineTime" label="最后在线时间" width="155" sortable :sort-method="(a,b) => new Date(a.lastOnlineTime||0) - new Date(b.lastOnlineTime||0)">
@@ -181,11 +193,56 @@
             <span class="detail-value">{{ formatDate(detailDevice.lastOnlineTime) }}</span>
           </div>
           <div class="detail-row">
+            <span class="detail-label">失联时长</span>
+            <span class="detail-value">{{ formatLostDuration(detailDevice.lostDurationSeconds) }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">当前异常</span>
+            <span class="detail-value">
+              <el-tag :type="deviceAbnormalTagType(detailDevice)" size="small" effect="dark">
+                {{ deviceAbnormalLabel(detailDevice) }}
+              </el-tag>
+            </span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">电量</span>
+            <span class="detail-value">{{ detailDevice.batteryLevel == null ? '--' : detailDevice.batteryLevel + '%' }}</span>
+          </div>
+          <div class="detail-row">
             <span class="detail-label">缓冲数据</span>
             <span class="detail-value">
               <el-tag v-if="detailDevice.bufferCount > 0" type="warning" size="small" effect="dark">{{ detailDevice.bufferCount }} 条</el-tag>
               <span v-else class="text-muted">无</span>
             </span>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">故障处置</div>
+          <div class="detail-row">
+            <span class="detail-label">故障说明</span>
+            <span class="detail-value">{{ detailDevice.faultDescription || '无已登记故障' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">责任人</span>
+            <span class="detail-value">{{ detailDevice.ownerName || '--' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">处置状态</span>
+            <span class="detail-value">{{ detailDevice.handlingStatus === 'ASSIGNED' ? '已分派' : detailDevice.handlingStatus === 'OPEN' ? '待处理' : '已关闭' }}</span>
+          </div>
+          <div class="detail-actions">
+            <el-button
+              v-if="detailDevice.currentAbnormal !== 'FAULT'"
+              type="danger"
+              :disabled="!detailDevice.id"
+              @click="handleMarkFault(detailDevice)"
+            >登记故障</el-button>
+            <el-button
+              v-else
+              type="success"
+              @click="handleResolveFault(detailDevice)"
+            >确认恢复</el-button>
           </div>
         </div>
 
@@ -334,15 +391,20 @@ const {
   detailDevice,
   detailDrawerVisible,
   deviceList,
+  deviceAbnormalLabel,
+  deviceAbnormalTagType,
   deviceOnlineLabel,
   deviceOnlineLevel,
   deviceStats,
   filteredDeviceList,
   formatDate,
+  formatLostDuration,
   getTableIndex,
   handleBind,
   handleCurrentChange,
   handleDeleteBuffer,
+  handleMarkFault,
+  handleResolveFault,
   handleSelectTransferUser,
   handleSelectUser,
   handleSendMessage,
@@ -365,6 +427,7 @@ const {
   filterLowBattery,
   filterWarningVal,
   filterBatteryVal,
+  filterOperationalVal,
   transferDialogVisible,
   transferForm
 } = useDeviceManagementPage()

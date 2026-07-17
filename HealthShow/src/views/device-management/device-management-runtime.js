@@ -3,6 +3,8 @@ import {
   bindDeviceToUser,
   deleteBufferData,
   getOnlineDevices,
+  markDeviceFault,
+  resolveDeviceFault,
   sendWatchMessage,
   transferBufferData,
   unbindDevice
@@ -51,4 +53,12 @@ export function clearDeviceBuffer(deviceId) {
 
 export function pushDeviceMessage(imei, text) {
   return sendWatchMessage(imei, text)
+}
+
+export function registerDeviceFault(deviceId, data) {
+  return markDeviceFault(deviceId, data)
+}
+
+export function closeDeviceFault(deviceId, remark) {
+  return resolveDeviceFault(deviceId, { remark })
 }

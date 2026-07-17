@@ -4,6 +4,8 @@ import {
   buildDashboardAbnormalUserCount,
   collectDashboardNewDangerEvents,
   fetchDashboardBodyIndicatorData,
+  fetchDashboardHealthSnapshot,
+  fetchCommandCenterDashboardSummary,
   fetchDashboardDeptState,
   fetchDashboardDeviceState,
   fetchDashboardKpiSnapshot,
@@ -88,6 +90,7 @@ export const dashboardRuntimeMethods = {
     await Promise.allSettled([
       this.fetchDashboardData(),
       this.fetchBodyIndicators(),
+      this.fetchHealthSnapshot(),
       this.fetchPersonCounts(),
       this.fetchDeviceData(),
       this.fetchWarningEvents(),
@@ -98,6 +101,7 @@ export const dashboardRuntimeMethods = {
       this.fetchWarningTypes(),
       this.fetchPreShiftRate(force)
     ])
+    await this.fetchCommandSummary()
     this.isRefreshing = false
     this.lastRefreshTime = Date.now()
     this.updateRefreshText()
@@ -114,13 +118,37 @@ export const dashboardRuntimeMethods = {
   },
 
   async fetchKpiData() {
-    const snapshot = await fetchDashboardKpiSnapshot(this.warningEvents)
+    const [snapshot] = await Promise.all([
+      fetchDashboardKpiSnapshot(this.warningEvents),
+      this.fetchCommandSummary()
+    ])
     this.kpiRealtimeOnline = snapshot.kpiRealtimeOnline
     this.kpiRealtimeTotal = snapshot.kpiRealtimeTotal
-    this.kpiTodayWarnings = snapshot.kpiTodayWarnings
+    this.kpiTodayWarnings = this.commandSummary?.warning?.todayNew ?? snapshot.kpiTodayWarnings
     this.kpiYesterdayWarnings = snapshot.kpiYesterdayWarnings
-    this.kpiUnhandledHigh = snapshot.kpiUnhandledHigh
+    this.kpiUnhandledHigh = this.commandSummary?.warning?.criticalPending ?? snapshot.kpiUnhandledHigh
     this.kpiUnhandledMid = snapshot.kpiUnhandledMid
+  },
+
+  async fetchCommandSummary() {
+    const summary = await fetchCommandCenterDashboardSummary()
+    if (!summary) return
+    this.commandSummary = summary
+    this.kpiTodayWarnings = summary.warning?.todayNew ?? this.kpiTodayWarnings
+    this.kpiUnhandledHigh = summary.warning?.criticalPending ?? this.kpiUnhandledHigh
+    this.preShiftData = {
+      ...this.preShiftData,
+      qualifiedCount: summary.admission?.passed ?? this.preShiftData.qualifiedCount,
+      failedCount: summary.admission?.prohibited ?? this.preShiftData.failedCount
+    }
+    if (summary.device) {
+      this.deviceStats = {
+        ...this.deviceStats,
+        total: summary.device.total ?? this.deviceStats.total,
+        boundDevices: summary.device.total ?? this.deviceStats.boundDevices,
+        activeRate: summary.device.onlineRate ?? this.deviceStats.activeRate
+      }
+    }
   },
 
   updateRefreshText() {
@@ -146,6 +174,11 @@ export const dashboardRuntimeMethods = {
 
   async fetchBodyIndicators() {
     this.bodyIndicators = await fetchDashboardBodyIndicatorData(this.periodRange)
+  },
+
+  async fetchHealthSnapshot() {
+    const snapshot = await fetchDashboardHealthSnapshot()
+    if (snapshot) this.healthSnapshot = snapshot
   },
 
   async fetchDeviceData() {

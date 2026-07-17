@@ -12,6 +12,14 @@ export function getEmployeeStats() {
   return request({ url: '/employee/stats', method: 'get' })
 }
 
+export function searchEmployeesForCommand(query, limit = 12) {
+  return request({
+    url: '/employee/command-search',
+    method: 'get',
+    params: { query, limit }
+  })
+}
+
 export function createEmployee(data) {
   return request({ url: '/employee/create', method: 'post', data })
 }
