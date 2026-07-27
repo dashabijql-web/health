@@ -5,7 +5,7 @@
     <header class="rc-hd">
       <div class="rc-hd-left">
         <span class="rc-live-dot"></span>
-        <h1 class="rc-hd-title">预警记录</h1>
+        <h1 class="rc-hd-title">处置记录</h1>
       </div>
       <div class="rc-hd-kpis">
         <div class="rc-kpi">
@@ -100,7 +100,7 @@
     <!-- Data Table / Card List -->
     <div class="panel table-panel">
       <div class="panel-header">
-        <div class="panel-title"><span class="title-bar"></span>预警列表</div>
+        <div class="panel-title"><span class="title-bar"></span>事件处置明细</div>
         <div class="panel-header-right">
           <el-button v-if="selectedRows.length > 0" type="warning" size="small" :loading="batchLoading" @click="batchHandle">批量处理 ({{ selectedRows.length }})</el-button>
           <el-button v-if="!isMobile" type="success" size="small" :icon="Download" @click="exportExcel">导出Excel</el-button>
@@ -156,6 +156,9 @@
           </el-table-column>
           <el-table-column label="预警类型" width="104" align="center">
             <template #default="{row}"><el-tag :type="typeTag(row.warningType)" size="small" effect="dark">{{ typeLabel(row.warningType) }}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="事件来源" width="96" align="center">
+            <template #default="{row}">{{ sourceLabel(row.eventSource) }}</template>
           </el-table-column>
           <el-table-column prop="warningValue" label="预警值" width="88" align="center" />
           <el-table-column label="预警级别" width="88" align="center">
@@ -302,7 +305,8 @@ import {
   exportColumns,
   levelTag,
   typeLabel,
-  typeTag
+  typeTag,
+  sourceLabel
 } from './records-view-model'
 import {
   fetchRecordsExportRows,
@@ -383,10 +387,10 @@ const batchHandle = async () => {
   if (!selectedRows.value.length) return
   batchLoading.value = true
   try {
-    const ids = selectedRows.value.map(r => r.id)
-    const res = await submitBatchRecordHandle(ids)
+    const locators = selectedRows.value.map(r => ({ warningId: r.id, occurredAt: r.createTime }))
+    const res = await submitBatchRecordHandle(locators)
     if (res.code === 200) {
-      ElMessage.success(`已批量处理 ${ids.length} 条预警`)
+      ElMessage.success(`已批量处理 ${locators.length} 条事件`)
       selectedRows.value = []
       loadData()
       loadOverview()
@@ -422,7 +426,7 @@ const exportExcel = async () => {
     const rows = await fetchRecordsExportRows(buildRecordsQuery(searchForm, pagination, { includePage: false }))
     if (!rows.length) { ElMessage.warning('无数据可导出'); return }
     const data = buildExportRows(rows, { formatDate, levelLabel, warningHandledStatusLabel })
-    await exportToExcel(data, exportColumns, `预警记录_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`)
+    await exportToExcel(data, exportColumns, `处置记录_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`)
     ElMessage.success(`已导出 ${rows.length} 条记录`)
   } catch (e) { ElMessage.error('导出失败') }
 }

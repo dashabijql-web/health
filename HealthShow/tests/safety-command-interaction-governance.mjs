@@ -38,7 +38,7 @@ test('department nodes open a scoped incident drawer without health-rate filler'
 
   assert.match(page, /<DepartmentIncidentDrawer/)
   assert.match(drawer, /部门预警来自今日统计/)
-  assert.match(drawer, /当前已加载开放事件/)
+  assert.match(drawer, /当前已加载未闭环预警/)
   assert.match(drawer, /未分派/)
   assert.match(drawer, /已超时/)
   assert.match(drawer, /show-event/)

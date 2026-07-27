@@ -133,7 +133,7 @@ def print_new_packets(rows: list[dict[str, Any]], seen_sequences: set[int], pend
                 pending_serials.discard(serial)
                 print("  -> APXL 匹配本脚本刚发送的 BPXL 命令；这是确认响应，不一定包含心率数值", flush=True)
             else:
-                print("  -> APXL 是其他 BPXL 命令的确认响应；可能来自后端自动测量循环", flush=True)
+                print("  -> APXL 是其他 BPXL 命令的确认响应；可能来自后端周期测量或其他手动请求", flush=True)
 
     return matched
 

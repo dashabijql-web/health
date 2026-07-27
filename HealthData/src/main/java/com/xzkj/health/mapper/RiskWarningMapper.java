@@ -24,16 +24,22 @@ public interface RiskWarningMapper {
      * ${tableName} 由内部工具类生成，格式固定，不存在注入风险。
      */
     @Insert("INSERT INTO ${tableName} " +
-            "(user_code, warning_type, indicator_name, indicator_value, warning_level, create_time) " +
+            "(user_code, warning_type, indicator_name, indicator_value, warning_level, " +
+            "event_source, event_code, device_imei, threshold_snapshot, create_time) " +
             "VALUES " +
-            "(#{userCode}, #{warningType}, #{indicatorName}, #{indicatorValue}, #{warningLevel}, GETDATE())")
+            "(#{userCode}, #{warningType}, #{indicatorName}, #{indicatorValue}, #{warningLevel}, " +
+            "#{eventSource}, #{eventCode}, #{deviceImei}, #{thresholdSnapshot}, GETDATE())")
     int insertToWarningTable(
             @Param("tableName")      String tableName,
             @Param("userCode")       String userCode,
             @Param("warningType")    String warningType,
             @Param("indicatorName")  String indicatorName,
             @Param("indicatorValue") String indicatorValue,
-            @Param("warningLevel")   String warningLevel
+            @Param("warningLevel")   String warningLevel,
+            @Param("eventSource")    String eventSource,
+            @Param("eventCode")      String eventCode,
+            @Param("deviceImei")     String deviceImei,
+            @Param("thresholdSnapshot") String thresholdSnapshot
     );
 
     // ─── 查询 create_time（用于更新路由） ────────────────────────────
@@ -157,6 +163,10 @@ public interface RiskWarningMapper {
             "wr.warning_level AS warningLevel, " +
             "wr.indicator_value AS warningValue, " +
             "wr.indicator_name  AS indicatorName, " +
+            "wr.event_source AS eventSource, " +
+            "wr.event_code AS eventCode, " +
+            "wr.device_imei AS deviceImei, " +
+            "wr.threshold_snapshot AS thresholdSnapshot, " +
             "wr.is_handled AS handled, " +
             "wr.create_time AS createTime, " +
             "wr.handle_by AS handleBy, " +
@@ -189,6 +199,12 @@ public interface RiskWarningMapper {
             "<if test='warningType != null and warningType != \"\"'> " +
             "AND wr.warning_type LIKE '%' + #{warningType} + '%' " +
             "</if> " +
+            "<if test='eventSource != null and eventSource != \"\"'> " +
+            "AND wr.event_source = #{eventSource} " +
+            "</if> " +
+            "<if test='eventCode != null and eventCode != \"\"'> " +
+            "AND wr.event_code = #{eventCode} " +
+            "</if> " +
             "<if test='handled != null'> " +
             "AND wr.is_handled = #{handled} " +
             "</if> " +
@@ -201,6 +217,8 @@ public interface RiskWarningMapper {
             @Param("userCode") String userCode,
             @Param("keyword") String keyword,
             @Param("warningType") String warningType,
+            @Param("eventSource") String eventSource,
+            @Param("eventCode") String eventCode,
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             @Param("offset") int offset,
@@ -222,6 +240,10 @@ public interface RiskWarningMapper {
             "wr.warning_level AS warningLevel, " +
             "wr.indicator_value AS warningValue, " +
             "wr.indicator_name AS indicatorName, " +
+            "wr.event_source AS eventSource, " +
+            "wr.event_code AS eventCode, " +
+            "wr.device_imei AS deviceImei, " +
+            "wr.threshold_snapshot AS thresholdSnapshot, " +
             "wr.is_handled AS handled, " +
             "wr.create_time AS createTime, " +
             "wr.handle_by AS handleBy, " +
@@ -283,6 +305,10 @@ public interface RiskWarningMapper {
             "wr.warning_level AS warningLevel, " +
             "wr.indicator_value AS warningValue, " +
             "wr.indicator_name AS indicatorName, " +
+            "wr.event_source AS eventSource, " +
+            "wr.event_code AS eventCode, " +
+            "wr.device_imei AS deviceImei, " +
+            "wr.threshold_snapshot AS thresholdSnapshot, " +
             "wr.is_handled AS handled, " +
             "wr.create_time AS createTime, " +
             "wr.handle_by AS handleBy, " +
@@ -332,6 +358,12 @@ public interface RiskWarningMapper {
             "<if test='warningType != null and warningType != \"\"'> " +
             "AND wr.warning_type LIKE '%' + #{warningType} + '%' " +
             "</if> " +
+            "<if test='eventSource != null and eventSource != \"\"'> " +
+            "AND wr.event_source = #{eventSource} " +
+            "</if> " +
+            "<if test='eventCode != null and eventCode != \"\"'> " +
+            "AND wr.event_code = #{eventCode} " +
+            "</if> " +
             "<if test='handled != null'> " +
             "AND wr.is_handled = #{handled} " +
             "</if>" +
@@ -339,6 +371,7 @@ public interface RiskWarningMapper {
     int countWarnings(@Param("level") String level, @Param("handled") Boolean handled,
                       @Param("userCode") String userCode, @Param("keyword") String keyword,
                       @Param("warningType") String warningType,
+                      @Param("eventSource") String eventSource, @Param("eventCode") String eventCode,
                       @Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**

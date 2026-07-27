@@ -19,21 +19,27 @@ class WatchLoginProtocolHandlerTest {
         assertTrue(commands[0].startsWith("IWBP33," + imei + ","));
         assertTrue(commands[1].startsWith("IWBP86," + imei + ","));
         assertTrue(commands[2].startsWith("IWBP87," + imei + ","));
+        assertTrue(commands[1].endsWith(",0,1#"));
+        assertTrue(commands[2].endsWith(",0,1#"));
     }
 
     @Test
-    void monitoringCommandsPollHealthAndLocationOnly() {
+    void monitoringCommandsRotateOneHealthMeasurementAtATime() {
         String imei = "123456789012345";
-        String[] commands = WatchLoginProtocolHandler.buildMonitoringCommands(imei);
+        String[] commands = new String[4];
+        for (int i = 0; i < commands.length; i++) {
+            commands[i] = WatchLoginProtocolHandler.buildMonitoringCommand(imei, i);
+        }
 
-        assertEquals(5, commands.length);
+        assertEquals(4, commands.length);
         assertCompactNoStarCommands(imei, commands);
 
         assertTrue(commands[0].startsWith("IWBPXL," + imei + ","));
         assertTrue(commands[1].startsWith("IWBPXY," + imei + ","));
         assertTrue(commands[2].startsWith("IWBPXZ," + imei + ","));
         assertTrue(commands[3].startsWith("IWBPXT," + imei + ","));
-        assertTrue(commands[4].startsWith("IWBP16," + imei + ","));
+        assertTrue(WatchLoginProtocolHandler.buildMonitoringCommand(imei, 4)
+                .startsWith("IWBPXL," + imei + ","));
     }
 
     private static void assertCompactNoStarCommands(String imei, String[] commands) {

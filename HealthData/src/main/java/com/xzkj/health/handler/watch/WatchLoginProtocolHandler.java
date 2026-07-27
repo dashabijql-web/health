@@ -20,7 +20,7 @@ public class WatchLoginProtocolHandler implements WatchProtocolHandler {
     private static final AtomicInteger SERIAL = new AtomicInteger((int) (System.currentTimeMillis() % 1_000_000L));
     private static final long MONITORING_REFRESH_SECONDS = 60L;
     private static final long COMMAND_INTERVAL_MS = 800L;
-    private static final int MEASURE_PERIOD_MINUTES = 1;
+    private static final int MONITORING_COMMAND_COUNT = 4;
 
     @Override
     public void handle(WatchMessageHandlerContext context) {
@@ -50,8 +50,10 @@ public class WatchLoginProtocolHandler implements WatchProtocolHandler {
             return;
         }
 
+        AtomicInteger measurementIndex = new AtomicInteger();
         ScheduledFuture<?> future = context.channel().eventLoop().scheduleAtFixedRate(
-                () -> sendCommandBatch(context, imei, buildMonitoringCommands(imei)),
+                () -> sendMonitoringCommand(context, imei, measurementIndex.getAndUpdate(
+                        current -> (current + 1) % MONITORING_COMMAND_COUNT)),
                 initialCommandCount * COMMAND_INTERVAL_MS,
                 TimeUnit.SECONDS.toMillis(MONITORING_REFRESH_SECONDS),
                 TimeUnit.MILLISECONDS);
@@ -62,6 +64,17 @@ public class WatchLoginProtocolHandler implements WatchProtocolHandler {
                 current.cancel(false);
             }
         });
+    }
+
+    private void sendMonitoringCommand(WatchMessageHandlerContext context, String imei, int index) {
+        if (!context.channel().isActive()) {
+            log.warn("跳过手表周期测量，连接已断开: IMEI={}", imei);
+            return;
+        }
+
+        String command = buildMonitoringCommand(imei, index);
+        log.info("发送手表周期测量: IMEI={}, command={}", imei, command);
+        context.writeAscii(command);
     }
 
     private void sendCommandBatch(WatchMessageHandlerContext context, String imei, String[] commands) {
@@ -82,19 +95,19 @@ public class WatchLoginProtocolHandler implements WatchProtocolHandler {
     static String[] buildInitialConfigurationCommands(String imei) {
         return new String[]{
                 "IWBP33," + imei + "," + nextSerial() + ",1#",
-                "IWBP86," + imei + "," + nextSerial() + ",1," + MEASURE_PERIOD_MINUTES + "#",
-                "IWBP87," + imei + "," + nextSerial() + ",1," + MEASURE_PERIOD_MINUTES + "#"
+                "IWBP86," + imei + "," + nextSerial() + ",0,1#",
+                "IWBP87," + imei + "," + nextSerial() + ",0,1#"
         };
     }
 
-    static String[] buildMonitoringCommands(String imei) {
-        return new String[]{
-                "IWBPXL," + imei + "," + nextSerial() + "#",
-                "IWBPXY," + imei + "," + nextSerial() + "#",
-                "IWBPXZ," + imei + "," + nextSerial() + "#",
-                "IWBPXT," + imei + "," + nextSerial() + "#",
-                "IWBP16," + imei + "," + nextSerial() + "#"
+    static String buildMonitoringCommand(String imei, int index) {
+        String protocolCode = switch (Math.floorMod(index, MONITORING_COMMAND_COUNT)) {
+            case 0 -> "BPXL";
+            case 1 -> "BPXY";
+            case 2 -> "BPXZ";
+            default -> "BPXT";
         };
+        return "IW" + protocolCode + "," + imei + "," + nextSerial() + "#";
     }
 
     private static String nextSerial() {

@@ -75,19 +75,19 @@ class HealthRecordServiceImplTest {
     }
 
     @Test
-    void getEmployeeHistoryUsesHourlyBucketsForSevenDays() {
+    void getEmployeeHistoryUsesRawRecordsForSevenDays() {
         EmployeeHealthHistoryRow row = new EmployeeHealthHistoryRow();
         row.setBucketTime("2026-07-15 10:00:00");
         row.setAvgHeartRate(72.34);
         row.setAvgBloodOxygen(97.26);
         row.setSampleCount(12L);
         when(healthRecordMapper.selectEmployeeHistory(
-                anyString(), eq("EMP1001"), eq("2026-07-09"), eq("2026-07-15"), eq("hour")))
+                anyString(), eq("EMP1001"), eq("2026-07-09"), eq("2026-07-15"), eq("record")))
                 .thenReturn(List.of(row));
 
         var result = healthRecordService.getEmployeeHistory("EMP1001", "2026-07-09", "2026-07-15");
 
-        assertEquals("hour", result.granularity());
+        assertEquals("record", result.granularity());
         assertEquals(12L, result.totalSamples());
         assertEquals(72.3, result.points().get(0).heartRate());
         assertEquals(97.3, result.points().get(0).bloodOxygen());

@@ -30,16 +30,17 @@ export function buildRenderedDeptAiReport(content) {
 
 export function mapWarningToEvent(record) {
   const warningType = record.typeLabel || record.warningType || record.warning_type || record.type || ''
+  const eventCode = String(record.eventCode || record.event_code || '').toUpperCase()
   const incidentType = String(record.type || '').toUpperCase()
   let eventType = 'abnormal'
   let level = 'medium'
   let icon = 'WARN'
 
-  if (incidentType === 'SOS' || warningType.includes('SOS') || warningType.includes('sos')) {
+  if (eventCode === 'SOS' || incidentType === 'SOS' || warningType.includes('SOS') || warningType.includes('sos')) {
     eventType = 'sos'
     level = 'critical'
     icon = 'SOS'
-  } else if (incidentType === 'FALL' || warningType.includes('跌倒') || warningType.includes('fall')) {
+  } else if (eventCode === 'FALL' || incidentType === 'FALL' || warningType.includes('跌倒') || warningType.includes('fall')) {
     eventType = 'fall'
     level = 'high'
     icon = 'FALL'
@@ -75,6 +76,8 @@ export function mapWarningToEvent(record) {
     incidentId: record.incidentId || '',
     icon,
     type: warningType,
+    eventSource: record.eventSource || record.event_source || 'LEGACY',
+    eventCode,
     user: record.person?.name || record.userName || record.user_name || '',
     userCode: record.person?.userCode || record.userCode || record.user_code || '',
     dept: record.person?.department || record.deptName || record.dept_name || '',
@@ -406,14 +409,14 @@ export function buildStageIntelItems({ pendingCount, criticalCount, unassignedCo
       key: 'unassigned',
       label: '未分派',
       value: unassignedCount || 0,
-      note: '尚无责任人的开放事件',
+      note: '尚无责任人的未闭环预警',
       tone: unassignedCount > 0 ? 'warning' : 'safe'
     },
     {
       key: 'overdue',
       label: '已超时',
       value: overdueCount || 0,
-      note: '超过处置时限的开放事件',
+      note: '超过处置时限的未闭环预警',
       tone: overdueCount > 0 ? 'danger' : 'safe'
     },
     {

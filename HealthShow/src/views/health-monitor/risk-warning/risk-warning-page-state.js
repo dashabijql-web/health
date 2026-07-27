@@ -1,5 +1,7 @@
 import { PERIOD_OPTIONS } from '@/constants/periods'
 
+const DEFAULT_WARNING_TYPES = ['心率异常', '血氧偏低', '血氧过低', '体温异常', '血压偏高', '压力偏高', '跌倒报警', 'SOS报警']
+
 export default {
   data() {
     return {
@@ -12,7 +14,7 @@ export default {
       ],
       warningList: [],
       totalWarnings: 0,
-      warningTypeOptions: [],
+      warningTypeOptions: DEFAULT_WARNING_TYPES,
       currentPage: 1,
       pageSize: 50,
       filterName: '',

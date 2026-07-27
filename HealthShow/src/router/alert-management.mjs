@@ -11,7 +11,7 @@ export default {
       name: 'NotificationCenter',
       component: () => import('@/views/alert-management/notifications/index.vue'),
       meta: {
-        title: '消息通知中心',
+        title: '待办事件',
         icon: 'Bell',
         permCode: 'alert:notifications',
         navGroup: 'warning',
@@ -23,7 +23,7 @@ export default {
       name: 'SosPage',
       component: () => import('@/views/alert-management/sos/index.vue'),
       meta: {
-        title: 'SOS 紧急救援',
+        title: '紧急事件',
         icon: 'Warning',
         permCode: 'alert:sos',
         navGroup: 'warning',
@@ -35,7 +35,7 @@ export default {
       name: 'AlertConfig',
       component: () => import('@/views/alert-management/config/index.vue'),
       meta: {
-        title: '阈值配置',
+        title: '规则配置',
         icon: 'Setting',
         permCode: 'alert:config',
         navGroup: 'warning',
@@ -47,7 +47,7 @@ export default {
       name: 'AlertRecords',
       component: () => import('@/views/alert-management/records/index.vue'),
       meta: {
-        title: '预警记录',
+        title: '处置记录',
         icon: 'List',
         permCode: 'alert:records',
         navGroup: 'warning',

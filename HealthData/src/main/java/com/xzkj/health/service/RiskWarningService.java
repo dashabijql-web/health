@@ -72,13 +72,15 @@ public class RiskWarningService {
     }
 
     public RiskWarningPageView getWarningList(String level, Boolean handled, String userCode, String keyword,
-                                              String warningType, String startDate, String endDate,
+                                              String warningType, String eventSource, String eventCode,
+                                              String startDate, String endDate,
                                               int page, int size) {
         int offset = (page - 1) * size;
         List<Map<String, Object>> list = riskWarningMapper.getWarningList(
-                level, handled, userCode, keyword, warningType, startDate, endDate, offset, size);
+                level, handled, userCode, keyword, warningType, eventSource, eventCode,
+                startDate, endDate, offset, size);
         int total = riskWarningMapper.countWarnings(
-                level, handled, userCode, keyword, warningType, startDate, endDate);
+                level, handled, userCode, keyword, warningType, eventSource, eventCode, startDate, endDate);
 
         return new RiskWarningPageView(toItemViews(list), total, page, size);
     }
@@ -194,11 +196,20 @@ public class RiskWarningService {
      */
     public boolean insertWarning(String userCode, String warningType,
                                  String indicatorName, String indicatorValue, String warningLevel) {
+        return insertWarning(userCode, warningType, indicatorName, indicatorValue, warningLevel,
+                "HEALTH_THRESHOLD", eventCodeForIndicator(indicatorName), null, null);
+    }
+
+    public boolean insertWarning(String userCode, String warningType,
+                                 String indicatorName, String indicatorValue, String warningLevel,
+                                 String eventSource, String eventCode, String deviceImei,
+                                 String thresholdSnapshot) {
         String tableName = TableNameUtil.warningRecordTable();
         String source = HealthDataSourceContext.get() == null ? "unknown" : HealthDataSourceContext.get().key();
         try {
             int rows = riskWarningMapper.insertToWarningTable(
-                    tableName, userCode, warningType, indicatorName, indicatorValue, warningLevel);
+                    tableName, userCode, warningType, indicatorName, indicatorValue, warningLevel,
+                    eventSource, eventCode, deviceImei, thresholdSnapshot);
             boolean success = rows > 0;
             healthMetricsService.recordWarningGenerated(source, warningType, warningLevel, success ? "success" : "empty");
             return success;
@@ -320,6 +331,10 @@ public class RiskWarningService {
                     stringValue(row.get("warningLevel")),
                     stringValue(row.get("warningValue")),
                     stringValue(row.get("indicatorName")),
+                    stringValue(row.get("eventSource")),
+                    stringValue(row.get("eventCode")),
+                    stringValue(row.get("deviceImei")),
+                    stringValue(row.get("thresholdSnapshot")),
                     nullableBoolean(row.get("handled")),
                     stringValue(row.get("createTime")),
                     stringValue(row.get("handleBy")),
@@ -372,6 +387,18 @@ public class RiskWarningService {
 
     private String stringValue(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private String eventCodeForIndicator(String indicatorName) {
+        if (indicatorName == null) return "HEALTH_UNKNOWN";
+        return switch (indicatorName) {
+            case "心率" -> "HEART_RATE";
+            case "血氧" -> "BLOOD_OXYGEN";
+            case "体温" -> "TEMPERATURE";
+            case "收缩压" -> "SYSTOLIC_PRESSURE";
+            case "压力指数" -> "PRESSURE_INDEX";
+            default -> "HEALTH_UNKNOWN";
+        };
     }
 
     private int calculateHandledRate(Map<String, Object> stats) {

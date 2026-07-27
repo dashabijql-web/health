@@ -154,6 +154,7 @@
     <EmployeeHealthHistory
       :employee-code="empInfo.empCode"
       :employee-name="empInfo.empName"
+      :refresh-token="historyRefreshToken"
     />
 
   </div>
@@ -176,7 +177,7 @@ const {
   openAiReport, openEmergency, openPersonCommand, personCommandVisible,
   openWarningDetails, openWarningIncident, nextRefreshSeconds, printAiReport, profileInsightLines, profileSummaryCards, recentWarnings,
   recentWarningFootnote, recentWarningSummary, refresh,
-  vitals, warningDetailVisible, goWarningCenter
+  vitals, warningDetailVisible, goWarningCenter, historyRefreshToken
 } = page
 
 const summaryMetricItems = computed(() => profileSummaryCards.value.map((card) => ({

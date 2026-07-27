@@ -42,6 +42,7 @@ export function useEmployeeProfilePage() {
   const lastUpdate = ref('--')
   const freshnessStatus = ref('no_data')
   const nextRefreshSeconds = ref(PROFILE_REFRESH_SECONDS)
+  const historyRefreshToken = ref(0)
   const printWindowRef = ref(null)
   const trend7 = ref({ avgHr: 0, avgSpo2: 0, avgTemp: 0 })
   const portraitTrend = ref(null)
@@ -50,6 +51,7 @@ export function useEmployeeProfilePage() {
   const currentIncidentEvent = ref(null)
   const warningDetailVisible = ref(false)
   let refreshInFlight = false
+  let profileReady = false
 
   const aiReportVisible = ref(false)
   const aiReportLoading = ref(false)
@@ -212,6 +214,7 @@ export function useEmployeeProfilePage() {
         warning7Total.value = Number(warn7Res.value.data.total) || 0
       }
     } finally {
+      if (profileReady) historyRefreshToken.value += 1
       refreshInFlight = false
     }
   }
@@ -224,6 +227,7 @@ export function useEmployeeProfilePage() {
     loading.value = true
     try {
       await refresh()
+      profileReady = true
     } finally {
       loading.value = false
     }
@@ -372,6 +376,7 @@ export function useEmployeeProfilePage() {
     warnings,
     warningDetailVisible,
     exercise,
-    goWarningCenter
+    goWarningCenter,
+    historyRefreshToken
   }
 }

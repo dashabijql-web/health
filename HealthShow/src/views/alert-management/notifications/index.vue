@@ -3,7 +3,7 @@
     <header class="nf-hd">
       <div class="nf-hd-left">
         <span class="nf-live-dot"></span>
-        <h1 class="nf-hd-title">消息通知中心</h1>
+        <h1 class="nf-hd-title">待办事件</h1>
       </div>
       <div class="nf-hd-kpis">
         <span class="nf-kpi">待处理 <em class="nf-kpi-val danger">{{ unhandledCount }}</em></span>
@@ -12,17 +12,19 @@
       <div class="nf-hd-actions">
         <el-select v-model="filter.level" placeholder="全部级别" size="small" clearable style="width:110px" @change="fetchList">
           <el-option label="全部级别" value="" />
-          <el-option label="危险" value="3" />
-          <el-option label="预警" value="2" />
-          <el-option label="提示" value="1" />
+          <el-option label="高危" value="高危" />
+          <el-option label="中危" value="中危" />
+          <el-option label="低危" value="低危" />
         </el-select>
-        <el-select v-model="filter.handled" placeholder="全部状态" size="small" clearable style="width:110px" @change="fetchList">
-          <el-option label="全部状态" value="" />
-          <el-option :label="warningHandledStatusLabel({ handled: false })" :value="false" />
-          <el-option :label="warningHandledStatusLabel({ handled: true })" :value="true" />
+        <el-select v-model="filter.source" placeholder="全部来源" size="small" clearable style="width:130px" @change="fetchList">
+          <el-option label="全部来源" value="" />
+          <el-option label="体征预警" value="HEALTH_THRESHOLD" />
+          <el-option label="设备报警" value="DEVICE_ALARM" />
+          <el-option label="趋势风险" value="TREND_WARNING" />
         </el-select>
         <el-input v-model="filter.userCode" placeholder="搜索员工工号" size="small" clearable style="width:150px" @change="fetchList" />
-        <el-button size="small" type="primary" plain @click="handleMarkAllRead" :disabled="unhandledCount === 0">全部已读</el-button>
+        <el-button size="small" type="primary" plain @click="handleBatchConfirm" :disabled="list.length === 0">确认当前页</el-button>
+        <el-button size="small" plain @click="goToRecords">处置记录</el-button>
         <el-button size="small" @click="fetchList" :loading="loading">刷新</el-button>
       </div>
     </header>
@@ -31,15 +33,15 @@
 
     <!-- ── 统计行 ── -->
     <div class="nf-stats-row">
-      <div class="notif-stat notif-stat--danger" @click="setLevelFilter('3')">
+      <div class="notif-stat notif-stat--danger" @click="setLevelFilter('高危')">
         <span class="ns-val">{{ levelCounts[3] || 0 }}</span>
         <span class="ns-label">危险</span>
       </div>
-      <div class="notif-stat notif-stat--warn" @click="setLevelFilter('2')">
+      <div class="notif-stat notif-stat--warn" @click="setLevelFilter('中危')">
         <span class="ns-val">{{ levelCounts[2] || 0 }}</span>
         <span class="ns-label">预警</span>
       </div>
-      <div class="notif-stat notif-stat--info" @click="setLevelFilter('1')">
+      <div class="notif-stat notif-stat--info" @click="setLevelFilter('低危')">
         <span class="ns-val">{{ levelCounts[1] || 0 }}</span>
         <span class="ns-label">提示</span>
       </div>
@@ -65,7 +67,8 @@
           </div>
         </div>
         <div class="ni-mid">
-          <span class="ni-type">{{ item.indicatorName || item.warningType || '--' }}</span>
+          <span class="ni-source">{{ sourceLabel(item.eventSource) }}</span>
+          <span class="ni-type">{{ item.warningType || item.indicatorName || '--' }}</span>
           <span class="ni-val">{{ item.warningValue || item.indicatorValue || '--' }}</span>
           <span class="ni-sla-tag" :class="`is-${item.slaStatus || 'unknown'}`">{{ item.slaStatusText || '未知' }}</span>
           <span class="ni-sla-clock" :class="`is-${item.slaStatus || 'unknown'}`">
@@ -89,7 +92,7 @@
         </div>
       </div>
       <div v-if="!loading && list.length === 0" class="nf-empty">
-        <span>暂无通知消息</span>
+          <span>当前没有待办事件</span>
       </div>
     </div>
 
@@ -124,7 +127,7 @@ export default {
     return {
       loading: false,
       list: [],
-      filter: { level: '', handled: false, userCode: '' },
+      filter: { level: '', source: '', handled: false, userCode: '' },
       pagination: { page: 1, size: 20, total: 0 },
       levelCounts: { 1: 0, 2: 0, 3: 0 },
       unhandledCount: 0,
@@ -151,7 +154,8 @@ export default {
           page: this.pagination.page,
           size: this.pagination.size,
           level: this.filter.level || undefined,
-          handled: this.filter.handled === '' ? undefined : this.filter.handled,
+          handled: false,
+          eventSource: this.filter.source || undefined,
           userCode: this.filter.userCode || undefined
         }
         const res = await getRiskWarningList(params)
@@ -168,9 +172,9 @@ export default {
       try {
         // 各级别未处理数量：分别查 level=1/2/3 & handled=false
         const [r1, r2, r3, rAll] = await Promise.allSettled([
-          getRiskWarningList({ page: 1, size: 1, level: '1', handled: false }),
-          getRiskWarningList({ page: 1, size: 1, level: '2', handled: false }),
-          getRiskWarningList({ page: 1, size: 1, level: '3', handled: false }),
+          getRiskWarningList({ page: 1, size: 1, level: '低危', handled: false }),
+          getRiskWarningList({ page: 1, size: 1, level: '中危', handled: false }),
+          getRiskWarningList({ page: 1, size: 1, level: '高危', handled: false }),
           getRiskWarningList({ page: 1, size: 1, handled: false })
         ])
         this.levelCounts[1] = r1.status === 'fulfilled' && r1.value.code === 200 ? (r1.value.data?.total || 0) : 0
@@ -182,7 +186,7 @@ export default {
     async handleSingle(item) {
       item._loading = true
       try {
-        await handleRiskWarning(item.id)
+        await handleRiskWarning(item.id, { createTime: item.createTime, handleRemark: '待办事件确认处置' })
         markWarningHandled(item)
         this.unhandledCount = Math.max(0, this.unhandledCount - 1)
         this.$message.success('已标记处理')
@@ -192,20 +196,27 @@ export default {
         item._loading = false
       }
     },
-    async handleMarkAllRead() {
-      const ids = this.list.filter(r => !r.handled).map(r => r.id)
-      if (!ids.length) return
+    async handleBatchConfirm() {
+      const locators = this.list.filter(r => !r.handled).map(r => ({ warningId: r.id, occurredAt: r.createTime }))
+      if (!locators.length) return
       try {
-        await handleBatchRiskWarning(ids)
+        await handleBatchRiskWarning(locators)
         this.list.forEach(r => { if (!r.handled) markWarningHandled(r) })
         await this.fetchSummary()
-        this.$message.success(`已处理 ${ids.length} 条`)
+        this.$message.success(`已确认处置 ${locators.length} 条`)
       } catch (_) {
         this.$message.error('批量处理失败')
       }
     },
     goToUser(item) {
       this.$router.push({ path: '/health-monitor/employee-profile', query: { userCode: item.userCode || item.empCode } })
+    },
+    goToRecords() {
+      const query = {}
+      query.warningLevel = this.filter.level
+      query.handleStatus = this.filter.handled ? 'handled' : 'unhandled'
+      query.keyword = this.filter.userCode
+      this.$router.push({ path: '/alert-management/records', query })
     },
     openDetail(item) {
       if (item.userCode || item.empCode) this.goToUser(item)
@@ -224,6 +235,9 @@ export default {
       return levelLabel(lv)
     },
     warningHandledStatusLabel,
+    sourceLabel(source) {
+      return { HEALTH_THRESHOLD: '体征预警', DEVICE_ALARM: '设备报警', TREND_WARNING: '趋势风险' }[source] || '历史事件'
+    },
     formatTime(t) {
       if (!t) return '--'
       return dayjs(t).format('MM-DD HH:mm')

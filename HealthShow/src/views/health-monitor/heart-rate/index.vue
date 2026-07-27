@@ -55,7 +55,7 @@
         <div class="hr-panel hr-aside-bot">
           <div class="hr-ph">
             <span class="hr-ph-bar"></span>
-            <span class="hr-ph-title">部门心率异常统计</span>
+            <span class="hr-ph-title">{{ metricPeriodLabel }}部门异常记录数</span>
             <span v-if="filterDept" class="hr-dept-tag" @click="filterDept=''" title="点击取消筛选">{{ filterDept }} ×</span>
           </div>
           <div class="hr-pc">

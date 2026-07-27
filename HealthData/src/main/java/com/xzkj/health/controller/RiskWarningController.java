@@ -43,13 +43,16 @@ public class RiskWarningController {
             @RequestParam(required = false) String userCode,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String warningType,
+            @RequestParam(required = false) String eventSource,
+            @RequestParam(required = false) String eventCode,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
         size = DateParamUtil.clampSize(size);
         return Result.ok("获取成功", riskWarningService.getWarningList(
-                level, handled, userCode, keyword, warningType, startDate, endDate, Math.max(1, page), size));
+                level, handled, userCode, keyword, warningType, eventSource, eventCode,
+                startDate, endDate, Math.max(1, page), size));
     }
 
     /** 获取预警趋势（按类型分组） */

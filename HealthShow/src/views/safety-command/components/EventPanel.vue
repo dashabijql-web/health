@@ -25,6 +25,7 @@
           <div class="ev-primary" :title="ev.type || '未知事件'">
             <div class="ev-title-row">
               <span :class="['ev-level', `ev-level-${ev.level || 'medium'}`]">{{ eventLevelText(ev) }}</span>
+              <span class="ev-source">{{ eventSourceText(ev) }}</span>
               <span class="ev-type">{{ ev.icon || 'WARN' }} {{ ev.type || '未知事件' }}</span>
             </div>
             <span class="ev-advice">{{ eventAdviceText(ev) }}</span>
@@ -80,7 +81,7 @@ import * as echarts from '@/utils/echarts-setup'
 const props = defineProps({
   events: { type: Array, default: () => [] },
   trendData: { type: Array, default: () => [] },
-  title: { type: String, default: '开放事件' }
+  title: { type: String, default: '未闭环预警' }
 })
 defineEmits(['showAll','showDetail','showPerson','showDept','handle'])
 
@@ -117,6 +118,11 @@ const eventLevelText = (event) => levelTextMap[event?.level] || levelTextMap.med
 const eventDeptText = (event) => event?.dept || '未分组'
 const eventLocationText = (event) => event?.location || event?.dept || '未定位'
 const eventAdviceText = (event) => adviceTextMap[event?.eventType] || adviceTextMap.abnormal
+const eventSourceText = (event) => ({
+  HEALTH_THRESHOLD: '体征预警',
+  DEVICE_ALARM: '设备报警',
+  TREND_WARNING: '趋势风险'
+}[event?.eventSource] || '历史事件')
 const isDurationHot = (event) => eventMinutes(event) > (isPriorityEvent(event) ? 5 : 10)
 
 const eventDurationText = (event) => {
@@ -178,6 +184,7 @@ $dim:rgba(255,255,255,.45); $dim2:rgba(255,255,255,.22);
 .tb { font-size:9px; padding:2px 7px; border-radius:2px; border:1px solid rgba($cyan,.12); color:$dim; cursor:pointer; transition:all .15s;
   &.on, &:hover { background:rgba($cyan,.1); border-color:rgba($cyan,.35); color:$cyan; }
 }
+.ev-source { font-size:9px; padding:2px 5px; border:1px solid rgba($cyan,.22); color:$cyan; border-radius:2px; white-space:nowrap; }
 
 .ev-trend { height:32px; flex-shrink:0; margin-bottom:4px; }
 .ev-list { flex:1; overflow-y:auto; min-height:0; display:flex; flex-direction:column; gap:4px; }

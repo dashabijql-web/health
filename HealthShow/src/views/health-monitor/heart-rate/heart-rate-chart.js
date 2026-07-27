@@ -13,24 +13,60 @@ export const heartRateChartMethods = {
     const d = data.map(x => {
       const low = x.lowCount || 0
       const high = x.highCount || 0
-      const total = x.totalCount || 1
       return {
         deptName: x.deptName || x.name,
-        rate: Math.round((low + high) / total * 100)
+        lowCount: low,
+        highCount: high
       }
     })
     c.setOption({
       backgroundColor: 'transparent',
-      grid: deptGrid(),
-      xAxis: { ...valueAxis(), max: v => Math.ceil(v.max) + 1 },
+      tooltip: chartTooltip(params => {
+        const low = params.find(x => x.seriesName === '偏低')?.value || 0
+        const high = params.find(x => x.seriesName === '偏高')?.value || 0
+        return `${params[0].name}<br/>偏低记录：<b style="color:#4FC3F7">${low}</b> 条<br/>偏高记录：<b style="color:#FFB84D">${high}</b> 条<br/>异常合计：${low + high} 条`
+      }),
+      legend: {
+        data: ['偏低', '偏高'],
+        right: 8,
+        top: 4,
+        textStyle: { color: '#8ba6c8', fontSize: 10 },
+        itemWidth: 10,
+        itemHeight: 8,
+        icon: 'rect'
+      },
+      grid: { ...deptGrid(), top: '12%' },
+      xAxis: {
+        ...valueAxis(),
+        min: 0,
+        minInterval: 1,
+        axisLabel: {
+          color: '#8ba6c8',
+          fontSize: 10,
+          formatter: value => `${value}条`
+        }
+      },
       yAxis: { ...categoryAxis(d.map(x => x.deptName)), inverse: true },
-      series: [{
-        type: 'bar',
-        barWidth: '46%',
-        data: d.map(x => x.rate),
-        itemStyle: { color: gradH('#FFB84D', '#FF6B35'), borderRadius: [0, 4, 4, 0] },
-        label: { show: true, position: 'right', color: '#FFB84D', fontSize: 11, fontFamily: 'Consolas', formatter: p => p.value + '%' }
-      }]
+      series: [
+        {
+          name: '偏低',
+          type: 'bar',
+          stack: 'total',
+          barWidth: '46%',
+          data: d.map(x => x.lowCount),
+          itemStyle: { color: gradH('#4FC3F7', '#0284c7') },
+          label: barLabel()
+        },
+        {
+          name: '偏高',
+          type: 'bar',
+          stack: 'total',
+          barWidth: '46%',
+          data: d.map(x => x.highCount),
+          itemStyle: { color: gradH('#FFB84D', '#FF6B35'), borderRadius: [0, 4, 4, 0] },
+          label: barLabel()
+        }
+      ]
     })
     c.off('click')
     c.on('click', (params) => {

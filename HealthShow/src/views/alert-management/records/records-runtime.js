@@ -37,6 +37,6 @@ export function submitRecordHandle(id, data) {
   return handleRiskWarning(id, data)
 }
 
-export function submitBatchRecordHandle(ids) {
-  return handleBatchRiskWarning(ids)
+export function submitBatchRecordHandle(locators) {
+  return handleBatchRiskWarning(locators)
 }

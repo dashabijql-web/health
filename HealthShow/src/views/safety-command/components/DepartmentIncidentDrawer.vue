@@ -9,7 +9,7 @@
     :title="`${departmentName} · 部门事件`"
   >
     <div class="dept-incident-body">
-      <div class="dept-incident-scope">部门预警来自今日统计；其余数量与列表基于当前已加载开放事件</div>
+      <div class="dept-incident-scope">部门预警来自今日统计；其余数量与列表基于当前已加载未闭环预警</div>
       <div class="dept-incident-summary">
         <div><span>今日部门预警</span><strong>{{ departmentTotal }}</strong></div>
         <div><span>已加载事件</span><strong>{{ departmentEvents.length }}</strong></div>
@@ -29,7 +29,7 @@
           <button type="button" class="dept-incident-handle" @click="$emit('handle-event', event)">处置</button>
         </article>
       </div>
-      <el-empty v-else :image-size="64" description="当前已加载范围内无该部门开放事件" />
+      <el-empty v-else :image-size="64" description="当前已加载范围内无该部门未闭环预警" />
     </div>
   </el-drawer>
 </template>

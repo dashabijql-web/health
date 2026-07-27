@@ -121,8 +121,24 @@ public interface HealthRecordMapper extends BaseMapper<HealthRecord> {
             if (!tableSource.matches("health_record_\\d{6}|\\(SELECT [a-zA-Z0-9_, ]+ FROM health_record_\\d{6}( UNION ALL SELECT [a-zA-Z0-9_, ]+ FROM health_record_\\d{6})+\\)")) {
                 throw new IllegalArgumentException("Invalid health history table source");
             }
-            if (!"hour".equals(granularity) && !"day".equals(granularity)) {
+            if (!"record".equals(granularity) && !"hour".equals(granularity) && !"day".equals(granularity)) {
                 throw new IllegalArgumentException("Invalid health history granularity");
+            }
+
+            if ("record".equals(granularity)) {
+                return "SELECT CONVERT(varchar(19), h.record_time, 120) AS bucketTime, " +
+                        "CASE WHEN h.heart_rate > 0 THEN CAST(h.heart_rate AS FLOAT) END AS avgHeartRate, " +
+                        "CASE WHEN h.blood_oxygen > 0 THEN CAST(h.blood_oxygen AS FLOAT) END AS avgBloodOxygen, " +
+                        "CASE WHEN h.temperature > 0 THEN CAST(h.temperature AS FLOAT) / 10.0 END AS avgTemperature, " +
+                        "CASE WHEN h.blood_pressure_high > 0 THEN CAST(h.blood_pressure_high AS FLOAT) END AS avgSystolic, " +
+                        "CASE WHEN h.blood_pressure_low > 0 THEN CAST(h.blood_pressure_low AS FLOAT) END AS avgDiastolic, " +
+                        "CASE WHEN h.pressure IS NOT NULL THEN CAST(h.pressure AS FLOAT) END AS avgPressure, " +
+                        "h.steps AS maxSteps, h.calories AS maxCalories, CAST(1 AS BIGINT) AS sampleCount " +
+                        "FROM " + tableSource + " AS h " +
+                        "WHERE h.user_code = #{userCode} " +
+                        "AND h.record_time >= CONVERT(datetime, #{startDate}) " +
+                        "AND h.record_time < DATEADD(DAY, 1, CONVERT(datetime, #{endDate})) " +
+                        "ORDER BY h.record_time";
             }
 
             String bucket = "hour".equals(granularity)

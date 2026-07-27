@@ -14,7 +14,7 @@
         </el-select>
       </div>
 
-      <div class="warning-badge-btn" @click="$router.push('/alert-management/notifications')" title="点击查看消息通知中心">
+      <div class="warning-badge-btn" @click="$router.push('/alert-management/notifications')" title="查看待办事件">
         <el-badge :value="pendingWarnings" :hidden="pendingWarnings === 0" :max="99" type="danger">
           <span class="warn-icon">
             <el-icon><Bell /></el-icon>

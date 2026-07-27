@@ -114,11 +114,19 @@ export async function fetchDashboardKpiSnapshot(warningEvents) {
 
   try {
     if (kpiStale) {
-      const statsRes = await getRealtimeStatistics()
+      // The statistics endpoint keeps a 7-day history window for legacy
+      // reports.  The dashboard card is a current-online KPI, so its online
+      // value must come from the short-window health snapshot instead.
+      const [statsRes, snapshotRes] = await Promise.all([
+        getRealtimeStatistics(),
+        getRealtimeHealthSnapshot()
+      ])
       if (statsRes.code === 200 && statsRes.data) {
         const data = statsRes.data
-        _cache.kpiOnline = data.onlineCount ?? data.onlineUsers ?? data.onlineDevices ?? 0
         _cache.kpiTotal = data.totalCount ?? data.totalUsers ?? data.totalEmployees ?? data.totalDevices ?? 0
+      }
+      if (snapshotRes.code === 200 && snapshotRes.data) {
+        _cache.kpiOnline = snapshotRes.data.onlineUsers ?? 0
       }
 
       const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD')

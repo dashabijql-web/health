@@ -5,6 +5,7 @@ import com.xzkj.health.dto.trendwarning.TrendWarningEmployeeView;
 import com.xzkj.health.dto.trendwarning.TrendWarningMetricView;
 import com.xzkj.health.dto.trendwarning.TrendWarningPredictionView;
 import com.xzkj.health.dto.trendwarning.TrendWarningSummaryView;
+import com.xzkj.health.model.entity.AlertConfig;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,16 +17,16 @@ import java.util.stream.Collectors;
 @Component
 public class TrendWarningPredictionCalculator {
 
-    private static final Map<String, double[]> THRESHOLDS = new LinkedHashMap<>();
+    private static final Map<String, Integer> CONFIG_TYPES = new LinkedHashMap<>();
     private static final Map<String, String> METRIC_NAMES = new LinkedHashMap<>();
     private static final Map<String, String> METRIC_UNITS = new LinkedHashMap<>();
 
     static {
-        THRESHOLDS.put("avg_heart_rate", new double[]{55, 100});
-        THRESHOLDS.put("avg_blood_oxygen", new double[]{95, Double.NaN});
-        THRESHOLDS.put("avg_temperature", new double[]{Double.NaN, 373});
-        THRESHOLDS.put("avg_bp_high", new double[]{Double.NaN, 140});
-        THRESHOLDS.put("avg_pressure", new double[]{Double.NaN, 75});
+        CONFIG_TYPES.put("avg_heart_rate", 1);
+        CONFIG_TYPES.put("avg_blood_oxygen", 2);
+        CONFIG_TYPES.put("avg_temperature", 3);
+        CONFIG_TYPES.put("avg_bp_high", 4);
+        CONFIG_TYPES.put("avg_pressure", 5);
 
         METRIC_NAMES.put("avg_heart_rate", "心率");
         METRIC_NAMES.put("avg_blood_oxygen", "血氧");
@@ -40,7 +41,8 @@ public class TrendWarningPredictionCalculator {
         METRIC_UNITS.put("avg_pressure", "");
     }
 
-    public TrendWarningPredictionView calculate(List<TrendWarningDailyAverageRow> rows) {
+    public TrendWarningPredictionView calculate(List<TrendWarningDailyAverageRow> rows,
+                                                Map<Integer, AlertConfig> configs) {
         Map<String, List<TrendWarningDailyAverageRow>> byEmp = rows.stream()
                 .collect(Collectors.groupingBy(TrendWarningDailyAverageRow::getEmpCode,
                         LinkedHashMap::new, Collectors.toList()));
@@ -60,8 +62,10 @@ public class TrendWarningPredictionCalculator {
             List<TrendWarningMetricView> riskMetrics = new ArrayList<>();
             int maxRiskLevel = 0;
 
-            for (String metric : THRESHOLDS.keySet()) {
-                TrendWarningMetricView metricView = calculateMetricRisk(empRows, metric);
+            for (String metric : CONFIG_TYPES.keySet()) {
+                AlertConfig config = configs.get(CONFIG_TYPES.get(metric));
+                if (config == null || config.getEnabled() == null || config.getEnabled() != 1) continue;
+                TrendWarningMetricView metricView = calculateMetricRisk(empRows, metric, config);
                 if (metricView == null) {
                     continue;
                 }
@@ -96,7 +100,8 @@ public class TrendWarningPredictionCalculator {
         );
     }
 
-    private TrendWarningMetricView calculateMetricRisk(List<TrendWarningDailyAverageRow> rows, String metric) {
+    private TrendWarningMetricView calculateMetricRisk(List<TrendWarningDailyAverageRow> rows, String metric,
+                                                       AlertConfig config) {
         List<Double> values = extractValues(rows, metric);
         long validCount = values.stream().filter(v -> !Double.isNaN(v)).count();
         if (validCount < 2) return null;
@@ -106,11 +111,13 @@ public class TrendWarningPredictionCalculator {
 
         double slope = linearRegressionSlope(points);
         double lastValue = points.get(points.size() - 1)[1];
-        double[] threshold = THRESHOLDS.get(metric);
-        MetricRisk risk = calculateRisk(lastValue, slope, threshold[0], threshold[1]);
+        boolean temperature = "avg_temperature".equals(metric);
+        double scale = temperature ? 10.0 : 1.0;
+        double lowThreshold = config.getNormalMin() == null ? Double.NaN : config.getNormalMin().doubleValue() * scale;
+        double highThreshold = config.getNormalMax() == null ? Double.NaN : config.getNormalMax().doubleValue() * scale;
+        MetricRisk risk = calculateRisk(lastValue, slope, lowThreshold, highThreshold);
         if (risk.riskLevel() == 0) return null;
 
-        boolean temperature = "avg_temperature".equals(metric);
         double projectedValue = lastValue + slope * 7;
         double displayCurrent = temperature ? lastValue / 10.0 : lastValue;
         double displayProjected = temperature ? projectedValue / 10.0 : projectedValue;

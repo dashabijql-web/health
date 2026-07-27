@@ -5,12 +5,12 @@
     <header class="ac-hd">
       <div class="ac-hd-left">
         <span class="ac-live-dot"></span>
-        <h1 class="ac-hd-title">预警阈值配置</h1>
+        <h1 class="ac-hd-title">风险规则配置</h1>
       </div>
       <div class="ac-hd-kpis">
         <div class="ac-kpi">
           <span class="ac-kpi-n">{{ configList.length }}</span>
-          <span class="ac-kpi-l">配置总数</span>
+          <span class="ac-kpi-l">体征规则</span>
         </div>
         <div class="ac-kpi success">
           <span class="ac-kpi-n">{{ enabledCount }}</span>
@@ -30,6 +30,11 @@
               @click="activeRisk = tab.value">
         {{ tab.label }}
       </button>
+    </div>
+
+    <div class="ac-scope-note">
+      <strong>当前规则范围</strong>
+      <span>体征即时预警与趋势风险共用以下正常边界；SOS、跌倒、房颤等设备报警由手表主动上报，暂无数值阈值。</span>
     </div>
 
     <div v-loading="loading" class="config-grid">
@@ -248,6 +253,19 @@ onMounted(() => loadConfigList())
   gap: 16px;
   box-sizing: border-box;
 }
+
+.ac-scope-note {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border-left: 3px solid #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  color: #9bb6cc;
+  font-size: 12px;
+}
+.ac-scope-note strong { color: #d9f1ff; white-space: nowrap; }
 
 // ── 紧凑 Header ──
 .ac-hd {

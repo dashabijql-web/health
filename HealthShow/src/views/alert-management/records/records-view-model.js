@@ -23,7 +23,7 @@ export function createRecordsOverview() {
 }
 
 export function createRecordsSearchForm() {
-  return { dateRange: null, warningType: '', warningLevel: '', handleStatus: '', keyword: '' }
+  return { dateRange: null, warningType: '', warningLevel: '', handleStatus: 'handled', keyword: '' }
 }
 
 export function createRecordsPagination() {
@@ -66,6 +66,7 @@ export function buildExportRows(rows, { formatDate, levelLabel, warningHandledSt
     姓名: row.userName || '-',
     性别: row.gender === 1 ? '男' : row.gender === 2 ? '女' : '-',
     年龄: row.age ?? '-',
+    事件来源: sourceLabel(row.eventSource),
     预警类型: typeLabel(row.warningType),
     预警值: row.warningValue || '-',
     预警级别: levelLabel(row.warningLevel),
@@ -75,11 +76,16 @@ export function buildExportRows(rows, { formatDate, levelLabel, warningHandledSt
   }))
 }
 
+export function sourceLabel(source) {
+  return { HEALTH_THRESHOLD: '体征预警', DEVICE_ALARM: '设备报警', TREND_WARNING: '趋势风险' }[source] || '历史事件'
+}
+
 export const exportColumns = [
   { label: '预警时间', key: '预警时间' },
   { label: '姓名', key: '姓名' },
   { label: '性别', key: '性别' },
   { label: '年龄', key: '年龄' },
+  { label: '事件来源', key: '事件来源' },
   { label: '预警类型', key: '预警类型' },
   { label: '预警值', key: '预警值' },
   { label: '预警级别', key: '预警级别' },

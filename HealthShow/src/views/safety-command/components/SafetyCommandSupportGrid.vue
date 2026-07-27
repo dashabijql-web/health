@@ -143,7 +143,7 @@ const props = defineProps({
   trendPath: { type: Object, default: null },
   warningHandledRate: { type: Number, default: 0 },
   warningTrend: { type: Array, default: () => [] },
-  eventListTitle: { type: String, default: '开放事件' }
+  eventListTitle: { type: String, default: '未闭环预警' }
 })
 
 const loadedTypeTotal = computed(() => props.donutSegments.reduce((sum, item) => sum + Number(item.cnt || 0), 0))

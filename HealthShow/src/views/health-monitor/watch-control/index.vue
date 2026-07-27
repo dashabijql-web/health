@@ -118,7 +118,7 @@
                 <div class="wc-command-row">
                   <div>
                     <div class="wc-command-title">心率/血压测量周期</div>
-                    <div class="wc-command-meta"><el-tag effect="plain">BP86</el-tag><span>后台登录时默认设为 1 分钟，这里用于现场调整。</span></div>
+                    <div class="wc-command-meta"><el-tag effect="plain">BP86</el-tag><span>后台登录时关闭设备周期，并每 60 秒轮换触发一项测量；这里用于现场覆盖。</span></div>
                   </div>
                   <div class="wc-command-controls">
                     <el-switch v-model="healthPeriod.enabled" active-text="开启" inactive-text="关闭" />
@@ -132,7 +132,7 @@
                 <div class="wc-command-row">
                   <div>
                     <div class="wc-command-title">体温测量周期</div>
-                    <div class="wc-command-meta"><el-tag effect="plain">BP87</el-tag><span>后台登录时默认设为 1 分钟。</span></div>
+                    <div class="wc-command-meta"><el-tag effect="plain">BP87</el-tag><span>后台登录时关闭设备周期，避免与服务端轮换测量重叠。</span></div>
                   </div>
                   <div class="wc-command-controls">
                     <el-switch v-model="temperaturePeriod.enabled" active-text="开启" inactive-text="关闭" />
@@ -302,11 +302,11 @@ export default {
         offset: 8
       },
       healthPeriod: {
-        enabled: true,
+        enabled: false,
         minutes: 1
       },
       temperaturePeriod: {
-        enabled: true,
+        enabled: false,
         minutes: 1
       },
       sleepPeriod: {

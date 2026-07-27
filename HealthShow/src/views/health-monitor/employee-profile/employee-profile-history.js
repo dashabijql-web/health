@@ -48,24 +48,48 @@ export function formatHistoryBloodPressure(record) {
 export function buildHistoryChartOption(history, activeMetrics) {
   const points = history?.points || []
   const metrics = HISTORY_METRICS.filter((metric) => activeMetrics.includes(metric.key))
+  const rawRecords = history?.granularity === 'record'
   const hourly = history?.granularity === 'hour'
+  const chartPoints = rawRecords
+    ? points.filter((point) => metrics.some((metric) => point[metric.key] !== null && point[metric.key] !== undefined))
+    : points
   return {
     animation: false,
     color: metrics.map((metric) => metric.color),
     grid: { left: 52, right: 54, top: 46, bottom: 56 },
     tooltip: {
       trigger: 'axis',
+      triggerOn: 'mousemove|click',
+      confine: true,
+      axisPointer: {
+        type: 'line',
+        snap: true,
+        lineStyle: { color: '#7fa3bf', width: 1, type: 'dashed' }
+      },
       backgroundColor: '#0b172a',
       borderColor: '#26496c',
       textStyle: { color: '#eaf6ff' },
-      valueFormatter: (value) => value == null ? '--' : value
+      formatter: (params) => {
+        const entries = (Array.isArray(params) ? params : [params])
+          .filter((item) => item.value !== null && item.value !== undefined && item.value !== '')
+        if (!entries.length) return ''
+
+        const time = chartPoints[entries[0].dataIndex]?.time || entries[0].name || ''
+        const values = entries.map((item) => (
+          `${item.marker}${item.seriesName}<span style="float:right;margin-left:20px;font-weight:600">${item.value}</span>`
+        ))
+        return [`<div style="margin-bottom:4px">${time}</div>`, ...values].join('<br>')
+      }
     },
     legend: { top: 8, textStyle: { color: '#91b0ca' } },
-    dataZoom: points.length > 14 ? [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 8 }] : [],
+    dataZoom: chartPoints.length > 14 ? [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 8 }] : [],
     xAxis: {
       type: 'category',
-      data: points.map((point) => hourly ? point.time?.slice(5, 16) : point.time?.slice(5, 10)),
+      data: chartPoints.map((point) => rawRecords
+        ? point.time?.slice(5, 19)
+        : hourly ? point.time?.slice(5, 16) : point.time?.slice(5, 10)),
       boundaryGap: false,
+      axisPointer: { show: true, snap: true },
       axisLabel: { color: '#6f91ad', hideOverlap: true },
       axisLine: { lineStyle: { color: '#25415e' } }
     },
@@ -80,9 +104,9 @@ export function buildHistoryChartOption(history, activeMetrics) {
       name: `${metric.label} ${metric.unit}`.trim(),
       type: 'line',
       yAxisIndex: metric.yAxisIndex,
-      data: points.map((point) => point[metric.key]),
-      connectNulls: false,
-      showSymbol: points.length <= 31,
+      data: chartPoints.map((point) => point[metric.key]),
+      connectNulls: rawRecords,
+      showSymbol: rawRecords || chartPoints.length <= 31,
       symbolSize: 5,
       lineStyle: { width: 2 },
       emphasis: { focus: 'series' }

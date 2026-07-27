@@ -49,7 +49,7 @@
             <span class="sc-radar-ring ring-2"></span>
             <span class="sc-radar-ring ring-3"></span>
             <div class="sc-stage-core">
-              <span>开放事件</span>
+              <span>未闭环预警</span>
               <strong>{{ authoritativePendingCount }}</strong>
               <em>条待处置</em>
             </div>
@@ -136,7 +136,7 @@
     <SafetyCommandSupportGrid
       :donut-segments="donutSegments"
       :events="filteredEvents"
-      :event-list-title="activeEventFilter === 'all' ? '开放事件' : activeEventFilterLabel"
+      :event-list-title="activeEventFilter === 'all' ? '未闭环预警' : activeEventFilterLabel"
       :handled-count="handledCount"
       :pending-count="authoritativePendingCount"
       :trend7day-total="trend7dayTotal"
@@ -219,7 +219,7 @@ const {
 const route = useRoute()
 const router = useRouter()
 const activeEventFilter = ref('all')
-const activeEventFilterLabel = ref('全部开放事件')
+const activeEventFilterLabel = ref('全部未闭环预警')
 const departmentDrawerVisible = ref(false)
 const currentDepartment = ref(null)
 const queuedDepartmentEvent = ref(null)
@@ -300,7 +300,7 @@ const commandQueue = computed(() => {
   return [{
     id: 'safe-duty',
     title: '当前无紧急事件',
-    meta: activeEventFilter.value === 'all' ? '当前已加载范围内无开放事件' : `“${activeEventFilterLabel.value}”暂无匹配事件`,
+    meta: activeEventFilter.value === 'all' ? '当前已加载范围内无未闭环预警' : `“${activeEventFilterLabel.value}”暂无匹配事件`,
     action: '',
     tone: 'safe',
     event: null
@@ -334,12 +334,12 @@ const {
 
 function applyEventFilter(key, label) {
   activeEventFilter.value = key
-  activeEventFilterLabel.value = key === 'active-risk' ? '全部开放事件' : label
+  activeEventFilterLabel.value = key === 'active-risk' ? '全部未闭环预警' : label
 }
 
 function clearEventFilter() {
   activeEventFilter.value = 'all'
-  activeEventFilterLabel.value = '全部开放事件'
+  activeEventFilterLabel.value = '全部未闭环预警'
 }
 
 function handleStageAction(action) {

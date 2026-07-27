@@ -74,7 +74,9 @@ export const riskWarningPageRuntime = {
       try {
         const r = await getRiskWarningTypeDistribution()
         if (r.code === 200 && Array.isArray(r.data)) {
-          this.warningTypeOptions = r.data.map(item => item.type).filter(Boolean)
+          const types = r.data.map(item => item.type).filter(Boolean)
+          // 新库可以没有业务记录，保留默认类型选项，避免筛选菜单变成空白。
+          if (types.length) this.warningTypeOptions = types
         }
       } catch {}
     },

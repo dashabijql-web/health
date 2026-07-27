@@ -133,7 +133,7 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
         String columns = "user_code,heart_rate,blood_oxygen,temperature,blood_pressure_high," +
                 "blood_pressure_low,pressure,steps,calories,record_time";
         String tableSource = TableSourceUtil.healthRecordSource(start, end, columns);
-        String granularity = days <= 7L ? "hour" : "day";
+        String granularity = days <= 7L ? "record" : "day";
         List<EmployeeHealthHistoryRow> rows = baseMapper.selectEmployeeHistory(
                 tableSource, userCode.trim(), start.toString(), end.toString(), granularity);
         if (rows == null) rows = Collections.emptyList();

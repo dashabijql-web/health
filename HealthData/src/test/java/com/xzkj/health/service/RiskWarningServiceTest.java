@@ -48,9 +48,9 @@ class RiskWarningServiceTest {
                         "dangerCount", 7,
                         "warningCount", 13
                 ));
-        when(riskWarningMapper.getWarningList(null, null, null, null, null, "2026-05-01", "2026-05-07", 0, 10))
+        when(riskWarningMapper.getWarningList(null, null, null, null, null, null, null, "2026-05-01", "2026-05-07", 0, 10))
                 .thenReturn(List.of(warningRow()));
-        when(riskWarningMapper.countWarnings(null, null, null, null, null, "2026-05-01", "2026-05-07"))
+        when(riskWarningMapper.countWarnings(null, null, null, null, null, null, null, "2026-05-01", "2026-05-07"))
                 .thenReturn(1);
         when(riskWarningMapper.getWarningTrendByType(7))
                 .thenReturn(List.of(Map.of(
@@ -75,7 +75,7 @@ class RiskWarningServiceTest {
                 .thenReturn(List.of(Map.of("type", "心率异常", "count", 9)));
 
         RiskWarningOverviewView overview = riskWarningService.getWarningStats("2026-05-01", "2026-05-07");
-        RiskWarningPageView page = riskWarningService.getWarningList(null, null, null, null, null, "2026-05-01", "2026-05-07", 1, 10);
+        RiskWarningPageView page = riskWarningService.getWarningList(null, null, null, null, null, null, null, "2026-05-01", "2026-05-07", 1, 10);
         RiskWarningTrendView trend = riskWarningService.getWarningTrend(7);
         List<RiskWarningDeptStatView> deptStats = riskWarningService.getDeptWarningStats("2026-05-01", "2026-05-07");
         List<RiskWarningTypeCountView> typeDistribution = riskWarningService.getTypeDistribution();
@@ -116,6 +116,8 @@ class RiskWarningServiceTest {
         row.put("warningLevel", "高危");
         row.put("warningValue", "120");
         row.put("indicatorName", "heartRate");
+        row.put("eventSource", "HEALTH_THRESHOLD");
+        row.put("eventCode", "HEART_RATE");
         row.put("handled", false);
         row.put("createTime", "2026-05-07 10:00:00");
         return row;

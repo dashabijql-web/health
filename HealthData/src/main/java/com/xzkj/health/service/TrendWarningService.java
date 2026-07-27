@@ -22,12 +22,15 @@ public class TrendWarningService {
 
     private final TrendWarningMapper trendWarningMapper;
     private final TrendWarningPredictionCalculator predictionCalculator;
+    private final AlertConfigService alertConfigService;
     private final LocalTtlCache<TrendWarningPredictionView> predictCache = new LocalTtlCache<>();
 
     public TrendWarningService(TrendWarningMapper trendWarningMapper,
-                               TrendWarningPredictionCalculator predictionCalculator) {
+                               TrendWarningPredictionCalculator predictionCalculator,
+                               AlertConfigService alertConfigService) {
         this.trendWarningMapper = trendWarningMapper;
         this.predictionCalculator = predictionCalculator;
+        this.alertConfigService = alertConfigService;
     }
 
     public TrendWarningPredictionView predict() {
@@ -39,7 +42,7 @@ public class TrendWarningService {
 
         int days = 14;
         List<TrendWarningDailyAverageRow> rows = trendWarningMapper.getDailyAverages(healthRecordSource(days), days);
-        TrendWarningPredictionView result = predictionCalculator.calculate(rows);
+        TrendWarningPredictionView result = predictionCalculator.calculate(rows, alertConfigService.getConfigMap(null));
         predictCache.put(cacheKey, result, PREDICT_TTL);
         return result;
     }

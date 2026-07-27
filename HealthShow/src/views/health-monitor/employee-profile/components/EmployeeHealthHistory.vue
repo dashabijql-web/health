@@ -20,21 +20,46 @@
           :disabled-date="disableFuture"
           @change="applyCustomRange"
         />
+        <el-button
+          type="primary"
+          :loading="historyRefreshing"
+          :disabled="historyRefreshing"
+          @click="loadHistory"
+        >
+          <el-icon><Refresh /></el-icon>
+          查询
+        </el-button>
       </div>
     </div>
 
     <div class="ep-history-summary">
       <div><span>完整样本</span><strong>{{ trend.totalSamples || 0 }} 条</strong></div>
-      <div><span>曲线粒度</span><strong>{{ trend.granularity === 'hour' ? '小时均值' : '日均值' }}</strong></div>
+      <div><span>曲线粒度</span><strong>{{ trend.granularity === 'record' ? '原始记录' : trend.granularity === 'hour' ? '小时均值' : '日均值' }}</strong></div>
       <div><span>明细总数</span><strong>{{ recordTotal }} 条</strong></div>
     </div>
 
     <el-tabs v-model="activeTab" class="ep-history-tabs" @tab-change="handleTabChange">
       <el-tab-pane label="历史曲线" name="chart">
         <div class="ep-metric-switches">
-          <el-checkbox-group v-model="activeMetrics" @change="renderChart">
-            <el-checkbox-button v-for="metric in metrics" :key="metric.key" :value="metric.key">{{ metric.label }}</el-checkbox-button>
-          </el-checkbox-group>
+          <div class="ep-metric-toggle-grid" role="group" aria-label="历史曲线指标">
+            <label
+              v-for="metric in metrics"
+              :key="metric.key"
+              class="ep-metric-toggle"
+              :class="{ 'is-active': activeMetrics.includes(metric.key) }"
+              :style="{ '--metric-color': metric.color }"
+            >
+              <input v-model="activeMetrics" type="checkbox" :value="metric.key" @change="renderChart" />
+              <span class="ep-metric-toggle__state" aria-hidden="true">
+                <el-icon><Check /></el-icon>
+              </span>
+              <span class="ep-metric-toggle__copy">
+                <strong>{{ metric.label }}</strong>
+                <small>{{ metric.unit || '指数' }}</small>
+              </span>
+              <span class="ep-metric-toggle__trace" aria-hidden="true"></span>
+            </label>
+          </div>
         </div>
         <div class="ep-history-chart-wrap">
           <div ref="chartRef" class="ep-history-chart"></div>
@@ -72,6 +97,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Check, Refresh } from '@element-plus/icons-vue'
 import * as echarts from '@/utils/echarts-setup'
 import { getEmployeeHealthHistory, getHealthRecords } from '@/api/health'
 import {
@@ -79,13 +105,15 @@ import {
   buildHistoryChartOption,
   defaultHistoryRange,
   formatHistoryBloodPressure,
+  formatDate,
   formatHistoryTemperature,
   normalizeHistoryRecords
 } from '../employee-profile-history'
 
 const props = defineProps({
   employeeCode: { type: String, default: '' },
-  employeeName: { type: String, default: '' }
+  employeeName: { type: String, default: '' },
+  refreshToken: { type: Number, default: 0 }
 })
 
 const quickRanges = [{ label: '今日', days: 1 }, { label: '近7日', days: 7 }, { label: '近30日', days: 30 }]
@@ -93,25 +121,34 @@ const metrics = HISTORY_METRICS
 const activeDays = ref(7)
 const dateRange = ref(defaultHistoryRange(7))
 const activeTab = ref('chart')
-const activeMetrics = ref(['heartRate', 'bloodOxygen'])
+const activeMetrics = ref(metrics.map((metric) => metric.key))
 const loading = ref(false)
-const trend = ref({ points: [], totalSamples: 0, granularity: 'hour' })
+const trend = ref({ points: [], totalSamples: 0, granularity: 'record' })
 const records = ref([])
 const recordTotal = ref(0)
 const recordPage = ref(1)
 const recordSize = ref(20)
+const historyRefreshing = ref(false)
 const chartRef = ref(null)
 let chart = null
+let historyRequestInFlight = false
 
 const rangeLabel = computed(() => dateRange.value?.length === 2 ? `${dateRange.value[0]} 至 ${dateRange.value[1]}` : '--')
 const disableFuture = (date) => date.getTime() > Date.now()
 const value = (input) => input === null || input === undefined || input === '' ? '--' : input
 const unitValue = (input, unit) => value(input) === '--' ? '--' : `${input} ${unit}`
 
-async function loadHistory() {
+function isCurrentRange() {
+  return dateRange.value?.[1] === formatDate(new Date())
+}
+
+async function loadHistory({ background = false } = {}) {
   if (!props.employeeCode || dateRange.value?.length !== 2) return
   if (!validateRange()) return
-  loading.value = true
+  if (historyRequestInFlight) return
+  historyRequestInFlight = true
+  historyRefreshing.value = true
+  if (!background) loading.value = true
   try {
     const params = { userCode: props.employeeCode, startDate: dateRange.value[0], endDate: dateRange.value[1] }
     const [trendResult, recordResult] = await Promise.allSettled([
@@ -120,14 +157,16 @@ async function loadHistory() {
     ])
     trend.value = trendResult.status === 'fulfilled' && trendResult.value?.data
       ? trendResult.value.data
-      : { points: [], totalSamples: 0, granularity: 'hour' }
+      : { points: [], totalSamples: 0, granularity: 'record' }
     if (recordResult.status === 'fulfilled') applyRecords(recordResult.value?.data)
     else applyRecords(null)
     recordPage.value = 1
     await nextTick()
     renderChart()
   } finally {
-    loading.value = false
+    historyRequestInFlight = false
+    historyRefreshing.value = false
+    if (!background) loading.value = false
   }
 }
 
@@ -192,6 +231,9 @@ function renderChart() {
 }
 
 watch(() => props.employeeCode, () => void loadHistory())
+watch(() => props.refreshToken, (next, previous) => {
+  if (next !== previous && next > 0 && isCurrentRange()) void loadHistory({ background: true })
+})
 onMounted(() => void loadHistory())
 onBeforeUnmount(() => chart?.dispose())
 </script>
@@ -217,7 +259,118 @@ onBeforeUnmount(() => chart?.dispose())
 .ep-history-tabs :deep(.el-tabs__header) { margin: 0 0 12px; }
 .ep-history-tabs :deep(.el-tabs__item) { color: #7897b2; }
 .ep-history-tabs :deep(.el-tabs__item.is-active) { color: #40c4ff; }
-.ep-metric-switches { margin-bottom: 10px; }
+.ep-metric-switches {
+  margin-bottom: 12px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid #193554;
+  border-radius: 6px;
+  background:
+    linear-gradient(rgba(20, 61, 91, 0.16) 1px, transparent 1px),
+    #071326;
+  background-size: 100% 12px;
+}
+.ep-metric-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  gap: 8px;
+}
+.ep-metric-toggle {
+  position: relative;
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px 10px;
+  overflow: hidden;
+  border: 1px solid #24415f;
+  border-radius: 5px;
+  background: rgba(10, 25, 45, 0.92);
+  color: #7e9bb5;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+}
+.ep-metric-toggle:hover {
+  border-color: color-mix(in srgb, var(--metric-color) 58%, #24415f);
+  background: color-mix(in srgb, var(--metric-color) 7%, #0a192d);
+  color: #c8def0;
+}
+.ep-metric-toggle:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--metric-color) 72%, #ffffff);
+  outline-offset: 2px;
+}
+.ep-metric-toggle.is-active {
+  border-color: color-mix(in srgb, var(--metric-color) 68%, #26496c);
+  background: color-mix(in srgb, var(--metric-color) 13%, #0a192d);
+  color: #edf8ff;
+  box-shadow: inset 0 0 16px color-mix(in srgb, var(--metric-color) 10%, transparent), 0 0 12px color-mix(in srgb, var(--metric-color) 12%, transparent);
+}
+.ep-metric-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.ep-metric-toggle__state {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--metric-color) 42%, #31506d);
+  border-radius: 50%;
+  background: #09172a;
+  color: transparent;
+  box-shadow: inset 0 0 0 3px #09172a;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.ep-metric-toggle__state .el-icon { font-size: 12px; }
+.ep-metric-toggle.is-active .ep-metric-toggle__state {
+  background: var(--metric-color);
+  color: #06111f;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--metric-color) 80%, #ffffff), 0 0 10px color-mix(in srgb, var(--metric-color) 48%, transparent);
+}
+.ep-metric-toggle__copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ep-metric-toggle__copy strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ep-metric-toggle__copy small {
+  color: #587894;
+  font: 9px/1.2 var(--font-mono);
+}
+.ep-metric-toggle.is-active .ep-metric-toggle__copy small { color: color-mix(in srgb, var(--metric-color) 68%, #a9c4dc); }
+.ep-metric-toggle__trace {
+  position: absolute;
+  right: 9px;
+  bottom: 5px;
+  left: 38px;
+  height: 2px;
+  overflow: hidden;
+  background: #203a55;
+}
+.ep-metric-toggle__trace::after {
+  position: absolute;
+  inset: 0;
+  background: var(--metric-color);
+  box-shadow: 0 0 8px var(--metric-color);
+  content: '';
+  opacity: 0;
+  transform: translateX(-72%);
+  transition: opacity 160ms ease, transform 200ms ease;
+}
+.ep-metric-toggle.is-active .ep-metric-toggle__trace::after { opacity: 1; transform: translateX(0); }
 .ep-history-chart-wrap { position: relative; }
 .ep-history-chart { width: 100%; height: 390px; background: #081224; border: 1px solid #192d48; border-radius: 6px; }
 .ep-history-empty { position: absolute; inset: 0; display: grid; place-items: center; color: #56718d; font-size: 12px; pointer-events: none; }
@@ -231,8 +384,8 @@ onBeforeUnmount(() => chart?.dispose())
   .ep-history-filters :deep(.el-date-editor) { width: 100%; }
   .ep-history-summary { grid-template-columns: 1fr; gap: 6px; }
   .ep-history-chart { height: 330px; }
-  .ep-metric-switches { overflow-x: auto; padding-bottom: 4px; }
-  .ep-metric-switches :deep(.el-checkbox-group) { display: flex; width: max-content; }
+  .ep-metric-switches { padding: 8px; }
+  .ep-metric-toggle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ep-history-tabs :deep(.el-pagination) { justify-content: flex-start; overflow-x: auto; }
 }
 </style>

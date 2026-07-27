@@ -5,7 +5,7 @@
     <header class="sos-hd">
       <div class="sos-hd-left">
         <span class="sos-alarm-dot" :class="{ 'is-active': hasCritical }"></span>
-        <h1 class="sos-hd-title">SOS 紧急救援</h1>
+        <h1 class="sos-hd-title">设备紧急事件</h1>
       </div>
       <div class="sos-hd-kpis">
         <div class="sos-kpi" v-for="s in kpiItems" :key="s.label">
@@ -24,11 +24,11 @@
 
     <!-- ══ 报警条 ══ -->
     <div :class="['sos-alarm-bar', hasCritical ? 'sos-alarm-bar--active' : '']">
-      <span class="sos-alarm-icon">SOS</span>
+      <span class="sos-alarm-icon">ALM</span>
       <span class="sos-alarm-text">
         {{ hasCritical
-          ? `当前有 ${criticalCount} 条危险级预警未处理！`
-          : '当前无危险级预警，系统正常' }}
+          ? `当前有 ${criticalCount} 条高危设备报警未处理！`
+          : '当前无高危设备报警' }}
       </span>
       <span v-if="hasCritical" class="sos-alarm-blink">紧急处置</span>
     </div>
@@ -37,7 +37,7 @@
     <div class="sos-kpi-row">
       <div class="sos-kpi-card sos-kpi-card--red">
         <div class="sos-kpi-card-val">{{ criticalCount }}</div>
-        <div class="sos-kpi-card-label">危险未处理</div>
+        <div class="sos-kpi-card-label">高危待处置</div>
       </div>
       <div class="sos-kpi-card sos-kpi-card--orange">
         <div class="sos-kpi-card-val">{{ todayTotal }}</div>
@@ -49,15 +49,25 @@
       </div>
       <div class="sos-kpi-card sos-kpi-card--blue">
         <div class="sos-kpi-card-val">{{ affectedPersons }}</div>
-        <div class="sos-kpi-card-label">涉及人员数</div>
+        <div class="sos-kpi-card-label">当前页人员</div>
       </div>
     </div>
 
-    <!-- ══ 危险预警列表 ══ -->
+    <div class="sos-event-filters">
+      <el-radio-group v-model="eventCode" size="small" @change="changeEventCode">
+        <el-radio-button value="">全部设备报警</el-radio-button>
+        <el-radio-button value="SOS">SOS</el-radio-button>
+        <el-radio-button value="FALL">跌倒</el-radio-button>
+        <el-radio-button value="AFIB">房颤</el-radio-button>
+        <el-radio-button value="TAMPER">拆卸</el-radio-button>
+      </el-radio-group>
+    </div>
+
+    <!-- ══ 设备报警列表 ══ -->
     <div class="sos-section-title">
       <span class="sos-st-bar"></span>
-      危险级预警事件
-      <span class="sos-st-sub">（{{ criticalCount }} 条待处理，按时间倒序）</span>
+      {{ eventCode ? eventCodeLabel(eventCode) : '设备主动报警' }}
+      <span class="sos-st-sub">（共 {{ pagination.total }} 条，按时间倒序）</span>
     </div>
 
     <div class="sos-list" v-loading="loading"
@@ -81,8 +91,9 @@
             <span class="sos-code">工号 {{ item.userCode || item.empCode || '--' }}</span>
           </div>
           <div class="sos-item-row2">
-            <span class="sos-metric">{{ item.indicatorName || item.warningType || '--' }}</span>
-            <span class="sos-value">{{ item.indicatorValue || '--' }}</span>
+            <span class="sos-metric">{{ eventCodeLabel(item.eventCode) }}</span>
+            <span class="sos-value">{{ item.warningType || '--' }}</span>
+            <span v-if="item.deviceImei" class="sos-code">设备 {{ item.deviceImei }}</span>
             <span class="sos-time">{{ formatTime(item.createTime) }}</span>
           </div>
         </div>
@@ -107,7 +118,7 @@
 
       <div v-if="!loading && criticalList.length === 0" class="sos-empty">
         <span class="sos-empty-icon">OK</span>
-        <span>当前没有危险级预警，所有人员状态正常</span>
+        <span>当前筛选条件下没有设备主动报警</span>
       </div>
     </div>
 
@@ -144,6 +155,7 @@ export default {
       todayHandled: 0,
       affectedPersons: 0,
       lastUpdateTime: '--',
+      eventCode: '',
       pagination: { page: 1, size: 30, total: 0 }
     }
   },
@@ -153,7 +165,7 @@ export default {
     },
     kpiItems() {
       return [
-        { label: '危险未处理', value: this.criticalCount,   cls: 'kpi-red' },
+        { label: '高危待处置', value: this.criticalCount,   cls: 'kpi-red' },
         { label: '今日触发',   value: this.todayTotal,      cls: 'kpi-orange' },
         { label: '今日已处置', value: this.todayHandled,     cls: 'kpi-green' },
         { label: '涉及人员',   value: this.affectedPersons,  cls: 'kpi-blue' }
@@ -179,12 +191,12 @@ export default {
         const res = await getRiskWarningList({
           page: this.pagination.page,
           size: this.pagination.size,
-          level: '3'
+          eventSource: 'DEVICE_ALARM',
+          eventCode: this.eventCode || undefined
         })
         if (res.code === 200) {
           this.criticalList = (res.data?.list || res.data?.records || []).map(r => ({ ...r, _loading: false }))
           this.pagination.total = res.data?.total || 0
-          this.criticalCount = this.criticalList.filter(r => !r.handled).length
         }
       } finally {
         this.loading = false
@@ -193,12 +205,14 @@ export default {
     async fetchTodayStats() {
       try {
         const today = dayjs().format('YYYY-MM-DD')
-        const [allRes, handledRes] = await Promise.allSettled([
-          getRiskWarningList({ page: 1, size: 1, level: '3', startDate: today, endDate: today }),
-          getRiskWarningList({ page: 1, size: 1, level: '3', handled: true, startDate: today, endDate: today })
+        const [allRes, handledRes, criticalRes] = await Promise.allSettled([
+          getRiskWarningList({ page: 1, size: 1, eventSource: 'DEVICE_ALARM', startDate: today, endDate: today }),
+          getRiskWarningList({ page: 1, size: 1, eventSource: 'DEVICE_ALARM', handled: true, startDate: today, endDate: today }),
+          getRiskWarningList({ page: 1, size: 1, eventSource: 'DEVICE_ALARM', level: '高危', handled: false })
         ])
         this.todayTotal = allRes.status === 'fulfilled' && allRes.value.code === 200 ? (allRes.value.data?.total || 0) : 0
         this.todayHandled = handledRes.status === 'fulfilled' && handledRes.value.code === 200 ? (handledRes.value.data?.total || 0) : 0
+        this.criticalCount = criticalRes.status === 'fulfilled' && criticalRes.value.code === 200 ? (criticalRes.value.data?.total || 0) : 0
         // 涉及人员：去重
         const persons = new Set(this.criticalList.map(r => r.userCode || r.empCode).filter(Boolean))
         this.affectedPersons = persons.size
@@ -207,7 +221,7 @@ export default {
     async handleItem(item) {
       item._loading = true
       try {
-        await handleRiskWarning(item.id)
+        await handleRiskWarning(item.id, { createTime: item.createTime, handleRemark: '设备报警确认处置' })
         item.handled = true
         this.criticalCount = Math.max(0, this.criticalCount - 1)
         this.$message.success('已标记处置')
@@ -219,6 +233,13 @@ export default {
     },
     goToProfile(item) {
       this.$router.push({ path: '/health-monitor/employee-profile', query: { userCode: item.userCode || item.empCode } })
+    },
+    changeEventCode() {
+      this.pagination.page = 1
+      this.fetchCritical()
+    },
+    eventCodeLabel(code) {
+      return { SOS: 'SOS 求救', FALL: '跌倒报警', AFIB: '房颤报警', TAMPER: '拆卸报警', INFRARED: '红外报警', DEVICE_UNKNOWN: '其他设备报警' }[code] || '设备报警'
     },
     formatTime(t) {
       if (!t) return '--'
@@ -243,6 +264,62 @@ export default {
   flex-direction: column;
   font-family: 'Microsoft YaHei', sans-serif;
   color: #c8d8e8;
+}
+
+.sos-event-filters {
+  flex-shrink: 0;
+  padding: 0 22px;
+
+  :deep(.el-radio-group) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    background: rgba(20, 24, 48, 0.82);
+    border: 1px solid #232b4d;
+    border-radius: 8px;
+  }
+
+  :deep(.el-radio-button) {
+    margin: 0;
+  }
+
+  :deep(.el-radio-button__inner) {
+    min-width: 58px;
+    padding: 6px 12px;
+    border: 1px solid transparent !important;
+    border-radius: 5px !important;
+    background: transparent;
+    box-shadow: none !important;
+    color: #7eb8d4;
+    font-size: 12px;
+    line-height: 18px;
+    transition: background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
+  }
+
+  :deep(.el-radio-button__inner:hover) {
+    background: rgba(0, 212, 255, 0.08);
+    border-color: rgba(0, 212, 255, 0.22) !important;
+    color: #d9f3ff;
+  }
+
+  :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+    background: rgba(0, 212, 255, 0.14);
+    border-color: rgba(0, 212, 255, 0.5) !important;
+    box-shadow: inset 0 0 0 1px rgba(0, 212, 255, 0.12), 0 0 12px rgba(0, 212, 255, 0.12) !important;
+    color: #d9f7ff;
+    font-weight: 700;
+  }
+
+  :deep(.el-radio-button__original-radio:focus-visible + .el-radio-button__inner) {
+    outline: 2px solid rgba(0, 212, 255, 0.65);
+    outline-offset: 2px;
+  }
+
+  :deep(.el-radio-button__original-radio:disabled + .el-radio-button__inner) {
+    background: transparent;
+    color: #4a5578;
+  }
 }
 
 // ── Header ──
@@ -558,6 +635,23 @@ export default {
   .sos-kpi { padding: 4px 12px; }
   .sos-hd-time { display: none; }
   .sos-kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .sos-event-filters {
+    padding: 0 12px;
+
+    :deep(.el-radio-group) {
+      display: flex;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    :deep(.el-radio-button) {
+      flex: 1 1 calc(50% - 3px);
+    }
+
+    :deep(.el-radio-button__inner) {
+      width: 100%;
+    }
+  }
   .sos-alarm-bar { margin: 0 6px; padding: 8px 14px; }
   .sos-list {
     overflow: visible !important;

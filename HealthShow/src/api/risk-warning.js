@@ -4,12 +4,8 @@
  * 对应后端 Controller：RiskWarningController（/health/risk-warning/...）
  *
  * 【预警类型说明】
- *   - SOS：员工主动求救（手表 SOS 按钮）
- *   - fall：跌倒检测（加速度传感器）
- *   - heartRate：心率异常（过高/过低）
- *   - bloodOxygen：血氧偏低（< 95%）
- *   - temperature：体温异常（> 37.5°C 或 < 36.0°C）
- *   - staticAlert：长时间静止不动（可能晕倒）
+ * eventSource 区分 HEALTH_THRESHOLD、DEVICE_ALARM、TREND_WARNING；
+ * eventCode 使用稳定代码区分 SOS、FALL、HEART_RATE 等具体事件。
  *
  * 主要用途：
  *   - 安全指挥中心（index.vue）：实时事件列表、紧急预警横幅
@@ -42,6 +38,8 @@ export function getRiskWarningOverview(startDate, endDate) {
  * @param {Object} params 查询参数
  * @param {String} params.level 预警级别
  * @param {Boolean} params.handled 是否已处理
+ * @param {String} params.eventSource 事件来源
+ * @param {String} params.eventCode 事件代码
  * @param {Number} params.page 页码
  * @param {Number} params.size 每页条数
  */

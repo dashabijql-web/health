@@ -95,10 +95,31 @@
   &:focus { border-color:rgba(0,212,255,.5); }
 }
 .rw-filter-select {
-  height:26px; padding:0 6px;
-  background:rgba(0,212,255,.06); border:1px solid rgba(0,212,255,.2);
-  border-radius:4px; color:$white; font-size:11px; outline:none; cursor:pointer;
-  option { background:#0d1228; color:$white; }
+  width:112px;
+  flex-shrink:0;
+  :deep(.el-select__wrapper),
+  :deep(.el-input__wrapper) {
+    min-height:26px;
+    padding:0 8px;
+    background:rgba(0,212,255,.06);
+    border:1px solid rgba(0,212,255,.2);
+    border-radius:4px;
+    box-shadow:none;
+    color:$white;
+    cursor:pointer;
+  }
+  :deep(.el-select__selected-item),
+  :deep(.el-select__placeholder),
+  :deep(.el-input__inner) {
+    color:$white;
+    font-size:11px;
+  }
+  :deep(.el-select__caret) { color:$accent; }
+  :deep(.el-select__wrapper.is-focused),
+  :deep(.el-input__wrapper.is-focus) {
+    border-color:rgba(0,212,255,.55);
+    box-shadow:0 0 0 1px rgba(0,212,255,.12);
+  }
 }
 .rw-scroll-btn {
   height:26px; padding:0 10px;
@@ -394,7 +415,7 @@
   .rw-ph { height:auto; min-height:36px; flex-wrap:wrap; align-items:flex-start; padding:8px 10px; }
   .rw-filter-bar { width:100%; margin-left:0; flex-wrap:wrap; }
   .rw-filter-input,
-  .rw-filter-select { flex:1 1 calc(50% - 6px); min-width:130px; }
+  .rw-filter-select { flex:1 1 calc(50% - 6px); min-width:130px; width:auto; }
   .rw-scroll-btn,
   .rw-export-btn,
   .rw-batch-btn { flex:0 0 auto; }

@@ -87,14 +87,16 @@
               <span class="rw-rt-total">共 {{ totalWarnings }} 条</span>
               <div class="rw-filter-bar">
                 <input v-model="filterName" class="rw-filter-input" placeholder="姓名/工号/部门" @keyup.enter="applyListFilters" />
-                <select v-model="filterLevel" class="rw-filter-select" @change="applyListFilters">
-                  <option value="">全部级别</option>
-                  <option value="高危">高危</option><option value="中危">中危</option><option value="低危">低危</option>
-                </select>
-                <select v-model="filterType" class="rw-filter-select" @change="applyListFilters">
-                  <option value="">全部类型</option>
-                  <option v-for="t in warningTypes" :key="t" :value="t">{{ t }}</option>
-                </select>
+                <el-select v-model="filterLevel" class="rw-filter-select" popper-class="rw-filter-select-popper" size="small" @change="applyListFilters">
+                  <el-option label="全部级别" value="" />
+                  <el-option label="高危" value="高危" />
+                  <el-option label="中危" value="中危" />
+                  <el-option label="低危" value="低危" />
+                </el-select>
+                <el-select v-model="filterType" class="rw-filter-select" popper-class="rw-filter-select-popper" size="small" @change="applyListFilters">
+                  <el-option label="全部类型" value="" />
+                  <el-option v-for="t in warningTypes" :key="t" :label="t" :value="t" />
+                </el-select>
                 <button class="rw-scroll-btn" @click="applyListFilters">查询</button>
                 <button class="rw-scroll-btn" @click="toggleAutoScroll">
                   {{ autoScrollPaused ? '继续滚动' : '暂停滚动' }}
@@ -280,5 +282,24 @@ export default {
   .el-drawer__header { background:rgba(0,6,24,.8)!important; border-bottom:1px solid rgba(0,212,255,.15)!important; margin-bottom:0!important; padding:16px 20px!important; .el-drawer__title{color:#e8f4ff!important;font-size:15px!important;font-weight:600!important;} }
   .el-drawer__close-btn { color:#6a88ab!important; &:hover{color:#00d4ff!important;} }
   .el-drawer__body { padding:0!important; background:#0d1228!important; }
+}
+
+.rw-filter-select-popper {
+  background:#0d1228 !important;
+  border:1px solid rgba(0,212,255,.24) !important;
+  box-shadow:0 8px 24px rgba(0,0,0,.4) !important;
+  .el-select-dropdown__list { padding:4px; }
+  .el-select-dropdown__item {
+    height:30px;
+    padding:0 10px;
+    border-radius:3px;
+    color:#a8c5e6;
+    font-size:12px;
+    line-height:30px;
+    &.hover,
+    &:hover { background:rgba(0,212,255,.1); color:#e8f4ff; }
+    &.selected { background:rgba(0,212,255,.16); color:#d9f7ff; font-weight:700; }
+  }
+  .el-popper__arrow::before { background:#0d1228 !important; border-color:rgba(0,212,255,.24) !important; }
 }
 </style>

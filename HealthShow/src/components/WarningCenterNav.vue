@@ -2,8 +2,8 @@
   <div class="wcn-wrap">
     <div class="wcn-head">
       <div>
-        <div class="wcn-title">预警中心</div>
-        <div class="wcn-sub">总览、待处理、处置、阈值与紧急事件统一入口</div>
+        <div class="wcn-title">风险事件中心</div>
+        <div class="wcn-sub">体征预警、设备报警与趋势风险共用处置入口</div>
       </div>
     </div>
     <div class="wcn-tabs">
@@ -30,9 +30,9 @@ const route = useRoute()
 
 const items = [
   { path: '/health-monitor/risk-warning', label: '总览', icon: TrendCharts, matches: ['/health-monitor/risk-warning'] },
-  { path: '/alert-management/notifications', label: '待处理', icon: Bell, matches: ['/alert-management/notifications'] },
+  { path: '/alert-management/notifications', label: '待办事件', icon: Bell, matches: ['/alert-management/notifications'] },
   { path: '/alert-management/records', label: '处置记录', icon: Document, matches: ['/alert-management/records'] },
-  { path: '/alert-management/config', label: '阈值配置', icon: Setting, matches: ['/alert-management/config'] },
+  { path: '/alert-management/config', label: '规则配置', icon: Setting, matches: ['/alert-management/config'] },
   { path: '/alert-management/sos', label: '紧急事件', icon: WarningFilled, matches: ['/alert-management/sos'] }
 ]
 

@@ -51,7 +51,7 @@ BEGIN
         PRINT N'表已存在，跳过: health_record_' + @suffix;
     END
 
-    -- warning_record_YYYYMM（结构不变，保持原样）
+    -- warning_record_YYYYMM
     IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'warning_record_' + @suffix)
     BEGIN
         SET @sql = N'
@@ -62,6 +62,10 @@ BEGIN
             [indicator_name]  NVARCHAR(50)  NOT NULL,
             [indicator_value] NVARCHAR(50)  NOT NULL,
             [warning_level]   NVARCHAR(20)  NOT NULL,
+            [event_source]    VARCHAR(32)   NOT NULL,
+            [event_code]      VARCHAR(64)   NOT NULL,
+            [device_imei]     VARCHAR(32)   NULL,
+            [threshold_snapshot] NVARCHAR(1000) NULL,
             [is_handled]      BIT           NOT NULL CONSTRAINT [df_wr_' + @suffix + N'_ih] DEFAULT 0,
             [handle_time]     DATETIME      NULL,
             [handle_by]       NVARCHAR(50)  NULL,
@@ -77,6 +81,8 @@ BEGIN
             ON [dbo].[warning_record_' + @suffix + N'] (user_code);
         CREATE NONCLUSTERED INDEX [idx_wr_' + @suffix + N'_time]
             ON [dbo].[warning_record_' + @suffix + N'] (create_time);
+        CREATE NONCLUSTERED INDEX [idx_wr_' + @suffix + N'_source_code]
+            ON [dbo].[warning_record_' + @suffix + N'] (event_source, event_code, create_time);
         ';
         EXEC sp_executesql @sql;
         PRINT N'已创建: warning_record_' + @suffix;

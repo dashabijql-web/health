@@ -1,527 +1,265 @@
 # AGENTS.md
 
-## 定位
+本文件是 `health` monorepo 唯一的项目协作与运行事实源，根目录 `README.md` 仅作为项目概览和快速入口。代码、配置和实际运行结果优先于本文；发现漂移时先修正代码或配置，再更新本文。除 `README.md` 外，仓库内不再新增其他 Markdown 文档，测试产生的临时 Markdown 产物在交付前清理。
 
-这是 `D:/Health` 工作区的项目级协作护栏与当前高优先级事实。它既记录当前状态，也约束启动、测试、双库和 runner 协作；如果代码、流程或工作树变化，应优先更新这里，而不是继续把关键信息散落到单次运行产物里。
+## 仓库边界与协作规则
 
-遇到问题时，先查本地日志、报错和当前配置定位现象；同时查官方文档、GitHub issues 和既有案例，结论以本地证据为准，优先采用已验证的解决方案，不盲猜。
+- 根目录是唯一 Git 仓库，远端为 `https://github.com/dashabijql-web/health.git`；`HealthShow` 和 `HealthData` 是子目录，不作为独立仓库操作。
+- 所有 `git status`、`git diff`、提交、回滚、tag 和推送都在根目录执行。不要恢复旧的双仓工作流或旧分支名。
+- 改动前先查看本次任务范围内的现有工作树，保留用户已有改动，不做无关回滚。任务结束先检查 `git status` 和 `git diff --check`。
+- GitHub HTTPS 凭证只从用户机器上的本地凭证文件按需读取，不写入代码、日志、提交信息或本文，也不在输出中显示凭证内容。未得到明确要求时不改变 `origin` 地址、不自动提交或推送。
+- 修改前端页面、后端接口、双库路由、协议或测试入口时，本文是唯一应同步更新的项目文档。
+- 不要把固定日期、某次 run id、一次性截图路径、旧分支状态或“当前工作树有哪些未提交文件”写成长期事实。
 
-## 仓库边界
+## 项目结构
 
-- 当前工作区按单仓库（monorepo）运行；根目录是唯一 git 仓库。
-- `HealthShow` 和 `HealthData` 现在是 monorepo 子目录，不再作为独立 git 仓库处理。
-- 所有 `git status`、`git diff`、提交、回滚、打 tag、推送，都必须在根目录执行。
-- 每完成一个明确任务后，必须先在根目录核对 `git status`，只提交本次任务已确认的文件，再 `push` 到当前 monorepo 远端。
-- 即使任务只改动 `HealthShow` 或只改动 `HealthData`，提交与推送也仍然在根目录完成；不要回退到旧双仓工作流。
-- 旧 `health.git` / `health-backend.git` 只作为历史来源或回退参考，不再作为新开发提交入口。
-- GitHub HTTPS token 固定存放在 `C:\Users\j\Desktop\githubtoken.txt`；WSL 路径为 `/mnt/c/Users/j/Desktop/githubtoken.txt`。
-- 需要执行 `git push` 时，优先从上述本地文件一次性读取 token 完成认证；不要把 token 内容写入仓库文件、终端日志、提交信息、测试产物或 `AGENTS.md`。
-- 如无特殊说明，不修改 `origin` 永久地址；优先使用一次性 header 或一次性凭证方式完成当前 push。
-- 根级 `AGENTS.md` 属于 monorepo 工作区护栏文件，更新后应随 monorepo 一并提交和推送。
-
-## 信息优先级
-
-1. 当前代码与配置文件
-2. 本文件
-3. `D:/Health/HEALTH_LATEST_COMPLETE_TEST_FLOW_20260510.md`
-4. `D:/Health/HEALTH_EXECUTION_ENTRY.md`
-5. `D:/Health/HEALTH_ULTIMATE_FLOW.md`
-6. `D:/Health/tests/competitor-improvement-plan.md`
-7. `D:/Health/HEALTH_AUTONOMOUS_EVOLUTION_RUNBOOK.md`
-8. `D:/Health/HEALTH_TEST_METHOD.md`
-9. `D:/Health/HEALTH_TEST_TOOLCHAIN_GUIDE.md`
-10. `D:/Health/旧库项目重新评估结果.md`
-11. `D:/Health/旧库目标达成实施计划.md`
-12. `D:/Health/旧库评估过程方法与踩坑记录.md`
-13. `D:/Health/项目重新评估结果.md`
-14. `D:/Health/目标达成实施计划.md`
-15. `D:/Health/docs/archive/历史归档-HEALTH_HANDOFF.md`
-16. `D:/Health/CLAUDE.md`
-17. `D:/Health/HealthShow/CLAUDE.md`
-18. `D:/Health/HealthShow/TECHNICAL_DOCS.md`
-19. `D:/Health/HealthShow/dashboard_snapshot.md`、`D:/Health/HealthShow/real-time-snapshot.md`、`D:/Health/HealthShow/tests/e2e/artifacts/` 下最近一轮的 `summary.md` / `auth-summary.md`
-
-说明：
-
-- 快照类 md 是验证产物，不是架构规范。
-- 旧文档与代码冲突时，一律以代码为准。
-- 涉及测试编排、Hermes/OpenClaw/Codex 分工、页面截图、数据密度、新库/旧库验收、runner 调用和测试报告时，先读 `D:/Health/HEALTH_LATEST_COMPLETE_TEST_FLOW_20260510.md`。
-- 涉及竞品雷达和自主优化时，再读 `D:/Health/HEALTH_AUTONOMOUS_EVOLUTION_RUNBOOK.md`。
-- `D:/Health/HEALTH_TEST_METHOD.md` 和 `D:/Health/HEALTH_TEST_TOOLCHAIN_GUIDE.md` 保留为细节参考，不再作为第一执行入口。
-- 2026-05-08 之后，新开 goal-mode Codex 应以 `目标达成实施计划.md` 为主执行入口；`docs/archive/历史归档-治理清单.md` 和 `docs/archive/历史归档-CODEX_MULTI_DAY_TASKBOOK.md` 是历史总表与第一轮手册，不要从头机械重跑已完成 phase。
-- 如果目标是“按旧库/模拟器/演示数据解决页面空组件、性能、旧库功能闭环”，新开 goal-mode Codex 应改以 `旧库目标达成实施计划.md` 为主执行入口，并先确认 `audit:data` 为 `data_source: old`。
-
-## 当前项目拆分
-
-- 前端：`D:/Health/HealthShow`
-  - Vue 3 + Vite 5 + Vuex 4 + Vue Router 4 + Element Plus + ECharts
-  - 开发端口：`9528`
-- 后端：`D:/Health/HealthData`
-  - Spring Boot `3.2.12` + Java `17` + MyBatis-Plus + Sa-Token + Redis + Netty + SQL Server
-  - HTTP：`/health`，默认端口 `8080`
-  - TCP：`9000`
-  - 2026-05-06 起支持双库路由：老库 `health` / 新库 `health_new`
-
-## 常用启动命令
-
-WSL 首选入口：
-
-```bash
-# 一次性拉起后端 + 前端 + 模拟器
-bash /home/j/code/health/tools/health-wsl-stack.sh all start
-
-# WSL 原生 full-stack runner
-python3 /home/j/code/health/HealthShow/tests/run-full-stack-local.py --data-source both
-
-# WSL detached runner
-python3 /home/j/code/health/tools/start-health-runner.py --data-source both
-
-# 根级 WSL loop runner
-python3 /home/j/code/health/tests/run-health-loop.py --profile full --data-source both
-
-# 查看状态
-bash /home/j/code/health/tools/health-wsl-stack.sh status
-
-# 停止全部
-bash /home/j/code/health/tools/health-wsl-stack.sh all stop
+```text
+health/
+├── HealthShow/                     Vue 3 前端
+├── HealthData/                     Spring Boot 后端
+├── firmware/esp32c3-wifi-watch/   ESP32-C3 手表原型
+├── tools/                          WSL/Mac 启动、runner、抓包和探针
+└── tests/                          根级 loop runner 与测试数据
 ```
 
-说明：
+前端技术栈是 Vue 3、Vite 5、Vuex 4、Vue Router 4、Element Plus、ECharts。后端是 Spring Boot `3.2.12`、Java 17、MyBatis-Plus `3.5.7`、Sa-Token `1.44.0`、Redis、Netty、SQL Server 和 Actuator。前端依赖安装目前可能报告 npm vulnerabilities；文档清理任务不要顺手升级依赖。
 
-- 本地开发、联调、full-stack 回归默认以 WSL 链路为准。
-- 旧 Windows PowerShell 启动脚本已删除；历史文档里出现的旧脚本名只作归档参考，不再作为执行入口。
-- watch capture 也优先走 WSL Python 入口：
-  - `python3 /home/j/code/health/tools/watch-capture/run_three_hour_capture.py`
-  - `python3 /home/j/code/health/tools/watch-capture/run_three_hour_backend_debug_capture.py`
+## 端口与地址
 
-WSL 手动分开启动：
+| 服务 | 默认地址 | 作用 |
+| --- | --- | --- |
+| 前端 | `http://localhost:9528/` | Vite 开发服务器 |
+| 后端 HTTP | `http://localhost:8080/health` | Spring Boot API |
+| 后端健康 | `http://localhost:8080/health/actuator/health` | 顶层 `status=UP` 才算可用 |
+| 后端指标 | `http://localhost:8080/health/actuator/metrics` | Micrometer 指标 |
+| 手表 TCP | `127.0.0.1:9000` | Netty 手表协议 |
+| 手表 SCTP | `9001` | 默认关闭，仅 Linux 生产按需启用 |
+| Redis | `127.0.0.1:6379` | 手表数据缓冲和 Sa-Token 存储 |
+| SQL Server | `127.0.0.1:1433` | 双库数据库 |
 
-```bash
-# 加载 WSL 工具链探测
-source /home/j/code/health/tools/health-wsl-env.sh
+前端 `/dev-api/*` 由 Vite 代理到后端 `/health/*`，前端业务代码不应绕过 `HealthShow/src/utils/request.js` 直接创建请求客户端。
 
-# 后端
-cd /home/j/code/health/HealthData
-SERVER_PORT=8080 NETTY_SERVER_PORT=9000 \
-"$JAVA_HOME/bin/java" -cp "target/classes:$(cat target/runtime-classpath.txt)" \
-  com.xzkj.health.HealthApplication
+## 登录与权限
 
-# 前端
-cd /home/j/code/health/HealthShow
-npm run dev -- --host 0.0.0.0 --port 9528
+- 本地默认可登录账号是 `admin / admin123`；登录页也预填该账号。实际部署应通过数据库和环境变量管理密码，不要把生产密码写进仓库。
+- `POST /health/auth/login` 校验账号密码并由 Sa-Token 生成 token。前端用 Cookie `User-Token` 保存 token，后续请求从 Cookie 读取并放入 `satoken` 请求头；token 不以 localStorage 作为主存储。
+- `/auth/login`、`/auth/logout` 和 `/error` 是认证白名单；其他业务请求必须通过 Sa-Token 登录校验。
+- 数据源过滤器早于 MVC 认证拦截器执行。需要判断切库权限时，必须直接从当前请求的 `satoken` header 或 Sa-Token cookie 解析用户，不能只依赖当前线程的 `StpUtil.isLogin()`。
+- CORS 默认允许 `http://localhost:9528` 和 `http://127.0.0.1:9528`，允许凭证和自定义 `satoken`、`X-Health-Data-Source` 请求头；生产环境应收紧来源。
 
-# 模拟器
-cd /home/j/code/health/HealthShow
-python3 watch_tcp_simulator_1000.py
+## 前端路由与功能域
+
+路由事实源是 `HealthShow/src/router/app-routes.mjs`、`health-monitor.mjs` 和 `alert-management.mjs`。页面通过 Layout 懒加载，权限码来自后端权限列表。
+
+- 安全指挥中心：`/safety-command/index`
+- 健康监测：`/health-monitor/dashboard`、`workbench`、`real-time`、`heart-rate`、`pressure`、`blood-pressure`、`blood-oxygen`、`risk-warning`、`employee-archive`、`mine-entry`、`report-center`、`trend-warning`
+- 隐藏/辅助页面：`/health-monitor/sleep`、`employee-profile`、`health-portrait`、`watch-raw`、`watch-control`
+- 预警管理：`/alert-management/notifications`、`sos`、`config`、`records`
+- 后台管理：`/admin/device-list`、`user-list`、`role`、`department`、`job-type`
+- 独立页面：`/ai-chat/index`
+- 历史入口 `/command-center`、`/monitoring-center`、`/warning-center`、`/people-center`、`/report-ai` 等只做隐藏重定向，不新增第二套页面实现。
+
+灰度开关 `VITE_SAFETY_COMMAND_V2` 和 `VITE_UNIFIED_CONTROL_V2` 默认 `true`。设为 `false` 并重新构建时，公共路径保持不变并切换到可构建的 legacy 页面。
+
+## 后端数据流
+
+手表数据流为：TCP 字节流 -> `WatchProtocolDecoder` -> `WatchDataHandler`/协议处理器 -> 设备与人员绑定解析 -> `DataProcessService` 及 `service/watch/*` -> Redis 缓冲 -> 批量写入 SQL Server 月分表 -> 阈值判断和预警记录。高频设备数据不得在 Netty 线程中同步执行大批量数据库写入。
+
+- `DataProcessService` 负责外部协议入口；设备上下文、落库、健康预警和原始报文职责位于 `service/watch/*`。
+- Redis 队列按数据源隔离：`health:buffer:old`、`health:buffer:new`；失败重试和 dead-letter key 也带数据源后缀。缓冲刷写默认 `@Scheduled(fixedDelay = 5000)`，队列满时使用有界 `taskExecutor` 回压，线程名前缀为 `watch-data-`。
+- 健康流水表按月命名：`health_record_YYYYMM`、`warning_record_YYYYMM`；月表调度器提前建表并执行 `sp_update_monthly_views`。新增健康字段时必须同步月表、视图、存储过程、实体、Mapper INSERT、分月直查 SQL、Service 返回值和前端绑定。
+- 动态表名只能来自 `TableNameUtil` 或已校验的月表白名单，禁止将用户输入直接拼接 SQL。
+
+## 双库语义
+
+| 逻辑源 | 数据库 | 用途 |
+| --- | --- | --- |
+| `old` | `health` | 模拟器、演示数据、非空数据密度和旧库回归 |
+| `new` | `health_new` | 真实手表接入；业务数据稀疏或为空是允许状态 |
+
+配置默认值位于 `HealthData/src/main/resources/application.yml`：
+
+```text
+DB_NAME_OLD=health
+DB_NAME_NEW=health_new
+HEALTH_DEFAULT_SOURCE=new
+HEALTH_REQUEST_SOURCE=old
+HEALTH_WATCH_SOURCE=new
+HEALTH_SIMULATOR_SOURCE=old
+HEALTH_SIMULATOR_IMEI_REGEX=^3594567800\d{5}$
+HEALTH_SLOW_QUERY_THRESHOLD_MS=500
 ```
 
-WSL 进程核对/日志：
-
-```bash
-# 核对三件套状态
-bash /home/j/code/health/tools/health-wsl-stack.sh status
-
-# 查看后端/前端日志
-tail -f /home/j/code/health/runtime-logs/wsl-stack/backend.log
-tail -f /home/j/code/health/runtime-logs/wsl-stack/frontend.log
-tail -f /home/j/code/health/runtime-logs/wsl-stack/simulator.log
-```
-
-历史 Windows PowerShell 启动/停进程命令已经退役，不再在本文件保留执行示例。
-
-模拟器单实例规则：
-
-- WSL 下同样最多只允许 `1` 个模拟器实例；优先通过 `bash /home/j/code/health/tools/health-wsl-stack.sh simulator start|stop|status` 管理。
-- 旧库压测、旧库数据密度、旧库演示时最多只允许 `1` 个 `watch_tcp_simulator_1000.py` 进程。
-- 不要在未检查现有进程的情况下直接重复执行 `python3 watch_tcp_simulator_1000.py`。
-- 如果发现 `2` 个或更多模拟器进程，优先停止多余进程；不确定保留哪个时，直接全部停止后按单实例命令重启一个。
-- 2026-05-10 曾出现过“手动后台模拟器 + 旧 runner old 阶段再次启动”的重复进程，结果是两份模拟器同时连 `127.0.0.1:9000`，会让模拟数据量和在线设备表现偏高。
-- 当前 WSL runner 会在 `test-perf-old` 后、`test-full-old` 前停止模拟器，停止原因记录为 `old-full-pipeline-exclusive-tcp`；`audit:pipeline` / `audit:pipeline-warning` 需要独占 TCP 探针，不要把此时模拟器不运行误判为 runner 退化。
-
-确保只运行一个模拟器（WSL，推荐）：
-
-```bash
-bash /home/j/code/health/tools/health-wsl-stack.sh simulator start
-bash /home/j/code/health/tools/health-wsl-stack.sh simulator status
-bash /home/j/code/health/tools/health-wsl-stack.sh simulator stop
-```
-
-强制重建单实例模拟器（WSL，最干净）：
-
-```bash
-bash /home/j/code/health/tools/health-wsl-stack.sh simulator stop
-bash /home/j/code/health/tools/health-wsl-stack.sh simulator start
-```
-
-## 当前访问与登录事实
-
-- 前端地址：`http://localhost:9528/`
-- 后端地址：`http://localhost:8080/health`
-- 登录账号：`admin / admin123`
-- Token 实际存储在 Cookie，不是 localStorage。
-- 前端开发环境通过 Vite 代理把 `/dev-api/*` 重写到 `/health/*`。
-- 前端顶栏可切换“新库 / 老库”，请求头为 `X-Health-Data-Source`
-- 本地开发环境 `.env.development` 默认 `VITE_DEFAULT_DATA_SOURCE=old`，用于配合模拟器检查页面数据密度；生产/预发默认 `new`。
-
-## 双库切换流程（2026-05-07）
-
-当前双库目标：
-
-- 老库：`health`
-- 新库：`health_new`
-- 老库继续承接模拟器数据。
-- 新库承接真实手表数据。
-
-流程入口：
-
-- 说明文档：`D:/Health/HealthData/DUAL_DB_CUTOVER.md`
-- 建库脚本：`D:/Health/HealthData/src/main/resources/sql/create_health_new_seed.sql`
-- 后端配置：`D:/Health/HealthData/src/main/resources/application.yml`
-
-建新库步骤：
-
-1. 以老库 `health` 为源，通过 `create_health_new_seed.sql` 备份并恢复出 `health_new`。
-2. 在 `health_new` 中清空业务流水和待重建基础数据：
-   - `department`
-   - `employee`
-   - `device`
-   - `device_user`
-   - `device_data_buffer`
-   - `health_record`
-   - `warning_record`
-   - `health_record_20*`
-   - `warning_record_20*`
-   - `realtime_data`
-   - `user_online_status`
-   - `ai_health_report`
-3. 保留系统基础配置：
-   - `sys_user`
-   - `sys_role` / `sys_permission` / `sys_user_role` / `sys_role_permission`
-   - `job_type`
-   - `alert_config`
-4. 确保默认超级管理员可登录：
-   - 账号：`admin`
-   - 密码：`admin123`
-   - 角色：`SUPER_ADMIN`
-
-当前新库实际状态：
-
-- `department = 0`
-- `employee = 0`
-- `device = 0`
-- `device_user = 0`
-- `realtime_data = 0`
-- `user_online_status = 0`
-- `job_type = 12`
-- `alert_config = 20`
-- `sys_user = 1`
-- 当前保留登录账号：`admin / admin123`
-- 2026-05-10 11:16 新库空态已由 OpenClaw 触发 run `20260510-111131-full-stack-local-new` 复核；summary 的 `dataSourceFacts.new` 显示 `department/employee/device/device_user/realtime_data/user_online_status = 0`，`simulatorDeviceRows = 0`。此前发现并清理过一条 2026-05-07 历史残留的模拟器 IMEI `359456780000001`。
+SQL Server 默认端口是 `1433`；配置中的开发回退密码是 `123abcd,`，应优先通过 `DB_PASSWORD`、`DB_PASSWORD_OLD`、`DB_PASSWORD_NEW` 环境变量覆盖。
 
 切库规则：
 
-- 前端页面会按 Cookie `Health-Data-Source` 显式请求所选库；无 Cookie 时本地开发默认老库，生产/预发默认新库。
-- 2026-05-08 已修复一个本地开发易错点：如果浏览器历史遗留 `Health-Data-Source=new` 且尚无初始化标记，本地开发会自动重置为 `old`，避免“环境默认老库但页面仍走新库空数据”；之后手动从顶栏切新库仍可生效。
-- 顶栏切换“数据源”时，请求头使用 `X-Health-Data-Source`。
-- 顶栏下拉只表示前端选择，最终以接口响应头 `X-Health-Data-Source` 为准。
-- `HealthDataSourceRequestFilter` 运行早于 Sa-Token MVC 拦截器，切库授权必须直接从当前请求的 `satoken` header/cookie 解析用户，不能只依赖 `StpUtil.isLogin()`。
-- 直接 HTTP 请求如果不带请求头，后端默认走老库。
-- 真实手表数据默认写新库。
-- 模拟器数据默认写老库。
-- 当前模拟器识别规则：IMEI 命中 `^3594567800\d{5}$`。
-- 切到新库做真实手表或空库验收前，必须先停止模拟器，避免模拟器数据干扰新库判断。
-- 切到旧库做模拟数据、压测或大盘填充时，再启动模拟器；模拟器只应作为老库数据来源使用。
+1. HTTP 请求优先读取 `X-Health-Data-Source`，没有请求头时读取 Cookie `Health-Data-Source`，都没有时按 `HEALTH_REQUEST_SOURCE`（本地默认 `old`）。响应会回写实际生效的 `X-Health-Data-Source`。
+2. 前端顶栏选择会写 Cookie 并发送请求头；下拉选择只是请求意图，最终以响应头和接口数据为准。
+3. 真实手表默认写 `new`；模拟器 IMEI 命中正则时写 `old`。真实手表 IMEI 不得意外命中模拟器正则。
+4. 验收新库或真实手表前执行“切新库 -> 停模拟器”；验收旧库、压测或演示数据前执行“切旧库 -> 开模拟器”。模拟器最多一个进程。
+5. 新库可以只保留登录、角色权限、工种、预警阈值等基础配置；`department`、`employee`、`device`、`device_user`、流水、在线状态和 AI 报告为空都可能是预期。依赖这些表的页面应显示明确空态，不得用旧库数据冒充新库。
+6. 新库初始化/迁移必须显式执行 SQL 脚本，不能在业务请求中自动建表。安全指挥中心事件表缺失应返回 `503` 并提示部署迁移；Druid SQL 防火墙会拒绝条件 DDL。
 
-关键环境变量：
+接口手工验证可使用：
 
-- `DB_NAME_OLD=health`
-- `DB_NAME_NEW=health_new`
-- `HEALTH_DEFAULT_SOURCE=new`
-- `HEALTH_REQUEST_SOURCE=old`
-- `HEALTH_WATCH_SOURCE=new`
-- `HEALTH_SIMULATOR_SOURCE=old`
-- `HEALTH_SIMULATOR_IMEI_REGEX=^3594567800\d{5}$`
-
-页面和接口怎么切：
-
-- 前端右上角数据源下拉：
-  - `新库` = `health_new`
-  - `老库` = `health`
-- 本地开发首次打开默认 `老库`，如果要验真实手表或新库空库，需要手动切到 `新库` 并停止模拟器。
-- 自己调接口时手动带头：
-  - `X-Health-Data-Source: new`
-  - `X-Health-Data-Source: old`
-
-上线前校验步骤：
-
-1. 确认真实手表 IMEI 不会命中模拟器正则；若会命中，先改 `HEALTH_SIMULATOR_IMEI_REGEX`。
-2. 启动后端后，确认响应头会回写 `X-Health-Data-Source`。
-3. 切到新库后，确认大盘业务接口接近空数据而不是老库缓存。
-4. 让一台真实手表连一次，确认它写入 `health_new.device`。
-5. 再跑一次模拟器，确认它只写入老库 `health.device`。
-
-常用核对命令：
-
-```powershell
-sqlcmd -S localhost,11433 -U sa -P [REDACTED] -d health_new -Q "SET NOCOUNT ON; SELECT 'department' AS table_name, COUNT(*) AS row_count FROM department UNION ALL SELECT 'employee', COUNT(*) FROM employee UNION ALL SELECT 'device', COUNT(*) FROM device UNION ALL SELECT 'device_user', COUNT(*) FROM device_user UNION ALL SELECT 'realtime_data', COUNT(*) FROM realtime_data UNION ALL SELECT 'user_online_status', COUNT(*) FROM user_online_status UNION ALL SELECT 'job_type', COUNT(*) FROM job_type UNION ALL SELECT 'alert_config', COUNT(*) FROM alert_config UNION ALL SELECT 'sys_user', COUNT(*) FROM sys_user;"
+```bash
+curl -i http://127.0.0.1:8080/health/actuator/health
+curl -i -H 'X-Health-Data-Source: old' http://127.0.0.1:8080/health/...
+curl -i -H 'X-Health-Data-Source: new' http://127.0.0.1:8080/health/...
 ```
 
-协作提醒：
+## 指挥中心与事件处置
 
-- 不要再把“新库无数据”理解成“保留员工和部门，只清业务流水”；这条已经过时。
-- 现在 `department` 和 `employee` 也在新库清空范围内，后续需要在 `health_new` 里重建。
-- 员工档案、部门树、画像等依赖 `employee/department` 的页面，在新库下显示空列表属于预期。
-- 登录页当前默认预填 `admin / admin123`，如果改掉，需要确认现场仍有可直接登录的入口。
-- 涉及双库逻辑调整时，优先同步更新 `AGENTS.md` 和 `HealthData/DUAL_DB_CUTOVER.md`。
-- 操作顺序固定为：`切新库 -> 停模拟器 -> 验真实手表/空库`；`切旧库 -> 开模拟器 -> 验模拟数据`。不要在新库验收时保留后台模拟器进程。
+- 安全指挥中心和统一管控共用 `/command-center/incidents` 事件模型，事件定位键必须是 `warningId + occurredAt`；分月预警表场景禁止只用裸 `warningId`。
+- 查询、详情、确认、分派、处理、误报、时间线和外部动作都遵循双库请求头。迁移脚本必须分别作用于 `health` 和 `health_new`。
+- `IncidentCommandDrawer` 是两页共享的处置入口，跨页保留事件、人员、区域和数据源上下文；成功后重新读取服务端状态，不能只修改前端数组。
+- 呼叫、广播、撤离只能在具体事件详情中发起。外部系统未接入时记录 `NOT_CONFIGURED` 审计，界面不得显示“已下发”。班前复检、责任人、SLA、设备中断等后端事实未接入时显示“未接入/未分派”，不得用 `0` 或虚构人员填充。
+- `GET /command-center/dashboard-summary` 是指挥摘要权威来源。`period=day|week|month` 返回对应周期的 `periodNew`；预警总数、高危待办、待办总数、未分派和超时必须以后端聚合为准，不能从前端已加载事件条数推算。
+- 安全指挥中心可以展示真实设备覆盖、去重后的重点风险人员、事件范围和趋势，但不得恢复模拟体征趋势、均摊处理率、样本冒充全量、重复事件列表或无具体事件上下文的批量呼叫。未经用户确认，不做大幅信息删减或恢复。
 
-## 当前工作树状态（2026-05-08）
+### 风险事件体系改造计划
 
-`HealthShow` 有未提交改动，重点集中在：
+目标是将不同触发机制结构化区分，同时复用统一处置生命周期：体征越界属于 `HEALTH_THRESHOLD`，手表主动上报属于 `DEVICE_ALARM`，趋势预测属于 `TREND_WARNING`。`SOS` 只是 `DEVICE_ALARM` 下的一种事件代码，任何高危体征记录都不得被页面或接口冒充为 SOS。
 
-- `src/router/health-monitor.js`
-- `src/router/alert-management.js`
-- `src/views/health-monitor/dashboard/index.vue`
-- `src/views/health-monitor/heart-rate/index.vue`
-- `src/views/health-monitor/risk-warning/index.vue`
-- `src/views/health-monitor/workbench/index.vue`
-- `src/views/health-monitor/employee-archive/index.vue`
-- `src/views/health-monitor/employee-profile/index.vue`
-- `src/views/health-monitor/mine-entry/index.vue`
-- `src/views/ai-chat/index.vue`
-- 新增 `trend-warning`、`report-center`、`alert-management/notifications`、`alert-management/sos`
+实施状态：
 
-`HealthData` 有未提交改动，重点集中在：
+- [x] 阶段一：为月度预警表和 `v_warning_record` 增加 `event_source`、`event_code`、`device_imei`、`threshold_snapshot`，由 `HealthData/src/main/resources/sql/risk_event_classification.sql` 提供同时作用于 `health` 与 `health_new` 的显式迁移脚本；历史记录通过兼容表达式分类，不在业务请求中自动执行 DDL。
+- [x] 阶段二：手表体征、手表行为报警分别写入稳定事件来源和代码；预警列表 API 支持 `eventSource`、`eventCode` 筛选并在 DTO 中返回结构化分类。中文 `warning_type` 和 `indicator_name` 只用于展示，不再作为新逻辑的唯一分类依据。
+- [x] 阶段三：`/alert-management/sos` 改为紧急事件页，只统计和展示设备主动报警，并提供 SOS、跌倒、房颤等事件代码筛选；SOS 统计必须由服务端全量总数得出，不能用当前页条数代替。
+- [x] 阶段四：消息通知中心更名为待办事件，移除“全部已读”等错误语义；预警记录更名为处置记录并默认展示已处理事件。确认、分派、处置、误报和关闭继续复用统一事件链路，事件定位使用 `warningId + occurredAt`。
+- [x] 阶段五：阈值配置升级为规则配置，明确区分体征阈值与设备报警策略；趋势预警读取 `alert_config` 的岗位默认配置，不再维护第二套硬编码阈值。
+- [x] 阶段六：同时验证 old/new 数据源的迁移、分类查询、SOS 精确筛选、体征阈值生成、设备报警生成、前端构建与视觉/结构门禁。新库允许业务空态，但配置读取、接口字段和筛选语义必须通过。
 
-- `src/main/java/com/xzkj/health/ai/AiChatController.java`
-- `src/main/java/com/xzkj/health/ai/AiChatService.java`
-- `src/main/java/com/xzkj/health/ai/SchemaProvider.java`
-- 新增 `AiReportController`、`AiReportService`、`AiReportScheduler`
-- 新增 `TrendWarningController`、`TrendWarningService`、`TrendWarningMapper`
-- `Phase 3 / P1-02 DataProcessService` 第一轮拆分已完成：
-  - `DataProcessService` 主类保留外部协议入口，约 `400` 行
-  - 新增 `src/main/java/com/xzkj/health/service/watch/*`
-  - 新增/调整 `DataProcessServiceTest`、`WatchDeviceContextServiceTest`、`WatchDataPersistenceServiceTest`、`WatchHealthWarningServiceTest`
+验证备注：风险事件定向单测、后端全量单测、前端构建、预警生命周期测试、双库迁移和隔离端口接口验证已通过。全量 `test:fast` 当前仅剩工作树既有 `dashboard-runtime-handled` 契约失败；`audit:structure` 当前仅报告既有 `safety-command` 页面副作用和 `mine-entry` 行数超限，均不属于本次风险事件改造文件。
 
-规则：
+不可破坏的口径：
 
-- 默认把这些改动视为用户现有工作，禁止无原因回滚。
-- 修改时优先兼容现有变更，不要假设工作树干净。
+- “已读”“已确认”“已处理”“已关闭”是不同动作；没有独立通知投递模型前，页面不得提供虚假的已读状态。
+- 事件严重程度与事件来源正交：高危不等于 SOS，设备报警也不一定都是高危。
+- 设备报警不配置数值阈值，但可以配置启用状态、严重级别、SLA 和通知升级策略；尚未接入的策略必须显示未接入，不能假装已经执行。
+- 历史无结构化分类字段的数据可以在查询层兼容推断；所有新增记录必须直接写入结构化来源和代码。
 
-## 当前代码真实模块
+人员快速处置：
 
-前端当前可见模块，按路由文件和 e2e 审计结果整理：
+- `GET /employee/command-search` 按姓名、工号、手机号或 IMEI 搜索当前数据源的人员、绑定设备和 Netty 在线状态。
+- `PersonDetailDrawer` 是指挥中心、统一管控和职工健康画像共用的人员入口。已绑定手表才启用文字消息和单人语音；未绑定设备必须禁用下发。
+- SOS 只能表示手表主动上报的求救事件，管理端不得伪造“发送 SOS”。人员抽屉的应急处置只能关联该人员已有未处理预警，并以 `warningId + occurredAt` 打开事件抽屉。
 
-- 安全指挥中心：`/safety-command/index`
-- 健康监测：`workbench`、`dashboard`、`real-time`、`heart-rate`、`pressure`、`blood-pressure`、`blood-oxygen`、`risk-warning`、`employee-archive`、`mine-entry`、`report-center`、`trend-warning`
-- 健康监测隐藏页：`sleep`、`employee-profile`、`health-portrait`
-  - `sleep` 当前已拆成 `index + page-state/runtime/view-model/scss`
-- `risk-warning` 当前已拆成 `index + page-state/runtime/view-model/scss`
-- 预警管理：`notifications`、`sos`、`config`、`records`
-- 后台管理：`device-list`、`user-list`、`role`、`department`、`job-type`
-- 独立页：`/ai-chat/index`
+## 实时监控与健康画像口径
 
-## 2026-07-13 指挥中心与统一管控护栏
+- `/health-monitor/real-time` 在线窗口默认 15 分钟，由 `HEALTH_REALTIME_ONLINE_WINDOW_MINUTES` 配置；体征新鲜度默认 5 分钟，由 `HEALTH_REALTIME_FRESHNESS_MINUTES` 配置。
+- 心率分析的部门异常图直接展示各部门偏低、偏高心率记录数，不在前端换算百分比；数值轴使用“条”，悬浮提示展示两类记录数及异常合计。
+- 实时状态使用 `normal`、`warning`、`stale`、`no_data`。刷新失败保留上次数据并显示失败/缓存状态；不能用当前请求时间掩盖设备采集时间，也不能丢掉后端 `stale=true`。
+- 快照按人员在窗口内为每个指标取最新非空值；筛选、总数、摘要和分页由后端完成，不能用当前已加载数组长度冒充总人数或异常数。
+- 阈值统一来自 `alert_config`；后端返回 `warningReasons` 和 `indicatorStates`，前端只呈现。实时读数队列不是预警生命周期，确认、分派、处理和误报必须走预警/事件处置链路。
+- `GET /realtime/health-snapshot` 的异常人数按人去重，主值写成“异常/覆盖”，并显示极值、覆盖人数、窗口、新鲜度和 `NORMAL/PARTIAL/STALE/NO_DATA`；禁止用群体均值判断个人异常或用事件列表估算实时异常人数。
+- 职工健康画像展示身份、处置、当前体征及逐指标采集时间、数据新鲜度、7 日趋势、今日活动和权威预警轨迹。不得使用装饰人体热区、前端虚构医学百分比或把动画示意称为真实 ECG。
+- 历史趋势走 `GET /api/health/record/history/trend`，按员工和日期范围直查相关月表；明细走 `/api/health/record/page` 服务端分页。7 日内返回原始记录点，超过 7 日按日聚合，并返回完整样本数，不能截取前 200 条或当前页自行计算。历史区提供“查询”按钮；结束日期为今天时随画像刷新同步，纯历史日期不轮询。
+- 画像自动刷新默认 30 秒，手动刷新、切换员工和自动刷新都要重置倒计时，且不允许并发重复请求。画像页联系处置复用 `PersonDetailDrawer` 的 `contact` 模式，不重复铺设体征、趋势和完整画像入口。
 
-- 两页共用 `/command-center/incidents` 事件模型和 `warningId + occurredAt` 定位键。分月预警表下禁止仅使用裸 `warningId` 查询、处理或审计。
-- 统一事件详情、确认、分派、处理、误报、外部动作和时间线都按 `X-Health-Data-Source` 双库路由；迁移脚本为 `HealthData/src/main/resources/sql/command_center_incident.sql`，必须对 `health` 与 `health_new` 分别执行。
-- 不在应用请求内自动建事件表。Druid SQL 防火墙会拒绝条件 DDL；缺表应明确返回 `503`，由部署迁移解决。
-- 呼叫、广播和撤离只能在具体事件详情中发起。未接入外部系统时，必须记录 `NOT_CONFIGURED` 审计且界面不得显示已下发。
-- `IncidentCommandDrawer` 是安全指挥中心和统一管控的共享处置入口。跨页必须保留 `warningId`、`occurredAt`、`incidentId`、人员和区域上下文；处理成功后刷新服务端事件状态，不得改本地数组伪造闭环。
-- 班前复检超时、设备数据中断目前没有后端事实数据。页面只能明确标记“未接入”，禁止虚构人数、人员列表、责任人或 SLA。
-- 灰度与回滚开关：`VITE_SAFETY_COMMAND_V2`、`VITE_UNIFIED_CONTROL_V2`，默认 `true`。配置为 `false` 后重新构建，路径保持不变并切回可构建的 `legacy-20260601` 页面。
-- 2026-07-13 本轮已验证：`audit:api` 53/53、`audit:auth` 7/7、`audit:e2e`、`audit:structure`、`safety-command,dashboard` 五档视觉审计和 `npm run build` 均通过。认证拦截必须从 `SaHolder.getRequest().getSource()` 获取 Servlet request；不可再把 `SaInterceptor` 的 handler 参数误判为 request，否则会放行所有业务接口。
-- 2026-07-14 统一管控指挥摘要改走 `GET /command-center/dashboard-summary`：预警总数、高危待办、待办总数不得再由前端前 `200` 条事件推算；`period=day/week/month` 分别返回当日、近7日、近30日权威 `periodNew`，页面标题和值必须随周期切换，`todayNew` 仅保留为兼容的当天口径。未分派和已超时来自事件状态表聚合。复检状态/时限、低电、数据中断、设备故障未建模时必须返回 `status=UNAVAILABLE, value=null`，禁止用 `0` 伪装已接入。
-- 2026-07-15 安全指挥中心完成信息治理：头部统计只使用 `dashboard-summary` 权威口径，开放事件统一进入一个可筛选处置队列；页面只保留一个优先事件、一个部门预警矩阵、一个今日闭环和一个真实 7 日趋势。禁止重新加入模拟体征趋势、均摊处理率、样本与全量混算图表、重复部门榜单、重复事件列表或无具体事件上下文的批量呼叫。
-- 安全指挥中心所有数量必须明确对象和范围：部门矩阵展示“预警条数”，队列“已加载条数”不得冒充权威待办总数；未接入责任人、SLA 或外部动作必须显示“未分派 / 未配置 / 未接入”。本轮信息恢复后的 `safety-command` 五档滚动视觉审计通过，结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T03-36-35-040Z/layout-summary.md`。
-- 2026-07-15 信息治理后的恢复原则：安全指挥中心应保留权威设备覆盖、开放事件去重后的重点风险人员、以及明确标注“已加载事件范围”的类型与处置信号；这些属于处置所需信息，不应作为冗余删除。仍禁止恢复模拟体征、均摊处理率、第二套事件明细或样本冒充全量的统计。
-- 2026-07-15 用户明确要求安全指挥中心恢复到大幅信息清理前的完整版本；当前展示层以提交 `72901c3` 的页面为恢复基线，保留完整态势雷达、遥测、部门榜、闭环、体征趋势、区域/类型分布、事件流和高危人员。统一事件 API、共享人员抽屉和可构建的 legacy 回退页不随展示恢复而倒退。恢复后的五档滚动视觉审计通过，结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T07-36-51-730Z/layout-summary.md`。后续不得未经用户确认再次做大幅信息删减。
+## 本地启动
 
-## 2026-07-15 人员快速处置与健康画像护栏
+### WSL
 
-- 统一管控通过 `GET /employee/command-search` 按姓名、工号、手机号或 IMEI 快速找人；结果必须包含当前库的人员身份、绑定设备和 Netty 实时在线状态，并继续遵循 `X-Health-Data-Source` 双库路由。
-- `PersonDetailDrawer` 是统一管控、安全指挥中心和职工健康画像共用的人员综合管控入口。文字消息和单人语音可直接向已绑定手表下发；未绑定设备时必须禁用下发入口。
-- SOS 是手表端主动上报的求救事件，管理端不得伪造“发送 SOS”。人员抽屉的“应急处置”只能关联该人员已有的未处理预警，并以 `warningId + occurredAt` 打开 `IncidentCommandDrawer`。
-- 职工健康画像负责完整实时体征、趋势和预警分析；统一管控负责快速检索和快捷处置。两页复用同一人员抽屉，不复制通信实现。
+WSL 统一入口会管理后端、前端和单实例模拟器：
 
-## 2026-07-15 实时监控口径与页面护栏
+```bash
+bash /home/j/code/health/tools/health-wsl-stack.sh all start
+bash /home/j/code/health/tools/health-wsl-stack.sh status
+bash /home/j/code/health/tools/health-wsl-stack.sh all stop
+```
 
-- `/health-monitor/real-time` 的“在线人员”不再使用近 7 天活跃口径。后端 `/realtime/online-users` 默认统计最近 `15` 分钟有上报的人员；环境变量为 `HEALTH_REALTIME_ONLINE_WINDOW_MINUTES`。
-- 数据新鲜度默认 `5` 分钟，环境变量为 `HEALTH_REALTIME_FRESHNESS_MINUTES`。接口状态统一为 `normal / warning / stale / no_data`，页面必须分别展示，禁止用当前系统时钟掩盖陈旧或失败数据。
-- 实时快照会在在线窗口内为每个指标取最新非空值，不能回退到“只取最新一条数据包”，否则心跳包或单指标包会把同一人员其他体征显示成 `--`。
-- 姓名/工号、部门和状态筛选在后端完整快照上执行；桌面和移动端都使用接口 `total`、`summary` 和服务端分页。禁止再次用当前已加载数组长度冒充在线总数或异常总数。
-- 阈值优先复用 `alert_config`，接口返回 `warningReasons` 和 `indicatorStates`，前端只负责呈现。禁止在表格、移动卡片、跑马灯、侧栏中各自维护不同阈值。
-- 页面已移除重复预警跑马灯；移动端不再重复显示异常侧栏。右侧“当前异常体征”只是实时读数队列，不等同于预警事件生命周期；真正的确认、分派、处理和误报仍进入预警中心/统一事件处置链路。
-- 刷新失败必须保留上次数据并显示失败或缓存状态。后端 `stale=true` 不得在前端归一化时丢弃。
-- 2026-07-17 统一管控健康异常快照改走 `GET /realtime/health-snapshot`：基于实时监控短时人员快照和 `alert_config` 统一阈值，异常人数按人去重；主值必须展示“异常/覆盖”，群体均值只能作为辅助基线，并同时显示极值、覆盖人数、在线窗口、新鲜度和 `NORMAL/PARTIAL/STALE/NO_DATA` 状态。禁止重新使用已加载事件列表推算实时异常人数，也禁止用群体均值直接判断个体健康异常。
-- 2026-07-17 统一管控移除“监测覆盖 / 全项覆盖”管理卡片：两者不能直接驱动处置，且旧“全项覆盖”只是五个单项人数的最小值，并非同一批人员五项数据的真实交集。顶部只保留可进入实时名单的“当前在线”人数；趋势区禁止再用已加载事件数组长度冒充全量已处理/待处理数量。
+仓库不要求路径固定为 `/home/j/code/health`；从其他 WSL 路径运行时，使用当前 checkout 下的 `tools/health-wsl-stack.sh`。该入口会探测 Java、Maven、Python、Node 和 npm，并通过 tmux 或后台进程管理 PID、日志和进程组。后端必须以 Actuator 顶层 `status=UP` 判定可用；进程存在但健康为 `DOWN` 时应完整重启。日志默认在 `runtime-logs/wsl-stack/`。
 
-## 2026-07-15 职工健康画像信息治理护栏
+WSL 分开启动：
 
-- `/health-monitor/employee-profile` 只保留人员身份与处置、当前体征及逐指标采集时间、数据新鲜度、7日趋势、今日活动和权威预警轨迹。禁止恢复装饰性人体热区、同一体征多处重复展示或前端自行生成的医学风险百分比。
-- 页面不得把接口请求成功时间当作设备采集时间，也不得把“任意上报在线”和“体征数据新鲜”混成一个口径。画像接口按 `HEALTH_REALTIME_ONLINE_WINDOW_MINUTES` 判断在线，按 `HEALTH_REALTIME_FRESHNESS_MINUTES` 判断体征新鲜度，并返回每个体征的最近采集时间。
-- 页面不得把分页列表长度冒充近30日、近7日或待处理预警总数；三个数量必须使用 `/risk-warning/list` 对应过滤条件返回的 `total`。最近列表只表示已加载记录。
-- `HeartRateWave` 是根据心率生成的动画示意，不是真实 ECG 数据；职工健康画像禁止将其标为“实时心电图”。只有后端接入真实 ECG 波形及采集时间后才允许恢复心电模块。
-- 规则模板必须明确标为“规则提示”，不得冒充 AI 结论；AI 诊断报告继续作为用户主动触发的二级能力。
-- 信息治理回归入口为 `npm run test:employee-profile-governance`。页面布局改动继续运行 `node scripts/with-env.mjs VISUAL_ROUTES=employee-profile -- npm run audit:visual` 并检查五档截图。2026-07-15 本轮五档结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T07-40-13-080Z/layout-summary.md`。
-- 画像页历史趋势的唯一入口是“历史健康数据”，默认近7日，并支持今日、近30日和最长365天自定义范围；不要再恢复另一套固定7日曲线。7天内由后端按小时聚合，超过7天按日聚合，完整样本数必须随接口返回。
-- 历史曲线走 `GET /api/health/record/history/trend`，按当前员工和日期范围直查涉及的月分表；原始明细继续走 `/api/health/record/page` 服务端分页。禁止前端截取前200条或当前页数据自行计算时间段曲线。
-- 历史区必须始终显示员工姓名、工号、起止日期、聚合粒度、完整样本数和明细总数；曲线与明细都继续遵循 `X-Health-Data-Source` 双库路由。
-- 本轮历史区五档滚动视觉审计通过，结果位于 `HealthShow/tests/visual/artifacts/2026-07-15T08-21-43-765Z/layout-summary.md`；真实交互守护为 `node tests/e2e/employee-profile-history-check.mjs`。
-- 当前体征每30秒自动刷新，标题栏必须显示动态秒级倒计时；自动刷新、手动刷新和切换员工后倒计时都从30秒重新开始，且不得并发发起重复刷新请求。
-- 画像页头部摘要只保留一个可点击的“预警闭环”入口；在线状态由页头和当前体征负责，建议动作由规则提示和联系处置负责，禁止恢复重复的“实时在线/建议动作”卡片。点击预警闭环后展示权威统计和具体预警记录，不再在页面底部重复铺设另一套近期预警轨迹。
-- 画像页“联系与处置”必须复用 `PersonDetailDrawer` 的 `contact` 模式，只展示人员/设备、消息、语音、近期预警和应急处置；禁止在该入口重复展示体征卡、心电示意、趋势、历史记录或“完整画像”按钮。指挥中心仍使用综合模式。
+```bash
+source tools/health-wsl-env.sh
+tools/health-wsl-stack.sh backend start
+tools/health-wsl-stack.sh frontend start
+tools/health-wsl-stack.sh simulator start
+```
 
-## 当前验证基线
+### macOS
 
-- 2026-07-16 修复后端“进程仍在但 Druid 已关闭”的半关闭状态：`health-wsl-stack.sh` 的后端状态与启动判定必须读取 Actuator 顶层 `status`，只有 `health=UP` 才算可用；发现运行中但健康为 `DOWN` 时自动完整重启。tmux 停止后端时必须终止整个进程组并确认 `8080/9000` 已释放，禁止只删除 session/pid 文件。
-- 裸 `@Async` 手表数据任务统一使用 `taskExecutor` 有界线程池，线程名前缀为 `watch-data-`，队列满时由调用线程回压；禁止回退到会持续创建线程的 `SimpleAsyncTaskExecutor`。
+仓库提供：
 
-2026-05-08 目标态收口后验证：
+```bash
+tools/run-redis-mac.sh
+tools/run-backend-mac.sh
+tools/run-frontend-mac.sh
+tools/sqlcmd-docker.sh
+```
 
-- `mvn -q test -f D:\Health\HealthData\pom.xml` 通过。
-- `npm run audit:api` 通过；查看结果时优先读 `D:/Health/HealthShow/tests/api/artifacts/` 下最新一轮 `summary.md`。
-- `npm run audit:data` 是数据密度门禁，默认以老库执行关键页面组件非空检查；用于防止“页面能打开但核心组件空”的回归。查看结果时优先读 `D:/Health/HealthShow/tests/api/artifacts/` 下最新一轮 `data-density.md`。
-- `npm run audit:write` 老库严格通过；新库空业务数据时，绑定设备、未处理 warning、AI 报告员工候选这类业务写探针允许记为 `skipped`，但登录和配置写入仍必须执行，旧库不允许同类跳过。
-- `npm run audit:nav` 通过，结果 `6 navGroups / 23 visibleNavLeaves / 5 mobileNavItems`。
-- `npm run audit:page-structure` 通过，已把 `21` 个已迁移页面纳入结构门禁，`legacyTrackedPages = 0`。
-- `npm run audit:structure` 通过，当前会连续执行 `audit:nav` 与 `audit:page-structure`。
-- `npm run audit:visual` 现已把 `safety-command`、`dashboard`、`workbench`、`real-time`、`risk-warning`、`employee-profile`、`mine-entry`、`trend-warning`、`alert-management/notifications`、`alert-management/records`、`report-center`、`ai-chat` 纳入默认路由清单；它会用 Playwright 无头 Chromium 自动登录并按 `desktop-1440`、`desktop-1707`、`desktop-1920`、`mobile-390`、`mobile-414` 五档视口出图，产出 `D:/Health/HealthShow/tests/visual/artifacts/` 下最新一轮 `layout-summary.md` 和对应 PNG。`employee-profile` 会先经 `employee-archive` 实际点入画像页，再截图取证。前端美化、布局、响应式、信息密度任务优先使用这条门禁，不要只凭肉眼、单一视口或口头描述判断。
-- `npm run audit:auth` 通过。
-- `npm run test:fast` 现在包含 `tests/auth-backend-start-hidden.mjs`、`tests/health-write-source-semantics.mjs` 和 `tests/openclaw-supervisor-contract.mjs` 等源守护，用于防止 `audit:auth` 后端重启、`run-full-stack-local.py` / `run-health-loop.py` 回退到旧 Windows 流程，防止新库空态 `audit:write` 语义回退成失败，并防止 OpenClaw supervisor 丢失“本轮后停止”、`ROUND_RESULT_JSON`/`process_retrospective`、final `stop_reason` 等流程门禁。
-- `npm run audit:e2e` 通过；查看结果时优先读 `D:/Health/HealthShow/tests/e2e/artifacts/` 下最新一轮 `summary.md` 或 `auth-summary.md`。
-- `npm run audit:pipeline` 通过；查看结果时优先读 `D:/Health/HealthShow/tests/pipeline/artifacts/` 下最新一轮 `summary.md`。
-- `npm run audit:pipeline-warning` 通过；查看结果时优先读 `D:/Health/HealthShow/tests/pipeline/artifacts/` 下最新一轮 `warning-summary.md`。
-- `npm run build` 通过。
-- `http://localhost:8080/health` 与 `http://localhost:9528/` 均返回 `200`。
-- OpenClaw 双库 runner 入口固定为 `python3 /home/j/code/health/tools/start-health-runner.py --data-source both`；如果 `health_new` 保持空业务库，则 `test-full-new` 允许以 `allowed skipped steps` 口径结束，不要误判成失败。
-- runner 必须保持单实例保护；真实启动时若已有 `run-full-stack-local.py` 在跑，应返回 `RUN_ALREADY_ACTIVE`。`--dry-run` 必须先于单实例拦截返回结构化结果，避免测试脚本把提示文本当成 JSON。
-- OpenClaw / gateway 配置校验以最新 `openclaw.json`、`models.json`、gateway probe 和实际 agent 响应为准，不要以某次历史 run id 为准；旧 Windows 同步脚本已退役。
-- OpenClaw dashboard 应通过 `openclaw dashboard` 生成的带 token URL 打开，不要直接裸开 `http://127.0.0.1:18789/`。
-- 夜间 supervisor 入口固定为 `python3 /home/j/code/health/tools/start-openclaw-evolution-supervisor.py`；要求“本轮后停”时，用 `python3 /home/j/code/health/tools/request-openclaw-supervisor-stop.py` 写入 `D:/Health/tests/runs/openclaw-night-supervisor.stop`，不要手工杀 runner。
-- 判断最近一轮双库 runner 是否健康时，以 `D:/Health/HealthShow/tests/runs/` 下最新 run 目录的 `summary` / `hermes-archive` 为准，不要把某个固定 run id 写死到规则里。
-- 2026-05-11 03:20 Round20 做了预警生命周期文案收口：`HealthShow/src/views/alert-management/common/warning-lifecycle.js` 新增 `warningHandledStatusLabel`，通知/记录页处理状态统一为 `待处理/已处理`，`tests/warning-lifecycle.mjs` 新增页面硬编码 `未处理` 回归保护。Codex 复核后补掉通知筛选项漏改并已跑过 `npm run test:warning-lifecycle`、`npm run audit:structure`。
-- 2026-05-11 04:10 Round23 做了报表中心导出状态优化：`report-center-view-model.js` 新增导出可用性/禁用原因，`report-center/index.vue` 的 Excel/PDF 导出在加载、导出中、无可导出数据时禁用并显示 tooltip。Codex 复核后补上 Excel/PDF 各自导出中的原因文案，并已跑过 `node --test tests/report-center-export-state.mjs`、`npm run audit:structure`、`npm run build`。
-- `http://localhost:8080/health/actuator/metrics` 已暴露业务指标；关键 metric families 已在后端启动时预注册，重启后无需先触发业务事件即可看到：
-  - `health.ai.call.duration`
-  - `health.ai.reject.total`
-  - `health.ai.sql.auto_repair.total`
-  - `health.buffer.queue.size` / `health.buffer.push.total` / `health.buffer.flush.total` / `health.buffer.dead_letter.total`
-  - `health.datasource.request.total` / `health.datasource.watch.route.total`
-  - `health.watch.online.count`
-  - `health.warning.generated.total` / `health.warning.dedup.total`
-  - `health.sql.statement.duration` / `health.sql.slow.total`
+Mac 原生运行前需准备 Java 17、Maven、Node/npm、Python 和 Redis；SQL Server 可使用名为 `local-mssqlserver2022` 的 Docker 容器映射到 `1433`。后端脚本从容器读取 SQL 密码并设置双库环境变量，前端脚本默认 `VITE_TARGET=http://localhost:8080`、本地数据源 `old`。启动后逐项检查 `6379/8080/9000/9528/1433`，停止后再次检查监听端口，不能只凭 session 或 PID 文件判断已停止。
 
-历史 Playwright 路由审计基线显示：
+### Windows
 
-- 桌面 `1440 / 1707 / 1920` 和移动 `390 / 414` 已由 `audit:visual` 无头截图覆盖；该脚本不会弹出可见浏览器窗口，排查时应直接查看 `layout-summary.md` 和对应 PNG，而不是误以为“没打开浏览器就没截图”。
-- 当前已知轻量警告主要有两个：
-  - `blood-oxygen` 页 ECharts 初始化时偶发容器宽高为 `0` 的 warning。
-  - `alert-notifications` 页 `el-pagination` 仍在使用即将废弃的 `small` 属性。
+推荐在 WSL Linux 文件系统内运行上述 WSL 入口；Windows 主机只提供 Docker SQL Server、网络和浏览器。不要重新引入已退役的旧 PowerShell 双仓启动脚本。手表原型和协议探针可在 PlatformIO/串口环境中单独运行。
 
-历史基线产物统一保留在以下目录；排查时只看各目录最新一轮，不要把时间戳文件写死进规则：
+## 模拟器与手表协议
 
-- `D:/Health/HealthShow/tests/api/artifacts/`
-- `D:/Health/HealthShow/tests/visual/artifacts/`
-- `D:/Health/HealthShow/tests/e2e/artifacts/`
-- `D:/Health/HealthShow/tests/pipeline/artifacts/`
+- 模拟器文件是 `HealthShow/watch_tcp_simulator_1000.py`，默认连接 `127.0.0.1:9000`，默认 1000 个手表；由 WSL stack 管理时最多一个实例。
+- 需要查看、压测或填充旧库时才启动模拟器；新库/真实手表验收时必须停止它。
+- 手表登录后，后端下发 `BP33` 工作模式，并用 `BP86/BP87` 关闭设备内部周期，避免设备和服务端两套调度重叠。后端每 60 秒只下发一项测量，按 `BPXL -> BPXY -> BPXZ -> BPXT` 轮换，不并发启动传感器，也不把定位 `BP16` 混入健康周期；每项指标约每 4 分钟触发一次。
+- `BPXL/BPXY/BPXZ/BPXT` 也可用于人工立即测量。对应的 `APXL/APXY/APXZ/APXT` 只是命令确认，实际数值仍以随后到达的 `AP49/AP50/APHT/APHP` 为准；未佩戴时数值可能为 `0`，不能当作有效健康数据。
+- ESP32-C3 原型位于 `firmware/esp32c3-wifi-watch/`，通过 PlatformIO 构建。`src/main.cpp` 默认 TCP `9000`，Wi-Fi、服务器地址和 IMEI 通过编译宏配置，不能提交真实 Wi-Fi 密码。
+- 原型协议包含 `IW*AP00*<IMEI>#` 登录和 `IW*APHP*...#` 健康数据；`firmware/esp32c3-wifi-watch/tools/protocol_probe.py` 可向后端发送探针。默认占位地址是 `192.168.1.100`，现场按实际局域网修改。
 
-如果改动以下页面，至少回看桌面和移动端布局：
+## 测试与验收
 
-- `safety-command`
-- `dashboard`
-- `workbench`
-- `real-time`
+前端测试入口集中在 `HealthShow/scripts/health-test-runner.mjs`：
 
-优先操作：
+```bash
+cd HealthShow
+npm run test:fast
+npm run test:frontend
+npm run test:integration -- --source old
+npm run test:integration -- --source new
+npm run test:full -- --source old
+npm run test:full -- --source new
+npm run audit:structure
+npm run audit:visual
+npm run build
+```
 
-- 先跑 `node scripts/with-env.mjs VISUAL_ROUTES=<route-slug> -- npm run audit:visual`，再看 `D:/Health/HealthShow/tests/visual/artifacts/` 下最新一轮 `layout-summary.md` 与对应 PNG。
-- 不要只开可见浏览器手工扫一遍就下结论；前端美观、密度、滚动、重叠、底栏遮挡这类问题，优先以无头自动截图证据为准。
+可用 profile 为 `fast`、`frontend`、`integration`、`perf`、`quality`、`full`。`old` 默认要求关键页面有非空数据，`new` 允许业务空态；登录和配置写入仍必须执行。`audit:visual` 用 Playwright 覆盖桌面与移动视口；页面布局、滚动、重叠和信息密度问题以截图和布局摘要为证据。`audit:auth`、`audit:e2e`、`audit:pipeline`、`audit:pipeline-warning` 会争用服务和测试数据，不能并行运行；需要浏览器时先完成 preflight。
 
-## 当前易错点
+根级 loop runner：
 
-- 添加新的健康字段时，不能只改实体或页面。
-  - 必须同步检查：月分表、视图、`sp_update_monthly_views`、实体、Mapper INSERT、直查分表 SQL、Service 返回值、前端绑定。
-  - MyBatis Mapper SQL 或方法签名改动后，后端需要完整重启。
-- 当前接口前缀并不统一：
-  - 常规业务多为 `/dashboard`、`/realtime`、`/risk-warning`、`/heart-rate` 等
-  - 设备相关走 `/api/device`、`/api/device/voice`
-  - 健康记录列表走 `/api/health/record/page`
-- 双库模式下不要再假设只有一个 `health:buffer`
-  - 当前 Redis 已拆为 `health:buffer:old` / `health:buffer:new`
-- 现场排障不要只盯 controller 日志
-  - 先看 `http://localhost:8080/health/actuator/metrics`
-  - 慢 SQL 阈值当前由 `HEALTH_SLOW_QUERY_THRESHOLD_MS` 控制，默认 `500ms`
-- 双库模式下不要把“新库无数据”理解成“完全空库”
-  - `health_new` 当前只保留系统登录、角色权限、工种、预警阈值等基础配置
-  - `department` 和 `employee` 已清空，后续需要在新库里重建
-  - 已清空的是设备、缓冲、健康记录、预警记录、AI 报告等业务流水
-- 手表数据默认写新库，模拟器默认写老库
-  - 当前模拟器识别规则：IMEI 命中 `^3594567800\d{5}$`
-  - 如果真实手表 IMEI 也可能命中这个规则，先改 `HEALTH_SIMULATOR_IMEI_REGEX`
-  - 切到新库时先停模拟器；切到旧库时再开模拟器
-- `TECHNICAL_DOCS.md` 已补入路由事实源、大页目录模板、`audit:structure` / `audit:page-structure`，并覆盖 AI 聊天、趋势预警、入井准入、预警通知/记录的最新拆分事实。
-- 部分注释或旧文档仍可能漂移：
-  - 根 `CLAUDE.md` 当前已写明 token 存 Cookie；如后续再出现冲突，以 `AGENTS.md` 和当前代码为准
-  - `HealthApplication.java` 中 Druid 登录说明已不可靠，实际以 `application.yml` 和环境变量为准
+```bash
+python3 tools/start-health-runner.py --data-source both
+python3 tests/run-health-loop.py --profile full --data-source both
+python3 tools/start-openclaw-evolution-supervisor.py
+python3 tools/request-openclaw-supervisor-stop.py
+```
 
-## 当前协作建议
+runner 必须保持单实例保护；`--dry-run` 先返回结构化 JSON。full-stack 过程中按阶段独占 TCP 探针和模拟器，测试完成后停止服务。判断结果看最新 run 目录中的 JSON、日志、payload 和实际 HTTP 响应，不以固定历史 run id 或文档中的“已通过”代替运行证据。OpenClaw dashboard 使用 `openclaw dashboard` 生成的带 token URL。
 
-- 先看 `router`、`src/api`、对应 `controller/service`，再决定改动点。
-- 涉及前端页面美化、布局、滚动、卡片密度、表格裁切、图表容器、底栏遮挡、响应式适配时，必须优先跑 `npm run audit:visual` 或 `node scripts/with-env.mjs VISUAL_ROUTES=<route-slug> -- npm run audit:visual`；默认先看自动截图产物，再决定是否需要人工打开可见浏览器复核。
-- 前端所有请求都应继续走 `src/utils/request.js`。
-- 后端高频接口优先复用现有“内存 TTL 缓存 + 直查分表”的模式，不要回退到全视图扫描。
-- 后端注解 SQL 返回 typed Row DTO 时，数值字段如果继续使用 `Number`，必须保留 `com.xzkj.health.config.mybatis.NumberTypeHandler` 和 `mybatis-plus.type-handlers-package` 注册；SQL 列别名优先使用 `snake_case` 配合 `map-underscore-to-camel-case`，否则容易出现接口 `200` 但页面组件全 0/空。
-- `heart-rate`、`pressure`、`blood-oxygen` 域当前已改成 `typed DTO + service 内 TTL cache`，其中 `PressureMapper` 已切到 `Pressure*Row`，`BloodOxygenMapper` 已切到 `BloodOxygen*Row`；后续处理其他指标页时沿用同样模式，不要把 cache 放回 controller。
-- `P1-03 Dashboard 查询栈` 后端第一轮已完成；不要重复做 `DashboardController` 去 `DashboardMapper`、controller 缓存下沉、DashboardService 公开 `Map` 方法内收。
-- Dashboard 当前后端状态：
-  - `DashboardController` 约 `213` 行，只保留 HTTP 编排
-  - `DashboardServiceImpl` 约 `458` 行，已拆出 `service/dashboard/*` 承接 calendar、entry、department/person/comparison 三组查询主题
-  - 新增 `DashboardOverviewMapper` 承接首页总览、设备活跃、预警事件、预警小时分布和日汇总查询
-  - 历史 `DashboardMapper` 已退出；Dashboard 查询已拆出 `DashboardCalendarMapper`、`DashboardEntryMapper`、`DashboardOverviewMapper`、`DashboardDepartmentMapper`
-  - `DashboardCalendarQueryService` / `DashboardEntryQueryService` 已切到 typed row，calendar、entry、day-rank 子域不再消费 mapper `Map` 行结果
-- 后端 `Phase G2` 目标态边界已基本满足；后续只处理明确回归、性能第二轮或新增接口契约治理。不要重复做 `DashboardDepartmentMapper`、`DashboardOverviewMapper`、`BloodOxygenMapper` 或旧 `AiReportService` typed row 收口，也不要把设备上下文、落库路由、预警判断重新塞回 `DataProcessService`。
-- `Phase G2` 第一批已完成：
-  - `TrendWarningMapper` 的趋势日均值结果改为 `TrendWarningDailyAverageRow`，不再向 service 暴露 `List<Map<String,Object>>`
-  - `TrendWarningService` 已收为查询、缓存、表源编排，预测算法下沉到 `service/trend/TrendWarningPredictionCalculator`
-  - `RealtimeController` 不再本地 catch 并 `Result.error(ex.getMessage())`，实时列表无缓存失败改抛 `BusinessException(503, ...)` 走全局异常处理
-  - 新增 `CoreControllerBoundaryTest`，保护 `Dashboard/Realtime/HealthPortrait/TrendWarning/Statistics` controller 不回退到 mapper 直连、裸 `Map` 出口或本地异常拼接
-  - `HealthPortraitMapper` / `StatisticsMapper` 已改为 typed row，`HealthPortraitService` / `StatisticsService` 不再通过 `Map<String,Object>` 消化 mapper 行结果；`AiHealthReportService` 已同步适配画像员工 row
-  - `AiHealthReportMapper` 统计查询已改为 `AiHealthStatsRow` / `AiWarningStatsRow`，AI 健康报告 prompt 构造不再通过 `Map` 字段名取值
-  - `PressureMapper` 已改为 `Pressure*Row`，`PressureServiceImpl` 不再通过 mapper `Map` 行结果做字段转换
-  - `BloodOxygenMapper` 已改为 `BloodOxygen*Row`，`BloodOxygenServiceImpl` 不再通过 mapper `Map` 行结果做字段转换
-  - 旧 `AiReportService` / `AiReportScheduler` 已改走参数化 `AiReportMapper` + typed row；`SqlExecutorMapper` 当前只保留给 `AiChatService` 的 Text2SQL 动态列场景
-  - `DashboardServiceImpl` 已拆出 `DashboardCalendarQueryService`、`DashboardEntryQueryService`、`DashboardDepartmentQueryService`、`DashboardOverviewMapper`，并新增对应 service 单测；`DashboardCalendarQueryService` / `DashboardEntryQueryService` 已完成 typed row 收口
-  - 历史 `DashboardMapper` 已退出，部门/人员统计主题已迁到 `DashboardDepartmentMapper`
-  - `AiChatService` 的 Text2SQL 动态列结果已封装为 `AiSqlResultSet(columns, rows, rowCount)`，前端 AI 聊天 `[DATA]` 事件兼容新旧数据形态
-- 后端下一入口：只处理明确回归、性能第二轮或新增接口契约治理；`pressure`、`blood-oxygen`、旧 `AiReportService`、`AiHealthReportService` 统计链路和 Dashboard department/overview/calendar/entry typed row 不要重复做。
-- 前端 `Phase G1` 已收口：`src/router/app-routes.mjs` 是路由事实源，`src/layout/menu/navigation.mjs` 是菜单/移动底栏派生入口，已拆大页目录由 `audit:page-structure` 保护。
-- 前端 `Phase G4` 已完成新一轮门禁扩面：`audit:page-structure` 当前覆盖 `21` 个已迁移页面，包括 `trend-warning`、`mine-entry`、`alert-management/notifications`、`alert-management/records`、`ai-chat`。
-- 前端 `Phase G4` 指标页共享 runtime 第一刀已落地：`src/views/health-monitor/metric-page/metric-scroll.js` 统一了 `heart-rate`、`blood-oxygen`、`pressure`、`blood-pressure` 的 Top5 自动滚动生命周期；`metric-export.js` 统一四个指标页 Excel 导出外壳；`metric-data-loader.js` 已被四个指标页实际使用。已通过 `npm run audit:structure` 和 `npm run build`。
-- `workbench` 已拆出 `workbench-view-model.js`、`workbench-chart.js`、`workbench.scss` 并纳入 `audit:page-structure`，部门雷达图 resize/dispose 已接入统一事件绑定。
-- `ai-chat` 已拆出 `ai-chat-chart.js`、`ai-chat-export.js`、`ai-chat-query-result.js`、`ai-chat-session.js`、`ai-chat-text.js`、`ai-chat.scss`；`trend-warning` 已拆出 `TrendSparkLine.js` 和 `trend-warning.scss`；`mine-entry` 已拆出 `mine-entry-view-model.js` 和 `mine-entry.scss`。
-- `alert-management/notifications` 当前已把 SLA 状态、剩余/超时时长和到期时间直接展示在通知列表；SLA 派生口径集中在 `alert-management/common/warning-lifecycle.js`，由 `tests/warning-lifecycle.mjs` 守护。
-- 已迁移大页的页面级 DOM 事件监听已进一步收口到 `createEventBinding`：`dashboard`、`real-time`、`report-center`、`health-portrait`、`safety-command` 不应再回退到手写 add/removeEventListener。
-- 前端下一入口：只处理新增大页、明确回归或指标页 page engine 第二轮；不要重复迁移已纳入 21 页门禁的页面。完整回归与文档事实源已按 `G5/G6` 收口。
-- 若要理解页面结构，优先看真实路由和 `tests/e2e/artifacts`，不要只看 `TECHNICAL_DOCS.md`。
-- 涉及 SQL Server 切库或手表入库时，先看 `HealthData/DUAL_DB_CUTOVER.md`
+最小运行验收：
 
-## 2026-05-10 补充护栏
+1. `curl` 检查前端 `9528`、后端 Actuator `8080` 和响应状态。
+2. 登录后确认 `satoken` 认证、Cookie 和 `X-Health-Data-Source` 响应头。
+3. 按目标数据源确认页面摘要、分页 `total`、状态和空态符合 old/new 语义。
+4. 需要设备链路时确认 TCP `9000`、模拟器单实例、Redis 队列和数据库月表写入。
+5. 停止服务后确认监听端口和项目进程已释放。
 
-- 根目录仍然不是 git 仓库；`HealthShow` 和 `HealthData` 的 git 状态、提交、回滚必须分开处理。
-- 当前工作树存在大量用户未提交/未跟踪改动，任何改动都只能触碰本次任务文件。
-- 2026-07-13 统一管控 dashboard 的“监测覆盖与数据质量”和“健康异常快照”面板已完成；覆盖率支持实时总人数回退，异常人数来自统一事件流并按体征去重。相关契约、结构、构建和 dashboard 五档视觉审计均通过。
-- 2026-07-17 统一管控的“值班决策面板”已并入“闭环指挥线”：闭环指标与实时预警流是唯一事件处置主区，值班优先级、AI 摘要和重点人员作为右侧辅助栏；禁止恢复第二套待处理队列、重复高危数字或独立值班决策大面板。桌面闭环区使用稳定高度和内部预警滚动，移动端改为单列自然展开。
-- dashboard 布局修改除五档 `audit:visual` 外必须运行 `npm run audit:visual:dashboard-full`；完整长图覆盖桌面 `1440 / 1707 / 1920`，页面总高不得异常超过 `5000px`。禁止用不受约束的 `vh`、`flex: 1`、`height: 100%` 形成循环拉伸，也不得隐藏图表占位或单纯拉高卡片填空。
-- 前端旧库演示/压测最多一个模拟器进程；新库验收前必须停掉模拟器。
-- 后端/前端/模拟器长驻进程应优先用现有脚本静默启动，避免弹出可见控制台污染长期测试。
-- 写入健康数据、手表数据、员工数据、AI 报告和日志前，默认按隐私数据处理。
-- md文件要用中文名
-- 第一性原理
-  - 当前 `统一管控（dashboard）` 的第一性是 `美观`，优先级高于“尽量少改旧结构”“尽量保留历史堆叠方式”“单纯把数据全塞进首屏”。
-  - 对统一管控页做判断时，先看视觉秩序，再看数据密度：
-    - 首屏阅读路径是否清晰
-    - 左 / 中 / 右是否形成稳定指挥带，而不是高度失衡的三列堆叠
-    - 图表和列表是否被容器策略异常拉高
-    - 滚动是否自然，不能靠嵌套滚动或错误落点掩盖布局问题
-  - 如果“能跑”和“好看”冲突，在统一管控页当前阶段先保证好看，再回头为实现补结构。
+## 观测、性能与安全
+
+- Actuator 指标入口是 `/health/actuator/metrics`。重点指标包括请求数据源、手表路由、在线人数、预警生成/去重、Redis buffer 入队/刷写/dead-letter、AI 调用耗时/拒绝/SQL 自动修复、SQL 耗时/慢查询。
+- 慢查询阈值由 `HEALTH_SLOW_QUERY_THRESHOLD_MS` 控制，默认 `500ms`。排障先看 Actuator、后端日志、Redis 队列和 SQL，再看 controller 日志。
+- 前端性能问题分别判断 JavaScript/Node、浏览器渲染与 ECharts、网络/视频解码，不把“资源占用”当成单一指标。保留产品需要的视觉信息，不为降低负载擅自删业务内容。
+- AI 聊天支持受控 Text2SQL 和报告能力。SQL 动态列结果必须经过白名单、参数化和结果集封装；禁止把用户输入直接拼 SQL，禁止在提示词或日志中泄露 token、密码、个人敏感健康信息。AI 规则提示不是医学诊断，AI 报告是用户主动触发的二级能力。
+- 外部呼叫、广播、撤离和其他设备控制必须保留审计和明确的未配置状态，不能用前端成功提示冒充外部系统已执行。
+
+## 变更检查清单
+
+- 新增接口：同步 controller、service、mapper/DTO、权限、数据源路由、响应状态和前端 API；补源守护或集成测试。
+- 新增健康字段：按“月表/视图/存储过程 -> entity -> mapper insert/select -> service -> API -> 前端”逐层核对。
+- 修改实时页：确认在线窗口、新鲜度、逐指标最新值、服务端分页和 `normal/warning/stale/no_data`。
+- 修改双库：同时验证 old 非空和 new 空/稀疏；检查请求头、Cookie、响应头、Redis key、手表/模拟器路由和权限。
+- 修改指挥中心或人员处置：保留复合事件键、数据源上下文、服务端状态刷新和未接入/未配置语义。
+- 修改页面布局：至少运行对应结构门禁和五档视觉审计，不以单一可见浏览器视口口头判断。
+- 修改后端异步链路：确认使用有界 `taskExecutor`，不会回退到无限创建线程的 `SimpleAsyncTaskExecutor`。
+- 任务结束：根目录 `git status`、`git diff --check`，只保留本次任务文件；本文之外不得留下 Markdown。
